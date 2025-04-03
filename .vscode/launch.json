@@ -1,0 +1,45 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug executable 'yellow_flash'",
+			"cargo": {
+				"args": [
+					"build",
+					"--bin=yellow_flash",
+					"--package=yellow_flash"
+				],
+				"filter": {
+					"name": "yellow_flash",
+					"kind": "bin"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug unit tests in executable 'yellow_flash'",
+			"cargo": {
+				"args": [
+					"test",
+					"--no-run",
+					"--bin=yellow_flash",
+					"--package=yellow_flash"
+				],
+				"filter": {
+					"name": "yellow_flash",
+					"kind": "bin"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		}
+	]
+}
