@@ -63,7 +63,12 @@ impl Parser {
             panic!("Reached end of file and could not find a literal token");
         };
 
-        if !matches!(token, Token::Plus | Token::Minus | Token::Not) {
+        if token == Token::Plus {
+            self.consume(&token);
+            return self.parse_unary();
+        }
+
+        if !matches!(token, Token::Minus | Token::Not) {
             return self.parse_literal();
         }
 

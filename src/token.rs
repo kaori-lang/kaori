@@ -22,5 +22,5 @@ pub enum Token {
     String(String),
     Bool(bool),
     EndOfFile, // End of input
-    Unknown,   // Unrecognized token
+    Invalid,   // Unrecognized token
 }

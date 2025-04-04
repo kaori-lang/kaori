@@ -168,7 +168,7 @@ impl Lexer {
     }
 
     fn get_next_token(&mut self) -> Token {
-        let Some(_c) = self.look_ahead() else {
+        let Some(_) = self.look_ahead() else {
             return Token::EndOfFile;
         };
 
@@ -180,7 +180,7 @@ impl Lexer {
             return token;
         }
 
-        return Token::Unknown;
+        return Token::Invalid;
     }
 
     fn tokenize(&mut self) {
