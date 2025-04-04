@@ -1,9 +1,16 @@
 use crate::token::Token;
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum Literal {
+    Number,
+    String,
+    Boool,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum ASTNode {
     Literal {
-        _type: Token,
+        _type: Literal,
         value: String,
     },
     BinaryOperator {
@@ -11,8 +18,8 @@ pub enum ASTNode {
         right: Box<ASTNode>,
         _type: Token,
     },
-    Unary {
+    UnaryOperator {
         _type: Token,
-        left: Box<ASTNode>,
+        right: Box<ASTNode>,
     },
 }

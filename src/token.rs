@@ -19,6 +19,8 @@ pub enum Token {
     Less,           // '<'
     LessEqual,      // '<='
     Number(String), // Numeric value (e.g., 123, -45)
-    EndOfFile,      // End of input
-    Unknown,        // Unrecognized token
+    String(String),
+    Bool(bool),
+    EndOfFile, // End of input
+    Unknown,   // Unrecognized token
 }

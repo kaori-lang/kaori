@@ -7,7 +7,7 @@
 use yellow_flash::{ast::ast_node::ASTNode, lexer::Lexer, parser::Parser, token::Token};
 
 fn main() {
-    let source = String::from("2 * 5 *-10");
+    let source = String::from("-2*-+4");
     let lex: Lexer = Lexer::new(source);
     let tokens = lex.get_tokens();
     let mut parser = Parser::new(tokens);
