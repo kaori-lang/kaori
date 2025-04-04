@@ -161,8 +161,12 @@ impl Parser {
         return left;
     }
 
-    pub fn parse_expression(&mut self) -> ASTNode {
-        let ast = self.parse_term();
+    fn parse_expression(&mut self) -> ASTNode {
+        return self.parse_term();
+    }
+
+    pub fn get_ast(&mut self) -> ASTNode {
+        let ast = self.parse_expression();
         self.pos = 0;
 
         return ast;

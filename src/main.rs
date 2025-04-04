@@ -7,12 +7,12 @@
 use yellow_flash::{ast::ast_node::ASTNode, lexer::Lexer, parser::Parser, token::Token};
 
 fn main() {
-    let source = String::from("-2*-+4");
+    let source = String::from("+ - * / ( ) { } && || ! != = == > >= < <=");
     let lex: Lexer = Lexer::new(source);
     let tokens = lex.get_tokens();
-    let mut parser = Parser::new(tokens);
+    /* let mut parser = Parser::new(tokens);
 
-    let ast = parser.parse_expression();
+    let ast = parser.get_ast(); */
 
-    println!("{:#?}", ast);
+    println!("{:#?}", tokens);
 }

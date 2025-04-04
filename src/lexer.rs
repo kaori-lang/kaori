@@ -50,8 +50,12 @@ impl Lexer {
         }
     }
 
-    fn get_next_number(&mut self, first_digit: char) -> Token {
-        let mut number = first_digit.to_string();
+    fn get_next_number(&mut self) -> Option<Token> {
+        let Some('0'..='9') = self.look_ahead() else {
+            return None;
+        };
+
+        let mut number = String::new();
 
         while let Some(c) = self.look_ahead() {
             if c.is_ascii_digit() {
@@ -67,7 +71,7 @@ impl Lexer {
                 number.push('.');
                 self.advance();
             } else {
-                return Token::Number(number);
+                return Some(Token::Number(number));
             }
         }
 
@@ -80,24 +84,103 @@ impl Lexer {
             }
         }
 
-        return Token::Number(number);
+        return Some(Token::Number(number));
+    }
+
+    pub fn get_next_symbol(&mut self) -> Option<Token> {
+        let Some(c) = self.look_ahead() else {
+            return None;
+        };
+
+        let symbol = match c {
+            '+' => Some(Token::Plus),
+            '-' => Some(Token::Minus),
+            '*' => Some(Token::Multiply),
+            '/' => Some(Token::Divide),
+            '(' => Some(Token::LeftParen),
+            ')' => Some(Token::RightParen),
+            '{' => Some(Token::LeftBrace),
+            '}' => Some(Token::RightBrace),
+            '&' => {
+                self.advance();
+
+                if let Some('&') = self.look_ahead() {
+                    Some(Token::And)
+                } else {
+                    None
+                }
+            }
+            '|' => {
+                self.advance();
+
+                if let Some('|') = self.look_ahead() {
+                    Some(Token::Or)
+                } else {
+                    None
+                }
+            }
+            '!' => {
+                self.advance();
+
+                if let Some('=') = self.look_ahead() {
+                    Some(Token::NotEqual)
+                } else {
+                    Some(Token::Not)
+                }
+            }
+            '=' => {
+                self.advance();
+
+                if let Some('=') = self.look_ahead() {
+                    Some(Token::Equal)
+                } else {
+                    Some(Token::Assign)
+                }
+            }
+            '>' => {
+                self.advance();
+
+                if let Some('=') = self.look_ahead() {
+                    Some(Token::GreaterEqual)
+                } else {
+                    Some(Token::Greater)
+                }
+            }
+            '<' => {
+                self.advance();
+
+                if let Some('=') = self.look_ahead() {
+                    Some(Token::LessEqual)
+                } else {
+                    Some(Token::Less)
+                }
+            }
+            _ => None,
+        };
+
+        if let Some(token) = symbol {
+            self.advance();
+
+            return Some(token);
+        }
+
+        return None;
     }
 
     fn get_next_token(&mut self) -> Token {
-        let Some(c) = self.advance() else {
+        let Some(_c) = self.look_ahead() else {
             return Token::EndOfFile;
         };
 
-        return match c {
-            '+' => Token::Plus,
-            '-' => Token::Minus,
-            '*' => Token::Multiply,
-            '/' => Token::Divide,
-            '(' => Token::LeftParen,
-            ')' => Token::RightParen,
-            '0'..='9' => self.get_next_number(c),
-            _ => Token::Unknown,
-        };
+        if let Some(token) = self.get_next_symbol() {
+            return token;
+        }
+
+        if let Some(token) = self.get_next_number() {
+            return token;
+        }
+
+        return Token::Unknown;
     }
 
     fn tokenize(&mut self) {
