@@ -1,6 +1,9 @@
 use crate::{
-    ast::ast_node::{ASTNode, Literal},
-    token::Token,
+    ast::{
+        ast_node::ASTNode, binary_operator::BinaryOperator, literal::Literal,
+        unary_operator::UnaryOperator,
+    },
+    token::{Token, TokenType},
 };
 
 pub struct Parser {
@@ -23,155 +26,136 @@ impl Parser {
         }
     }
 
-    fn consume(&mut self, expected: &Token) {
+    fn consume(&mut self, expected: &TokenType) {
         let Some(token) = self.look_ahead() else {
             panic!("Unexpected end of input, expected {:?}", expected);
         };
 
-        if token == *expected {
+        if token.ty == *expected {
             self.advance();
         } else {
             panic!("Expected {:?}, but found {:?}", expected, token);
         }
     }
 
-    fn parse_literal(&mut self) -> ASTNode {
+    fn parse_literal(&mut self) -> Box<dyn ASTNode> {
         let Some(token) = self.look_ahead() else {
             panic!("Reached end of file and could not find a literal token");
         };
 
-        return match token {
-            Token::LeftParen => {
-                self.consume(&Token::LeftParen);
-                let expression: ASTNode = self.parse_expression();
-                self.consume(&Token::RightParen);
+        match token.ty {
+            TokenType::LeftParen => {
+                self.consume(&TokenType::LeftParen);
+                let expression = self.parse_expression();
+                self.consume(&TokenType::RightParen);
                 expression
             }
-            Token::Number(value) => {
-                self.consume(&Token::Number(value.clone()));
-                ASTNode::Literal {
-                    _type: Literal::Number,
-                    value: String::from(value),
-                }
+            TokenType::Number => {
+                self.consume(&TokenType::Number);
+                Box::new(Literal::new(token.ty, token.value.unwrap()))
             }
             _ => panic!("Found an unknown literal token"),
-        };
+        }
     }
 
-    fn parse_unary(&mut self) -> ASTNode {
+    fn parse_unary(&mut self) -> Box<dyn ASTNode> {
         let Some(token) = self.look_ahead() else {
             panic!("Reached end of file and could not find a literal token");
         };
 
-        if token == Token::Plus {
-            self.consume(&token);
+        if token.ty == TokenType::Plus {
+            self.consume(&token.ty);
             return self.parse_unary();
         }
 
-        if !matches!(token, Token::Minus | Token::Not) {
+        if !matches!(token.ty, TokenType::Minus | TokenType::Not) {
             return self.parse_literal();
         }
 
-        self.consume(&token);
+        self.consume(&token.ty);
 
-        return ASTNode::UnaryOperator {
-            _type: token,
-            right: Box::new(self.parse_unary()),
-        };
+        return Box::new(UnaryOperator::new(token.ty, self.parse_unary()));
     }
 
-    fn parse_factor(&mut self) -> ASTNode {
+    fn parse_factor(&mut self) -> Box<dyn ASTNode> {
         let mut left = self.parse_unary();
 
         while let Some(token) = self.look_ahead() {
-            if !matches!(token, Token::Multiply | Token::Divide) {
+            if !matches!(token.ty, TokenType::Multiply | TokenType::Divide) {
                 break;
             }
 
-            self.consume(&token);
+            self.consume(&token.ty);
             let right = self.parse_unary();
 
-            left = ASTNode::BinaryOperator {
-                left: Box::new(left),
-                right: Box::new(right),
-                _type: token,
-            }
+            left = Box::new(BinaryOperator::new(token.ty, left, right));
         }
 
         return left;
     }
 
-    fn parse_term(&mut self) -> ASTNode {
+    fn parse_term(&mut self) -> Box<dyn ASTNode> {
         let mut left = self.parse_factor();
 
         while let Some(token) = self.look_ahead() {
-            if !matches!(token, Token::Plus | Token::Minus) {
+            if !matches!(token.ty, TokenType::Plus | TokenType::Minus) {
                 break;
             }
 
-            self.consume(&token);
+            self.consume(&token.ty);
             let right = self.parse_factor();
 
-            left = ASTNode::BinaryOperator {
-                left: Box::new(left),
-                right: Box::new(right),
-                _type: token,
-            }
+            left = Box::new(BinaryOperator::new(token.ty, left, right));
         }
 
         return left;
     }
 
-    fn parse_comparison(&mut self) -> ASTNode {
+    fn parse_comparison(&mut self) -> Box<dyn ASTNode> {
         let mut left = self.parse_term();
 
         while let Some(token) = self.look_ahead() {
             if !matches!(
-                token,
-                Token::Greater | Token::GreaterEqual | Token::Less | Token::LessEqual
+                token.ty,
+                TokenType::Greater
+                    | TokenType::GreaterEqual
+                    | TokenType::Less
+                    | TokenType::LessEqual
             ) {
                 break;
             }
 
-            self.consume(&token);
+            self.consume(&token.ty);
             let right = self.parse_term();
 
-            left = ASTNode::BinaryOperator {
-                left: Box::new(left),
-                right: Box::new(right),
-                _type: token,
-            }
+            left = Box::new(BinaryOperator::new(token.ty, left, right));
         }
 
         return left;
     }
-    fn parse_equality(&mut self) -> ASTNode {
+    fn parse_equality(&mut self) -> Box<dyn ASTNode> {
         let mut left = self.parse_comparison();
 
         while let Some(token) = self.look_ahead() {
-            if !matches!(token, Token::Equal | Token::NotEqual) {
+            if !matches!(token.ty, TokenType::Equal | TokenType::NotEqual) {
                 break;
             }
 
-            self.consume(&token);
+            self.consume(&token.ty);
             let right = self.parse_comparison();
 
-            left = ASTNode::BinaryOperator {
-                left: Box::new(left),
-                right: Box::new(right),
-                _type: token,
-            }
+            left = Box::new(BinaryOperator::new(token.ty, left, right));
         }
 
         return left;
     }
 
-    fn parse_expression(&mut self) -> ASTNode {
+    fn parse_expression(&mut self) -> Box<dyn ASTNode> {
         return self.parse_term();
     }
 
-    pub fn get_ast(&mut self) -> ASTNode {
-        let ast = self.parse_expression();
+    pub fn get_ast(&mut self) -> Box<dyn ASTNode> {
+        let ast = self.parse_equality();
         self.pos = 0;
 
         return ast;

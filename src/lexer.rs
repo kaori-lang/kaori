@@ -1,11 +1,11 @@
-use crate::token::Token;
+use crate::token::{Token, TokenType};
 
 #[derive(Debug, Clone)]
-
 pub struct Lexer {
     source: Vec<char>,
     tokens: Vec<Token>,
     pos: usize,
+    line: u32,
 }
 
 impl Lexer {
@@ -14,6 +14,7 @@ impl Lexer {
             source: source.chars().collect(),
             tokens: Vec::new(),
             pos: 0,
+            line: 0,
         };
 
         lexer.tokenize();
@@ -71,7 +72,7 @@ impl Lexer {
                 number.push('.');
                 self.advance();
             } else {
-                return Some(Token::Number(number));
+                return Some(Token::new(TokenType::Number, self.line, Some(number)));
             }
         }
 
@@ -84,7 +85,7 @@ impl Lexer {
             }
         }
 
-        return Some(Token::Number(number));
+        return Some(Token::new(TokenType::Number, self.line, Some(number)));
     }
 
     pub fn get_next_symbol(&mut self) -> Option<Token> {
@@ -92,104 +93,117 @@ impl Lexer {
             return None;
         };
 
+        let mut should_advance = true;
+
         let symbol = match c {
-            '+' => Some(Token::Plus),
-            '-' => Some(Token::Minus),
-            '*' => Some(Token::Multiply),
-            '/' => Some(Token::Divide),
-            '(' => Some(Token::LeftParen),
-            ')' => Some(Token::RightParen),
-            '{' => Some(Token::LeftBrace),
-            '}' => Some(Token::RightBrace),
+            '+' => Some(TokenType::Plus),
+            '-' => Some(TokenType::Minus),
+            '*' => Some(TokenType::Multiply),
+            '/' => Some(TokenType::Divide),
+            '(' => Some(TokenType::LeftParen),
+            ')' => Some(TokenType::RightParen),
+            '{' => Some(TokenType::LeftBrace),
+            '}' => Some(TokenType::RightBrace),
             '&' => {
                 self.advance();
 
                 if let Some('&') = self.look_ahead() {
-                    Some(Token::And)
+                    Some(TokenType::And)
                 } else {
-                    None
+                    should_advance = false;
+                    Some(TokenType::Invalid)
                 }
             }
             '|' => {
                 self.advance();
 
                 if let Some('|') = self.look_ahead() {
-                    Some(Token::Or)
+                    Some(TokenType::Or)
                 } else {
-                    None
+                    should_advance = false;
+                    Some(TokenType::Invalid)
                 }
             }
             '!' => {
                 self.advance();
 
                 if let Some('=') = self.look_ahead() {
-                    Some(Token::NotEqual)
+                    Some(TokenType::NotEqual)
                 } else {
-                    Some(Token::Not)
+                    should_advance = false;
+                    Some(TokenType::Not)
                 }
             }
             '=' => {
                 self.advance();
 
                 if let Some('=') = self.look_ahead() {
-                    Some(Token::Equal)
+                    Some(TokenType::Equal)
                 } else {
-                    Some(Token::Assign)
+                    should_advance = false;
+                    Some(TokenType::Assign)
                 }
             }
             '>' => {
                 self.advance();
 
                 if let Some('=') = self.look_ahead() {
-                    Some(Token::GreaterEqual)
+                    Some(TokenType::GreaterEqual)
                 } else {
-                    Some(Token::Greater)
+                    should_advance = false;
+                    Some(TokenType::Greater)
                 }
             }
             '<' => {
                 self.advance();
 
                 if let Some('=') = self.look_ahead() {
-                    Some(Token::LessEqual)
+                    Some(TokenType::LessEqual)
                 } else {
-                    Some(Token::Less)
+                    should_advance = false;
+                    Some(TokenType::Less)
                 }
             }
             _ => None,
         };
 
-        if let Some(token) = symbol {
-            self.advance();
+        if let Some(token_type) = symbol {
+            if should_advance {
+                self.advance();
+            }
 
+            return Some(Token::new(token_type, self.line, None));
+        }
+
+        return None;
+    }
+
+    fn get_next_token(&mut self) -> Option<Token> {
+        let Some(_) = self.look_ahead() else {
+            return Some(Token::new(TokenType::EndOfFile, self.line, None));
+        };
+
+        if let Some(token) = self.get_next_symbol() {
+            return Some(token);
+        }
+
+        if let Some(token) = self.get_next_number() {
             return Some(token);
         }
 
         return None;
     }
 
-    fn get_next_token(&mut self) -> Token {
-        let Some(_) = self.look_ahead() else {
-            return Token::EndOfFile;
-        };
-
-        if let Some(token) = self.get_next_symbol() {
-            return token;
-        }
-
-        if let Some(token) = self.get_next_number() {
-            return token;
-        }
-
-        return Token::Invalid;
-    }
-
     fn tokenize(&mut self) {
         loop {
             self.skip_white_space();
 
-            let token = self.get_next_token();
+            let Some(token) = self.get_next_token() else {
+                println!("Invalid token found");
+                break;
+            };
 
-            if token == Token::EndOfFile {
+            if token.ty == TokenType::EndOfFile {
                 self.tokens.push(token);
                 break;
             }
