@@ -4,15 +4,24 @@
 #![allow(unused_imports)] // Suppresses warnings about unused `use` statements
 #![allow(unused_assignments)] // Suppresses warnings about variables being assigned but never used
 
-use yellow_flash::{ast::ast_node::ASTNode, lexer::Lexer, parser::Parser};
+use yellow_flash::{lexer::Lexer, parser::Parser};
 
 fn main() {
-    let source = String::from("25.964*9==5<=1==10");
-    let lex: Lexer = Lexer::new(source);
+    let source = String::from(
+        r#"String x = true;     
+        String y = false;    
+        String z = true;
+        
+    "#,
+    );
+    let current = &source[2..];
+    println!("{}", &current[2..]);
+
+    /* let lex: Lexer = Lexer::new(source);
     let tokens = lex.get_tokens();
-    let mut parser = Parser::new(tokens);
+    //let mut parser = Parser::new(tokens);
 
-    let ast = parser.get_ast();
+    //let ast = parser.get_ast();
 
-    println!("{:#?}", ast);
+    println!("{:#?}", tokens); */
 }

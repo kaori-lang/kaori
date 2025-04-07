@@ -1,6 +1,6 @@
 use crate::token::TokenType;
 
-use super::ast_node::ASTNode;
+use super::expr::Expr;
 
 #[derive(Debug)]
 pub struct Literal {
@@ -14,4 +14,4 @@ impl Literal {
     }
 }
 
-impl ASTNode for Literal {}
+impl Expr for Literal {}

@@ -18,9 +18,20 @@ pub enum TokenType {
     GreaterEqual, // '>='
     Less,         // '<'
     LessEqual,    // '<='
-    Number,       // Numeric value (e.g., 123, -45)
+    Comma,        // ','
+    Semicolon,    // ';'
+
+    Def,
+    While,
+    If,
+    Else,
+    Return,
+
+    DataType,
+    Identifier,
+    Number, // Numeric value (e.g., 123, -45)
     String,
-    Bool,
+    Boolean,
     EndOfFile, // End of input
     Invalid,   // Unrecognized token
 }

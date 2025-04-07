@@ -14,7 +14,7 @@ impl Lexer {
             source: source.chars().collect(),
             tokens: Vec::new(),
             pos: 0,
-            line: 0,
+            line: 1,
         };
 
         lexer.tokenize();
@@ -26,14 +26,9 @@ impl Lexer {
         return self.source.get(self.pos).copied();
     }
 
-    fn advance(&mut self) -> Option<char> {
+    fn advance(&mut self) {
         if self.pos < self.source.len() {
-            let c = self.look_ahead();
             self.pos += 1;
-
-            return c;
-        } else {
-            return None;
         }
     }
 
@@ -43,12 +38,71 @@ impl Lexer {
 
     fn skip_white_space(&mut self) {
         while let Some(c) = self.look_ahead() {
-            if c.is_whitespace() {
+            if c == '\n' {
+                self.line += 1;
+                self.advance();
+            } else if c.is_whitespace() {
                 self.advance();
             } else {
                 break;
             }
         }
+    }
+
+    fn get_next_identifier(&mut self) -> Option<Token> {
+        let Some('a'..='z' | 'A'..='Z' | '_') = self.look_ahead() else {
+            return None;
+        };
+
+        let mut identifier = String::new();
+
+        while let Some(c) = self.look_ahead() {
+            if !matches!(c, 'a'..='z' | 'A'..='Z' | '_' | '0'..='9') {
+                break;
+            }
+            self.advance();
+            identifier.push(c);
+        }
+
+        let token_type = match identifier.as_str() {
+            "Number" => {
+                return Some(Token::new(
+                    TokenType::DataType,
+                    self.line,
+                    Some(String::from("Number")),
+                ))
+            }
+            "String" => {
+                return Some(Token::new(
+                    TokenType::DataType,
+                    self.line,
+                    Some(String::from("String")),
+                ))
+            }
+            "Boolean" => {
+                return Some(Token::new(
+                    TokenType::DataType,
+                    self.line,
+                    Some(String::from("Boolean")),
+                ))
+            }
+            "if" => TokenType::If,
+            "else" => TokenType::Else,
+            "while" => TokenType::While,
+            "return" => TokenType::Return,
+            "def" => TokenType::Def,
+            "true" => TokenType::Boolean,
+            "false" => TokenType::Boolean,
+            _ => {
+                return Some(Token::new(
+                    TokenType::Identifier,
+                    self.line,
+                    Some(identifier),
+                ))
+            }
+        };
+
+        return Some(Token::new(token_type, self.line, None));
     }
 
     fn get_next_number(&mut self) -> Option<Token> {
@@ -104,6 +158,8 @@ impl Lexer {
             ')' => Some(TokenType::RightParen),
             '{' => Some(TokenType::LeftBrace),
             '}' => Some(TokenType::RightBrace),
+            ',' => Some(TokenType::Comma),
+            ';' => Some(TokenType::Semicolon),
             '&' => {
                 self.advance();
 
@@ -188,6 +244,10 @@ impl Lexer {
         }
 
         if let Some(token) = self.get_next_number() {
+            return Some(token);
+        }
+
+        if let Some(token) = self.get_next_identifier() {
             return Some(token);
         }
 

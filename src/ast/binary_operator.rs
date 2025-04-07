@@ -1,18 +1,18 @@
 use crate::token::TokenType;
 
-use super::ast_node::ASTNode;
+use super::expr::Expr;
 
 #[derive(Debug)]
 pub struct BinaryOperator {
     ty: TokenType,
-    left: Box<dyn ASTNode>,
-    right: Box<dyn ASTNode>,
+    left: Box<dyn Expr>,
+    right: Box<dyn Expr>,
 }
 
 impl BinaryOperator {
-    pub fn new(ty: TokenType, left: Box<dyn ASTNode>, right: Box<dyn ASTNode>) -> Self {
+    pub fn new(ty: TokenType, left: Box<dyn Expr>, right: Box<dyn Expr>) -> Self {
         Self { ty, left, right }
     }
 }
 
-impl ASTNode for BinaryOperator {}
+impl Expr for BinaryOperator {}

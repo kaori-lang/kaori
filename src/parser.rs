@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        ast_node::ASTNode, binary_operator::BinaryOperator, literal::Literal,
+        binary_operator::BinaryOperator, expr::Expr, literal::Literal,
         unary_operator::UnaryOperator,
     },
     token::{Token, TokenType},
@@ -38,7 +38,7 @@ impl Parser {
         }
     }
 
-    fn parse_literal(&mut self) -> Box<dyn ASTNode> {
+    fn parse_literal(&mut self) -> Box<dyn Expr> {
         let Some(token) = self.look_ahead() else {
             panic!("Reached end of file and could not find a literal token");
         };
@@ -58,7 +58,7 @@ impl Parser {
         }
     }
 
-    fn parse_unary(&mut self) -> Box<dyn ASTNode> {
+    fn parse_unary(&mut self) -> Box<dyn Expr> {
         let Some(token) = self.look_ahead() else {
             panic!("Reached end of file and could not find a literal token");
         };
@@ -77,7 +77,7 @@ impl Parser {
         return Box::new(UnaryOperator::new(token.ty, self.parse_unary()));
     }
 
-    fn parse_factor(&mut self) -> Box<dyn ASTNode> {
+    fn parse_factor(&mut self) -> Box<dyn Expr> {
         let mut left = self.parse_unary();
 
         while let Some(token) = self.look_ahead() {
@@ -94,7 +94,7 @@ impl Parser {
         return left;
     }
 
-    fn parse_term(&mut self) -> Box<dyn ASTNode> {
+    fn parse_term(&mut self) -> Box<dyn Expr> {
         let mut left = self.parse_factor();
 
         while let Some(token) = self.look_ahead() {
@@ -111,7 +111,7 @@ impl Parser {
         return left;
     }
 
-    fn parse_comparison(&mut self) -> Box<dyn ASTNode> {
+    fn parse_comparison(&mut self) -> Box<dyn Expr> {
         let mut left = self.parse_term();
 
         while let Some(token) = self.look_ahead() {
@@ -133,7 +133,7 @@ impl Parser {
 
         return left;
     }
-    fn parse_equality(&mut self) -> Box<dyn ASTNode> {
+    fn parse_equality(&mut self) -> Box<dyn Expr> {
         let mut left = self.parse_comparison();
 
         while let Some(token) = self.look_ahead() {
@@ -150,11 +150,11 @@ impl Parser {
         return left;
     }
 
-    fn parse_expression(&mut self) -> Box<dyn ASTNode> {
+    fn parse_expression(&mut self) -> Box<dyn Expr> {
         return self.parse_term();
     }
 
-    pub fn get_ast(&mut self) -> Box<dyn ASTNode> {
+    pub fn get_ast(&mut self) -> Box<dyn Expr> {
         let ast = self.parse_equality();
         self.pos = 0;
 
