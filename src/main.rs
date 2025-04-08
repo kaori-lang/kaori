@@ -4,24 +4,25 @@
 #![allow(unused_imports)] // Suppresses warnings about unused `use` statements
 #![allow(unused_assignments)] // Suppresses warnings about variables being assigned but never used
 
+use std::{iter::Peekable, str::Chars, vec};
+
 use yellow_flash::{lexer::Lexer, parser::Parser};
 
 fn main() {
-    let source = String::from(
-        r#"String x = true;     
-        String y = false;    
-        String z = true;
-        
-    "#,
-    );
-    let current = &source[2..];
-    println!("{}", &current[2..]);
+    let source = "6>=6.1";
+    let mut lexer = Lexer::new(source);
+    let tokens = lexer.tokenize();
 
-    /* let lex: Lexer = Lexer::new(source);
-    let tokens = lex.get_tokens();
-    //let mut parser = Parser::new(tokens);
+    if let Ok(t) = tokens {
+        let mut parser = Parser::new(t);
+        let ast = parser.get_ast();
 
-    //let ast = parser.get_ast();
-
-    println!("{:#?}", tokens); */
+        if let Ok(tree) = ast {
+            println!("{:#?}", tree.eval());
+        } else {
+            println!("{:#?}", ast);
+        }
+    } else {
+        println!("{:?}", tokens);
+    }
 }

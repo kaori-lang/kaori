@@ -1,10 +1,13 @@
 use crate::{
-    ast::{
-        binary_operator::BinaryOperator, expr::Expr, literal::Literal,
-        unary_operator::UnaryOperator,
-    },
+    interpreter::expr::Expr,
     token::{Token, TokenType},
 };
+
+#[derive(Debug)]
+pub enum ParserError {
+    UnexpectedToken { line: u32 },
+    EndOfFile { line: u32 },
+}
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -26,45 +29,49 @@ impl Parser {
         }
     }
 
-    fn consume(&mut self, expected: &TokenType) {
+    fn consume(&mut self, expected: &TokenType) -> Result<(), ParserError> {
         let Some(token) = self.look_ahead() else {
-            panic!("Unexpected end of input, expected {:?}", expected);
+            return Err(ParserError::UnexpectedToken { line: 0 });
         };
 
         if token.ty == *expected {
             self.advance();
+            return Ok(());
         } else {
-            panic!("Expected {:?}, but found {:?}", expected, token);
+            return Err(ParserError::UnexpectedToken { line: token.line });
         }
     }
 
-    fn parse_literal(&mut self) -> Box<dyn Expr> {
+    fn parse_literal(&mut self) -> Result<Box<Expr>, ParserError> {
         let Some(token) = self.look_ahead() else {
-            panic!("Reached end of file and could not find a literal token");
+            return Err(ParserError::EndOfFile { line: 0 });
         };
 
         match token.ty {
             TokenType::LeftParen => {
-                self.consume(&TokenType::LeftParen);
-                let expression = self.parse_expression();
-                self.consume(&TokenType::RightParen);
-                expression
+                self.consume(&TokenType::LeftParen)?;
+                let expression = self.parse_expression()?;
+                self.consume(&TokenType::RightParen)?;
+                Ok(expression)
             }
             TokenType::Number => {
-                self.consume(&TokenType::Number);
-                Box::new(Literal::new(token.ty, token.value.unwrap()))
+                self.consume(&TokenType::Number)?;
+                Ok(Box::new(Expr::Literal {
+                    ty: token.ty,
+                    value: token.value.unwrap(),
+                }))
             }
-            _ => panic!("Found an unknown literal token"),
+            _ => Err(ParserError::UnexpectedToken { line: token.line }),
         }
     }
 
-    fn parse_unary(&mut self) -> Box<dyn Expr> {
+    fn parse_unary(&mut self) -> Result<Box<Expr>, ParserError> {
         let Some(token) = self.look_ahead() else {
-            panic!("Reached end of file and could not find a literal token");
+            return Err(ParserError::UnexpectedToken { line: 0 });
         };
 
         if token.ty == TokenType::Plus {
-            self.consume(&token.ty);
+            self.consume(&token.ty)?;
             return self.parse_unary();
         }
 
@@ -72,47 +79,58 @@ impl Parser {
             return self.parse_literal();
         }
 
-        self.consume(&token.ty);
+        self.consume(&token.ty)?;
 
-        return Box::new(UnaryOperator::new(token.ty, self.parse_unary()));
+        return Ok(Box::new(Expr::UnaryOperator {
+            ty: token.ty,
+            right: self.parse_unary()?,
+        }));
     }
 
-    fn parse_factor(&mut self) -> Box<dyn Expr> {
-        let mut left = self.parse_unary();
+    fn parse_factor(&mut self) -> Result<Box<Expr>, ParserError> {
+        let mut left = self.parse_unary()?;
 
         while let Some(token) = self.look_ahead() {
             if !matches!(token.ty, TokenType::Multiply | TokenType::Divide) {
                 break;
             }
 
-            self.consume(&token.ty);
-            let right = self.parse_unary();
+            self.consume(&token.ty)?;
+            let right = self.parse_unary()?;
 
-            left = Box::new(BinaryOperator::new(token.ty, left, right));
+            left = Box::new(Expr::BinaryOperator {
+                ty: token.ty,
+                left,
+                right,
+            });
         }
 
-        return left;
+        return Ok(left);
     }
 
-    fn parse_term(&mut self) -> Box<dyn Expr> {
-        let mut left = self.parse_factor();
+    fn parse_term(&mut self) -> Result<Box<Expr>, ParserError> {
+        let mut left = self.parse_factor()?;
 
         while let Some(token) = self.look_ahead() {
             if !matches!(token.ty, TokenType::Plus | TokenType::Minus) {
                 break;
             }
 
-            self.consume(&token.ty);
-            let right = self.parse_factor();
+            self.consume(&token.ty)?;
+            let right = self.parse_factor()?;
 
-            left = Box::new(BinaryOperator::new(token.ty, left, right));
+            left = Box::new(Expr::BinaryOperator {
+                ty: token.ty,
+                left,
+                right,
+            });
         }
 
-        return left;
+        return Ok(left);
     }
 
-    fn parse_comparison(&mut self) -> Box<dyn Expr> {
-        let mut left = self.parse_term();
+    fn parse_comparison(&mut self) -> Result<Box<Expr>, ParserError> {
+        let mut left = self.parse_term()?;
 
         while let Some(token) = self.look_ahead() {
             if !matches!(
@@ -125,36 +143,45 @@ impl Parser {
                 break;
             }
 
-            self.consume(&token.ty);
-            let right = self.parse_term();
+            self.consume(&token.ty)?;
+            let right = self.parse_term()?;
 
-            left = Box::new(BinaryOperator::new(token.ty, left, right));
+            left = Box::new(Expr::BinaryOperator {
+                ty: token.ty,
+                left,
+                right,
+            });
         }
 
-        return left;
+        return Ok(left);
     }
-    fn parse_equality(&mut self) -> Box<dyn Expr> {
-        let mut left = self.parse_comparison();
+
+    fn parse_equality(&mut self) -> Result<Box<Expr>, ParserError> {
+        let mut left = self.parse_comparison()?;
 
         while let Some(token) = self.look_ahead() {
             if !matches!(token.ty, TokenType::Equal | TokenType::NotEqual) {
                 break;
             }
 
-            self.consume(&token.ty);
-            let right = self.parse_comparison();
+            self.consume(&token.ty)?;
+            let right = self.parse_comparison()?;
 
-            left = Box::new(BinaryOperator::new(token.ty, left, right));
+            left = Box::new(Expr::BinaryOperator {
+                ty: token.ty,
+                left,
+                right,
+            });
         }
 
-        return left;
+        return Ok(left);
     }
 
-    fn parse_expression(&mut self) -> Box<dyn Expr> {
+    fn parse_expression(&mut self) -> Result<Box<Expr>, ParserError> {
         return self.parse_term();
     }
 
-    pub fn get_ast(&mut self) -> Box<dyn Expr> {
+    pub fn get_ast(&mut self) -> Result<Box<Expr>, ParserError> {
         let ast = self.parse_equality();
         self.pos = 0;
 

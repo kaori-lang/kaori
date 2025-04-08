@@ -1,39 +1,35 @@
+use std::{iter::Peekable, str::Chars};
+
 use crate::token::{Token, TokenType};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
+pub enum LexerError {
+    InvalidToken { line: u32, character: char },
+    InvalidString { line: u32, character: char },
+}
+
+#[derive(Debug)]
 pub struct Lexer {
-    source: Vec<char>,
-    tokens: Vec<Token>,
-    pos: usize,
+    source: &'static str,
+    curr: Peekable<Chars<'static>>,
     line: u32,
 }
 
 impl Lexer {
-    pub fn new(source: String) -> Self {
-        let mut lexer = Self {
-            source: source.chars().collect(),
-            tokens: Vec::new(),
-            pos: 0,
+    pub fn new(source: &'static str) -> Self {
+        Self {
+            source,
+            curr: source.chars().peekable(),
             line: 1,
-        };
-
-        lexer.tokenize();
-
-        return lexer;
-    }
-
-    fn look_ahead(&mut self) -> Option<char> {
-        return self.source.get(self.pos).copied();
-    }
-
-    fn advance(&mut self) {
-        if self.pos < self.source.len() {
-            self.pos += 1;
         }
     }
 
-    pub fn get_tokens(&self) -> Vec<Token> {
-        return self.tokens.clone();
+    fn look_ahead(&mut self) -> Option<char> {
+        return self.curr.peek().copied();
+    }
+
+    fn advance(&mut self) {
+        self.curr.next();
     }
 
     fn skip_white_space(&mut self) {
@@ -69,21 +65,21 @@ impl Lexer {
                 return Some(Token::new(
                     TokenType::DataType,
                     self.line,
-                    Some(String::from("Number")),
+                    Some(String::from("number")),
                 ))
             }
             "String" => {
                 return Some(Token::new(
                     TokenType::DataType,
                     self.line,
-                    Some(String::from("String")),
+                    Some(String::from("string")),
                 ))
             }
             "Boolean" => {
                 return Some(Token::new(
                     TokenType::DataType,
                     self.line,
-                    Some(String::from("Boolean")),
+                    Some(String::from("boolean")),
                 ))
             }
             "if" => TokenType::If,
@@ -142,9 +138,9 @@ impl Lexer {
         return Some(Token::new(TokenType::Number, self.line, Some(number)));
     }
 
-    pub fn get_next_symbol(&mut self) -> Option<Token> {
+    pub fn get_next_symbol(&mut self) -> Result<Option<Token>, LexerError> {
         let Some(c) = self.look_ahead() else {
-            return None;
+            return Ok(None);
         };
 
         let mut should_advance = true;
@@ -166,8 +162,10 @@ impl Lexer {
                 if let Some('&') = self.look_ahead() {
                     Some(TokenType::And)
                 } else {
-                    should_advance = false;
-                    Some(TokenType::Invalid)
+                    return Err(LexerError::InvalidToken {
+                        line: self.line,
+                        character: c,
+                    });
                 }
             }
             '|' => {
@@ -176,8 +174,10 @@ impl Lexer {
                 if let Some('|') = self.look_ahead() {
                     Some(TokenType::Or)
                 } else {
-                    should_advance = false;
-                    Some(TokenType::Invalid)
+                    return Err(LexerError::InvalidToken {
+                        line: self.line,
+                        character: c,
+                    });
                 }
             }
             '!' => {
@@ -228,47 +228,54 @@ impl Lexer {
                 self.advance();
             }
 
-            return Some(Token::new(token_type, self.line, None));
+            return Ok(Some(Token::new(token_type, self.line, None)));
         }
 
-        return None;
+        return Ok(None);
     }
 
-    fn get_next_token(&mut self) -> Option<Token> {
-        let Some(_) = self.look_ahead() else {
-            return Some(Token::new(TokenType::EndOfFile, self.line, None));
+    fn get_next_token(&mut self) -> Result<Token, LexerError> {
+        let Some(c) = self.look_ahead() else {
+            return Ok(Token::new(TokenType::EndOfFile, self.line, None));
         };
 
-        if let Some(token) = self.get_next_symbol() {
-            return Some(token);
+        let symbol = self.get_next_symbol()?;
+
+        if let Some(token) = symbol {
+            return Ok(token);
         }
 
         if let Some(token) = self.get_next_number() {
-            return Some(token);
+            return Ok(token);
         }
 
         if let Some(token) = self.get_next_identifier() {
-            return Some(token);
+            return Ok(token);
         }
 
-        return None;
+        return Err(LexerError::InvalidToken {
+            line: self.line,
+            character: c,
+        });
     }
 
-    fn tokenize(&mut self) {
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, LexerError> {
+        let mut tokens = Vec::new();
+        self.curr = self.source.chars().peekable();
+
         loop {
             self.skip_white_space();
 
-            let Some(token) = self.get_next_token() else {
-                println!("Invalid token found");
-                break;
-            };
+            let token = self.get_next_token()?;
 
             if token.ty == TokenType::EndOfFile {
-                self.tokens.push(token);
+                tokens.push(token);
                 break;
             }
 
-            self.tokens.push(token);
+            tokens.push(token);
         }
+
+        return Ok(tokens);
     }
 }

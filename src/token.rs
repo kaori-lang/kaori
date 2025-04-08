@@ -33,7 +33,6 @@ pub enum TokenType {
     String,
     Boolean,
     EndOfFile, // End of input
-    Invalid,   // Unrecognized token
 }
 
 #[derive(Debug, Clone)]
