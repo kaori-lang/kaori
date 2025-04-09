@@ -4,16 +4,20 @@
 #![allow(unused_imports)] // Suppresses warnings about unused `use` statements
 #![allow(unused_assignments)] // Suppresses warnings about variables being assigned but never used
 
+use regex::Regex;
 use std::{iter::Peekable, str::Chars, vec};
 
 use yellow_flash::{lexer::Lexer, parser::Parser};
 
 fn main() {
-    let source = "6>=6.1";
+    let source = r#"abcd  "1+2""#;
+
     let mut lexer = Lexer::new(source);
+    //let _a = lexer.tokenize();
     let tokens = lexer.tokenize();
 
-    if let Ok(t) = tokens {
+    println!("{:#?}", tokens);
+    /* if let Ok(t) = tokens {
         let mut parser = Parser::new(t);
         let ast = parser.get_ast();
 
@@ -24,5 +28,5 @@ fn main() {
         }
     } else {
         println!("{:?}", tokens);
-    }
+    }  */
 }

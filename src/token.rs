@@ -39,11 +39,11 @@ pub enum TokenType {
 pub struct Token {
     pub ty: TokenType,
     pub line: u32,
-    pub value: Option<String>,
+    pub value: String,
 }
 
 impl Token {
-    pub fn new(ty: TokenType, line: u32, value: Option<String>) -> Self {
+    pub fn new(ty: TokenType, line: u32, value: String) -> Self {
         Self { ty, line, value }
     }
 }

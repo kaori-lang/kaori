@@ -58,7 +58,7 @@ impl Parser {
                 self.consume(&TokenType::Number)?;
                 Ok(Box::new(Expr::Literal {
                     ty: token.ty,
-                    value: token.value.unwrap(),
+                    value: token.value,
                 }))
             }
             _ => Err(ParserError::UnexpectedToken { line: token.line }),
