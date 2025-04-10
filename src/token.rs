@@ -1,4 +1,12 @@
 #[derive(Debug, PartialEq, Clone)]
+pub enum DataType {
+    String,
+    Number,
+    Boolean,
+    Any,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
     Plus,         // '+'
     Minus,        // '-'
@@ -26,12 +34,11 @@ pub enum TokenType {
     If,
     Else,
     Return,
+    Print,
 
-    DataType,
+    VariableDecl(DataType),
     Identifier,
-    Number, // Numeric value (e.g., 123, -45)
-    String,
-    Boolean,
+    Literal(DataType),
     EndOfFile, // End of input
 }
 

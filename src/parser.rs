@@ -1,22 +1,33 @@
 use crate::{
-    interpreter::expr::Expr,
-    token::{Token, TokenType},
+    interpreter::{expr::Expr, stmt::Stmt},
+    token::{DataType, Token, TokenType},
 };
 
 #[derive(Debug)]
 pub enum ParserError {
-    UnexpectedToken { line: u32 },
-    EndOfFile { line: u32 },
+    UnexpectedToken {
+        line: u32,
+        expected: TokenType,
+        found: TokenType,
+    },
+    EndOfFile {
+        line: u32,
+    },
 }
 
 pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,
+    line: u32,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, pos: 0 }
+        Self {
+            tokens,
+            pos: 0,
+            line: 1,
+        }
     }
 
     fn look_ahead(&mut self) -> Option<Token> {
@@ -31,20 +42,25 @@ impl Parser {
 
     fn consume(&mut self, expected: &TokenType) -> Result<(), ParserError> {
         let Some(token) = self.look_ahead() else {
-            return Err(ParserError::UnexpectedToken { line: 0 });
+            return Err(ParserError::EndOfFile { line: self.line });
         };
 
         if token.ty == *expected {
+            self.line = token.line;
             self.advance();
             return Ok(());
         } else {
-            return Err(ParserError::UnexpectedToken { line: token.line });
+            return Err(ParserError::UnexpectedToken {
+                line: self.line,
+                found: token.ty,
+                expected: expected.clone(),
+            });
         }
     }
 
     fn parse_literal(&mut self) -> Result<Box<Expr>, ParserError> {
         let Some(token) = self.look_ahead() else {
-            return Err(ParserError::EndOfFile { line: 0 });
+            return Err(ParserError::EndOfFile { line: self.line });
         };
 
         match token.ty {
@@ -54,20 +70,31 @@ impl Parser {
                 self.consume(&TokenType::RightParen)?;
                 Ok(expression)
             }
-            TokenType::Number => {
-                self.consume(&TokenType::Number)?;
+            TokenType::Literal(data_type) => {
+                self.consume(&TokenType::Literal(data_type.clone()))?;
                 Ok(Box::new(Expr::Literal {
+                    ty: data_type,
+                    value: token.value,
+                }))
+            }
+            TokenType::Identifier => {
+                self.consume(&TokenType::Identifier)?;
+                Ok(Box::new(Expr::Identifier {
                     ty: token.ty,
                     value: token.value,
                 }))
             }
-            _ => Err(ParserError::UnexpectedToken { line: token.line }),
+            _ => Err(ParserError::UnexpectedToken {
+                line: self.line,
+                expected: TokenType::Literal(DataType::Any),
+                found: token.ty,
+            }),
         }
     }
 
     fn parse_unary(&mut self) -> Result<Box<Expr>, ParserError> {
         let Some(token) = self.look_ahead() else {
-            return Err(ParserError::UnexpectedToken { line: 0 });
+            return Err(ParserError::EndOfFile { line: self.line });
         };
 
         if token.ty == TokenType::Plus {
@@ -177,14 +204,113 @@ impl Parser {
         return Ok(left);
     }
 
-    fn parse_expression(&mut self) -> Result<Box<Expr>, ParserError> {
-        return self.parse_term();
+    fn parse_and(&mut self) -> Result<Box<Expr>, ParserError> {
+        let mut left = self.parse_equality()?;
+
+        while let Some(token) = self.look_ahead() {
+            if token.ty != TokenType::And {
+                break;
+            }
+
+            self.consume(&TokenType::And)?;
+
+            let right = self.parse_equality()?;
+
+            left = Box::new(Expr::BinaryOperator {
+                ty: token.ty,
+                left,
+                right,
+            })
+        }
+
+        return Ok(left);
     }
 
-    pub fn get_ast(&mut self) -> Result<Box<Expr>, ParserError> {
-        let ast = self.parse_equality();
+    fn parse_or(&mut self) -> Result<Box<Expr>, ParserError> {
+        let mut left = self.parse_and()?;
+
+        while let Some(token) = self.look_ahead() {
+            if token.ty != TokenType::Or {
+                break;
+            }
+
+            self.consume(&TokenType::Or)?;
+
+            let right = self.parse_and()?;
+
+            left = Box::new(Expr::BinaryOperator {
+                ty: token.ty,
+                left,
+                right,
+            })
+        }
+
+        return Ok(left);
+    }
+
+    fn parse_expression(&mut self) -> Result<Box<Expr>, ParserError> {
+        return self.parse_or();
+    }
+
+    fn parse_expression_stmt(&mut self) -> Result<Stmt, ParserError> {
+        let exp = self.parse_expression()?;
+        self.consume(&TokenType::Semicolon)?;
+
+        return Ok(Stmt::ExprStmt(exp));
+    }
+
+    fn parse_print_stmt(&mut self) -> Result<Stmt, ParserError> {
+        self.consume(&TokenType::Print)?;
+        self.consume(&TokenType::LeftParen)?;
+        let exp = self.parse_expression()?;
+        self.consume(&TokenType::RightParen)?;
+        self.consume(&TokenType::Semicolon)?;
+
+        Ok(Stmt::PrintStmt { value: exp })
+    }
+
+    fn parse_variable_stmt(&mut self, data_type: DataType) -> Result<Stmt, ParserError> {
+        self.consume(&TokenType::VariableDecl(data_type.clone()))?;
+        let identifier = self.look_ahead().unwrap();
+
+        self.consume(&TokenType::Identifier)?;
+        self.consume(&TokenType::Assign)?;
+
+        let exp = self.parse_expression()?;
+
+        self.consume(&TokenType::Semicolon)?;
+
+        return Ok(Stmt::VariableDeclStmt {
+            ty: data_type,
+            name: identifier.value,
+            value: exp,
+        });
+    }
+
+    fn parse_stmt(&mut self) -> Result<Stmt, ParserError> {
+        let token = self.look_ahead().unwrap();
+
+        match token.ty {
+            TokenType::VariableDecl(data) => self.parse_variable_stmt(data),
+            TokenType::Print => self.parse_print_stmt(),
+            _ => self.parse_expression_stmt(),
+        }
+    }
+
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
         self.pos = 0;
 
-        return ast;
+        let mut statements: Vec<Stmt> = Vec::new();
+
+        while let Some(token) = self.look_ahead() {
+            if token.ty == TokenType::EndOfFile {
+                break;
+            }
+
+            let statement = self.parse_stmt()?;
+            statements.push(statement);
+        }
+
+        return Ok(statements);
     }
 }

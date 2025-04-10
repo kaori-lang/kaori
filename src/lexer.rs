@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use crate::token::{Token, TokenType};
+use crate::token::{DataType, Token, TokenType};
 
 #[derive(Debug)]
 pub enum LexerError {
@@ -62,7 +62,7 @@ impl Lexer {
         let raw_string = &string.as_str()[1..string.as_str().len() - 1];
 
         return Some(Token::new(
-            TokenType::String,
+            TokenType::Literal(DataType::String),
             self.line,
             raw_string.to_string(),
         ));
@@ -78,23 +78,23 @@ impl Lexer {
         let token_type = match identifier.as_str() {
             "Number" => {
                 return Some(Token::new(
-                    TokenType::DataType,
+                    TokenType::VariableDecl(DataType::Number),
                     self.line,
-                    " number".to_string(),
+                    "".to_string(),
                 ))
             }
             "String" => {
                 return Some(Token::new(
-                    TokenType::DataType,
+                    TokenType::VariableDecl(DataType::String),
                     self.line,
-                    "string".to_string(),
+                    "".to_string(),
                 ))
             }
             "Boolean" => {
                 return Some(Token::new(
-                    TokenType::DataType,
+                    TokenType::VariableDecl(DataType::Boolean),
                     self.line,
-                    "boolean".to_string(),
+                    "".to_string(),
                 ))
             }
             "if" => TokenType::If,
@@ -102,18 +102,19 @@ impl Lexer {
             "while" => TokenType::While,
             "return" => TokenType::Return,
             "def" => TokenType::Def,
+            "print" => TokenType::Print,
             "true" => {
                 return Some(Token::new(
-                    TokenType::Boolean,
+                    TokenType::Literal(DataType::Boolean),
                     self.line,
                     "true".to_string(),
                 ));
             }
             "false" => {
                 return Some(Token::new(
-                    TokenType::Boolean,
+                    TokenType::Literal(DataType::Boolean),
                     self.line,
-                    "true".to_string(),
+                    "false".to_string(),
                 ));
             }
             _ => {
@@ -136,60 +137,59 @@ impl Lexer {
         self.advance(number.as_str());
 
         return Some(Token::new(
-            TokenType::Number,
+            TokenType::Literal(DataType::Number),
             self.line,
             number.as_str().to_string(),
         ));
     }
 
-    pub fn get_next_symbol(&mut self) -> Option<Token> {
-        let symbol = {
-            if let Some(_) = self.advance("&&") {
-                Some(TokenType::And)
-            } else if let Some(_) = self.advance("||") {
-                Some(TokenType::Or)
-            } else if let Some(_) = self.advance("!=") {
-                Some(TokenType::NotEqual)
-            } else if let Some(_) = self.advance("==") {
-                Some(TokenType::Equal)
-            } else if let Some(_) = self.advance(">=") {
-                Some(TokenType::GreaterEqual)
-            } else if let Some(_) = self.advance("<=") {
-                Some(TokenType::LessEqual)
-            } else if let Some(_) = self.advance("+") {
-                Some(TokenType::Plus)
-            } else if let Some(_) = self.advance("-") {
-                Some(TokenType::Minus)
-            } else if let Some(_) = self.advance("*") {
-                Some(TokenType::Multiply)
-            } else if let Some(_) = self.advance("/") {
-                Some(TokenType::Divide)
-            } else if let Some(_) = self.advance("(") {
-                Some(TokenType::LeftParen)
-            } else if let Some(_) = self.advance(")") {
-                Some(TokenType::RightParen)
-            } else if let Some(_) = self.advance("{") {
-                Some(TokenType::LeftBrace)
-            } else if let Some(_) = self.advance("}") {
-                Some(TokenType::RightBrace)
-            } else if let Some(_) = self.advance(",") {
-                Some(TokenType::Comma)
-            } else if let Some(_) = self.advance(";") {
-                Some(TokenType::Semicolon)
-            } else if let Some(_) = self.advance("!") {
-                Some(TokenType::Not)
-            } else if let Some(_) = self.advance("=") {
-                Some(TokenType::Assign)
-            } else if let Some(_) = self.advance(">") {
-                Some(TokenType::Greater)
-            } else if let Some(_) = self.advance("<") {
-                Some(TokenType::Less)
-            } else {
-                None
-            }
-        };
+    pub fn get_next_two_char_symbol(&mut self) -> Option<Token> {
+        if self.curr.len() < 2 {
+            return None;
+        }
 
-        if let Some(token_type) = symbol {
+        if let Some(token_type) = match &self.curr[..2] {
+            "&&" => Some(TokenType::And),
+            "||" => Some(TokenType::Or),
+            "!=" => Some(TokenType::NotEqual),
+            "==" => Some(TokenType::Equal),
+            ">=" => Some(TokenType::GreaterEqual),
+            "<=" => Some(TokenType::LessEqual),
+            _ => None,
+        } {
+            self.curr = &self.curr[2..];
+            return Some(Token::new(token_type, self.line, "".to_string()));
+        }
+        return None;
+    }
+
+    pub fn get_next_symbol(&mut self) -> Option<Token> {
+        if let Some(token) = self.get_next_two_char_symbol() {
+            return Some(token);
+        }
+
+        if self.curr.is_empty() {
+            return None;
+        }
+
+        if let Some(token_type) = match &self.curr[..1] {
+            "+" => Some(TokenType::Plus),
+            "-" => Some(TokenType::Minus),
+            "*" => Some(TokenType::Multiply),
+            "/" => Some(TokenType::Divide),
+            "(" => Some(TokenType::LeftParen),
+            ")" => Some(TokenType::RightParen),
+            "{" => Some(TokenType::LeftBrace),
+            "}" => Some(TokenType::RightBrace),
+            "," => Some(TokenType::Comma),
+            ";" => Some(TokenType::Semicolon),
+            "!" => Some(TokenType::Not),
+            "=" => Some(TokenType::Assign),
+            ">" => Some(TokenType::Greater),
+            "<" => Some(TokenType::Less),
+            _ => None,
+        } {
+            self.curr = &self.curr[1..];
             return Some(Token::new(token_type, self.line, "".to_string()));
         }
 
@@ -223,7 +223,7 @@ impl Lexer {
 
         return Err(LexerError::InvalidToken {
             line: self.line,
-            character: '\n',
+            character: self.curr.chars().next().unwrap(),
         });
     }
 

@@ -1,4 +1,4 @@
-use crate::token::TokenType;
+use crate::token::{DataType, TokenType};
 
 #[derive(Debug)]
 pub enum Expr {
@@ -11,8 +11,12 @@ pub enum Expr {
         ty: TokenType,
         right: Box<Expr>,
     },
-    Literal {
+    Identifier {
         ty: TokenType,
+        value: String,
+    },
+    Literal {
+        ty: DataType,
         value: String,
     },
 }
@@ -30,6 +34,7 @@ impl Expr {
             Expr::Literal { .. } => self.eval_literal(),
             Expr::BinaryOperator { .. } => self.eval_binary(),
             Expr::UnaryOperator { .. } => self.eval_unary(),
+            Expr::Identifier { .. } => self.eval_literal(),
         }
     }
 
@@ -39,8 +44,10 @@ impl Expr {
         };
 
         match ty {
-            TokenType::Number => ExprEval::Number(value.parse::<f64>().unwrap()),
-            _ => ExprEval::Number(value.parse::<f64>().expect("Invalid number literal")),
+            DataType::Number => ExprEval::Number(value.parse::<f64>().unwrap()),
+            DataType::String => ExprEval::String(value.clone()),
+            DataType::Boolean => ExprEval::Boolean(value.parse::<bool>().unwrap()),
+            _ => panic!("haha"),
         }
     }
 

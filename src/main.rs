@@ -1,32 +1,30 @@
-#![allow(dead_code)] // Suppresses warnings about unused structs, enums, functions, and traits
-#![allow(unused_variables)] // Suppresses warnings about unused variables
-#![allow(unused_mut)] // Suppresses warnings about unused `mut` (mutable) variables
-#![allow(unused_imports)] // Suppresses warnings about unused `use` statements
-#![allow(unused_assignments)] // Suppresses warnings about variables being assigned but never used
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+#![allow(unused_imports)]
+#![allow(unused_assignments)]
 
-use regex::Regex;
-use std::{iter::Peekable, str::Chars, vec};
-
-use yellow_flash::{lexer::Lexer, parser::Parser};
+use yellow_flash::{
+    lexer::Lexer,
+    parser::{self, Parser},
+};
 
 fn main() {
-    let source = r#"abcd  "1+2""#;
+    let source = r#"Number a = 10.91;
+    print("hello world"); 
+    Number b = 125*12.52+5;
+    "#;
 
     let mut lexer = Lexer::new(source);
-    //let _a = lexer.tokenize();
     let tokens = lexer.tokenize();
 
-    println!("{:#?}", tokens);
-    /* if let Ok(t) = tokens {
-        let mut parser = Parser::new(t);
-        let ast = parser.get_ast();
+    let Ok(t) = tokens else {
+        panic!("yes panic");
+    };
 
-        if let Ok(tree) = ast {
-            println!("{:#?}", tree.eval());
-        } else {
-            println!("{:#?}", ast);
-        }
-    } else {
-        println!("{:?}", tokens);
-    }  */
+    //println!("{:#?}", &t);
+    let mut parser = Parser::new(t);
+    let ast = parser.parse();
+
+    println!("{:#?}", ast);
 }
