@@ -10,6 +10,7 @@ pub enum ParserError {
         expected: TokenType,
         found: TokenType,
     },
+
     EndOfFile {
         line: u32,
     },

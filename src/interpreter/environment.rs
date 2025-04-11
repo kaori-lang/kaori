@@ -1,18 +1,16 @@
 use std::collections::HashMap;
 
-use super::expr::ExprEval;
+use super::data::Data;
 
-pub enum Symbol {
-    Variable(ExprEval),
-}
-
+#[derive(Debug)]
 pub enum EnvironmentError {
     NotFound,
+    VariableAlreadyDeclared,
 }
 
 pub struct Environment {
     pub parent: Option<Box<Environment>>,
-    pub symbols: HashMap<String, Symbol>,
+    pub symbols: HashMap<String, Data>,
 }
 
 impl Environment {
@@ -23,7 +21,7 @@ impl Environment {
         }
     }
 
-    pub fn get(&self, symbol: &str) -> Result<&Symbol, EnvironmentError> {
+    pub fn get(&self, symbol: &str) -> Result<&Data, EnvironmentError> {
         let Some(s) = self.symbols.get(symbol) else {
             let Some(parent) = &self.parent else {
                 return Err(EnvironmentError::NotFound);
@@ -35,7 +33,13 @@ impl Environment {
         return Ok(s);
     }
 
-    pub fn create(&mut self, symbol: &str) {
-        let a = self.symbols.insert(k, v);
+    pub fn create(&mut self, symbol: &str, value: Data) -> Result<(), EnvironmentError> {
+        if let Some(_) = self.symbols.get(symbol) {
+            return Err(EnvironmentError::VariableAlreadyDeclared);
+        }
+
+        self.symbols.insert(symbol.to_string(), value);
+
+        return Ok(());
     }
 }

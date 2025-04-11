@@ -10,9 +10,9 @@ use yellow_flash::{
 };
 
 fn main() {
-    let source = r#"Number a = 10.91;
-    print("hello world"); 
-    Number b = 125*12.52+5;
+    let source = r#"2*7.53; 
+    2 + 4;
+    5+9;
     "#;
 
     let mut lexer = Lexer::new(source);
@@ -22,9 +22,10 @@ fn main() {
         panic!("yes panic");
     };
 
-    //println!("{:#?}", &t);
     let mut parser = Parser::new(t);
     let ast = parser.parse();
 
-    println!("{:#?}", ast);
+    for i in ast.unwrap().iter() {
+        println!("{:?}", i.eval().unwrap());
+    }
 }

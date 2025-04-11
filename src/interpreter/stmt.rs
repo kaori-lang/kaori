@@ -1,6 +1,9 @@
 use crate::token::DataType;
 
-use super::expr::Expr;
+use super::{
+    data::Data,
+    expr::{Expr, RuntimeError},
+};
 
 #[derive(Debug)]
 pub enum Stmt {
@@ -13,4 +16,13 @@ pub enum Stmt {
     PrintStmt {
         value: Box<Expr>,
     },
+}
+
+impl Stmt {
+    pub fn eval(&self) -> Result<Option<Data>, RuntimeError> {
+        match self {
+            Stmt::ExprStmt(e) => Ok(Some(e.accept()?)),
+            _ => Ok(None),
+        }
+    }
 }
