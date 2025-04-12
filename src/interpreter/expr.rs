@@ -1,99 +1,58 @@
 use crate::token::{DataType, TokenType};
 
-use super::{data::Data, environment::EnvironmentError};
+#[derive(Debug)]
+pub struct BinaryOperator {
+    pub ty: TokenType,
+    pub left: Box<Expr>,
+    pub right: Box<Expr>,
+}
 
 #[derive(Debug)]
-pub enum RuntimeError {
-    EnvironmentError(EnvironmentError),
-    InvalidEvaluation,
+pub struct UnaryOperator {
+    pub ty: TokenType,
+    pub right: Box<Expr>,
+}
+
+#[derive(Debug)]
+pub struct Identifier {
+    pub ty: TokenType,
+    pub value: String,
+}
+
+#[derive(Debug)]
+pub struct Literal {
+    pub ty: DataType,
+    pub value: String,
+}
+
+impl BinaryOperator {
+    pub fn new(ty: TokenType, left: Box<Expr>, right: Box<Expr>) -> Self {
+        BinaryOperator { ty, left, right }
+    }
+}
+
+impl UnaryOperator {
+    pub fn new(ty: TokenType, right: Box<Expr>) -> Self {
+        UnaryOperator { ty, right }
+    }
+}
+
+impl Identifier {
+    pub fn new(ty: TokenType, value: String) -> Self {
+        Identifier { ty, value }
+    }
+}
+
+impl Literal {
+    pub fn new(ty: DataType, value: String) -> Self {
+        Literal { ty, value }
+    }
 }
 
 #[derive(Debug)]
 pub enum Expr {
-    BinaryOperator {
-        ty: TokenType,
-        left: Box<Expr>,
-        right: Box<Expr>,
-    },
-    UnaryOperator {
-        ty: TokenType,
-        right: Box<Expr>,
-    },
-    Identifier {
-        ty: TokenType,
-        value: String,
-    },
-    Literal {
-        ty: DataType,
-        value: String,
-    },
-}
-
-impl Expr {
-    pub fn accept(&self) -> Result<Data, RuntimeError> {
-        match self {
-            Expr::Literal { .. } => self.visit_literal(),
-            Expr::BinaryOperator { .. } => self.visit_binary(),
-            Expr::UnaryOperator { .. } => self.visit_unary(),
-            Expr::Identifier { .. } => self.visit_identifier(),
-        }
-    }
-
-    fn visit_binary(&self) -> Result<Data, RuntimeError> {
-        let Expr::BinaryOperator { ty, left, right } = self else {
-            panic!("Expected binary operator");
-        };
-
-        let left = left.accept()?;
-        let right = right.accept()?;
-
-        use {Data as E, TokenType as T};
-        match (ty, left, right) {
-            (T::Plus, E::Number(l), E::Number(r)) => Ok(E::Number(l + r)),
-            (T::Plus, E::String(l), E::String(r)) => Ok(E::String(format!("{l}{r}"))),
-            (T::Minus, E::Number(l), E::Number(r)) => Ok(E::Number(l - r)),
-            (T::Multiply, E::Number(l), E::Number(r)) => Ok(E::Number(l * r)),
-            (T::Divide, E::Number(l), E::Number(r)) => Ok(E::Number(l / r)),
-            (T::And, E::Boolean(l), E::Boolean(r)) => Ok(E::Boolean(l && r)),
-            (T::Or, E::Boolean(l), E::Boolean(r)) => Ok(E::Boolean(l || r)),
-            (T::Equal, E::Number(l), E::Number(r)) => Ok(E::Boolean(l == r)),
-            (T::NotEqual, E::Number(l), E::Number(r)) => Ok(E::Boolean(l != r)),
-            (T::Greater, E::Number(l), E::Number(r)) => Ok(E::Boolean(l > r)),
-            (T::GreaterEqual, E::Number(l), E::Number(r)) => Ok(E::Boolean(l >= r)),
-            (T::Less, E::Number(l), E::Number(r)) => Ok(E::Boolean(l < r)),
-            (T::LessEqual, E::Number(l), E::Number(r)) => Ok(E::Boolean(l <= r)),
-            _ => return Err(RuntimeError::InvalidEvaluation),
-        }
-    }
-
-    fn visit_identifier(&self) -> Result<Data, RuntimeError> {
-        return Ok(Data::Number(1.0));
-    }
-
-    fn visit_literal(&self) -> Result<Data, RuntimeError> {
-        let Expr::Literal { ty, value } = self else {
-            panic!("RuntimeError")
-        };
-
-        match ty {
-            DataType::Number => Ok(Data::Number(value.parse::<f64>().unwrap())),
-            DataType::String => Ok(Data::String(value.clone())),
-            DataType::Boolean => Ok(Data::Boolean(value.parse::<bool>().unwrap())),
-            _ => Err(RuntimeError::InvalidEvaluation),
-        }
-    }
-
-    fn visit_unary(&self) -> Result<Data, RuntimeError> {
-        let Expr::UnaryOperator { ty, right } = self else {
-            panic!("RuntimeError")
-        };
-
-        let right = right.accept()?;
-
-        match (ty, right) {
-            (TokenType::Minus, Data::Number(r)) => Ok(Data::Number(-r)),
-            (TokenType::Not, Data::Boolean(r)) => Ok(Data::Boolean(!r)),
-            _ => Err(RuntimeError::InvalidEvaluation),
-        }
-    }
+    BinaryOperator(BinaryOperator),
+    UnaryOperator(UnaryOperator),
+    Identifier(Identifier),
+    Literal(Literal),
 }

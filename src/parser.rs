@@ -1,5 +1,8 @@
 use crate::{
-    interpreter::{expr::Expr, stmt::Stmt},
+    interpreter::{
+        expr::{BinaryOperator, Expr, Identifier, Literal, UnaryOperator},
+        stmt::Stmt,
+    },
     token::{DataType, Token, TokenType},
 };
 
@@ -73,17 +76,17 @@ impl Parser {
             }
             TokenType::Literal(data_type) => {
                 self.consume(&TokenType::Literal(data_type.clone()))?;
-                Ok(Box::new(Expr::Literal {
+                Ok(Box::new(Expr::Literal(Literal {
                     ty: data_type,
                     value: token.value,
-                }))
+                })))
             }
             TokenType::Identifier => {
                 self.consume(&TokenType::Identifier)?;
-                Ok(Box::new(Expr::Identifier {
+                Ok(Box::new(Expr::Identifier(Identifier {
                     ty: token.ty,
                     value: token.value,
-                }))
+                })))
             }
             _ => Err(ParserError::UnexpectedToken {
                 line: self.line,
@@ -109,10 +112,10 @@ impl Parser {
 
         self.consume(&token.ty)?;
 
-        return Ok(Box::new(Expr::UnaryOperator {
+        return Ok(Box::new(Expr::UnaryOperator(UnaryOperator {
             ty: token.ty,
             right: self.parse_unary()?,
-        }));
+        })));
     }
 
     fn parse_factor(&mut self) -> Result<Box<Expr>, ParserError> {
@@ -126,11 +129,11 @@ impl Parser {
             self.consume(&token.ty)?;
             let right = self.parse_unary()?;
 
-            left = Box::new(Expr::BinaryOperator {
+            left = Box::new(Expr::BinaryOperator(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            });
+            }));
         }
 
         return Ok(left);
@@ -147,11 +150,11 @@ impl Parser {
             self.consume(&token.ty)?;
             let right = self.parse_factor()?;
 
-            left = Box::new(Expr::BinaryOperator {
+            left = Box::new(Expr::BinaryOperator(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            });
+            }));
         }
 
         return Ok(left);
@@ -174,11 +177,11 @@ impl Parser {
             self.consume(&token.ty)?;
             let right = self.parse_term()?;
 
-            left = Box::new(Expr::BinaryOperator {
+            left = Box::new(Expr::BinaryOperator(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            });
+            }));
         }
 
         return Ok(left);
@@ -195,11 +198,11 @@ impl Parser {
             self.consume(&token.ty)?;
             let right = self.parse_comparison()?;
 
-            left = Box::new(Expr::BinaryOperator {
+            left = Box::new(Expr::BinaryOperator(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            });
+            }));
         }
 
         return Ok(left);
@@ -217,11 +220,11 @@ impl Parser {
 
             let right = self.parse_equality()?;
 
-            left = Box::new(Expr::BinaryOperator {
+            left = Box::new(Expr::BinaryOperator(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            })
+            }));
         }
 
         return Ok(left);
@@ -239,11 +242,11 @@ impl Parser {
 
             let right = self.parse_and()?;
 
-            left = Box::new(Expr::BinaryOperator {
+            left = Box::new(Expr::BinaryOperator(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            })
+            }));
         }
 
         return Ok(left);
