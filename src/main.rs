@@ -6,27 +6,34 @@
 
 use yellow_flash::{
     interpreter::interpreter::Interpreter,
-    lexer::Lexer,
-    parser::{self, Parser},
+    lexer::{Lexer, LexerError},
+    parser::{self, Parser, ParserError},
+    program_error::ProgramError,
 };
 
+pub fn run_program(source: String) -> Result<(), ProgramError> {
+    let mut lexer = Lexer::new(&source);
+    let tokens = lexer.tokenize()?;
+
+    let mut parser = Parser::new(tokens);
+    let statements = parser.parse()?;
+
+    let mut interpreter = Interpreter::new();
+    interpreter.interpret(statements)?;
+
+    Ok(())
+}
+
 fn main() {
-    let source = r#"2*7; 
-    2 + 4;
-    5+9;
-    "#;
+    let source = String::from(
+        r#"Number a = 70 / 2;
+        
+    Number b = a;
+    a +  b;
+    "#,
+    );
 
-    let mut lexer = Lexer::new(source);
-    let tokens = lexer.tokenize();
-
-    let Ok(t) = tokens else {
-        panic!("yes panic");
-    };
-
-    let mut parser = Parser::new(t);
-    let ast = parser.parse();
-    if let Ok(ast) = ast {
-        let interpreter = Interpreter::new(ast);
-        println!("{:?}", interpreter.interpret());
+    if let Err(error) = run_program(source) {
+        println!("{:?}", error);
     }
 }

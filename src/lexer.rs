@@ -9,17 +9,17 @@ pub enum LexerError {
 }
 
 #[derive(Debug)]
-pub struct Lexer {
-    source: &'static str,
-    curr: &'static str,
+pub struct Lexer<'a> {
+    source: &'a str,
+    curr: &'a str,
     line: u32,
     number_re: Regex,
     identifier_re: Regex,
     string_re: Regex,
 }
 
-impl Lexer {
-    pub fn new(source: &'static str) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(source: &'a str) -> Self {
         Self {
             source,
             curr: source,

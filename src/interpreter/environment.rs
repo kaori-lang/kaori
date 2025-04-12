@@ -1,39 +1,43 @@
 use std::collections::HashMap;
 
-use super::{data::Data, error::RuntimeError};
+use super::{data::Data, runtime_error::RuntimeError};
 
 pub struct Environment {
-    pub parent: Option<Box<Environment>>,
-    pub symbols: HashMap<String, Data>,
+    pub stack: Vec<HashMap<String, Data>>,
 }
 
 impl Environment {
-    pub fn new(parent: Option<Box<Environment>>) -> Self {
+    pub fn new() -> Self {
         Self {
-            parent,
-            symbols: HashMap::new(),
+            stack: vec![HashMap::new()],
         }
     }
 
-    pub fn get(&self, symbol: &str) -> Result<Data, RuntimeError> {
-        let Some(s) = self.symbols.get(symbol) else {
-            let Some(parent) = &self.parent else {
-                return Err(RuntimeError::NotFound);
-            };
+    pub fn get_symbol(&self, symbol: &str) -> Result<Data, RuntimeError> {
+        let mut ptr = self.stack.len();
 
-            return parent.get(symbol);
-        };
+        while ptr > 0 {
+            ptr -= 1;
 
-        return Ok(s.clone());
-    }
-
-    pub fn create(&mut self, symbol: &str, value: Data) -> Result<(), RuntimeError> {
-        if let Some(_) = self.symbols.get(symbol) {
-            return Err(RuntimeError::NotFound);
+            if let Some(data) = self.stack[ptr].get(symbol) {
+                return Ok(data.clone());
+            }
         }
 
-        self.symbols.insert(symbol.to_string(), value);
+        return Err(RuntimeError::NotFound);
+    }
+
+    pub fn create_symbol(&mut self, symbol: String, data: Data) -> Result<(), RuntimeError> {
+        self.stack.last_mut().unwrap().insert(symbol, data);
 
         return Ok(());
+    }
+
+    fn stack_pop(&mut self) {
+        self.stack.pop();
+    }
+
+    fn stack_push(&mut self) {
+        self.stack.push(HashMap::new());
     }
 }

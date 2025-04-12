@@ -1,7 +1,7 @@
 use crate::{
     interpreter::{
         expr::{BinaryOperator, Expr, Identifier, Literal, UnaryOperator},
-        stmt::Stmt,
+        stmt::{PrintStmt, Stmt, VariableDeclStmt},
     },
     token::{DataType, Token, TokenType},
 };
@@ -270,7 +270,7 @@ impl Parser {
         self.consume(&TokenType::RightParen)?;
         self.consume(&TokenType::Semicolon)?;
 
-        Ok(Stmt::PrintStmt { value: exp })
+        return Ok(Stmt::PrintStmt(PrintStmt::new(exp)));
     }
 
     fn parse_variable_stmt(&mut self, data_type: DataType) -> Result<Stmt, ParserError> {
@@ -284,11 +284,11 @@ impl Parser {
 
         self.consume(&TokenType::Semicolon)?;
 
-        return Ok(Stmt::VariableDeclStmt {
-            ty: data_type,
-            name: identifier.value,
-            value: exp,
-        });
+        return Ok(Stmt::VariableDeclStmt(VariableDeclStmt::new(
+            data_type,
+            identifier.value,
+            exp,
+        )));
     }
 
     fn parse_stmt(&mut self) -> Result<Stmt, ParserError> {

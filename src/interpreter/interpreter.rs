@@ -3,51 +3,63 @@ use crate::token::{DataType, TokenType};
 use super::{
     data::Data,
     environment::Environment,
-    error::RuntimeError,
     expr::{BinaryOperator, Expr, Identifier, Literal, UnaryOperator},
-    stmt::Stmt,
+    runtime_error::RuntimeError,
+    stmt::{Stmt, VariableDeclStmt},
 };
 
 pub struct Interpreter {
-    statements: Vec<Stmt>,
     env: Environment,
 }
 
 impl Interpreter {
-    pub fn new(statements: Vec<Stmt>) -> Self {
+    pub fn new() -> Self {
         Self {
-            statements,
-            env: Environment::new(None),
+            env: Environment::new(),
         }
     }
 
-    pub fn interpret(&self) -> Result<(), RuntimeError> {
-        for stat in self.statements.iter() {
-            self.visit_stmt(stat)?;
+    pub fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeError> {
+        for stmt in statements.iter() {
+            self.eval_stmt(stmt)?;
         }
 
         Ok(())
     }
 
-    pub fn visit_stmt(&self, stmt: &Stmt) -> Result<Data, RuntimeError> {
+    pub fn eval_stmt(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
         match stmt {
-            Stmt::ExprStmt(expr) => self.visit_expr(expr),
+            Stmt::ExprStmt(expr) => self.eval_expr_stmt(expr),
+            Stmt::VariableDeclStmt(var_decl) => self.eval_var_decl_stmt(var_decl),
             _ => Err(RuntimeError::InvalidEvaluation),
         }
     }
 
-    pub fn visit_expr(&self, node: &Expr) -> Result<Data, RuntimeError> {
+    fn eval_expr_stmt(&self, expr: &Expr) -> Result<(), RuntimeError> {
+        println!("{:?}", self.eval_expr(expr));
+        Ok(())
+    }
+
+    fn eval_var_decl_stmt(&mut self, stmt: &VariableDeclStmt) -> Result<(), RuntimeError> {
+        let value = self.eval_expr(&stmt.value)?;
+        let symbol = stmt.name.clone();
+
+        self.env.create_symbol(symbol, value)?;
+        Ok(())
+    }
+
+    pub fn eval_expr(&self, node: &Expr) -> Result<Data, RuntimeError> {
         match node {
-            Expr::Literal(literal) => self.visit_literal(literal),
-            Expr::BinaryOperator(binary) => self.visit_binary(binary),
-            Expr::UnaryOperator(unary) => self.visit_unary(unary),
-            Expr::Identifier(identifier) => self.visit_identifier(identifier),
+            Expr::Literal(literal) => self.eval_literal(literal),
+            Expr::BinaryOperator(binary) => self.eval_binary(binary),
+            Expr::UnaryOperator(unary) => self.eval_unary(unary),
+            Expr::Identifier(identifier) => self.eval_identifier(identifier),
         }
     }
 
-    fn visit_binary(&self, node: &BinaryOperator) -> Result<Data, RuntimeError> {
-        let left = self.visit_expr(&node.left)?;
-        let right = self.visit_expr(&node.right)?;
+    fn eval_binary(&self, node: &BinaryOperator) -> Result<Data, RuntimeError> {
+        let left = self.eval_expr(&node.left)?;
+        let right = self.eval_expr(&node.right)?;
         let ty = &node.ty;
 
         use {Data as E, TokenType as T};
@@ -69,14 +81,14 @@ impl Interpreter {
         }
     }
 
-    fn visit_identifier(&self, node: &Identifier) -> Result<Data, RuntimeError> {
+    fn eval_identifier(&self, node: &Identifier) -> Result<Data, RuntimeError> {
         let ty = &node.ty;
         let value = &node.value;
 
-        return self.env.get(&value);
+        return self.env.get_symbol(&value);
     }
 
-    fn visit_literal(&self, node: &Literal) -> Result<Data, RuntimeError> {
+    fn eval_literal(&self, node: &Literal) -> Result<Data, RuntimeError> {
         let ty = &node.ty;
         let value = &node.value;
 
@@ -88,9 +100,9 @@ impl Interpreter {
         }
     }
 
-    fn visit_unary(&self, node: &UnaryOperator) -> Result<Data, RuntimeError> {
+    fn eval_unary(&self, node: &UnaryOperator) -> Result<Data, RuntimeError> {
         let ty = &node.ty;
-        let right = self.visit_expr(&node.right)?;
+        let right = self.eval_expr(&node.right)?;
 
         match (ty, right) {
             (TokenType::Minus, Data::Number(r)) => Ok(Data::Number(-r)),
