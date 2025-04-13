@@ -214,7 +214,12 @@ impl<'a> Lexer<'a> {
             return Ok(token);
         }
 
-        return Err(ErrorType::InvalidToken(self.curr.chars().next().unwrap()));
+        return Err(ErrorType::SyntaxError);
+    }
+
+    fn reset(&mut self) {
+        self.curr = &self.source[..];
+        self.line = 1;
     }
 
     pub fn tokenize(&mut self) -> Result<Vec<Token>, YFError> {
@@ -236,6 +241,8 @@ impl<'a> Lexer<'a> {
 
             tokens.push(token);
         }
+
+        self.reset();
 
         return Ok(tokens);
     }

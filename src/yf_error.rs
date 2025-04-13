@@ -6,7 +6,8 @@ pub struct YFError {
 
 #[derive(Debug)]
 pub enum ErrorType {
-    InvalidToken(char),
-    UnexpectedToken,
+    SyntaxError,
     EndOfFile,
+    TypeError,
+    NotFound,
 }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::yf_error::{RuntimeError, YFError};
+use crate::yf_error::{ErrorType, YFError};
 
 use super::data::Data;
 
@@ -13,7 +13,7 @@ impl Environment {
         Self { stack: Vec::new() }
     }
 
-    pub fn get_symbol(&self, symbol: &str) -> Result<Data, YFError> {
+    pub fn get_symbol(&self, symbol: &str) -> Result<Data, ErrorType> {
         let mut ptr = self.stack.len();
 
         while ptr > 0 {
@@ -24,10 +24,10 @@ impl Environment {
             }
         }
 
-        return Err(YFError::RuntimeError(RuntimeError::NotFound));
+        return Err(ErrorType::NotFound);
     }
 
-    pub fn create_symbol(&mut self, symbol: String, data: Data) -> Result<(), YFError> {
+    pub fn create_symbol(&mut self, symbol: String, data: Data) -> Result<(), ErrorType> {
         self.stack.last_mut().unwrap().insert(symbol, data);
 
         return Ok(());

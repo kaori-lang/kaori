@@ -1,7 +1,7 @@
 use crate::{
     interpreter::{
-        expr::{BinaryOperator, Expr, Identifier, Literal, UnaryOperator},
-        stmt::{PrintStmt, Stmt, VariableDeclStmt},
+        expression::{BinaryOperator, Expression, Identifier, Literal, UnaryOperator},
+        statement::{ExpressionStatement, PrintStatement, Statement, VariableDeclStatement},
     },
     token::{DataType, Token, TokenType},
     yf_error::{ErrorType, YFError},
@@ -41,7 +41,7 @@ impl Parser {
 
     fn consume(&mut self, expected: &TokenType) -> Result<(), ErrorType> {
         let Some(token) = self.look_ahead() else {
-            return Err(ErrorType::EndOfFile);
+            return Err(ErrorType::SyntaxError);
         };
 
         self.advance();
@@ -49,11 +49,11 @@ impl Parser {
         if token.ty == *expected {
             return Ok(());
         } else {
-            return Err(ErrorType::UnexpectedToken);
+            return Err(ErrorType::SyntaxError);
         }
     }
 
-    fn parse_literal(&mut self) -> Result<Box<Expr>, ErrorType> {
+    fn parse_literal(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let Some(token) = self.look_ahead() else {
             return Err(ErrorType::EndOfFile);
         };
@@ -67,23 +67,23 @@ impl Parser {
             }
             TokenType::Literal(data_type) => {
                 self.consume(&TokenType::Literal(data_type.clone()))?;
-                Ok(Box::new(Expr::Literal(Literal {
+                Ok(Box::new(Literal {
                     ty: data_type,
                     value: token.value,
-                })))
+                }))
             }
             TokenType::Identifier => {
                 self.consume(&TokenType::Identifier)?;
-                Ok(Box::new(Expr::Identifier(Identifier {
+                Ok(Box::new(Identifier {
                     ty: token.ty,
                     value: token.value,
-                })))
+                }))
             }
-            _ => Err(ErrorType::UnexpectedToken),
+            _ => Err(ErrorType::SyntaxError),
         }
     }
 
-    fn parse_unary(&mut self) -> Result<Box<Expr>, ErrorType> {
+    fn parse_unary(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let Some(Token { ty, .. }) = self.look_ahead() else {
             return Err(ErrorType::EndOfFile);
         };
@@ -95,16 +95,16 @@ impl Parser {
             }
             TokenType::Minus | TokenType::Not => {
                 self.consume(&ty)?;
-                Ok(Box::new(Expr::UnaryOperator(UnaryOperator {
+                Ok(Box::new(UnaryOperator {
                     ty,
                     right: self.parse_unary()?,
-                })))
+                }))
             }
             _ => self.parse_literal(),
         }
     }
 
-    fn parse_factor(&mut self) -> Result<Box<Expr>, ErrorType> {
+    fn parse_factor(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let mut left = self.parse_unary()?;
 
         while let Some(token) = self.look_ahead() {
@@ -115,17 +115,17 @@ impl Parser {
             self.consume(&token.ty)?;
             let right = self.parse_unary()?;
 
-            left = Box::new(Expr::BinaryOperator(BinaryOperator {
+            left = Box::new(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            }));
+            });
         }
 
         return Ok(left);
     }
 
-    fn parse_term(&mut self) -> Result<Box<Expr>, ErrorType> {
+    fn parse_term(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let mut left = self.parse_factor()?;
 
         while let Some(token) = self.look_ahead() {
@@ -136,17 +136,17 @@ impl Parser {
             self.consume(&token.ty)?;
             let right = self.parse_factor()?;
 
-            left = Box::new(Expr::BinaryOperator(BinaryOperator {
+            left = Box::new(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            }));
+            });
         }
 
         return Ok(left);
     }
 
-    fn parse_comparison(&mut self) -> Result<Box<Expr>, ErrorType> {
+    fn parse_comparison(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let mut left = self.parse_term()?;
 
         while let Some(token) = self.look_ahead() {
@@ -163,17 +163,17 @@ impl Parser {
             self.consume(&token.ty)?;
             let right = self.parse_term()?;
 
-            left = Box::new(Expr::BinaryOperator(BinaryOperator {
+            left = Box::new(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            }));
+            });
         }
 
         return Ok(left);
     }
 
-    fn parse_equality(&mut self) -> Result<Box<Expr>, ErrorType> {
+    fn parse_equality(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let mut left = self.parse_comparison()?;
 
         while let Some(token) = self.look_ahead() {
@@ -184,17 +184,17 @@ impl Parser {
             self.consume(&token.ty)?;
             let right = self.parse_comparison()?;
 
-            left = Box::new(Expr::BinaryOperator(BinaryOperator {
+            left = Box::new(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            }));
+            });
         }
 
         return Ok(left);
     }
 
-    fn parse_and(&mut self) -> Result<Box<Expr>, ErrorType> {
+    fn parse_and(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let mut left = self.parse_equality()?;
 
         while let Some(token) = self.look_ahead() {
@@ -206,17 +206,17 @@ impl Parser {
 
             let right = self.parse_equality()?;
 
-            left = Box::new(Expr::BinaryOperator(BinaryOperator {
+            left = Box::new(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            }));
+            });
         }
 
         return Ok(left);
     }
 
-    fn parse_or(&mut self) -> Result<Box<Expr>, ErrorType> {
+    fn parse_or(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let mut left = self.parse_and()?;
 
         while let Some(token) = self.look_ahead() {
@@ -228,56 +228,59 @@ impl Parser {
 
             let right = self.parse_and()?;
 
-            left = Box::new(Expr::BinaryOperator(BinaryOperator {
+            left = Box::new(BinaryOperator {
                 ty: token.ty,
                 left,
                 right,
-            }));
+            });
         }
 
         return Ok(left);
     }
 
-    fn parse_expression(&mut self) -> Result<Box<Expr>, ErrorType> {
+    fn parse_expression(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         return self.parse_or();
     }
 
-    fn parse_expression_stmt(&mut self) -> Result<Stmt, ErrorType> {
+    fn parse_expression_stmt(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         let exp = self.parse_expression()?;
         self.consume(&TokenType::Semicolon)?;
 
-        return Ok(Stmt::ExprStmt(exp));
+        return Ok(Box::new(ExpressionStatement { value: exp }));
     }
 
-    fn parse_print_stmt(&mut self) -> Result<Stmt, ErrorType> {
+    fn parse_print_stmt(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         self.consume(&TokenType::Print)?;
         self.consume(&TokenType::LeftParen)?;
         let exp = self.parse_expression()?;
         self.consume(&TokenType::RightParen)?;
         self.consume(&TokenType::Semicolon)?;
 
-        return Ok(Stmt::PrintStmt(PrintStmt::new(exp)));
+        return Ok(Box::new(PrintStatement { value: exp }));
     }
 
-    fn parse_variable_stmt(&mut self, data_type: DataType) -> Result<Stmt, ErrorType> {
+    fn parse_variable_stmt(
+        &mut self,
+        data_type: DataType,
+    ) -> Result<Box<dyn Statement>, ErrorType> {
         self.consume(&TokenType::VariableDecl(data_type.clone()))?;
         let identifier = self.look_ahead().unwrap();
 
         self.consume(&TokenType::Identifier)?;
         self.consume(&TokenType::Assign)?;
 
-        let exp = self.parse_expression()?;
+        let data = self.parse_expression()?;
 
         self.consume(&TokenType::Semicolon)?;
 
-        return Ok(Stmt::VariableDeclStmt(VariableDeclStmt::new(
+        return Ok(Box::new(VariableDeclStatement {
             data_type,
-            identifier.value,
-            exp,
-        )));
+            identifier: identifier.value,
+            data,
+        }));
     }
 
-    fn parse_stmt(&mut self) -> Result<Stmt, ErrorType> {
+    fn parse_stmt(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         let token = self.look_ahead().unwrap();
 
         match token.ty {
@@ -298,26 +301,30 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, YFError> {
+    pub fn parse(&mut self) -> Result<Vec<Box<dyn Statement>>, YFError> {
         self.pos = 0;
 
-        let mut statements: Vec<Stmt> = Vec::new();
+        let mut statements: Vec<Box<dyn Statement>> = Vec::new();
 
         while let Some(_) = self.look_ahead() {
             match self.parse_stmt() {
                 Ok(statement) => statements.push(statement),
                 Err(error_type) => {
-                    self.errors.push(YFError {
+                    let error = YFError {
+                        error_type,
+                        line: self.line,
+                    };
+                    /* self.errors.push(YFError {
                         error_type,
                         line: self.line,
                     });
 
-                    self.recover_from_error();
+                    self.recover_from_error(); */
+
+                    return Err(error);
                 }
             }
         }
-
-        println!("{:#?}", self.errors);
 
         return Ok(statements);
     }

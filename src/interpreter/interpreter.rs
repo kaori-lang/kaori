@@ -1,13 +1,15 @@
+use std::fmt::Error;
+
 use crate::{
     token::{DataType, TokenType},
-    yf_error::{RuntimeError, YFError},
+    yf_error::{ErrorType, YFError},
 };
 
 use super::{
     data::Data,
     environment::Environment,
-    expr::{BinaryOperator, Expr, Identifier, Literal, UnaryOperator},
-    stmt::{PrintStmt, Stmt, VariableDeclStmt},
+    expression::{BinaryOperator, Identifier, Literal, UnaryOperator},
+    statement::{ExpressionStatement, PrintStatement, Statement, VariableDeclStatement},
 };
 
 pub struct Interpreter {
@@ -21,61 +23,57 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), YFError> {
+    pub fn interpret(&mut self, statements: Vec<Box<dyn Statement>>) -> Result<(), YFError> {
         self.env.enter_scope();
 
         for stmt in statements.iter() {
-            self.eval_stmt(stmt)?;
+            if let Err(error_type) = self.visit_statement(stmt) {
+                return Err(YFError {
+                    error_type,
+                    line: 0,
+                });
+            }
         }
 
         self.env.exit_scope();
 
-        Ok(())
+        return Ok(());
     }
 
-    pub fn eval_stmt(&mut self, stmt: &Stmt) -> Result<(), YFError> {
-        match stmt {
-            Stmt::ExprStmt(expr) => self.eval_expr_stmt(expr),
-            Stmt::VariableDeclStmt(variable_decl_stmt) => {
-                self.eval_var_decl_stmt(variable_decl_stmt)
-            }
-            Stmt::PrintStmt(print_stmt) => self.eval_print_stmt(print_stmt),
-            _ => Err(YFError::RuntimeError(RuntimeError::InvalidEvaluation)),
-        }
+    pub fn visit_statement(&mut self, stmt: &Box<dyn Statement>) -> Result<(), ErrorType> {
+        stmt.accept_visitor(self)?;
+
+        return Ok(());
     }
 
-    fn eval_expr_stmt(&self, expr: &Expr) -> Result<(), YFError> {
-        self.eval_expr(expr)?;
-        Ok(())
+    pub fn visit_expr_statement(&mut self, stmt: &ExpressionStatement) -> Result<(), ErrorType> {
+        stmt.value.accept_visitor(self)?;
+
+        return Ok(());
     }
 
-    fn eval_print_stmt(&self, stmt: &PrintStmt) -> Result<(), YFError> {
-        println!("{:?}", self.eval_expr(&stmt.value)?);
+    pub fn visit_print_statement(&self, stmt: &PrintStatement) -> Result<(), ErrorType> {
+        println!("{:?}", stmt.value.accept_visitor(self)?);
 
-        Ok(())
+        return Ok(());
     }
 
-    fn eval_var_decl_stmt(&mut self, stmt: &VariableDeclStmt) -> Result<(), YFError> {
+    pub fn visit_variable_decl_statement(
+        &mut self,
+        stmt: &VariableDeclStatement,
+    ) -> Result<(), ErrorType> {
         let data_type = &stmt.data_type;
-        let data = self.eval_expr(&stmt.data)?;
+        let data = stmt.data.accept_visitor(self)?;
         let identifier = stmt.identifier.clone();
 
         self.env.create_symbol(identifier, data)?;
-        Ok(())
+
+        return Ok(());
     }
 
-    pub fn eval_expr(&self, node: &Expr) -> Result<Data, YFError> {
-        match node {
-            Expr::Literal(literal) => self.eval_literal(literal),
-            Expr::BinaryOperator(binary) => self.eval_binary(binary),
-            Expr::UnaryOperator(unary) => self.eval_unary(unary),
-            Expr::Identifier(identifier) => self.eval_identifier(identifier),
-        }
-    }
-
-    fn eval_binary(&self, node: &BinaryOperator) -> Result<Data, YFError> {
-        let left = self.eval_expr(&node.left)?;
-        let right = self.eval_expr(&node.right)?;
+    pub fn visit_binary_operator(&self, node: &BinaryOperator) -> Result<Data, ErrorType> {
+        let left = node.left.accept_visitor(self)?;
+        let right = node.right.accept_visitor(self)?;
         let ty = &node.ty;
 
         use {Data as E, TokenType as T};
@@ -93,17 +91,17 @@ impl Interpreter {
             (T::GreaterEqual, E::Number(l), E::Number(r)) => Ok(E::Boolean(l >= r)),
             (T::Less, E::Number(l), E::Number(r)) => Ok(E::Boolean(l < r)),
             (T::LessEqual, E::Number(l), E::Number(r)) => Ok(E::Boolean(l <= r)),
-            _ => return Err(YFError::RuntimeError(RuntimeError::InvalidEvaluation)),
+            _ => return Err(ErrorType::TypeError),
         }
     }
 
-    fn eval_identifier(&self, node: &Identifier) -> Result<Data, YFError> {
-        let Identifier { ty, value } = node;
+    pub fn visit_identifier(&self, node: &Identifier) -> Result<Data, ErrorType> {
+        let Identifier { value, .. } = node;
 
         return self.env.get_symbol(&value);
     }
 
-    fn eval_literal(&self, node: &Literal) -> Result<Data, YFError> {
+    pub fn visit_literal(&self, node: &Literal) -> Result<Data, ErrorType> {
         let ty = &node.ty;
         let value = &node.value;
 
@@ -111,18 +109,18 @@ impl Interpreter {
             DataType::Number => Ok(Data::Number(value.parse::<f64>().unwrap())),
             DataType::String => Ok(Data::String(value.clone())),
             DataType::Boolean => Ok(Data::Boolean(value.parse::<bool>().unwrap())),
-            _ => Err(YFError::RuntimeError(RuntimeError::InvalidEvaluation)),
+            _ => Err(ErrorType::TypeError),
         }
     }
 
-    fn eval_unary(&self, node: &UnaryOperator) -> Result<Data, YFError> {
+    pub fn visit_unary_operator(&self, node: &UnaryOperator) -> Result<Data, ErrorType> {
         let ty = &node.ty;
-        let right = self.eval_expr(&node.right)?;
+        let right = node.right.accept_visitor(self)?;
 
         match (ty, right) {
             (TokenType::Minus, Data::Number(r)) => Ok(Data::Number(-r)),
             (TokenType::Not, Data::Boolean(r)) => Ok(Data::Boolean(!r)),
-            _ => Err(YFError::RuntimeError(RuntimeError::InvalidEvaluation)),
+            _ => Err(ErrorType::TypeError),
         }
     }
 }
