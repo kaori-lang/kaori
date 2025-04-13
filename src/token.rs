@@ -39,7 +39,6 @@ pub enum TokenType {
     VariableDecl(DataType),
     Identifier,
     Literal(DataType),
-    EndOfFile, // End of input
 }
 
 #[derive(Debug, Clone)]

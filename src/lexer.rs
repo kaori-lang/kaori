@@ -1,12 +1,9 @@
 use regex::Regex;
 
-use crate::token::{DataType, Token, TokenType};
-
-#[derive(Debug)]
-pub enum LexerError {
-    InvalidToken { line: u32, character: char },
-    InvalidString { line: u32, character: char },
-}
+use crate::{
+    token::{DataType, Token, TokenType},
+    yf_error::{ErrorType, YFError},
+};
 
 #[derive(Debug)]
 pub struct Lexer<'a> {
@@ -196,13 +193,9 @@ impl<'a> Lexer<'a> {
         return None;
     }
 
-    fn get_next_token(&mut self) -> Result<Token, LexerError> {
+    fn get_next_token(&mut self) -> Result<Token, ErrorType> {
         if self.curr.is_empty() {
-            return Ok(Token::new(
-                TokenType::EndOfFile,
-                self.line,
-                "\0".to_string(),
-            ));
+            return Err(ErrorType::EndOfFile);
         }
 
         if let Some(token) = self.get_next_symbol() {
@@ -221,24 +214,25 @@ impl<'a> Lexer<'a> {
             return Ok(token);
         }
 
-        return Err(LexerError::InvalidToken {
-            line: self.line,
-            character: self.curr.chars().next().unwrap(),
-        });
+        return Err(ErrorType::InvalidToken(self.curr.chars().next().unwrap()));
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, LexerError> {
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, YFError> {
         let mut tokens = Vec::new();
 
         loop {
             self.skip_white_space();
 
-            let token = self.get_next_token()?;
-
-            if token.ty == TokenType::EndOfFile {
-                tokens.push(token);
-                break;
-            }
+            let token = match self.get_next_token() {
+                Ok(token) => token,
+                Err(ErrorType::EndOfFile) => break,
+                Err(error_type) => {
+                    return Err(YFError {
+                        error_type,
+                        line: self.line,
+                    })
+                }
+            };
 
             tokens.push(token);
         }

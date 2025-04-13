@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use super::{data::Data, runtime_error::RuntimeError};
+use crate::yf_error::{RuntimeError, YFError};
+
+use super::data::Data;
 
 pub struct Environment {
     pub stack: Vec<HashMap<String, Data>>,
@@ -8,12 +10,10 @@ pub struct Environment {
 
 impl Environment {
     pub fn new() -> Self {
-        Self {
-            stack: vec![HashMap::new()],
-        }
+        Self { stack: Vec::new() }
     }
 
-    pub fn get_symbol(&self, symbol: &str) -> Result<Data, RuntimeError> {
+    pub fn get_symbol(&self, symbol: &str) -> Result<Data, YFError> {
         let mut ptr = self.stack.len();
 
         while ptr > 0 {
@@ -24,20 +24,20 @@ impl Environment {
             }
         }
 
-        return Err(RuntimeError::NotFound);
+        return Err(YFError::RuntimeError(RuntimeError::NotFound));
     }
 
-    pub fn create_symbol(&mut self, symbol: String, data: Data) -> Result<(), RuntimeError> {
+    pub fn create_symbol(&mut self, symbol: String, data: Data) -> Result<(), YFError> {
         self.stack.last_mut().unwrap().insert(symbol, data);
 
         return Ok(());
     }
 
-    fn stack_pop(&mut self) {
-        self.stack.pop();
+    pub fn enter_scope(&mut self) {
+        self.stack.push(HashMap::new());
     }
 
-    fn stack_push(&mut self) {
-        self.stack.push(HashMap::new());
+    pub fn exit_scope(&mut self) {
+        self.stack.pop();
     }
 }

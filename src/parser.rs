@@ -4,25 +4,14 @@ use crate::{
         stmt::{PrintStmt, Stmt, VariableDeclStmt},
     },
     token::{DataType, Token, TokenType},
+    yf_error::{ErrorType, YFError},
 };
-
-#[derive(Debug)]
-pub enum ParserError {
-    UnexpectedToken {
-        line: u32,
-        expected: TokenType,
-        found: TokenType,
-    },
-
-    EndOfFile {
-        line: u32,
-    },
-}
 
 pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,
     line: u32,
+    errors: Vec<YFError>,
 }
 
 impl Parser {
@@ -31,11 +20,17 @@ impl Parser {
             tokens,
             pos: 0,
             line: 1,
+            errors: Vec::new(),
         }
     }
 
     fn look_ahead(&mut self) -> Option<Token> {
-        return self.tokens.get(self.pos).cloned();
+        if let Some(token) = self.tokens.get(self.pos) {
+            self.line = token.line;
+            return Some(token.clone());
+        }
+
+        return None;
     }
 
     fn advance(&mut self) {
@@ -44,27 +39,23 @@ impl Parser {
         }
     }
 
-    fn consume(&mut self, expected: &TokenType) -> Result<(), ParserError> {
+    fn consume(&mut self, expected: &TokenType) -> Result<(), ErrorType> {
         let Some(token) = self.look_ahead() else {
-            return Err(ParserError::EndOfFile { line: self.line });
+            return Err(ErrorType::EndOfFile);
         };
 
+        self.advance();
+
         if token.ty == *expected {
-            self.line = token.line;
-            self.advance();
             return Ok(());
         } else {
-            return Err(ParserError::UnexpectedToken {
-                line: self.line,
-                found: token.ty,
-                expected: expected.clone(),
-            });
+            return Err(ErrorType::UnexpectedToken);
         }
     }
 
-    fn parse_literal(&mut self) -> Result<Box<Expr>, ParserError> {
+    fn parse_literal(&mut self) -> Result<Box<Expr>, ErrorType> {
         let Some(token) = self.look_ahead() else {
-            return Err(ParserError::EndOfFile { line: self.line });
+            return Err(ErrorType::EndOfFile);
         };
 
         match token.ty {
@@ -88,37 +79,32 @@ impl Parser {
                     value: token.value,
                 })))
             }
-            _ => Err(ParserError::UnexpectedToken {
-                line: self.line,
-                expected: TokenType::Literal(DataType::Any),
-                found: token.ty,
-            }),
+            _ => Err(ErrorType::UnexpectedToken),
         }
     }
 
-    fn parse_unary(&mut self) -> Result<Box<Expr>, ParserError> {
-        let Some(token) = self.look_ahead() else {
-            return Err(ParserError::EndOfFile { line: self.line });
+    fn parse_unary(&mut self) -> Result<Box<Expr>, ErrorType> {
+        let Some(Token { ty, .. }) = self.look_ahead() else {
+            return Err(ErrorType::EndOfFile);
         };
 
-        if token.ty == TokenType::Plus {
-            self.consume(&token.ty)?;
-            return self.parse_unary();
+        match ty {
+            TokenType::Plus => {
+                self.consume(&TokenType::Plus)?;
+                self.parse_unary()
+            }
+            TokenType::Minus | TokenType::Not => {
+                self.consume(&ty)?;
+                Ok(Box::new(Expr::UnaryOperator(UnaryOperator {
+                    ty,
+                    right: self.parse_unary()?,
+                })))
+            }
+            _ => self.parse_literal(),
         }
-
-        if !matches!(token.ty, TokenType::Minus | TokenType::Not) {
-            return self.parse_literal();
-        }
-
-        self.consume(&token.ty)?;
-
-        return Ok(Box::new(Expr::UnaryOperator(UnaryOperator {
-            ty: token.ty,
-            right: self.parse_unary()?,
-        })));
     }
 
-    fn parse_factor(&mut self) -> Result<Box<Expr>, ParserError> {
+    fn parse_factor(&mut self) -> Result<Box<Expr>, ErrorType> {
         let mut left = self.parse_unary()?;
 
         while let Some(token) = self.look_ahead() {
@@ -139,7 +125,7 @@ impl Parser {
         return Ok(left);
     }
 
-    fn parse_term(&mut self) -> Result<Box<Expr>, ParserError> {
+    fn parse_term(&mut self) -> Result<Box<Expr>, ErrorType> {
         let mut left = self.parse_factor()?;
 
         while let Some(token) = self.look_ahead() {
@@ -160,7 +146,7 @@ impl Parser {
         return Ok(left);
     }
 
-    fn parse_comparison(&mut self) -> Result<Box<Expr>, ParserError> {
+    fn parse_comparison(&mut self) -> Result<Box<Expr>, ErrorType> {
         let mut left = self.parse_term()?;
 
         while let Some(token) = self.look_ahead() {
@@ -187,7 +173,7 @@ impl Parser {
         return Ok(left);
     }
 
-    fn parse_equality(&mut self) -> Result<Box<Expr>, ParserError> {
+    fn parse_equality(&mut self) -> Result<Box<Expr>, ErrorType> {
         let mut left = self.parse_comparison()?;
 
         while let Some(token) = self.look_ahead() {
@@ -208,7 +194,7 @@ impl Parser {
         return Ok(left);
     }
 
-    fn parse_and(&mut self) -> Result<Box<Expr>, ParserError> {
+    fn parse_and(&mut self) -> Result<Box<Expr>, ErrorType> {
         let mut left = self.parse_equality()?;
 
         while let Some(token) = self.look_ahead() {
@@ -230,7 +216,7 @@ impl Parser {
         return Ok(left);
     }
 
-    fn parse_or(&mut self) -> Result<Box<Expr>, ParserError> {
+    fn parse_or(&mut self) -> Result<Box<Expr>, ErrorType> {
         let mut left = self.parse_and()?;
 
         while let Some(token) = self.look_ahead() {
@@ -252,18 +238,18 @@ impl Parser {
         return Ok(left);
     }
 
-    fn parse_expression(&mut self) -> Result<Box<Expr>, ParserError> {
+    fn parse_expression(&mut self) -> Result<Box<Expr>, ErrorType> {
         return self.parse_or();
     }
 
-    fn parse_expression_stmt(&mut self) -> Result<Stmt, ParserError> {
+    fn parse_expression_stmt(&mut self) -> Result<Stmt, ErrorType> {
         let exp = self.parse_expression()?;
         self.consume(&TokenType::Semicolon)?;
 
         return Ok(Stmt::ExprStmt(exp));
     }
 
-    fn parse_print_stmt(&mut self) -> Result<Stmt, ParserError> {
+    fn parse_print_stmt(&mut self) -> Result<Stmt, ErrorType> {
         self.consume(&TokenType::Print)?;
         self.consume(&TokenType::LeftParen)?;
         let exp = self.parse_expression()?;
@@ -273,7 +259,7 @@ impl Parser {
         return Ok(Stmt::PrintStmt(PrintStmt::new(exp)));
     }
 
-    fn parse_variable_stmt(&mut self, data_type: DataType) -> Result<Stmt, ParserError> {
+    fn parse_variable_stmt(&mut self, data_type: DataType) -> Result<Stmt, ErrorType> {
         self.consume(&TokenType::VariableDecl(data_type.clone()))?;
         let identifier = self.look_ahead().unwrap();
 
@@ -291,7 +277,7 @@ impl Parser {
         )));
     }
 
-    fn parse_stmt(&mut self) -> Result<Stmt, ParserError> {
+    fn parse_stmt(&mut self) -> Result<Stmt, ErrorType> {
         let token = self.look_ahead().unwrap();
 
         match token.ty {
@@ -301,19 +287,37 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+    fn recover_from_error(&mut self) {
+        while let Some(token) = self.look_ahead() {
+            let _ = self.consume(&token.ty);
+
+            match token.ty {
+                TokenType::Semicolon => break,
+                _ => (),
+            };
+        }
+    }
+
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, YFError> {
         self.pos = 0;
 
         let mut statements: Vec<Stmt> = Vec::new();
 
-        while let Some(token) = self.look_ahead() {
-            if token.ty == TokenType::EndOfFile {
-                break;
-            }
+        while let Some(_) = self.look_ahead() {
+            match self.parse_stmt() {
+                Ok(statement) => statements.push(statement),
+                Err(error_type) => {
+                    self.errors.push(YFError {
+                        error_type,
+                        line: self.line,
+                    });
 
-            let statement = self.parse_stmt()?;
-            statements.push(statement);
+                    self.recover_from_error();
+                }
+            }
         }
+
+        println!("{:#?}", self.errors);
 
         return Ok(statements);
     }

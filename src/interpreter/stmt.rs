@@ -11,19 +11,23 @@ pub enum Stmt {
 
 #[derive(Debug)]
 pub struct VariableDeclStmt {
-    pub ty: DataType,
-    pub name: String,
-    pub value: Box<Expr>,
+    pub data_type: DataType,
+    pub identifier: String,
+    pub data: Box<Expr>,
 }
 
 #[derive(Debug)]
 pub struct PrintStmt {
-    value: Box<Expr>,
+    pub value: Box<Expr>,
 }
 
 impl VariableDeclStmt {
-    pub fn new(ty: DataType, name: String, value: Box<Expr>) -> Self {
-        Self { ty, name, value }
+    pub fn new(data_type: DataType, identifier: String, data: Box<Expr>) -> Self {
+        Self {
+            data_type,
+            identifier,
+            data,
+        }
     }
 }
 
