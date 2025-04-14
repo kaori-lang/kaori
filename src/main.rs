@@ -23,7 +23,8 @@ pub fn run_program(source: String) -> Result<(), YFError> {
 
 fn main() {
     let source = String::from(
-        r#"Number a = 5;
+        r#"
+        Number a = 5;
         Number b = 9;
         print(a);
         print(b);
@@ -31,11 +32,11 @@ fn main() {
         a = b = 1;
         print(a);
         print(b);
-        
+
         a = b = "hello world";
         print(a);
         print(b);
-    "#,
+        "#,
     );
 
     println!("{:?}", run_program(source));

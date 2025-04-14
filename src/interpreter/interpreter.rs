@@ -1,16 +1,15 @@
 use std::fmt::Error;
 
 use crate::{
+    ast::{
+        expression::{AssignOperator, BinaryOperator, Identifier, Literal, UnaryOperator},
+        statement::{ExpressionStatement, PrintStatement, Statement, VariableDeclStatement},
+    },
     token::{DataType, TokenType},
     yf_error::{ErrorType, YFError},
 };
 
-use super::{
-    data::Data,
-    environment::Environment,
-    expression::{AssignOperator, BinaryOperator, Identifier, Literal, UnaryOperator},
-    statement::{ExpressionStatement, PrintStatement, Statement, VariableDeclStatement},
-};
+use super::{data::Data, environment::Environment};
 
 pub struct Interpreter {
     env: Environment,
@@ -75,7 +74,7 @@ impl Interpreter {
         let identifier = &node.identifier.value;
         let data = node.right.accept_visitor(self)?;
 
-        self.env.update_symbol(identifier, data.clone())?;
+        self.env.update_symbol(identifier, &data)?;
 
         return Ok(data);
     }

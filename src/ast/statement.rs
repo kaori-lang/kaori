@@ -1,6 +1,6 @@
-use crate::{token::DataType, yf_error::ErrorType};
+use crate::{interpreter::interpreter::Interpreter, token::DataType, yf_error::ErrorType};
 
-use super::{expression::Expression, interpreter::Interpreter};
+use super::expression::Expression;
 
 pub trait Statement: std::fmt::Debug {
     fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<(), ErrorType>;

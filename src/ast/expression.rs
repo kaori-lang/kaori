@@ -1,11 +1,10 @@
 use std::any::Any;
 
 use crate::{
+    interpreter::{data::Data, interpreter::Interpreter},
     token::{DataType, TokenType},
     yf_error::ErrorType,
 };
-
-use super::{data::Data, interpreter::Interpreter};
 
 pub trait Expression: std::fmt::Debug {
     fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<Data, ErrorType>;

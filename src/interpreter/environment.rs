@@ -37,7 +37,7 @@ impl Environment {
         return Ok(());
     }
 
-    pub fn update_symbol(&mut self, symbol: &str, data: Data) -> Result<(), ErrorType> {
+    pub fn update_symbol(&mut self, symbol: &str, data: &Data) -> Result<(), ErrorType> {
         let Some(current_scope) = self.stack.last_mut() else {
             return Err(ErrorType::NotFound);
         };
@@ -47,9 +47,15 @@ impl Environment {
         };
 
         match (&data, found_data) {
-            (Data::Number(_), Data::Number(_)) => current_scope.insert(symbol.to_string(), data),
-            (Data::Boolean(_), Data::Boolean(_)) => current_scope.insert(symbol.to_string(), data),
-            (Data::String(_), Data::String(_)) => current_scope.insert(symbol.to_string(), data),
+            (Data::Number(_), Data::Number(_)) => {
+                current_scope.insert(symbol.to_string(), data.clone())
+            }
+            (Data::Boolean(_), Data::Boolean(_)) => {
+                current_scope.insert(symbol.to_string(), data.clone())
+            }
+            (Data::String(_), Data::String(_)) => {
+                current_scope.insert(symbol.to_string(), data.clone())
+            }
             _ => return Err(ErrorType::TypeError),
         };
 
