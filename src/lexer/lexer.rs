@@ -1,8 +1,12 @@
+use std::os::raw;
+
 use regex::Regex;
 
-use crate::{
-    token::{DataType, Token, TokenType},
-    yf_error::{ErrorType, YFError},
+use crate::yf_error::{ErrorType, YFError};
+
+use super::{
+    data::Data,
+    token::{Token, TokenType},
 };
 
 #[derive(Debug)]
@@ -58,11 +62,12 @@ impl<'a> Lexer<'a> {
 
         let raw_string = &string.as_str()[1..string.as_str().len() - 1];
 
-        return Some(Token::new(
-            TokenType::Literal(DataType::String),
-            self.line,
-            raw_string.to_string(),
-        ));
+        return Some(Token {
+            ty: TokenType::Literal,
+            line: self.line,
+            lexeme: raw_string.to_string(),
+            literal: Data::String(raw_string.to_string()),
+        });
     }
 
     fn get_next_identifier(&mut self) -> Option<Token> {
@@ -73,27 +78,9 @@ impl<'a> Lexer<'a> {
         self.advance(identifier.as_str());
 
         let token_type = match identifier.as_str() {
-            "Number" => {
-                return Some(Token::new(
-                    TokenType::VariableDecl(DataType::Number),
-                    self.line,
-                    "".to_string(),
-                ))
-            }
-            "String" => {
-                return Some(Token::new(
-                    TokenType::VariableDecl(DataType::String),
-                    self.line,
-                    "".to_string(),
-                ))
-            }
-            "Boolean" => {
-                return Some(Token::new(
-                    TokenType::VariableDecl(DataType::Boolean),
-                    self.line,
-                    "".to_string(),
-                ))
-            }
+            "String" => TokenType::String,
+            "Number" => TokenType::Number,
+            "Boolean" => TokenType::Boolean,
             "if" => TokenType::If,
             "else" => TokenType::Else,
             "while" => TokenType::While,
@@ -101,29 +88,30 @@ impl<'a> Lexer<'a> {
             "def" => TokenType::Def,
             "print" => TokenType::Print,
             "true" => {
-                return Some(Token::new(
-                    TokenType::Literal(DataType::Boolean),
-                    self.line,
-                    "true".to_string(),
-                ));
+                return Some(Token {
+                    ty: TokenType::Literal,
+                    line: self.line,
+                    lexeme: "true".to_string(),
+                    literal: Data::Boolean(true),
+                });
             }
             "false" => {
-                return Some(Token::new(
-                    TokenType::Literal(DataType::Boolean),
-                    self.line,
-                    "false".to_string(),
-                ));
+                return Some(Token {
+                    ty: TokenType::Literal,
+                    line: self.line,
+                    lexeme: "false".to_string(),
+                    literal: Data::Boolean(false),
+                });
             }
-            _ => {
-                return Some(Token::new(
-                    TokenType::Identifier,
-                    self.line,
-                    identifier.as_str().to_string(),
-                ))
-            }
+            _ => TokenType::Identifier,
         };
 
-        return Some(Token::new(token_type, self.line, "".to_string()));
+        return Some(Token {
+            ty: token_type,
+            line: self.line,
+            lexeme: identifier.as_str().to_string(),
+            literal: Data::None,
+        });
     }
 
     fn get_next_number(&mut self) -> Option<Token> {
@@ -133,11 +121,14 @@ impl<'a> Lexer<'a> {
 
         self.advance(number.as_str());
 
-        return Some(Token::new(
-            TokenType::Literal(DataType::Number),
-            self.line,
-            number.as_str().to_string(),
-        ));
+        let literal = Data::Number(number.as_str().parse::<f64>().unwrap());
+
+        return Some(Token {
+            ty: TokenType::Literal,
+            line: self.line,
+            lexeme: number.as_str().to_string(),
+            literal,
+        });
     }
 
     pub fn get_next_two_char_symbol(&mut self) -> Option<Token> {
@@ -154,8 +145,15 @@ impl<'a> Lexer<'a> {
             "<=" => Some(TokenType::LessEqual),
             _ => None,
         } {
+            let lexeme = String::from(&self.curr[..2]);
             self.curr = &self.curr[2..];
-            return Some(Token::new(token_type, self.line, "".to_string()));
+
+            return Some(Token {
+                ty: token_type,
+                line: self.line,
+                lexeme,
+                literal: Data::None,
+            });
         }
         return None;
     }
@@ -186,8 +184,15 @@ impl<'a> Lexer<'a> {
             "<" => Some(TokenType::Less),
             _ => None,
         } {
+            let lexeme = String::from(&self.curr[..1]);
             self.curr = &self.curr[1..];
-            return Some(Token::new(token_type, self.line, "".to_string()));
+
+            return Some(Token {
+                ty: token_type,
+                line: self.line,
+                lexeme,
+                literal: Data::None,
+            });
         }
 
         return None;

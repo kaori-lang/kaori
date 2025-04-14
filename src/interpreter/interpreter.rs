@@ -1,15 +1,13 @@
-use std::fmt::Error;
-
 use crate::{
     ast::{
         expression::{AssignOperator, BinaryOperator, Identifier, Literal, UnaryOperator},
         statement::{ExpressionStatement, PrintStatement, Statement, VariableDeclStatement},
     },
-    token::{DataType, TokenType},
+    lexer::{data::Data, token::TokenType},
     yf_error::{ErrorType, YFError},
 };
 
-use super::{data::Data, environment::Environment};
+use super::environment::Environment;
 
 pub struct Interpreter {
     env: Environment,
@@ -118,15 +116,7 @@ impl Interpreter {
     }
 
     pub fn visit_literal(&mut self, node: &Literal) -> Result<Data, ErrorType> {
-        let ty = &node.ty;
-        let value = &node.value;
-
-        match ty {
-            DataType::Number => Ok(Data::Number(value.parse::<f64>().unwrap())),
-            DataType::String => Ok(Data::String(value.clone())),
-            DataType::Boolean => Ok(Data::Boolean(value.parse::<bool>().unwrap())),
-            _ => Err(ErrorType::TypeError),
-        }
+        return Ok(node.value.clone());
     }
 
     pub fn visit_unary_operator(&mut self, node: &UnaryOperator) -> Result<Data, ErrorType> {

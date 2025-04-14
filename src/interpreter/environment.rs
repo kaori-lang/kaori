@@ -1,8 +1,6 @@
-use std::{collections::HashMap, fmt::Error};
+use std::collections::HashMap;
 
-use crate::yf_error::ErrorType;
-
-use super::data::Data;
+use crate::{lexer::data::Data, yf_error::ErrorType};
 
 pub struct Environment {
     pub stack: Vec<HashMap<String, Data>>,

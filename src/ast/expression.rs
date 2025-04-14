@@ -1,8 +1,8 @@
 use std::any::Any;
 
 use crate::{
-    interpreter::{data::Data, interpreter::Interpreter},
-    token::{DataType, TokenType},
+    interpreter::interpreter::Interpreter,
+    lexer::{data::Data, token::TokenType},
     yf_error::ErrorType,
 };
 
@@ -37,8 +37,7 @@ pub struct Identifier {
 
 #[derive(Debug)]
 pub struct Literal {
-    pub ty: DataType,
-    pub value: String,
+    pub value: Data,
 }
 
 impl Expression for BinaryOperator {

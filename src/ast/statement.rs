@@ -1,4 +1,4 @@
-use crate::{interpreter::interpreter::Interpreter, token::DataType, yf_error::ErrorType};
+use crate::{interpreter::interpreter::Interpreter, lexer::token::TokenType, yf_error::ErrorType};
 
 use super::expression::Expression;
 
@@ -8,7 +8,7 @@ pub trait Statement: std::fmt::Debug {
 
 #[derive(Debug)]
 pub struct VariableDeclStatement {
-    pub data_type: DataType,
+    pub data_type: TokenType,
     pub identifier: String,
     pub data: Box<dyn Expression>,
     pub line: u32,

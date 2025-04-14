@@ -5,7 +5,8 @@
 #![allow(unused_assignments)]
 
 use yellow_flash::{
-    interpreter::interpreter::Interpreter, lexer::Lexer, parser::Parser, yf_error::YFError,
+    interpreter::interpreter::Interpreter, lexer::lexer::Lexer, parser::parser::Parser,
+    yf_error::YFError,
 };
 
 pub fn run_program(source: String) -> Result<(), YFError> {
@@ -15,6 +16,7 @@ pub fn run_program(source: String) -> Result<(), YFError> {
 
     let mut parser = Parser::new(tokens);
     let statements = parser.parse()?;
+
     let mut interpreter = Interpreter::new();
     interpreter.interpret(statements)?;
 
@@ -31,10 +33,11 @@ fn main() {
         a = b = 1;
         print(a);
         print(b);   
-        
-        a = b = "hello world";
+        String a = "hello world";
         print(a);
-        print(b);
+        a = 5;
+        print(a);
+     
         "#,
     );
 

@@ -5,7 +5,7 @@ use crate::{
         },
         statement::{ExpressionStatement, PrintStatement, Statement, VariableDeclStatement},
     },
-    token::{DataType, Token, TokenType},
+    lexer::token::{Token, TokenType},
     yf_error::{ErrorType, YFError},
 };
 
@@ -67,16 +67,17 @@ impl Parser {
                 self.consume(&TokenType::RightParen)?;
                 Ok(expression)
             }
-            TokenType::Literal(data_type) => {
-                self.consume(&TokenType::Literal(data_type.clone()))?;
+            TokenType::Literal => {
+                self.consume(&TokenType::Literal)?;
                 Ok(Box::new(Literal {
-                    ty: data_type,
-                    value: token.value,
+                    value: token.literal,
                 }))
             }
             TokenType::Identifier => {
                 self.consume(&TokenType::Identifier)?;
-                Ok(Box::new(Identifier { value: token.value }))
+                Ok(Box::new(Identifier {
+                    value: token.lexeme,
+                }))
             }
             _ => Err(ErrorType::SyntaxError),
         }
@@ -293,9 +294,9 @@ impl Parser {
 
     fn parse_variable_stmt(
         &mut self,
-        data_type: DataType,
+        data_type: TokenType,
     ) -> Result<Box<dyn Statement>, ErrorType> {
-        self.consume(&TokenType::VariableDecl(data_type.clone()))?;
+        self.consume(&data_type)?;
         let identifier = self.look_ahead().unwrap();
 
         self.consume(&TokenType::Identifier)?;
@@ -307,7 +308,7 @@ impl Parser {
 
         return Ok(Box::new(VariableDeclStatement {
             data_type,
-            identifier: identifier.value,
+            identifier: identifier.lexeme,
             data,
             line: self.line,
         }));
@@ -317,7 +318,9 @@ impl Parser {
         let token = self.look_ahead().unwrap();
 
         match token.ty {
-            TokenType::VariableDecl(data) => self.parse_variable_stmt(data),
+            TokenType::Number | TokenType::Boolean | TokenType::String => {
+                self.parse_variable_stmt(token.ty)
+            }
             TokenType::Print => self.parse_print_stmt(),
             _ => self.parse_expression_stmt(),
         }

@@ -1,10 +1,4 @@
-#[derive(Debug, PartialEq, Clone)]
-pub enum DataType {
-    String,
-    Number,
-    Boolean,
-    Any,
-}
+use super::data::Data;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
@@ -36,20 +30,17 @@ pub enum TokenType {
     Return,
     Print,
 
-    VariableDecl(DataType),
+    String,
+    Number,
+    Boolean,
     Identifier,
-    Literal(DataType),
+    Literal,
 }
 
 #[derive(Debug, Clone)]
 pub struct Token {
     pub ty: TokenType,
     pub line: u32,
-    pub value: String,
-}
-
-impl Token {
-    pub fn new(ty: TokenType, line: u32, value: String) -> Self {
-        Self { ty, line, value }
-    }
+    pub lexeme: String,
+    pub literal: Data,
 }
