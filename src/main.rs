@@ -15,7 +15,6 @@ pub fn run_program(source: String) -> Result<(), YFError> {
 
     let mut parser = Parser::new(tokens);
     let statements = parser.parse()?;
-
     let mut interpreter = Interpreter::new();
     interpreter.interpret(statements)?;
 
@@ -24,8 +23,18 @@ pub fn run_program(source: String) -> Result<(), YFError> {
 
 fn main() {
     let source = String::from(
-        r#"Number a = 2 + 5;
-        print("hello world");
+        r#"Number a = 5;
+        Number b = 9;
+        print(a);
+        print(b);
+
+        a = b = 1;
+        print(a);
+        print(b);
+        
+        a = b = "hello world";
+        print(a);
+        print(b);
     "#,
     );
 

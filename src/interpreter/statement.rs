@@ -15,12 +15,12 @@ pub struct VariableDeclStatement {
 
 #[derive(Debug)]
 pub struct PrintStatement {
-    pub value: Box<dyn Expression>,
+    pub expression: Box<dyn Expression>,
 }
 
 #[derive(Debug)]
 pub struct ExpressionStatement {
-    pub value: Box<dyn Expression>,
+    pub expression: Box<dyn Expression>,
 }
 
 impl Statement for VariableDeclStatement {

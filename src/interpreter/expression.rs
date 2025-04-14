@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::{
     token::{DataType, TokenType},
     yf_error::ErrorType,
@@ -6,7 +8,8 @@ use crate::{
 use super::{data::Data, interpreter::Interpreter};
 
 pub trait Expression: std::fmt::Debug {
-    fn accept_visitor(&self, visitor: &Interpreter) -> Result<Data, ErrorType>;
+    fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<Data, ErrorType>;
+    fn as_any(&self) -> &dyn Any;
 }
 
 #[derive(Debug)]
@@ -23,8 +26,13 @@ pub struct UnaryOperator {
 }
 
 #[derive(Debug)]
+pub struct AssignOperator {
+    pub identifier: Identifier,
+    pub right: Box<dyn Expression>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Identifier {
-    pub ty: TokenType,
     pub value: String,
 }
 
@@ -35,25 +43,51 @@ pub struct Literal {
 }
 
 impl Expression for BinaryOperator {
-    fn accept_visitor(&self, visitor: &Interpreter) -> Result<Data, ErrorType> {
+    fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<Data, ErrorType> {
         visitor.visit_binary_operator(self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
 impl Expression for UnaryOperator {
-    fn accept_visitor(&self, visitor: &Interpreter) -> Result<Data, ErrorType> {
+    fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<Data, ErrorType> {
         visitor.visit_unary_operator(self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
 impl Expression for Literal {
-    fn accept_visitor(&self, visitor: &Interpreter) -> Result<Data, ErrorType> {
+    fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<Data, ErrorType> {
         visitor.visit_literal(self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
 impl Expression for Identifier {
-    fn accept_visitor(&self, visitor: &Interpreter) -> Result<Data, ErrorType> {
+    fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<Data, ErrorType> {
         visitor.visit_identifier(self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+impl Expression for AssignOperator {
+    fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<Data, ErrorType> {
+        visitor.visit_assign_operator(self)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

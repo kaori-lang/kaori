@@ -8,26 +8,26 @@ pub enum DataType {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
-    Plus,         // '+'
-    Minus,        // '-'
-    Multiply,     // '*'
-    Divide,       // '/'
-    LeftParen,    // '('
-    RightParen,   // ')'
-    LeftBrace,    // '{'
-    RightBrace,   // '}'
-    And,          // '&&'
-    Or,           // '||'
-    Not,          // '!'
-    NotEqual,     // '!='
-    Assign,       // '='
-    Equal,        // '=='
-    Greater,      // '>'
-    GreaterEqual, // '>='
-    Less,         // '<'
-    LessEqual,    // '<='
-    Comma,        // ','
-    Semicolon,    // ';'
+    Plus,
+    Minus,
+    Multiply,
+    Divide,
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
+    And,
+    Or,
+    Not,
+    NotEqual,
+    Assign,
+    Equal,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
+    Comma,
+    Semicolon,
 
     Def,
     While,

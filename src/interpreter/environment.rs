@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Error};
 
-use crate::yf_error::{ErrorType, YFError};
+use crate::yf_error::ErrorType;
 
 use super::data::Data;
 
@@ -28,7 +28,30 @@ impl Environment {
     }
 
     pub fn create_symbol(&mut self, symbol: String, data: Data) -> Result<(), ErrorType> {
-        self.stack.last_mut().unwrap().insert(symbol, data);
+        let Some(current_scope) = self.stack.last_mut() else {
+            return Err(ErrorType::NotFound);
+        };
+
+        current_scope.insert(symbol, data);
+
+        return Ok(());
+    }
+
+    pub fn update_symbol(&mut self, symbol: &str, data: Data) -> Result<(), ErrorType> {
+        let Some(current_scope) = self.stack.last_mut() else {
+            return Err(ErrorType::NotFound);
+        };
+
+        let Some(found_data) = current_scope.get(symbol) else {
+            return Err(ErrorType::NotFound);
+        };
+
+        match (&data, found_data) {
+            (Data::Number(_), Data::Number(_)) => current_scope.insert(symbol.to_string(), data),
+            (Data::Boolean(_), Data::Boolean(_)) => current_scope.insert(symbol.to_string(), data),
+            (Data::String(_), Data::String(_)) => current_scope.insert(symbol.to_string(), data),
+            _ => return Err(ErrorType::TypeError),
+        };
 
         return Ok(());
     }

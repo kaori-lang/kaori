@@ -8,7 +8,7 @@ use crate::{
 use super::{
     data::Data,
     environment::Environment,
-    expression::{BinaryOperator, Identifier, Literal, UnaryOperator},
+    expression::{AssignOperator, BinaryOperator, Identifier, Literal, UnaryOperator},
     statement::{ExpressionStatement, PrintStatement, Statement, VariableDeclStatement},
 };
 
@@ -27,7 +27,7 @@ impl Interpreter {
         self.env.enter_scope();
 
         for stmt in statements.iter() {
-            if let Err(error_type) = self.visit_statement(stmt) {
+            if let Err(error_type) = self.execute(stmt) {
                 return Err(YFError {
                     error_type,
                     line: 0,
@@ -40,20 +40,20 @@ impl Interpreter {
         return Ok(());
     }
 
-    pub fn visit_statement(&mut self, stmt: &Box<dyn Statement>) -> Result<(), ErrorType> {
+    pub fn execute(&mut self, stmt: &Box<dyn Statement>) -> Result<(), ErrorType> {
         stmt.accept_visitor(self)?;
 
         return Ok(());
     }
 
     pub fn visit_expr_statement(&mut self, stmt: &ExpressionStatement) -> Result<(), ErrorType> {
-        stmt.value.accept_visitor(self)?;
+        stmt.expression.accept_visitor(self)?;
 
         return Ok(());
     }
 
-    pub fn visit_print_statement(&self, stmt: &PrintStatement) -> Result<(), ErrorType> {
-        println!("{:?}", stmt.value.accept_visitor(self)?);
+    pub fn visit_print_statement(&mut self, stmt: &PrintStatement) -> Result<(), ErrorType> {
+        println!("{:?}", stmt.expression.accept_visitor(self)?);
 
         return Ok(());
     }
@@ -71,7 +71,16 @@ impl Interpreter {
         return Ok(());
     }
 
-    pub fn visit_binary_operator(&self, node: &BinaryOperator) -> Result<Data, ErrorType> {
+    pub fn visit_assign_operator(&mut self, node: &AssignOperator) -> Result<Data, ErrorType> {
+        let identifier = &node.identifier.value;
+        let data = node.right.accept_visitor(self)?;
+
+        self.env.update_symbol(identifier, data.clone())?;
+
+        return Ok(data);
+    }
+
+    pub fn visit_binary_operator(&mut self, node: &BinaryOperator) -> Result<Data, ErrorType> {
         let left = node.left.accept_visitor(self)?;
         let right = node.right.accept_visitor(self)?;
         let ty = &node.ty;
@@ -95,13 +104,13 @@ impl Interpreter {
         }
     }
 
-    pub fn visit_identifier(&self, node: &Identifier) -> Result<Data, ErrorType> {
-        let Identifier { value, .. } = node;
+    pub fn visit_identifier(&mut self, node: &Identifier) -> Result<Data, ErrorType> {
+        let Identifier { value } = node;
 
         return self.env.get_symbol(&value);
     }
 
-    pub fn visit_literal(&self, node: &Literal) -> Result<Data, ErrorType> {
+    pub fn visit_literal(&mut self, node: &Literal) -> Result<Data, ErrorType> {
         let ty = &node.ty;
         let value = &node.value;
 
@@ -113,7 +122,7 @@ impl Interpreter {
         }
     }
 
-    pub fn visit_unary_operator(&self, node: &UnaryOperator) -> Result<Data, ErrorType> {
+    pub fn visit_unary_operator(&mut self, node: &UnaryOperator) -> Result<Data, ErrorType> {
         let ty = &node.ty;
         let right = node.right.accept_visitor(self)?;
 

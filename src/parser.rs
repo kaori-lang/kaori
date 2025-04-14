@@ -1,6 +1,8 @@
 use crate::{
     interpreter::{
-        expression::{BinaryOperator, Expression, Identifier, Literal, UnaryOperator},
+        expression::{
+            AssignOperator, BinaryOperator, Expression, Identifier, Literal, UnaryOperator,
+        },
         statement::{ExpressionStatement, PrintStatement, Statement, VariableDeclStatement},
     },
     token::{DataType, Token, TokenType},
@@ -74,10 +76,7 @@ impl Parser {
             }
             TokenType::Identifier => {
                 self.consume(&TokenType::Identifier)?;
-                Ok(Box::new(Identifier {
-                    ty: token.ty,
-                    value: token.value,
-                }))
+                Ok(Box::new(Identifier { value: token.value }))
             }
             _ => Err(ErrorType::SyntaxError),
         }
@@ -238,25 +237,52 @@ impl Parser {
         return Ok(left);
     }
 
+    fn parse_assign(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+        let Some(token) = self.look_ahead() else {
+            return Err(ErrorType::EndOfFile);
+        };
+
+        let expression = self.parse_or()?;
+
+        match expression.as_any().downcast_ref::<Identifier>() {
+            Some(identifier) => {
+                let Some(Token {
+                    ty: TokenType::Assign,
+                    ..
+                }) = self.look_ahead()
+                else {
+                    return Ok(expression);
+                };
+
+                self.consume(&TokenType::Assign)?;
+                Ok(Box::new(AssignOperator {
+                    identifier: identifier.clone(),
+                    right: self.parse_assign()?,
+                }))
+            }
+            _ => Ok(expression),
+        }
+    }
+
     fn parse_expression(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
-        return self.parse_or();
+        return self.parse_assign();
     }
 
     fn parse_expression_stmt(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
-        let exp = self.parse_expression()?;
+        let expression = self.parse_expression()?;
         self.consume(&TokenType::Semicolon)?;
 
-        return Ok(Box::new(ExpressionStatement { value: exp }));
+        return Ok(Box::new(ExpressionStatement { expression }));
     }
 
     fn parse_print_stmt(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         self.consume(&TokenType::Print)?;
         self.consume(&TokenType::LeftParen)?;
-        let exp = self.parse_expression()?;
+        let expression = self.parse_expression()?;
         self.consume(&TokenType::RightParen)?;
         self.consume(&TokenType::Semicolon)?;
 
-        return Ok(Box::new(PrintStatement { value: exp }));
+        return Ok(Box::new(PrintStatement { expression }));
     }
 
     fn parse_variable_stmt(
