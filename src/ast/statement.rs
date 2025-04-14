@@ -26,6 +26,12 @@ pub struct ExpressionStatement {
     pub line: u32,
 }
 
+#[derive(Debug)]
+pub struct BlockStatement {
+    pub statements: Vec<Box<dyn Statement>>,
+    pub line: u32,
+}
+
 impl Statement for VariableDeclStatement {
     fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<(), ErrorType> {
         visitor.visit_variable_decl_statement(self)
@@ -41,5 +47,11 @@ impl Statement for PrintStatement {
 impl Statement for ExpressionStatement {
     fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<(), ErrorType> {
         visitor.visit_expr_statement(self)
+    }
+}
+
+impl Statement for BlockStatement {
+    fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<(), ErrorType> {
+        visitor.visit_block_statement(self)
     }
 }

@@ -3,7 +3,10 @@ use crate::{
         expression::{
             AssignOperator, BinaryOperator, Expression, Identifier, Literal, UnaryOperator,
         },
-        statement::{ExpressionStatement, PrintStatement, Statement, VariableDeclStatement},
+        statement::{
+            self, BlockStatement, ExpressionStatement, PrintStatement, Statement,
+            VariableDeclStatement,
+        },
     },
     lexer::token::{Token, TokenType},
     yf_error::{ErrorType, YFError},
@@ -57,7 +60,7 @@ impl Parser {
 
     fn parse_literal(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let Some(token) = self.look_ahead() else {
-            return Err(ErrorType::EndOfFile);
+            return Err(ErrorType::SyntaxError);
         };
 
         match token.ty {
@@ -85,7 +88,7 @@ impl Parser {
 
     fn parse_unary(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let Some(Token { ty, .. }) = self.look_ahead() else {
-            return Err(ErrorType::EndOfFile);
+            return Err(ErrorType::SyntaxError);
         };
 
         match ty {
@@ -239,10 +242,6 @@ impl Parser {
     }
 
     fn parse_assign(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
-        let Some(token) = self.look_ahead() else {
-            return Err(ErrorType::EndOfFile);
-        };
-
         let expression = self.parse_or()?;
 
         match expression.as_any().downcast_ref::<Identifier>() {
@@ -269,7 +268,7 @@ impl Parser {
         return self.parse_assign();
     }
 
-    fn parse_expression_stmt(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
+    fn parse_expression_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         let expression = self.parse_expression()?;
         self.consume(&TokenType::Semicolon)?;
 
@@ -279,7 +278,7 @@ impl Parser {
         }));
     }
 
-    fn parse_print_stmt(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
+    fn parse_print_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         self.consume(&TokenType::Print)?;
         self.consume(&TokenType::LeftParen)?;
         let expression = self.parse_expression()?;
@@ -292,7 +291,7 @@ impl Parser {
         }));
     }
 
-    fn parse_variable_stmt(
+    fn parse_variable_statement(
         &mut self,
         data_type: TokenType,
     ) -> Result<Box<dyn Statement>, ErrorType> {
@@ -314,16 +313,46 @@ impl Parser {
         }));
     }
 
-    fn parse_stmt(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
+    fn parse_block_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
+        self.consume(&TokenType::LeftBrace)?;
+        let statements = self.parse_statements()?;
+        self.consume(&TokenType::RightBrace)?;
+
+        return Ok(Box::new(BlockStatement {
+            statements,
+            line: self.line,
+        }));
+    }
+
+    fn parse_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         let token = self.look_ahead().unwrap();
 
         match token.ty {
             TokenType::Number | TokenType::Boolean | TokenType::String => {
-                self.parse_variable_stmt(token.ty)
+                self.parse_variable_statement(token.ty)
             }
-            TokenType::Print => self.parse_print_stmt(),
-            _ => self.parse_expression_stmt(),
+            TokenType::Print => self.parse_print_statement(),
+            TokenType::LeftBrace => self.parse_block_statement(),
+            _ => self.parse_expression_statement(),
         }
+    }
+
+    fn parse_statements(&mut self) -> Result<Vec<Box<dyn Statement>>, ErrorType> {
+        let mut statements: Vec<Box<dyn Statement>> = Vec::new();
+
+        while let Some(token) = self.look_ahead() {
+            match token.ty {
+                TokenType::RightBrace => {
+                    return Ok(statements);
+                }
+                _ => {
+                    let statement = self.parse_statement()?;
+                    statements.push(statement);
+                }
+            }
+        }
+
+        return Ok(statements);
     }
 
     fn recover_from_error(&mut self) {
@@ -340,28 +369,16 @@ impl Parser {
     pub fn parse(&mut self) -> Result<Vec<Box<dyn Statement>>, YFError> {
         self.pos = 0;
 
-        let mut statements: Vec<Box<dyn Statement>> = Vec::new();
+        match self.parse_statements() {
+            Ok(statements) => Ok(statements),
+            Err(error_type) => {
+                let error = YFError {
+                    error_type,
+                    line: self.line,
+                };
 
-        while let Some(_) = self.look_ahead() {
-            match self.parse_stmt() {
-                Ok(statement) => statements.push(statement),
-                Err(error_type) => {
-                    let error = YFError {
-                        error_type,
-                        line: self.line,
-                    };
-                    /* self.errors.push(YFError {
-                        error_type,
-                        line: self.line,
-                    });
-
-                    self.recover_from_error(); */
-
-                    return Err(error);
-                }
+                Err(error)
             }
         }
-
-        return Ok(statements);
     }
 }

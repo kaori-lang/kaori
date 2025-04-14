@@ -18,31 +18,36 @@ pub fn run_program(source: String) -> Result<(), YFError> {
     let statements = parser.parse()?;
 
     let mut interpreter = Interpreter::new();
-    interpreter.interpret(statements)?;
+    interpreter.interpret(&statements)?;
 
     Ok(())
 }
 
 fn main() {
-    let source = String::from(
+    let mut source = String::from(
         r#"
-        Number a = 5;
-        Number b = 9;
-        print(a);
-        print(b);
-        a = b = 1;
-        print(a);
-        print(b);   
         String a = "hello world";
+        Number b = 5;
+        Number c = 7.5;
+
+        print(b + c);
         print(a);
-        a = 5;
-        print(a);
-     
+        b = c = 7;
+        print(b + c);
+
+        {
+            Number d = 11.5;
+            print(d);
+            print(b);
+            print(c);
+        }
+        
+        print(d);
         "#,
     );
 
     match run_program(source) {
-        Err(error) => println!("{:?}", error),
+        Err(error) => println!("{:}", error),
         Ok(_) => (),
     }
 }

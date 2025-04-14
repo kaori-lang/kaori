@@ -1,7 +1,9 @@
 use crate::{
     ast::{
         expression::{AssignOperator, BinaryOperator, Identifier, Literal, UnaryOperator},
-        statement::{ExpressionStatement, PrintStatement, Statement, VariableDeclStatement},
+        statement::{
+            BlockStatement, ExpressionStatement, PrintStatement, Statement, VariableDeclStatement,
+        },
     },
     lexer::{data::Data, token::TokenType},
     yf_error::{ErrorType, YFError},
@@ -22,19 +24,30 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret(&mut self, statements: Vec<Box<dyn Statement>>) -> Result<(), YFError> {
+    pub fn interpret(&mut self, statements: &Vec<Box<dyn Statement>>) -> Result<(), YFError> {
         self.env.enter_scope();
 
-        for stmt in statements.iter() {
-            if let Err(error_type) = self.execute(stmt) {
+        match self.interpret_statements(statements) {
+            Err(error_type) => {
                 return Err(YFError {
                     error_type,
                     line: self.line,
                 });
             }
-        }
-
+            Ok(_) => (),
+        };
         self.env.exit_scope();
+
+        return Ok(());
+    }
+
+    fn interpret_statements(
+        &mut self,
+        statements: &Vec<Box<dyn Statement>>,
+    ) -> Result<(), ErrorType> {
+        for stmt in statements.iter() {
+            self.execute(stmt)?;
+        }
 
         return Ok(());
     }
@@ -42,6 +55,13 @@ impl Interpreter {
     pub fn execute(&mut self, stmt: &Box<dyn Statement>) -> Result<(), ErrorType> {
         stmt.accept_visitor(self)?;
 
+        return Ok(());
+    }
+
+    pub fn visit_block_statement(&mut self, stmt: &BlockStatement) -> Result<(), ErrorType> {
+        self.env.enter_scope();
+        self.interpret_statements(&stmt.statements)?;
+        self.env.exit_scope();
         return Ok(());
     }
 
@@ -56,7 +76,7 @@ impl Interpreter {
     pub fn visit_print_statement(&mut self, stmt: &PrintStatement) -> Result<(), ErrorType> {
         self.line = stmt.line;
 
-        println!("{:?}", stmt.expression.accept_visitor(self)?);
+        println!("{}", stmt.expression.accept_visitor(self)?);
 
         return Ok(());
     }
