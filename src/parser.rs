@@ -272,7 +272,10 @@ impl Parser {
         let expression = self.parse_expression()?;
         self.consume(&TokenType::Semicolon)?;
 
-        return Ok(Box::new(ExpressionStatement { expression }));
+        return Ok(Box::new(ExpressionStatement {
+            expression,
+            line: self.line,
+        }));
     }
 
     fn parse_print_stmt(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
@@ -282,7 +285,10 @@ impl Parser {
         self.consume(&TokenType::RightParen)?;
         self.consume(&TokenType::Semicolon)?;
 
-        return Ok(Box::new(PrintStatement { expression }));
+        return Ok(Box::new(PrintStatement {
+            expression,
+            line: self.line,
+        }));
     }
 
     fn parse_variable_stmt(
@@ -303,6 +309,7 @@ impl Parser {
             data_type,
             identifier: identifier.value,
             data,
+            line: self.line,
         }));
     }
 

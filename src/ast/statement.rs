@@ -11,16 +11,19 @@ pub struct VariableDeclStatement {
     pub data_type: DataType,
     pub identifier: String,
     pub data: Box<dyn Expression>,
+    pub line: u32,
 }
 
 #[derive(Debug)]
 pub struct PrintStatement {
     pub expression: Box<dyn Expression>,
+    pub line: u32,
 }
 
 #[derive(Debug)]
 pub struct ExpressionStatement {
     pub expression: Box<dyn Expression>,
+    pub line: u32,
 }
 
 impl Statement for VariableDeclStatement {

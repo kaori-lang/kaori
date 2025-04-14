@@ -28,16 +28,18 @@ fn main() {
         Number b = 9;
         print(a);
         print(b);
-
         a = b = 1;
         print(a);
-        print(b);
-
+        print(b);   
+        
         a = b = "hello world";
         print(a);
         print(b);
         "#,
     );
 
-    println!("{:?}", run_program(source));
+    match run_program(source) {
+        Err(error) => println!("{:?}", error),
+        Ok(_) => (),
+    }
 }

@@ -13,12 +13,14 @@ use super::{data::Data, environment::Environment};
 
 pub struct Interpreter {
     env: Environment,
+    line: u32,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Self {
             env: Environment::new(),
+            line: 1,
         }
     }
 
@@ -29,7 +31,7 @@ impl Interpreter {
             if let Err(error_type) = self.execute(stmt) {
                 return Err(YFError {
                     error_type,
-                    line: 0,
+                    line: self.line,
                 });
             }
         }
@@ -46,12 +48,16 @@ impl Interpreter {
     }
 
     pub fn visit_expr_statement(&mut self, stmt: &ExpressionStatement) -> Result<(), ErrorType> {
+        self.line = stmt.line;
+
         stmt.expression.accept_visitor(self)?;
 
         return Ok(());
     }
 
     pub fn visit_print_statement(&mut self, stmt: &PrintStatement) -> Result<(), ErrorType> {
+        self.line = stmt.line;
+
         println!("{:?}", stmt.expression.accept_visitor(self)?);
 
         return Ok(());
@@ -61,6 +67,8 @@ impl Interpreter {
         &mut self,
         stmt: &VariableDeclStatement,
     ) -> Result<(), ErrorType> {
+        self.line = stmt.line;
+
         let data_type = &stmt.data_type;
         let data = stmt.data.accept_visitor(self)?;
         let identifier = stmt.identifier.clone();
