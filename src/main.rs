@@ -27,21 +27,22 @@ fn main() {
     let mut source = String::from(
         r#"
         String a = "hello world";
-        Number b = 5;
-        Number c = 7.5;
-
-        print(b + c);
         print(a);
-        b = c = 7;
+        Number b = 1;
+        Number c = 2;
+
+        print(b + c);
+        b = c = 2.5;
         print(b + c);
 
-        {
+        {   
+            print("entrando no block scope!");
             Number d = 11.5;
             print(d);
             print(b);
             print(c);
         }
-        
+
         print(d);
         "#,
     );
