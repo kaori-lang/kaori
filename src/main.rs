@@ -15,7 +15,7 @@ pub fn run_program(source: String) -> Result<(), YFError> {
     let tokens = lexer.tokenize()?;
 
     let mut parser = Parser::new(tokens);
-    let statements = parser.parse()?;
+    let statements = parser.execute()?;
 
     let mut interpreter = Interpreter::new();
     interpreter.interpret(&statements)?;
@@ -26,24 +26,15 @@ pub fn run_program(source: String) -> Result<(), YFError> {
 fn main() {
     let mut source = String::from(
         r#"
-        String a = "hello world";
-        print(a);
-        Number b = 1;
-        Number c = 2;
-
-        print(b + c);
-        b = c = 2.5;
-        print(b + c);
-
-        {   
-            print("entrando no block scope!");
-            Number d = 11.5;
-            print(d);
+        Number a = 1;
+        {
+    }
+            Number b = 3;
             print(b);
-            print(c);
-        }
-
-        print(d);
+            print(a);
+        
+ 
+        print(b);
         "#,
     );
 

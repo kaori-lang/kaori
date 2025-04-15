@@ -1,5 +1,3 @@
-use std::os::raw;
-
 use regex::Regex;
 
 use crate::yf_error::{ErrorType, YFError};
