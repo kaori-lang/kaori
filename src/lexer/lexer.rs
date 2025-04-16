@@ -43,7 +43,10 @@ impl<'a> Lexer<'a> {
             if self.curr.starts_with('\n') {
                 self.line += 1;
                 self.curr = &self.curr[1..];
-            } else if self.curr.starts_with(' ') {
+            } else if self.curr.starts_with(' ')
+                || self.curr.starts_with('\r')
+                || self.curr.starts_with('\t')
+            {
                 self.curr = &self.curr[1..];
             } else {
                 break;
@@ -238,7 +241,7 @@ impl<'a> Lexer<'a> {
                     return Err(YFError {
                         error_type,
                         line: self.line,
-                    })
+                    });
                 }
             };
 

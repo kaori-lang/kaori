@@ -2,7 +2,8 @@ use crate::{
     ast::{
         expression::{AssignOperator, BinaryOperator, Identifier, Literal, UnaryOperator},
         statement::{
-            BlockStatement, ExpressionStatement, PrintStatement, Statement, VariableDeclStatement,
+            BlockStatement, ExpressionStatement, IfStatement, PrintStatement, Statement,
+            VariableDeclStatement,
         },
     },
     lexer::{data::Data, token::TokenType},
@@ -65,6 +66,23 @@ impl Interpreter {
         return Ok(());
     }
 
+    pub fn visit_if_statement(&mut self, stmt: &IfStatement) -> Result<(), ErrorType> {
+        let is_truthy = stmt.condition.accept_visitor(self)?;
+
+        match is_truthy {
+            Data::Boolean(bool) => {
+                if bool {
+                    stmt.then_branch.accept_visitor(self)?;
+                } else if let Some(else_branch) = &stmt.else_branch {
+                    else_branch.accept_visitor(self)?;
+                }
+            }
+            _ => return Err(ErrorType::TypeError),
+        };
+
+        Ok(())
+    }
+
     pub fn visit_expr_statement(&mut self, stmt: &ExpressionStatement) -> Result<(), ErrorType> {
         self.line = stmt.line;
 
@@ -111,6 +129,7 @@ impl Interpreter {
         let ty = &node.ty;
 
         use {Data as E, TokenType as T};
+
         match (ty, left, right) {
             (T::Plus, E::Number(l), E::Number(r)) => Ok(E::Number(l + r)),
             (T::Plus, E::String(l), E::String(r)) => Ok(E::String(format!("{l}{r}"))),
@@ -125,7 +144,7 @@ impl Interpreter {
             (T::GreaterEqual, E::Number(l), E::Number(r)) => Ok(E::Boolean(l >= r)),
             (T::Less, E::Number(l), E::Number(r)) => Ok(E::Boolean(l < r)),
             (T::LessEqual, E::Number(l), E::Number(r)) => Ok(E::Boolean(l <= r)),
-            _ => return Err(ErrorType::TypeError),
+            _ => Err(ErrorType::TypeError),
         }
     }
 

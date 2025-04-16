@@ -27,6 +27,14 @@ pub struct ExpressionStatement {
 }
 
 #[derive(Debug)]
+pub struct IfStatement {
+    pub condition: Box<dyn Expression>,
+    pub then_branch: Box<dyn Statement>,
+    pub else_branch: Option<Box<dyn Statement>>,
+    pub line: u32,
+}
+
+#[derive(Debug)]
 pub struct BlockStatement {
     pub statements: Vec<Box<dyn Statement>>,
     pub line: u32,
@@ -53,5 +61,11 @@ impl Statement for ExpressionStatement {
 impl Statement for BlockStatement {
     fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<(), ErrorType> {
         visitor.visit_block_statement(self)
+    }
+}
+
+impl Statement for IfStatement {
+    fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<(), ErrorType> {
+        visitor.visit_if_statement(self)
     }
 }

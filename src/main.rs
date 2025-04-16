@@ -4,6 +4,8 @@
 #![allow(unused_imports)]
 #![allow(unused_assignments)]
 
+use std::fs;
+
 use yellow_flash::{
     interpreter::interpreter::Interpreter, lexer::lexer::Lexer, parser::parser::Parser,
     yf_error::YFError,
@@ -24,22 +26,11 @@ pub fn run_program(source: String) -> Result<(), YFError> {
 }
 
 fn main() {
-    let mut source = String::from(
-        r#"
-        Number a = 1;
-        {
-    }
-            Number b = 3;
-            print(b);
-            print(a);
-        
- 
-        print(b);
-        "#,
-    );
-
-    match run_program(source) {
-        Err(error) => println!("{:}", error),
-        Ok(_) => (),
+    match fs::read_to_string("src/source.yf") {
+        Ok(source) => match run_program(source) {
+            Err(error) => println!("{}", error),
+            _ => (),
+        },
+        Err(error) => println!("{}", error),
     }
 }
