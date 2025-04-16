@@ -6,13 +6,12 @@ pub enum TokenType {
     Minus,
     Multiply,
     Divide,
-    LeftParen,
-    RightParen,
-    LeftBrace,
-    RightBrace,
+    Remainder,
+
     And,
     Or,
     Not,
+    
     NotEqual,
     Assign,
     Equal,
@@ -23,7 +22,12 @@ pub enum TokenType {
     Comma,
     Semicolon,
 
-    Def,
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
+
+    Function,
     While,
     If,
     Else,
@@ -31,7 +35,7 @@ pub enum TokenType {
     Print,
 
     String,
-    Number,
+    Float,
     Boolean,
     Identifier,
     Literal,

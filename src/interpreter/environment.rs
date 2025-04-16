@@ -45,7 +45,7 @@ impl Environment {
         };
 
         match (&data, found_data) {
-            (Data::Number(_), Data::Number(_)) => {
+            (Data::Float(_), Data::Float(_)) => {
                 current_scope.insert(symbol.to_string(), data.clone())
             }
             (Data::Boolean(_), Data::Boolean(_)) => {

@@ -111,7 +111,10 @@ impl Parser {
         let mut left = self.parse_unary()?;
 
         while let Some(token) = self.look_ahead() {
-            if !matches!(token.ty, TokenType::Multiply | TokenType::Divide) {
+            if !matches!(
+                token.ty,
+                TokenType::Multiply | TokenType::Divide | TokenType::Remainder
+            ) {
                 break;
             }
 
@@ -376,7 +379,7 @@ impl Parser {
         let token = self.look_ahead().unwrap();
 
         match token.ty {
-            TokenType::Number | TokenType::Boolean | TokenType::String => {
+            TokenType::Float | TokenType::Boolean | TokenType::String => {
                 self.parse_variable_statement(token.ty)
             }
             TokenType::Print => self.parse_print_statement(),

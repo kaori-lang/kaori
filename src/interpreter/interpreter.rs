@@ -1,3 +1,7 @@
+use std::borrow::Cow;
+
+use regex::{Captures, Regex};
+
 use crate::{
     ast::{
         expression::{AssignOperator, BinaryOperator, Identifier, Literal, UnaryOperator},
@@ -10,9 +14,10 @@ use crate::{
     yf_error::{ErrorType, YFError},
 };
 
-use super::environment::Environment;
+use super::{environment::Environment, string_formatter::StringFormatter};
 
 pub struct Interpreter {
+    string_formatter: StringFormatter,
     env: Environment,
     line: u32,
 }
@@ -20,6 +25,7 @@ pub struct Interpreter {
 impl Interpreter {
     pub fn new() -> Self {
         Self {
+            string_formatter: StringFormatter::new(),
             env: Environment::new(),
             line: 1,
         }
@@ -94,7 +100,16 @@ impl Interpreter {
     pub fn visit_print_statement(&mut self, stmt: &PrintStatement) -> Result<(), ErrorType> {
         self.line = stmt.line;
 
-        println!("{}", stmt.expression.accept_visitor(self)?);
+        let expression = stmt.expression.accept_visitor(self)?;
+
+        let string_literal = match expression {
+            Data::String(s) => s,
+            _ => return Err(ErrorType::SyntaxError),
+        };
+
+        let formatted_string_literal = self.string_formatter.format(&string_literal, &self.env)?;
+
+        println!("{}", formatted_string_literal);
 
         return Ok(());
     }
@@ -104,9 +119,16 @@ impl Interpreter {
         stmt: &VariableDeclStatement,
     ) -> Result<(), ErrorType> {
         self.line = stmt.line;
-
         let data_type = &stmt.data_type;
         let data = stmt.data.accept_visitor(self)?;
+
+        match (&data, data_type) {
+            (Data::Float(_), TokenType::Float) => (),
+            (Data::Boolean(_), TokenType::Boolean) => (),
+            (Data::String(_), TokenType::String) => (),
+            _ => return Err(ErrorType::TypeError),
+        };
+
         let identifier = stmt.identifier.clone();
 
         self.env.create_symbol(identifier, data)?;
@@ -131,19 +153,21 @@ impl Interpreter {
         use {Data as E, TokenType as T};
 
         match (ty, left, right) {
-            (T::Plus, E::Number(l), E::Number(r)) => Ok(E::Number(l + r)),
-            (T::Plus, E::String(l), E::String(r)) => Ok(E::String(format!("{l}{r}"))),
-            (T::Minus, E::Number(l), E::Number(r)) => Ok(E::Number(l - r)),
-            (T::Multiply, E::Number(l), E::Number(r)) => Ok(E::Number(l * r)),
-            (T::Divide, E::Number(l), E::Number(r)) => Ok(E::Number(l / r)),
+            (T::Plus, E::Float(l), E::Float(r)) => Ok(E::Float(l + r)),
+            (T::Minus, E::Float(l), E::Float(r)) => Ok(E::Float(l - r)),
+            (T::Multiply, E::Float(l), E::Float(r)) => Ok(E::Float(l * r)),
+            (T::Divide, E::Float(l), E::Float(r)) => Ok(E::Float(l / r)),
+            (T::Remainder, E::Float(l), E::Float(r)) => Ok(E::Float(l % r)),
+
             (T::And, E::Boolean(l), E::Boolean(r)) => Ok(E::Boolean(l && r)),
             (T::Or, E::Boolean(l), E::Boolean(r)) => Ok(E::Boolean(l || r)),
-            (T::Equal, E::Number(l), E::Number(r)) => Ok(E::Boolean(l == r)),
-            (T::NotEqual, E::Number(l), E::Number(r)) => Ok(E::Boolean(l != r)),
-            (T::Greater, E::Number(l), E::Number(r)) => Ok(E::Boolean(l > r)),
-            (T::GreaterEqual, E::Number(l), E::Number(r)) => Ok(E::Boolean(l >= r)),
-            (T::Less, E::Number(l), E::Number(r)) => Ok(E::Boolean(l < r)),
-            (T::LessEqual, E::Number(l), E::Number(r)) => Ok(E::Boolean(l <= r)),
+
+            (T::Equal, E::Float(l), E::Float(r)) => Ok(E::Boolean(l == r)),
+            (T::NotEqual, E::Float(l), E::Float(r)) => Ok(E::Boolean(l != r)),
+            (T::Greater, E::Float(l), E::Float(r)) => Ok(E::Boolean(l > r)),
+            (T::GreaterEqual, E::Float(l), E::Float(r)) => Ok(E::Boolean(l >= r)),
+            (T::Less, E::Float(l), E::Float(r)) => Ok(E::Boolean(l < r)),
+            (T::LessEqual, E::Float(l), E::Float(r)) => Ok(E::Boolean(l <= r)),
             _ => Err(ErrorType::TypeError),
         }
     }
@@ -163,7 +187,7 @@ impl Interpreter {
         let right = node.right.accept_visitor(self)?;
 
         match (ty, right) {
-            (TokenType::Minus, Data::Number(r)) => Ok(Data::Number(-r)),
+            (TokenType::Minus, Data::Float(r)) => Ok(Data::Float(-r)),
             (TokenType::Not, Data::Boolean(r)) => Ok(Data::Boolean(!r)),
             _ => Err(ErrorType::TypeError),
         }

@@ -1,5 +1,9 @@
-Number a = 2;
 
-if (a == 1) {
-	print("hello");
-} else if (2 > 1) {print("hid");}
+
+
+float a = 2;
+float b = 5;
+float result = a * b;
+log("{a} * {b}: {result}");
+ 
+

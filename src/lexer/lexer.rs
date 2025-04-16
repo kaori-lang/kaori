@@ -79,20 +79,20 @@ impl<'a> Lexer<'a> {
         self.advance(identifier.as_str());
 
         let token_type = match identifier.as_str() {
-            "String" => TokenType::String,
-            "Number" => TokenType::Number,
-            "Boolean" => TokenType::Boolean,
+            "str" => TokenType::String,
+            "float" => TokenType::Float,
+            "bool" => TokenType::Boolean,
             "if" => TokenType::If,
             "else" => TokenType::Else,
             "while" => TokenType::While,
             "return" => TokenType::Return,
-            "def" => TokenType::Def,
-            "print" => TokenType::Print,
+            "func" => TokenType::Function,
+            "log" => TokenType::Print,
             "true" => {
                 return Some(Token {
                     ty: TokenType::Literal,
                     line: self.line,
-                    lexeme: "true".to_string(),
+                    lexeme: identifier.as_str().to_string(),
                     literal: Data::Boolean(true),
                 });
             }
@@ -100,7 +100,7 @@ impl<'a> Lexer<'a> {
                 return Some(Token {
                     ty: TokenType::Literal,
                     line: self.line,
-                    lexeme: "false".to_string(),
+                    lexeme: identifier.as_str().to_string(),
                     literal: Data::Boolean(false),
                 });
             }
@@ -122,7 +122,7 @@ impl<'a> Lexer<'a> {
 
         self.advance(number.as_str());
 
-        let literal = Data::Number(number.as_str().parse::<f64>().unwrap());
+        let literal = Data::Float(number.as_str().parse::<f64>().unwrap());
 
         return Some(Token {
             ty: TokenType::Literal,
@@ -173,6 +173,7 @@ impl<'a> Lexer<'a> {
             "-" => Some(TokenType::Minus),
             "*" => Some(TokenType::Multiply),
             "/" => Some(TokenType::Divide),
+            "%" => Some(TokenType::Remainder),
             "(" => Some(TokenType::LeftParen),
             ")" => Some(TokenType::RightParen),
             "{" => Some(TokenType::LeftBrace),
