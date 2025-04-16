@@ -5,7 +5,7 @@ use crate::{
         },
         statement::{
             self, BlockStatement, ExpressionStatement, IfStatement, PrintStatement, Statement,
-            VariableDeclStatement,
+            VariableDeclStatement, WhileStatement,
         },
     },
     lexer::token::{Token, TokenType},
@@ -354,6 +354,21 @@ impl Parser {
         return Ok(Box::new(if_statement));
     }
 
+    fn parse_while_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
+        self.consume(&TokenType::While)?;
+        self.consume(&TokenType::LeftParen)?;
+        let condition = self.parse_expression()?;
+        self.consume(&TokenType::RightParen)?;
+
+        let block = self.parse_block_statement()?;
+
+        return Ok(Box::new(WhileStatement {
+            condition,
+            block,
+            line: self.line,
+        }));
+    }
+
     fn parse_block_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         let mut statements: Vec<Box<dyn Statement>> = Vec::new();
         self.consume(&TokenType::LeftBrace)?;
@@ -385,6 +400,7 @@ impl Parser {
             TokenType::Print => self.parse_print_statement(),
             TokenType::LeftBrace => self.parse_block_statement(),
             TokenType::If => self.parse_if_statement(),
+            TokenType::While => self.parse_while_statement(),
             _ => self.parse_expression_statement(),
         }
     }

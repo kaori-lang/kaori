@@ -14,7 +14,7 @@ impl StringFormatter {
     }
 
     pub fn format(&self, string_literal: &str, env: &Environment) -> Result<String, ErrorType> {
-        let mut has_error = false;
+        let mut not_found = false;
 
         let call_back_function = |caps: &Captures| -> String {
             let identifier = &caps[1];
@@ -24,7 +24,7 @@ impl StringFormatter {
                 Ok(Data::Boolean(value)) => value.to_string(),
                 Ok(Data::Float(value)) => value.to_string(),
                 _ => {
-                    has_error = true;
+                    not_found = true;
                     "".to_string()
                 }
             };
@@ -36,8 +36,8 @@ impl StringFormatter {
             .format_re
             .replace_all(string_literal, call_back_function);
 
-        if has_error {
-            return Err(ErrorType::SyntaxError);
+        if not_found {
+            return Err(ErrorType::NotFound);
         }
 
         return Ok(formatted_string_literal.to_string());

@@ -7,7 +7,7 @@ use crate::{
         expression::{AssignOperator, BinaryOperator, Identifier, Literal, UnaryOperator},
         statement::{
             BlockStatement, ExpressionStatement, IfStatement, PrintStatement, Statement,
-            VariableDeclStatement,
+            VariableDeclStatement, WhileStatement,
         },
     },
     lexer::{data::Data, token::TokenType},
@@ -72,21 +72,34 @@ impl Interpreter {
         return Ok(());
     }
 
+    pub fn visit_while_statement(&mut self, stmt: &WhileStatement) -> Result<(), ErrorType> {
+        loop {
+            let is_truthy = stmt.condition.accept_visitor(self)?;
+
+            match is_truthy {
+                Data::Boolean(true) => stmt.block.accept_visitor(self)?,
+                Data::Boolean(false) => break,
+                _ => return Err(ErrorType::TypeError),
+            };
+        }
+
+        return Ok(());
+    }
+
     pub fn visit_if_statement(&mut self, stmt: &IfStatement) -> Result<(), ErrorType> {
         let is_truthy = stmt.condition.accept_visitor(self)?;
 
         match is_truthy {
-            Data::Boolean(bool) => {
-                if bool {
-                    stmt.then_branch.accept_visitor(self)?;
-                } else if let Some(else_branch) = &stmt.else_branch {
+            Data::Boolean(true) => stmt.then_branch.accept_visitor(self)?,
+            Data::Boolean(false) => {
+                if let Some(else_branch) = &stmt.else_branch {
                     else_branch.accept_visitor(self)?;
                 }
             }
             _ => return Err(ErrorType::TypeError),
         };
 
-        Ok(())
+        return Ok(());
     }
 
     pub fn visit_expr_statement(&mut self, stmt: &ExpressionStatement) -> Result<(), ErrorType> {

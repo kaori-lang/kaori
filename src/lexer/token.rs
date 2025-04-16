@@ -11,7 +11,7 @@ pub enum TokenType {
     And,
     Or,
     Not,
-    
+
     NotEqual,
     Assign,
     Equal,

@@ -4,6 +4,15 @@
 float a = 2;
 float b = 5;
 float result = a * b;
-log("{a} * {b}: {result}");
- 
+{
+	str c = "hi friend";
+	log("{a} * {b}: {result} {c}");
+	float c = 11;
+	log("{c}");
+
+	while (c > 5) {
+		log("{c}");
+		c = c - 1;
+	}
+}
 

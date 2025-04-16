@@ -35,6 +35,13 @@ pub struct IfStatement {
 }
 
 #[derive(Debug)]
+pub struct WhileStatement {
+    pub condition: Box<dyn Expression>,
+    pub block: Box<dyn Statement>,
+    pub line: u32,
+}
+
+#[derive(Debug)]
 pub struct BlockStatement {
     pub statements: Vec<Box<dyn Statement>>,
     pub line: u32,
@@ -67,5 +74,11 @@ impl Statement for BlockStatement {
 impl Statement for IfStatement {
     fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<(), ErrorType> {
         visitor.visit_if_statement(self)
+    }
+}
+
+impl Statement for WhileStatement {
+    fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<(), ErrorType> {
+        visitor.visit_while_statement(self)
     }
 }
