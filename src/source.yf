@@ -1,18 +1,15 @@
 
 
+float number = 0;
+float d = 10;
 
-float a = 2;
-float b = 5;
-float result = a * b;
+
 {
-	str c = "hi friend";
-	log("{a} * {b}: {result} {c}");
-	float c = 11;
-	log("{c}");
+	while (number < 10) {
+		float result = number * 10;
 
-	while (c > 5) {
-		log("{c}");
-		c = c - 1;
+		log("{result}");
+
+		number = number + 1;
 	}
 }
-

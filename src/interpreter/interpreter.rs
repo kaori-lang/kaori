@@ -153,7 +153,7 @@ impl Interpreter {
         let identifier = &node.identifier.value;
         let data = node.right.accept_visitor(self)?;
 
-        self.env.update_symbol(identifier, &data)?;
+        self.env.update_symbol(identifier, data.clone())?;
 
         return Ok(data);
     }

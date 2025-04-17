@@ -35,27 +35,25 @@ impl Environment {
         return Ok(());
     }
 
-    pub fn update_symbol(&mut self, symbol: &str, data: &Data) -> Result<(), ErrorType> {
-        let Some(current_scope) = self.stack.last_mut() else {
-            return Err(ErrorType::NotFound);
-        };
+    pub fn update_symbol(&mut self, symbol: &str, data: Data) -> Result<(), ErrorType> {
+        let mut ptr = self.stack.len();
 
-        let Some(found_data) = current_scope.get(symbol) else {
-            return Err(ErrorType::NotFound);
-        };
+        while ptr > 0 {
+            ptr -= 1;
 
-        match (&data, found_data) {
-            (Data::Float(_), Data::Float(_)) => {
-                current_scope.insert(symbol.to_string(), data.clone())
-            }
-            (Data::Boolean(_), Data::Boolean(_)) => {
-                current_scope.insert(symbol.to_string(), data.clone())
-            }
-            (Data::String(_), Data::String(_)) => {
-                current_scope.insert(symbol.to_string(), data.clone())
-            }
-            _ => return Err(ErrorType::TypeError),
-        };
+            let Some(found_data) = self.stack[ptr].get_mut(symbol) else {
+                continue;
+            };
+
+            match (&data, &found_data) {
+                (Data::Float(_), Data::Float(_)) => *found_data = data,
+                (Data::Boolean(_), Data::Boolean(_)) => *found_data = data,
+                (Data::String(_), Data::String(_)) => *found_data = data,
+                _ => return Err(ErrorType::TypeError),
+            };
+
+            break;
+        }
 
         return Ok(());
     }
