@@ -1,13 +1,9 @@
-use std::borrow::Cow;
-
-use regex::{Captures, Regex};
-
 use crate::{
     ast::{
         expression::{AssignOperator, BinaryOperator, Identifier, Literal, UnaryOperator},
         statement::{
-            BlockStatement, BreakStatement, ExpressionStatement, IfStatement, PrintStatement,
-            Statement, VariableDeclStatement, WhileStatement,
+            BlockStatement, BreakStatement, ExpressionStatement, ForLoopStatement, IfStatement,
+            PrintStatement, Statement, VariableDeclStatement, WhileLoopStatement,
         },
     },
     lexer::{data::Data, token::TokenType},
@@ -86,7 +82,10 @@ impl Interpreter {
         return Ok(());
     }
 
-    pub fn visit_while_statement(&mut self, stmt: &WhileStatement) -> Result<(), ErrorType> {
+    pub fn visit_while_loop_statement(
+        &mut self,
+        stmt: &WhileLoopStatement,
+    ) -> Result<(), ErrorType> {
         loop {
             let is_truthy = stmt.condition.accept_visitor(self)?;
 
@@ -100,6 +99,29 @@ impl Interpreter {
                 self.is_breaking = false;
                 break;
             }
+        }
+
+        return Ok(());
+    }
+
+    pub fn visit_for_loop_statement(&mut self, stmt: &ForLoopStatement) -> Result<(), ErrorType> {
+        stmt.declaration.accept_visitor(self)?;
+
+        loop {
+            let is_truthy = stmt.condition.accept_visitor(self)?;
+
+            match is_truthy {
+                Data::Boolean(true) => stmt.block.accept_visitor(self)?,
+                Data::Boolean(false) => break,
+                _ => return Err(ErrorType::TypeError),
+            };
+
+            if self.is_breaking {
+                self.is_breaking = false;
+                break;
+            }
+
+            stmt.increment.accept_visitor(self)?;
         }
 
         return Ok(());

@@ -9,7 +9,7 @@ pub struct StringFormatter {
 impl StringFormatter {
     pub fn new() -> Self {
         Self {
-            format_re: Regex::new(r"\{([0-9a-zA-Z_]*)\}").unwrap(),
+            format_re: Regex::new(r"\{([0-9a-zA-Z_]*)(:\s*f)\}").unwrap(),
         }
     }
 

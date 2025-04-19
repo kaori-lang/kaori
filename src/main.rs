@@ -28,19 +28,10 @@ pub fn run_program(source: String) -> Result<(), YFError> {
 
 fn main() {
     let source = r#"
-       
-       
-
-        while (true) {
-
-
-
-
-            2 * true;
-            break;
-        
+        for (float i = 0; i < 10; i = i + 1) {
+            print("number {i: f}");
         }
-        
+
     "#;
 
     match run_program(source.to_string()) {

@@ -83,11 +83,12 @@ impl<'a> Lexer<'a> {
             "if" => TokenType::If,
             "else" => TokenType::Else,
             "while" => TokenType::While,
+            "for" => TokenType::For,
             "break" => TokenType::Break,
             "continue" => TokenType::Continue,
             "return" => TokenType::Return,
             "func" => TokenType::Function,
-            "log" => TokenType::Print,
+            "print" => TokenType::Print,
             "true" => {
                 return Some(Token {
                     ty: TokenType::Literal,

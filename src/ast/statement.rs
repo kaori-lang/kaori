@@ -36,8 +36,17 @@ pub struct IfStatement {
 }
 
 #[derive(Debug)]
-pub struct WhileStatement {
+pub struct WhileLoopStatement {
     pub condition: Box<dyn Expression>,
+    pub block: Box<dyn Statement>,
+    pub line: u32,
+}
+
+#[derive(Debug)]
+pub struct ForLoopStatement {
+    pub declaration: Box<dyn Statement>,
+    pub condition: Box<dyn Expression>,
+    pub increment: Box<dyn Expression>,
     pub block: Box<dyn Statement>,
     pub line: u32,
 }
@@ -108,9 +117,19 @@ impl Statement for IfStatement {
     }
 }
 
-impl Statement for WhileStatement {
+impl Statement for WhileLoopStatement {
     fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<(), ErrorType> {
-        visitor.visit_while_statement(self)
+        visitor.visit_while_loop_statement(self)
+    }
+
+    fn get_line(&self) -> u32 {
+        self.line
+    }
+}
+
+impl Statement for ForLoopStatement {
+    fn accept_visitor(&self, visitor: &mut Interpreter) -> Result<(), ErrorType> {
+        visitor.visit_for_loop_statement(self)
     }
 
     fn get_line(&self) -> u32 {

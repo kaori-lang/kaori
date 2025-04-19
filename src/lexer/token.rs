@@ -28,10 +28,12 @@ pub enum TokenType {
     RightBrace,
 
     Function,
+
+    For,
     While,
     Break,
     Continue,
-    
+
     If,
     Else,
     Return,

@@ -4,8 +4,9 @@ use crate::{
             AssignOperator, BinaryOperator, Expression, Identifier, Literal, UnaryOperator,
         },
         statement::{
-            BlockStatement, BreakStatement, ContinueStatement, ExpressionStatement, IfStatement,
-            PrintStatement, Statement, VariableDeclStatement, WhileStatement,
+            BlockStatement, BreakStatement, ContinueStatement, ExpressionStatement,
+            ForLoopStatement, IfStatement, PrintStatement, Statement, VariableDeclStatement,
+            WhileLoopStatement,
         },
     },
     lexer::token::{Token, TokenType},
@@ -260,6 +261,7 @@ impl Parser {
                 };
 
                 self.consume(&TokenType::Assign)?;
+
                 Ok(Box::new(AssignOperator {
                     identifier: identifier.clone(),
                     right: self.parse_assign()?,
@@ -296,14 +298,24 @@ impl Parser {
         }));
     }
 
-    fn parse_variable_statement(
-        &mut self,
-        data_type: TokenType,
-    ) -> Result<Box<dyn Statement>, ErrorType> {
+    fn parse_variable_decl_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
+        let Some(declaration) = self.look_ahead() else {
+            return Err(ErrorType::SyntaxError);
+        };
+
+        let data_type = match declaration.ty {
+            TokenType::String | TokenType::Float | TokenType::Boolean => declaration.ty,
+            _ => return Err(ErrorType::SyntaxError),
+        };
+
         self.consume(&data_type)?;
-        let identifier = self.look_ahead().unwrap();
+
+        let Some(identifier) = self.look_ahead() else {
+            return Err(ErrorType::SyntaxError);
+        };
 
         self.consume(&TokenType::Identifier)?;
+
         self.consume(&TokenType::Assign)?;
 
         let data = self.parse_expression()?;
@@ -356,20 +368,49 @@ impl Parser {
         return Ok(Box::new(if_statement));
     }
 
-    fn parse_while_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
+    fn parse_while_loop_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         self.consume(&TokenType::While)?;
         self.consume(&TokenType::LeftParen)?;
         let condition = self.parse_expression()?;
         self.consume(&TokenType::RightParen)?;
 
+        let line = self.line;
         self.active_loops += 1;
         let block = self.parse_block_statement()?;
         self.active_loops -= 1;
 
-        return Ok(Box::new(WhileStatement {
+        return Ok(Box::new(WhileLoopStatement {
             condition,
             block,
-            line: self.line,
+            line,
+        }));
+    }
+
+    fn parse_for_loop_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
+        self.consume(&TokenType::For)?;
+        self.consume(&TokenType::LeftParen)?;
+
+        let declaration = self.parse_variable_decl_statement()?;
+        let condition = self.parse_expression()?;
+
+        self.consume(&TokenType::Semicolon)?;
+
+        let increment = self.parse_expression()?;
+
+        self.consume(&TokenType::RightParen)?;
+
+        let line = self.line;
+
+        self.active_loops += 1;
+        let block = self.parse_block_statement()?;
+        self.active_loops -= 1;
+
+        return Ok(Box::new(ForLoopStatement {
+            declaration,
+            condition,
+            increment,
+            block,
+            line,
         }));
     }
 
@@ -378,7 +419,9 @@ impl Parser {
             return Err(ErrorType::SyntaxError);
         }
 
-        let token = self.look_ahead().unwrap();
+        let Some(token) = self.look_ahead() else {
+            return Err(ErrorType::SyntaxError);
+        };
 
         self.consume(&token.ty)?;
         self.consume(&TokenType::Semicolon)?;
@@ -392,36 +435,35 @@ impl Parser {
 
     fn parse_block_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         let mut statements: Vec<Box<dyn Statement>> = Vec::new();
+
         self.consume(&TokenType::LeftBrace)?;
+
+        let line = self.line;
 
         while let Some(token) = self.look_ahead() {
             if token.ty == TokenType::RightBrace {
                 break;
             }
 
-            let statement = self.parse_statement()?;
+            let statement = self.parse_statement(token)?;
             statements.push(statement);
         }
 
         self.consume(&TokenType::RightBrace)?;
 
-        return Ok(Box::new(BlockStatement {
-            statements,
-            line: self.line,
-        }));
+        return Ok(Box::new(BlockStatement { statements, line }));
     }
 
-    fn parse_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
-        let token = self.look_ahead().unwrap();
-
+    fn parse_statement(&mut self, token: Token) -> Result<Box<dyn Statement>, ErrorType> {
         match token.ty {
             TokenType::Float | TokenType::Boolean | TokenType::String => {
-                self.parse_variable_statement(token.ty)
+                self.parse_variable_decl_statement()
             }
             TokenType::Print => self.parse_print_statement(),
             TokenType::LeftBrace => self.parse_block_statement(),
             TokenType::If => self.parse_if_statement(),
-            TokenType::While => self.parse_while_statement(),
+            TokenType::While => self.parse_while_loop_statement(),
+            TokenType::For => self.parse_for_loop_statement(),
             TokenType::Break | TokenType::Continue => self.parse_loop_control_statement(),
             _ => self.parse_expression_statement(),
         }
@@ -430,8 +472,8 @@ impl Parser {
     fn parse_statements(&mut self) -> Result<Vec<Box<dyn Statement>>, ErrorType> {
         let mut statements: Vec<Box<dyn Statement>> = Vec::new();
 
-        while let Some(_) = self.look_ahead() {
-            let statement = self.parse_statement()?;
+        while let Some(token) = self.look_ahead() {
+            let statement = self.parse_statement(token)?;
             statements.push(statement);
         }
 
