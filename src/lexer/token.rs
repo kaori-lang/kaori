@@ -29,6 +29,9 @@ pub enum TokenType {
 
     Function,
     While,
+    Break,
+    Continue,
+    
     If,
     Else,
     Return,

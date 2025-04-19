@@ -6,8 +6,8 @@ use crate::{
     ast::{
         expression::{AssignOperator, BinaryOperator, Identifier, Literal, UnaryOperator},
         statement::{
-            BlockStatement, ExpressionStatement, IfStatement, PrintStatement, Statement,
-            VariableDeclStatement, WhileStatement,
+            BlockStatement, BreakStatement, ExpressionStatement, IfStatement, PrintStatement,
+            Statement, VariableDeclStatement, WhileStatement,
         },
     },
     lexer::{data::Data, token::TokenType},
@@ -20,6 +20,7 @@ pub struct Interpreter {
     string_formatter: StringFormatter,
     env: Environment,
     line: u32,
+    is_breaking: bool,
 }
 
 impl Interpreter {
@@ -28,6 +29,7 @@ impl Interpreter {
             string_formatter: StringFormatter::new(),
             env: Environment::new(),
             line: 1,
+            is_breaking: false,
         }
     }
 
@@ -53,6 +55,10 @@ impl Interpreter {
         statements: &Vec<Box<dyn Statement>>,
     ) -> Result<(), ErrorType> {
         for stmt in statements.iter() {
+            if self.is_breaking {
+                break;
+            }
+
             self.execute(stmt)?;
         }
 
@@ -60,6 +66,8 @@ impl Interpreter {
     }
 
     pub fn execute(&mut self, stmt: &Box<dyn Statement>) -> Result<(), ErrorType> {
+        self.line = stmt.get_line();
+
         stmt.accept_visitor(self)?;
 
         return Ok(());
@@ -72,6 +80,12 @@ impl Interpreter {
         return Ok(());
     }
 
+    pub fn visit_break_statement(&mut self, stmt: &BreakStatement) -> Result<(), ErrorType> {
+        self.is_breaking = true;
+
+        return Ok(());
+    }
+
     pub fn visit_while_statement(&mut self, stmt: &WhileStatement) -> Result<(), ErrorType> {
         loop {
             let is_truthy = stmt.condition.accept_visitor(self)?;
@@ -81,6 +95,11 @@ impl Interpreter {
                 Data::Boolean(false) => break,
                 _ => return Err(ErrorType::TypeError),
             };
+
+            if self.is_breaking {
+                self.is_breaking = false;
+                break;
+            }
         }
 
         return Ok(());
@@ -103,16 +122,12 @@ impl Interpreter {
     }
 
     pub fn visit_expr_statement(&mut self, stmt: &ExpressionStatement) -> Result<(), ErrorType> {
-        self.line = stmt.line;
-
         stmt.expression.accept_visitor(self)?;
 
         return Ok(());
     }
 
     pub fn visit_print_statement(&mut self, stmt: &PrintStatement) -> Result<(), ErrorType> {
-        self.line = stmt.line;
-
         let expression = stmt.expression.accept_visitor(self)?;
 
         let string_literal = match expression {
@@ -131,7 +146,6 @@ impl Interpreter {
         &mut self,
         stmt: &VariableDeclStatement,
     ) -> Result<(), ErrorType> {
-        self.line = stmt.line;
         let data_type = &stmt.data_type;
         let data = stmt.data.accept_visitor(self)?;
 

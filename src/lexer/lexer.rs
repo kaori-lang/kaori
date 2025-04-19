@@ -29,12 +29,9 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn advance(&mut self, prefix: &str) -> Option<&str> {
-        if let Some(new_curr) = self.curr.strip_prefix(prefix) {
-            self.curr = new_curr;
-            return Some(self.curr);
-        } else {
-            return None;
+    fn advance(&mut self, prefix: &str) {
+        if let Some(curr) = self.curr.strip_prefix(prefix) {
+            self.curr = curr;
         }
     }
 
@@ -61,13 +58,14 @@ impl<'a> Lexer<'a> {
 
         self.advance(string.as_str());
 
-        let raw_string = &string.as_str()[1..string.as_str().len() - 1];
+        let lexeme = string.as_str().to_string();
+        let literal = Data::String(String::from(&lexeme[1..lexeme.len() - 1]));
 
         return Some(Token {
             ty: TokenType::Literal,
             line: self.line,
-            lexeme: raw_string.to_string(),
-            literal: Data::String(raw_string.to_string()),
+            lexeme,
+            literal,
         });
     }
 
@@ -85,6 +83,8 @@ impl<'a> Lexer<'a> {
             "if" => TokenType::If,
             "else" => TokenType::Else,
             "while" => TokenType::While,
+            "break" => TokenType::Break,
+            "continue" => TokenType::Continue,
             "return" => TokenType::Return,
             "func" => TokenType::Function,
             "log" => TokenType::Print,
@@ -107,10 +107,12 @@ impl<'a> Lexer<'a> {
             _ => TokenType::Identifier,
         };
 
+        let lexeme = identifier.as_str().to_string();
+
         return Some(Token {
             ty: token_type,
             line: self.line,
-            lexeme: identifier.as_str().to_string(),
+            lexeme,
             literal: Data::None,
         });
     }
@@ -122,12 +124,13 @@ impl<'a> Lexer<'a> {
 
         self.advance(number.as_str());
 
-        let literal = Data::Float(number.as_str().parse::<f64>().unwrap());
+        let lexeme = number.as_str().to_string();
+        let literal = Data::Float(lexeme.parse::<f64>().unwrap());
 
         return Some(Token {
             ty: TokenType::Literal,
             line: self.line,
-            lexeme: number.as_str().to_string(),
+            lexeme,
             literal,
         });
     }
@@ -147,7 +150,7 @@ impl<'a> Lexer<'a> {
             _ => None,
         } {
             let lexeme = String::from(&self.curr[..2]);
-            self.curr = &self.curr[2..];
+            self.advance(&lexeme);
 
             return Some(Token {
                 ty: token_type,
@@ -187,7 +190,7 @@ impl<'a> Lexer<'a> {
             _ => None,
         } {
             let lexeme = String::from(&self.curr[..1]);
-            self.curr = &self.curr[1..];
+            self.advance(&lexeme);
 
             return Some(Token {
                 ty: token_type,

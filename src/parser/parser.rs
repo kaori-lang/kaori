@@ -4,8 +4,8 @@ use crate::{
             AssignOperator, BinaryOperator, Expression, Identifier, Literal, UnaryOperator,
         },
         statement::{
-            self, BlockStatement, ExpressionStatement, IfStatement, PrintStatement, Statement,
-            VariableDeclStatement, WhileStatement,
+            BlockStatement, BreakStatement, ContinueStatement, ExpressionStatement, IfStatement,
+            PrintStatement, Statement, VariableDeclStatement, WhileStatement,
         },
     },
     lexer::token::{Token, TokenType},
@@ -17,6 +17,7 @@ pub struct Parser {
     pos: usize,
     line: u32,
     errors: Vec<YFError>,
+    active_loops: u32,
 }
 
 impl Parser {
@@ -26,6 +27,7 @@ impl Parser {
             pos: 0,
             line: 1,
             errors: Vec::new(),
+            active_loops: 0,
         }
     }
 
@@ -360,13 +362,32 @@ impl Parser {
         let condition = self.parse_expression()?;
         self.consume(&TokenType::RightParen)?;
 
+        self.active_loops += 1;
         let block = self.parse_block_statement()?;
+        self.active_loops -= 1;
 
         return Ok(Box::new(WhileStatement {
             condition,
             block,
             line: self.line,
         }));
+    }
+
+    fn parse_loop_control_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
+        if self.active_loops == 0 {
+            return Err(ErrorType::SyntaxError);
+        }
+
+        let token = self.look_ahead().unwrap();
+
+        self.consume(&token.ty)?;
+        self.consume(&TokenType::Semicolon)?;
+
+        match token.ty {
+            TokenType::Break => Ok(Box::new(BreakStatement { line: self.line })),
+            TokenType::Continue => Ok(Box::new(ContinueStatement { line: self.line })),
+            _ => Err(ErrorType::SyntaxError),
+        }
     }
 
     fn parse_block_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
@@ -401,6 +422,7 @@ impl Parser {
             TokenType::LeftBrace => self.parse_block_statement(),
             TokenType::If => self.parse_if_statement(),
             TokenType::While => self.parse_while_statement(),
+            TokenType::Break | TokenType::Continue => self.parse_loop_control_statement(),
             _ => self.parse_expression_statement(),
         }
     }
