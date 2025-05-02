@@ -15,6 +15,8 @@ pub struct Lexer<'a> {
     number_re: Regex,
     identifier_re: Regex,
     string_re: Regex,
+    whitespace_re: Regex,
+    newline_re: Regex,
 }
 
 impl<'a> Lexer<'a> {
@@ -26,6 +28,8 @@ impl<'a> Lexer<'a> {
             number_re: Regex::new(r"^\d+(\.\d*)?").unwrap(),
             identifier_re: Regex::new(r"^[_a-zA-Z][_a-zA-Z0-9]*").unwrap(),
             string_re: Regex::new(r#"^"[^"]*""#).unwrap(),
+            whitespace_re: Regex::new(r#"^[^\S\n\r]+"#).unwrap(),
+            newline_re: Regex::new(r#"^\n+"#).unwrap(),
         }
     }
 
@@ -35,20 +39,26 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn skip_white_space(&mut self) {
-        while !self.curr.is_empty() {
-            if self.curr.starts_with('\n') {
-                self.line += 1;
-                self.curr = &self.curr[1..];
-            } else if self.curr.starts_with(' ')
-                || self.curr.starts_with('\r')
-                || self.curr.starts_with('\t')
-            {
-                self.curr = &self.curr[1..];
-            } else {
-                break;
-            }
-        }
+    fn get_next_white_space(&mut self) -> bool {
+        let Some(string) = self.whitespace_re.find(&self.curr) else {
+            return false;
+        };
+
+        self.advance(string.as_str());
+
+        return true;
+    }
+
+    fn get_next_new_line(&mut self) -> bool {
+        let Some(string) = self.newline_re.find(&self.curr) else {
+            return false;
+        };
+
+        let newline = string.len() as u32;
+        self.line += newline;
+        self.advance(string.as_str());
+
+        return true;
     }
 
     fn get_next_string(&mut self) -> Option<Token> {
@@ -205,10 +215,6 @@ impl<'a> Lexer<'a> {
     }
 
     fn get_next_token(&mut self) -> Result<Token, ErrorType> {
-        if self.curr.is_empty() {
-            return Err(ErrorType::EndOfFile);
-        }
-
         if let Some(token) = self.get_next_symbol() {
             return Ok(token);
         }
@@ -236,12 +242,13 @@ impl<'a> Lexer<'a> {
     pub fn tokenize(&mut self) -> Result<Vec<Token>, YFError> {
         let mut tokens = Vec::new();
 
-        loop {
-            self.skip_white_space();
+        while !self.curr.is_empty() {
+            if self.get_next_white_space() || self.get_next_new_line() {
+                continue;
+            }
 
             let token = match self.get_next_token() {
                 Ok(token) => token,
-                Err(ErrorType::EndOfFile) => break,
                 Err(error_type) => {
                     return Err(YFError {
                         error_type,

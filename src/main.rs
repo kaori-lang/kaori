@@ -28,11 +28,17 @@ pub fn run_program(source: String) -> Result<(), YFError> {
 
 fn main() {
     let source = r#"
-        for (float i = 0; i < 10; i = i + 1) {
-            print("number {i: f}");
-        }
+        
+        float a = 5;
+              
 
-    "#;
+        float b = 7
+        ;
+
+        bool c = a >= b;
+        print("{a:f} {b:f} {c:f}");
+        
+        "#;
 
     match run_program(source.to_string()) {
         Err(error) => println!("{}", error),

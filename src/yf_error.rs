@@ -9,7 +9,6 @@ pub struct YFError {
 #[derive(Debug)]
 pub enum ErrorType {
     SyntaxError,
-    EndOfFile,
     TypeError,
     NotFound,
 }
@@ -20,7 +19,6 @@ impl fmt::Display for YFError {
 
         let error = match error_type {
             ErrorType::SyntaxError => "SyntaxError",
-            ErrorType::EndOfFile => "End of File",
             ErrorType::TypeError => "TypeError",
             ErrorType::NotFound => "NotFound",
         };
