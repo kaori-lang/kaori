@@ -37,6 +37,7 @@ Yellow Flash is a statically typed interpreted programming language built with R
 program -> statement*
 
 type -> "float" | "str" | "bool"
+
 else -> "else" (if_stmt | block_stmt)
 
 statement -> block_stmt
@@ -46,24 +47,39 @@ statement -> block_stmt
            | if_stmt
            | while_loop_stmt
            | for_loop_stmt
-           
+
 block_stmt -> "{" statement* "}"
+
 expression_stmt -> expression ";"
+
 print_stmt -> "print" "(" expression ")" ";"
+
 variable_declaration_stmt -> type identifier "=" expression ";"
+
 if_stmt -> "if" "(" expression ")" block_stmt else?
+
 while_loop_stmt -> "while" "(" expression ")" block_stmt
+
 for_loop_stmt -> "for" "(" variable_declaration_stmt expression ";" expression ")" block_stmt
 
 expression -> assign
+
 assign -> (identifier "=" assign) | logic_or
+
 logic_or -> logic_and ( "or" logic_and )*
+
 logic_and -> equality ( "and" equality )*
+
 equality -> comparison ( ( "!=" | "==" ) comparison )*
+
 comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
+
 term -> factor ( ( "-" | "+" ) factor )*
+
 factor -> unary ( ( "/" | "*" ) unary )*
+
 unary -> ("-" | "!") unary | primary
+
 primary -> "(" expression ")" | literal | identifier
 
 
