@@ -1,6 +1,6 @@
 # Yellow Flash ⚡ - Statically Typed Programming Language
 
-Yellow Flash is a statically typed interpreted programming language built with Rust
+Yellow Flash is a statically typed interpreted programming language built with Rust.
 
 ---
 
@@ -30,42 +30,58 @@ Yellow Flash is a statically typed interpreted programming language built with R
 ## 🛠️ Technologies Used 🛠️
 
 - **Rust 🦀** — Core engine for speed, safety, and concurrency.
-- **Pest Parser 📜** — Parsing framework for syntax parsing.
-- **Custom Virtual Machine 🖥️** — Lightweight interpreter engine.
 
 ---
 
-## 📜 Language Highlights 📜
+## 📜 Language Grammar 📜
+program -> statement*
 
-### 🧩 Primitive Types
+type -> "float" | "str" | "bool"
 
-- `Int`
-- `Float`
-- `Bool`
-- `String`
+else -> "else" (if_stmt | block_stmt)
 
-### 🔀 Control Flow
+statement -> block_stmt
+           | expression_stmt
+           | print_stmt
+           | variable_declaration_stmt
+           | if_stmt
+           | while_loop_stmt
+           | for_loop_stmt
 
-- `if`
-- `else`
-- `for`
-- `while`
-- `match`
+block_stmt -> "{" statement* "}"
 
-### 🛠️ Functions
+expression_stmt -> expression ";"
 
-- First-class functions  
-- *(Closures coming soon!)*
+print_stmt -> "print" "(" expression ")" ";"
 
-### 🛡️ Memory Safety
+variable_declaration_stmt -> type identifier "=" expression ";"
 
-- Rust-powered safe memory model
+if_stmt -> "if" "(" expression ")" block_stmt else?
 
-### 🎯 Error Handling
+while_loop_stmt -> "while" "(" expression ")" block_stmt
 
-- Clear runtime error reporting
+for_loop_stmt -> "for" "(" variable_declaration_stmt expression ";" expression ")" block_stmt
 
----
+expression -> assign
+
+assign -> (identifier "=" assign) | logic_or
+
+logic_or -> logic_and ( "or" logic_and )*
+
+logic_and -> equality ( "and" equality )*
+
+equality -> comparison ( ( "!=" | "==" ) comparison )*
+
+comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
+
+term -> factor ( ( "-" | "+" ) factor )*
+
+factor -> unary ( ( "/" | "*" ) unary )*
+
+unary -> ("-" | "!") unary | primary
+
+primary -> "(" expression ")" | literal | identifier
+
 
 ## 🚀 Getting Started 🚀
 
