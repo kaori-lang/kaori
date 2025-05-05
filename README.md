@@ -137,15 +137,8 @@ Any contributions you make are **greatly appreciated**!
 
 You can also open issues for bugs, improvements, or feature requests.
 
----
 
 ## 📄 License 📄
 
 Distributed under the **MIT License**.  
 See [`LICENSE`](LICENSE) for more information.
-
----
-
-## 🧙‍♂️ Author
-
-Made with ❤️ by [Washington].
