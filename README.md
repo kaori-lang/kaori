@@ -74,7 +74,6 @@ primary                   -> "(" expression ")"
 - [Rust](https://www.rust-lang.org/) (>= 1.70)
 - Cargo (comes bundled with Rust)
 
----
 
 ### ⬇️ Installation
 
@@ -122,21 +121,6 @@ Build an optimized release binary:
 ```bash
 cargo build --release
 ```
-
-## 🛣️ Roadmap 🛣️
-
-- [x] Core Interpreter Engine
-- [x] Basic Types and Functions
-- [x] Control Flow Structures
-- [ ] Modules System
-- [ ] Type Inference
-- [ ] Generics
-- [ ] Closures Support
-- [ ] Package Manager (future)
-
-Stay tuned! 🚀
-
----
 
 ## 🤝 Contributing 🤝
 
