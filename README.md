@@ -2,7 +2,6 @@
 
 Yellow Flash is a statically typed interpreted programming language built with Rust.
 
----
 
 ## ✨ Features ✨
 
@@ -25,63 +24,63 @@ Yellow Flash is a statically typed interpreted programming language built with R
 - **REPL Mode 🧪:**  
   Test and experiment with your code interactively.
 
----
 
 ## 🛠️ Technologies Used 🛠️
 
 - **Rust 🦀** — Core engine for speed, safety, and concurrency.
 
----
 
-## 📜 Language Grammar 📜
-program -> statement*
+## 📜 Grammar
 
-type -> "float" | "str" | "bool"
+```text
+program                   -> statement*
+type                      -> "float" | "str" | "bool"
+else                      -> "else" (if_stmt | block_stmt)
 
-else -> "else" (if_stmt | block_stmt)
+statement                 -> block_stmt
+                           | expression_stmt
+                           | print_stmt
+                           | variable_declaration_stmt
+                           | if_stmt
+                           | while_loop_stmt
+                           | for_loop_stmt
 
-statement -> block_stmt
-           | expression_stmt
-           | print_stmt
-           | variable_declaration_stmt
-           | if_stmt
-           | while_loop_stmt
-           | for_loop_stmt
+block_stmt                -> "{" statement* "}"
 
-block_stmt -> "{" statement* "}"
+expression_stmt           -> expression ";"
 
-expression_stmt -> expression ";"
-
-print_stmt -> "print" "(" expression ")" ";"
+print_stmt                -> "print" "(" expression ")" ";"
 
 variable_declaration_stmt -> type identifier "=" expression ";"
 
-if_stmt -> "if" "(" expression ")" block_stmt else?
+if_stmt                   -> "if" "(" expression ")" block_stmt else?
 
-while_loop_stmt -> "while" "(" expression ")" block_stmt
+while_loop_stmt           -> "while" "(" expression ")" block_stmt
 
-for_loop_stmt -> "for" "(" variable_declaration_stmt expression ";" expression ")" block_stmt
+for_loop_stmt             -> "for" "(" variable_declaration_stmt expression ";" expression ")" block_stmt
 
-expression -> assign
+expression                -> assign
 
-assign -> (identifier "=" assign) | logic_or
+assign                    -> (identifier "=" assign) | logic_or
 
-logic_or -> logic_and ( "or" logic_and )*
+logic_or                  -> logic_and ( "or" logic_and )*
 
-logic_and -> equality ( "and" equality )*
+logic_and                 -> equality ( "and" equality )*
 
-equality -> comparison ( ( "!=" | "==" ) comparison )*
+equality                  -> comparison ( ( "!=" | "==" ) comparison )*
 
-comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
+comparison                -> term ( ( ">" | ">=" | "<=" | "<" ) term )*
 
-term -> factor ( ( "-" | "+" ) factor )*
+term                      -> factor ( ( "-" | "+" ) factor )*
 
-factor -> unary ( ( "/" | "*" ) unary )*
+factor                    -> unary ( ( "/" | "*" ) unary )*
 
-unary -> ("-" | "!") unary | primary
+unary                     -> ("-" | "!") unary | primary
 
-primary -> "(" expression ")" | literal | identifier
-
+primary                   -> "(" expression ")" 
+                           | literal 
+                           | identifier
+```
 
 ## 🚀 Getting Started 🚀
 
