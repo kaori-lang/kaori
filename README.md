@@ -1,4 +1,4 @@
-# Yellow Flash ⚡ - Statically Typed Programming Language
+# Yellow Flash ⚡ - Programming Language
 
 Yellow Flash is a statically typed interpreted programming language built with Rust.
 
