@@ -27,7 +27,7 @@ Yellow Flash is a statically typed interpreted programming language built with R
 
 ## 🛠️ Technologies Used 🛠️
 
-- **Rust 🦀** — Core engine for speed, safety, and concurrency.
+- **Rust 🦀** — Core engine for speed and safety.
 
 
 ## 📜 Grammar
