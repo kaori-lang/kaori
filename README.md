@@ -15,14 +15,8 @@ Yellow Flash is a statically typed interpreted programming language built with R
   Powered by Rust for high-performance execution and low memory overhead.
 - **First-Class Functions 🧠:**  
   Functions can be passed around as values, enabling functional programming styles.
-- **Mutable and Immutable Variables 🛡️:**  
-  Use `let` for immutable bindings and `var` for mutable ones.
-- **Rich Standard Library 📚:**  
-  Built-in support for working with numbers, strings, collections, and more.
 - **Error Reporting 🎯:**  
   Clear and friendly runtime error messages.
-- **REPL Mode 🧪:**  
-  Test and experiment with your code interactively.
 
 
 ## 🛠️ Technologies Used 🛠️
