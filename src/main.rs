@@ -29,20 +29,17 @@ pub fn run_program(source: String) -> Result<(), YFError> {
 fn main() {
     let source = r#"
         
-        float a = 5;
-              
+        
 
-        float b = 7
-        ;
-
-        bool c = a >= b;
-        print("{a:f} {b:f} {c:f}");
+        for (float i = 5; i < 10; i = i + 1) {
+            print("hello world {i:f}");
+        }
         
         "#;
 
     match run_program(source.to_string()) {
         Err(error) => println!("{}", error),
-        _ => (),
+        Ok(()) => (),
     };
 
     /*   match fs::read_to_string("src/source.yf") {

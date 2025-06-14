@@ -61,7 +61,7 @@ impl Parser {
         }
     }
 
-    fn parse_literal(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+    fn parse_primary(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let Some(token) = self.look_ahead() else {
             return Err(ErrorType::SyntaxError);
         };
@@ -106,7 +106,7 @@ impl Parser {
                     right: self.parse_unary()?,
                 }))
             }
-            _ => self.parse_literal(),
+            _ => self.parse_primary(),
         }
     }
 

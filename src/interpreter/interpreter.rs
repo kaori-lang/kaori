@@ -199,24 +199,24 @@ impl Interpreter {
         let right = node.right.accept_visitor(self)?;
         let ty = &node.ty;
 
-        use {Data as E, TokenType as T};
+        use {Data as D, TokenType as T};
 
         match (ty, left, right) {
-            (T::Plus, E::Float(l), E::Float(r)) => Ok(E::Float(l + r)),
-            (T::Minus, E::Float(l), E::Float(r)) => Ok(E::Float(l - r)),
-            (T::Multiply, E::Float(l), E::Float(r)) => Ok(E::Float(l * r)),
-            (T::Divide, E::Float(l), E::Float(r)) => Ok(E::Float(l / r)),
-            (T::Remainder, E::Float(l), E::Float(r)) => Ok(E::Float(l % r)),
+            (T::Plus, D::Float(l), D::Float(r)) => Ok(D::Float(l + r)),
+            (T::Minus, D::Float(l), D::Float(r)) => Ok(D::Float(l - r)),
+            (T::Multiply, D::Float(l), D::Float(r)) => Ok(D::Float(l * r)),
+            (T::Divide, D::Float(l), D::Float(r)) => Ok(D::Float(l / r)),
+            (T::Remainder, D::Float(l), D::Float(r)) => Ok(D::Float(l % r)),
 
-            (T::And, E::Boolean(l), E::Boolean(r)) => Ok(E::Boolean(l && r)),
-            (T::Or, E::Boolean(l), E::Boolean(r)) => Ok(E::Boolean(l || r)),
+            (T::And, D::Boolean(l), D::Boolean(r)) => Ok(D::Boolean(l && r)),
+            (T::Or, D::Boolean(l), D::Boolean(r)) => Ok(D::Boolean(l || r)),
 
-            (T::Equal, E::Float(l), E::Float(r)) => Ok(E::Boolean(l == r)),
-            (T::NotEqual, E::Float(l), E::Float(r)) => Ok(E::Boolean(l != r)),
-            (T::Greater, E::Float(l), E::Float(r)) => Ok(E::Boolean(l > r)),
-            (T::GreaterEqual, E::Float(l), E::Float(r)) => Ok(E::Boolean(l >= r)),
-            (T::Less, E::Float(l), E::Float(r)) => Ok(E::Boolean(l < r)),
-            (T::LessEqual, E::Float(l), E::Float(r)) => Ok(E::Boolean(l <= r)),
+            (T::Equal, D::Float(l), D::Float(r)) => Ok(D::Boolean(l == r)),
+            (T::NotEqual, D::Float(l), D::Float(r)) => Ok(D::Boolean(l != r)),
+            (T::Greater, D::Float(l), D::Float(r)) => Ok(D::Boolean(l > r)),
+            (T::GreaterEqual, D::Float(l), D::Float(r)) => Ok(D::Boolean(l >= r)),
+            (T::Less, D::Float(l), D::Float(r)) => Ok(D::Boolean(l < r)),
+            (T::LessEqual, D::Float(l), D::Float(r)) => Ok(D::Boolean(l <= r)),
             _ => Err(ErrorType::TypeError),
         }
     }
