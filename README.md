@@ -1,6 +1,6 @@
 # Yellow Flash ⚡ - Programming Language
 
-Yellow Flash is a statically typed interpreted programming language built with Rust.
+An interpreted and statically typed small programming language built with Rust
 
 
 ## ✨ Features ✨
@@ -11,8 +11,6 @@ Yellow Flash is a statically typed interpreted programming language built with R
   Write and run code instantly without waiting for compilation.
 - **Modern, Clean Syntax ✍️:**  
   Intuitive syntax designed for productivity and readability.
-- **Fast Runtime ⚡:**  
-  Powered by Rust for high-performance execution and low memory overhead.
 - **Error Reporting 🎯:**  
   Clear and friendly runtime error messages.
 
