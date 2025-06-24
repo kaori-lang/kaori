@@ -52,9 +52,7 @@ comparison                -> term ( ( ">" | ">=" | "<=" | "<" ) term )*
 term                      -> factor ( ( "-" | "+" ) factor )*
 factor                    -> unary ( ( "/" | "*" ) unary )*
 unary                     -> ("-" | "!") unary | primary
-primary                   -> "(" expression ")" 
-                           | literal 
-                           | identifier
+primary                   -> "(" expression ")" | literal | identifier
 ```
 
 ## 🚀 Getting Started 🚀
