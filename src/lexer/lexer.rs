@@ -100,7 +100,7 @@ impl Lexer {
         self.create_token(ty, start, size);
     }
 
-    fn float_or_integer(&mut self) {
+    fn number_literal(&mut self) {
         let start = self.position;
 
         while !self.at_end() && self.source[self.position].is_ascii_digit() {
@@ -120,7 +120,41 @@ impl Lexer {
         self.create_token(TokenType::NumberLiteral, start, size);
     }
 
-    pub fn symbol(&mut self) {
+    fn string_literal(&mut self) -> Result<(), ErrorType> {
+        let start = self.position;
+
+        self.position += 1;
+
+        while !self.at_end() {
+            let c = self.source[self.position];
+
+            if c == '"' {
+                break;
+            }
+
+            if c == '\n' {
+                self.line += 1;
+            }
+
+            self.position += 1;
+        }
+
+        if self.at_end() {
+            return Err(ErrorType::SyntaxError);
+        }
+
+        self.position += 1;
+
+        let size = self.position - start;
+
+        self.create_token(TokenType::StringLiteral, start, size);
+
+        Ok(())
+    }
+
+    pub fn symbol(&mut self) -> Result<(), ErrorType> {
+        let start = self.position;
+
         let ty = match self.source[self.position] {
             '+' => {
                 if self.look_ahead(&['+', '+']) {
@@ -171,14 +205,14 @@ impl Lexer {
                 }
             }
             '>' => {
-                if self.look_ahead(&['=', '=']) {
+                if self.look_ahead(&['>', '=']) {
                     TokenType::GreaterEqual
                 } else {
                     TokenType::Greater
                 }
             }
             '<' => {
-                if self.look_ahead(&['=', '=']) {
+                if self.look_ahead(&['<', '=']) {
                     TokenType::LessEqual
                 } else {
                     TokenType::Less
@@ -194,19 +228,27 @@ impl Lexer {
             _ => TokenType::Invalid,
         };
 
+        if ty == TokenType::Invalid {
+            return Err(ErrorType::SyntaxError);
+        }
+
         let size = match ty {
-            TokenType::Increment     // "++"
-            | TokenType::Decrement   // "--"
-            | TokenType::And         // "&&"
-            | TokenType::Or          // "||"
-            | TokenType::NotEqual    // "!="
-            | TokenType::Equal       // "=="
-            | TokenType::GreaterEqual// ">="
-            | TokenType::LessEqual   // "<="
-            | TokenType::ThinArrow   // "->"
-            => 2,
-            _ => 1
+            TokenType::Increment
+            | TokenType::Decrement
+            | TokenType::And
+            | TokenType::Or
+            | TokenType::NotEqual
+            | TokenType::Equal
+            | TokenType::GreaterEqual
+            | TokenType::LessEqual
+            | TokenType::ThinArrow => 2,
+            _ => 1,
         };
+
+        self.position += size;
+
+        self.create_token(ty, start, size);
+        Ok(())
     }
 
     pub fn tokenize(&mut self) -> Result<Vec<Token>, YFError> {
