@@ -1,17 +1,19 @@
-use crate::yf_error::ErrorType;
+use crate::error::error_type::ErrorType;
 
 use super::{token::Token, token_type::TokenType};
 
 #[derive(Debug, Clone)]
 pub struct TokenStream {
+    source: String,
     tokens: Vec<Token>,
     index: usize,
     line: u32,
 }
 
 impl TokenStream {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(source: String, tokens: Vec<Token>) -> Self {
         Self {
+            source,
             tokens,
             index: 0,
             line: 1,
@@ -38,16 +40,34 @@ impl TokenStream {
         }
     }
 
+    pub fn current_line(&mut self) -> u32 {
+        return self.line;
+    }
+
+    pub fn lexeme(&mut self) -> String {
+        let current_token = &self.tokens[self.index];
+        let start = current_token.position;
+        let end = current_token.position + current_token.size;
+
+        return self.source[start..end].to_string();
+    }
+
     pub fn consume(&mut self, expected: TokenType) -> Result<(), ErrorType> {
         let Some(token) = self.tokens.get(self.index) else {
-            return Err(ErrorType::SyntaxError);
+            return Err(ErrorType::SyntaxError(format!(
+                "expected {:?}, but found end of file",
+                expected
+            )));
         };
 
         if expected == token.ty {
             self.advance();
             return Ok(());
         } else {
-            return Err(ErrorType::SyntaxError);
+            return Err(ErrorType::SyntaxError(format!(
+                "expected {:?} instead of {:?}",
+                expected, token.ty
+            )));
         }
     }
 

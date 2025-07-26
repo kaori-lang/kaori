@@ -1,7 +1,11 @@
 use crate::{
-    ast::expression_ast::{BinaryOperator, ExpressionAST, UnaryOperator},
-    lexer::{data::Data, token::Token, token_stream::TokenStream, token_type::TokenType},
-    yf_error::{ErrorType, YFError},
+    error::error_type::ErrorType,
+    lexer::{token_stream::TokenStream, token_type::TokenType},
+};
+
+use super::{
+    expression_ast::{BinaryOperator, ExpressionAST, UnaryOperator},
+    statement_ast::StatementAST,
 };
 
 pub struct Parser {
@@ -13,28 +17,39 @@ impl Parser {
         Self { token_stream }
     }
 
+    fn parse_identifier(&mut self) -> Result<String, ErrorType> {
+        self.token_stream.consume(TokenType::Identifier)?;
+
+        Ok(String::from("identifier"))
+    }
     fn parse_primary(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let ty = self.token_stream.current_kind();
 
-        match ty {
+        Ok(match ty {
             TokenType::LeftParen => {
                 self.token_stream.consume(TokenType::LeftParen)?;
-                let expr = self.parse_ExpressionAST()?;
+                let expr = self.parse_expression()?;
                 self.token_stream.consume(TokenType::RightParen)?;
-                Ok(expr)
+                expr
             }
-            TokenType::Literal => {
-                self.token_stream.consume(TokenType::Literal)?;
-                Ok(Box::new(ExpressionAST::Literal(Data::Float(1.5))))
+            TokenType::NumberLiteral => {
+                self.token_stream.advance();
+                let number_literal = self.token_stream.lexeme().parse::<f64>().unwrap();
+                Box::new(ExpressionAST::NumberLiteral(number_literal))
             }
-            TokenType::Identifier => {
-                self.token_stream.consume(TokenType::Identifier)?;
-                Ok(Box::new(ExpressionAST::Identifier(String::from(
-                    "identifier",
-                ))))
+            TokenType::BooleanLiteral => {
+                self.token_stream.advance();
+                let bool_literal = self.token_stream.lexeme().parse::<bool>().unwrap();
+                Box::new(ExpressionAST::BooleanLiteral(bool_literal))
             }
-            _ => Err(ErrorType::SyntaxError),
-        }
+            TokenType::StringLiteral => {
+                self.token_stream.advance();
+                let str_literal = self.token_stream.lexeme();
+                Box::new(ExpressionAST::StringLiteral(str_literal))
+            }
+            TokenType::Identifier => Box::new(ExpressionAST::Identifier(self.parse_identifier()?)),
+            _ => return Err(ErrorType::SyntaxError(String::from("invalid primary"))),
+        })
     }
 
     fn parse_unary(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
@@ -54,7 +69,7 @@ impl Parser {
 
         Ok(Box::new(ExpressionAST::Unary {
             operator,
-            right: self.parse_unary(),
+            right: self.parse_unary()?,
         }))
     }
 
@@ -187,12 +202,15 @@ impl Parser {
     fn parse_or(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_and()?;
 
-        while let Some(token) = self.look_ahead() {
-            if token.ty != TokenType::Or {
+        while self.token_stream.at_end() {
+            let ty = self.token_stream.current_kind();
+
+            if ty != TokenType::Or {
                 break;
             }
 
-            self.token_stream.consume(&TokenType::Or)?;
+            self.token_stream.advance();
+
             let right = self.parse_and()?;
 
             left = Box::new(ExpressionAST::Binary {
@@ -206,37 +224,39 @@ impl Parser {
     }
 
     fn parse_assign(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
-        let expr = self.parse_or()?;
+        let identifier = self.parse_identifier()?;
 
-        if let ExpressionAST::Identifier(ref name) = *expr {
-            if let Some(token) = self.look_ahead() {
-                if token.ty == TokenType::Assign {
-                    self.token_stream.consume(&TokenType::Assign)?;
-                    let right = self.parse_assign()?;
+        self.token_stream.consume(TokenType::Assign)?;
 
-                    return Ok(Box::new(ExpressionAST::Assign {
-                        identifier: name.clone(),
-                        right,
-                    }));
-                }
-            }
-        }
+        let expression = self.parse_expression()?;
 
-        Ok(expr)
+        return Ok(Box::new(ExpressionAST::Assign {
+            identifier,
+            right: expression,
+        }));
     }
 
     fn parse_expression(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
-        return self.parse_assign();
+        if self
+            .token_stream
+            .look_ahead(&[TokenType::Identifier, TokenType::Assign])
+        {
+            return self.parse_assign();
+        }
+
+        return self.parse_or();
     }
 
-    fn parse_expression_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
+    pub fn parse_expression_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+        let line = self.token_stream.current_line();
+
         let expression = self.parse_expression()?;
-        self.token_stream.consume(&TokenType::Semicolon)?;
+        self.token_stream.consume(TokenType::Semicolon)?;
 
-        return Box::new(Stateme);
+        return Ok(Box::new(StatementAST::Expression { expression, line }));
     }
-    /*
-    fn parse_print_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
+
+    /*    fn parse_print_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         self.token_stream.consume(&TokenType::Print)?;
         self.token_stream.consume(&TokenType::LeftParen)?;
         let ExpressionAST = self.parse_ExpressionAST()?;
@@ -408,17 +428,7 @@ impl Parser {
         return Ok(statements);
     }
 
-    /*
-    fn recover_from_error(&mut self) {
-        while let Some(token) = self.look_ahead() {
-            let _ = self.token_stream.consume(&token.ty);
 
-            self.token_stream.current_kind() {
-                TokenType::Semicolon => break,
-                _ => (),
-            };
-        }
-    } */
 
     pub fn execute(&mut self) -> Result<Vec<Box<dyn Statement>>, YFError> {
         let statements = match self.parse_statements() {
@@ -436,5 +446,5 @@ impl Parser {
         self.pos = 0;
 
         return statements;
-    } */
+    }  */
 }

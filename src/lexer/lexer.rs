@@ -1,6 +1,6 @@
-use crate::yf_error::{ErrorType, YFError};
+use crate::error::error_type::ErrorType;
 
-use super::{token::Token, token_type::TokenType};
+use super::{token::Token, token_stream::TokenStream, token_type::TokenType};
 
 #[derive(Debug)]
 pub struct Lexer {
@@ -11,9 +11,9 @@ pub struct Lexer {
 }
 
 impl Lexer {
-    pub fn new(source: Vec<char>) -> Self {
+    pub fn new(source: String) -> Self {
         Self {
-            source,
+            source: source.chars().collect(),
             line: 1,
             position: 0,
             tokens: Vec::new(),
@@ -64,6 +64,8 @@ impl Lexer {
             if c == '\n' {
                 self.line += 1;
             }
+
+            self.position += 1;
         }
     }
 
@@ -116,8 +118,9 @@ impl Lexer {
         }
 
         let size = self.position - start;
+        let ty = TokenType::NumberLiteral;
 
-        self.create_token(TokenType::NumberLiteral, start, size);
+        self.create_token(ty, start, size);
     }
 
     fn string_literal(&mut self) -> Result<(), ErrorType> {
@@ -140,14 +143,16 @@ impl Lexer {
         }
 
         if self.at_end() {
-            return Err(ErrorType::SyntaxError);
+            return Err(ErrorType::SyntaxError(String::from(
+                "unexpected end of file",
+            )));
         }
 
         self.position += 1;
 
         let size = self.position - start;
-
-        self.create_token(TokenType::StringLiteral, start, size);
+        let ty = TokenType::StringLiteral;
+        self.create_token(ty, start, size);
 
         Ok(())
     }
@@ -229,7 +234,7 @@ impl Lexer {
         };
 
         if ty == TokenType::Invalid {
-            return Err(ErrorType::SyntaxError);
+            return Err(ErrorType::SyntaxError(String::from("Invalid token")));
         }
 
         let size = match ty {
@@ -251,7 +256,29 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, YFError> {
-        return Ok(self.tokens.clone());
+    pub fn get_next_token(&mut self) -> Result<(), ErrorType> {
+        let c = self.source[self.position];
+
+        if c == '"' {
+            self.string_literal()?;
+        } else if c.is_alphabetic() {
+            self.identifier_or_keyword();
+        } else if c.is_ascii_digit() {
+            self.number_literal();
+        } else if c.is_whitespace() {
+            self.white_space();
+        } else {
+            self.symbol()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, ErrorType> {
+        while !self.at_end() {
+            self.get_next_token()?;
+        }
+
+        Ok(self.tokens.clone())
     }
 }

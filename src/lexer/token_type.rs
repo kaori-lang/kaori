@@ -8,37 +8,36 @@ pub enum TokenType {
     Remainder,
 
     // Unary arithmetic operators
-    Increment, // ++
-    Decrement, // --
+    Increment,
+    Decrement,
 
     // Logical operators
-    And, // &&
-    Or,  // ||
-    Not, // !
+    And,
+    Or,
+    Not,
 
     // Comparison
-    NotEqual,     // !=
-    Equal,        // ==
-    Greater,      // >
-    GreaterEqual, // >=
-    Less,         // <
-    LessEqual,    // <=
-
+    NotEqual,
+    Equal,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
     // Assignment and separators
-    Assign,    // =
-    Comma,     // ,
-    Semicolon, // ;
-    Colon,     // :
-    ThinArrow, // ->
+    Assign,
+    Comma,
+    Semicolon,
+    Colon,
+    ThinArrow,
 
     // Grouping
-    LeftParen,  // (
-    RightParen, // )
-    LeftBrace,  // {
-    RightBrace, // }
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
 
     // Keywords
-    Function, // def
+    Function,
     For,
     While,
     Break,

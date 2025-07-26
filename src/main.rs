@@ -8,39 +8,26 @@ use std::fs;
 
 use regex::{Captures, Regex};
 use yellow_flash::{
-    interpreter::interpreter::Interpreter,
+    error::error_type::ErrorType,
     lexer::{lexer::Lexer, token_stream::TokenStream},
-    parser::parser::Parser,
-    yf_error::YFError,
+    syntax::parser::Parser,
 };
 
-pub fn run_program(source: String) -> Result<(), YFError> {
-    let mut lexer = Lexer::new(&source);
+pub fn run_program(source: String) -> Result<(), ErrorType> {
+    let mut lexer = Lexer::new(source.clone());
 
     let tokens = lexer.tokenize()?;
-    let token_stream = TokenStream::new(tokens);
+    let token_stream = TokenStream::new(source.clone(), tokens);
 
-    println!("{:#?}", token_stream);
-    /*
-    let mut parser = Parser::new(tokens);
-    let statements = parser.execute()?;
-
-    let mut interpreter = Interpreter::new();
-    interpreter.interpret(&statements)?; */
+    let mut parser = Parser::new(token_stream);
+    let expr = parser.parse_expression_statement()?;
+    println!("{:#?}", expr);
 
     Ok(())
 }
 
 fn main() {
-    let source = r#"
-
-
-
-           for (float i = 0; i < 100; i = i + 1) {
-               print("ok");
-           }
-
-           print("end");
+    let source = r#"1 + 2.64 * 7 + 11;
            "#;
 
     match run_program(source.to_string()) {
