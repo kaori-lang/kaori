@@ -12,16 +12,11 @@ pub enum Expression {
         right: Box<Expression>,
     },
     Assign {
-        identifier: Identifier,
+        identifier: String,
         right: Box<Expression>,
     },
-    Identifier(Identifier),
+    Identifier(String),
     Literal(Data),
-}
-
-#[derive(Debug, Clone)]
-pub struct Identifier {
-    pub value: String,
 }
 
 #[derive(Debug, PartialEq, Clone)]

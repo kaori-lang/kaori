@@ -1,13 +1,5 @@
 use crate::{
-    ast::{
-        expression::{
-            AssignOperator, BinaryOperator, Expression, Identifier, Literal, UnaryOperator,
-        },
-        statement::{
-            BlockStatement, ExpressionStatement, ForLoopStatement, IfStatement, PrintStatement,
-            Statement, VariableDeclStatement, WhileLoopStatement,
-        },
-    },
+    ast::expression::{BinaryOperator, Expression, UnaryOperator},
     lexer::{data::Data, token::Token, token_stream::TokenStream, token_type::TokenType},
     yf_error::{ErrorType, YFError},
 };
@@ -21,7 +13,7 @@ impl Parser {
         Self { token_stream }
     }
 
-    fn parse_primary(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+    fn parse_primary(&mut self) -> Result<Box<Expression>, ErrorType> {
         let ty = self.token_stream.current_kind();
 
         match ty {
@@ -33,21 +25,17 @@ impl Parser {
             }
             TokenType::Literal => {
                 self.token_stream.consume(TokenType::Literal)?;
-                Ok(Box::new(Literal {
-                    value: Data::Float(1.5),
-                }))
+                Ok(Box::new(Expression::Literal(Data::Float(1.5))))
             }
             TokenType::Identifier => {
                 self.token_stream.consume(TokenType::Identifier)?;
-                Ok(Box::new(Identifier {
-                    value: String::from("identifier"),
-                }))
+                Ok(Box::new(Expression::Identifier(String::from("identifier"))))
             }
             _ => Err(ErrorType::SyntaxError),
         }
     }
 
-    fn parse_unary(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+    fn parse_unary(&mut self) -> Result<Box<Expression>, ErrorType> {
         let ty = self.token_stream.current_kind();
 
         match ty {
@@ -55,143 +43,153 @@ impl Parser {
                 self.token_stream.consume(TokenType::Plus)?;
                 self.parse_unary()
             }
-            TokenType::Minus | TokenType::Not => {
-                self.token_stream.consume(ty)?;
-                Ok(Box::new(UnaryOperator {
-                    ty,
-                    right: self.parse_unary()?,
+            TokenType::Minus => {
+                self.token_stream.consume(TokenType::Minus)?;
+                let right = self.parse_unary()?;
+                Ok(Box::new(Expression::Unary {
+                    operator: UnaryOperator::Negate,
+                    right,
+                }))
+            }
+            TokenType::Not => {
+                self.token_stream.consume(TokenType::Not)?;
+                let right = self.parse_unary()?;
+                Ok(Box::new(Expression::Unary {
+                    operator: UnaryOperator::Not,
+                    right,
                 }))
             }
             _ => self.parse_primary(),
         }
     }
 
-    fn parse_factor(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+    fn parse_factor(&mut self) -> Result<Box<Expression>, ErrorType> {
         let mut left = self.parse_unary()?;
 
         while !self.token_stream.at_end() {
-            let operator = self.token_stream.current_kind();
+            let ty = self.token_stream.current_kind();
+
+            let operator = match ty {
+                TokenType::Multiply => BinaryOperator::Multiply,
+                TokenType::Divide => BinaryOperator::Divide,
+                TokenType::Remainder => BinaryOperator::Remainder,
+                _ => break,
+            };
+
             self.token_stream.advance();
             let right = self.parse_unary()?;
 
-           match operator {
-                TokenType::Multiply =>  {
-                    Expression::BinaryOperator {
-                        operator,
-                        left,
-                        right
-                    }
-                }
-                TokenType::
-                
-
-            };
-
-          
-            
-
-            left = Box::new(BinaryOperator {
-                ty: token.ty,
+            left = Box::new(Expression::Binary {
+                operator,
                 left,
                 right,
-            });
+            })
         }
 
         return Ok(left);
     }
 
-    fn parse_term(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+    fn parse_term(&mut self) -> Result<Box<Expression>, ErrorType> {
         let mut left = self.parse_factor()?;
 
-        while let Some(token) = self.look_ahead() {
-            if !matches!(token.ty, TokenType::Plus | TokenType::Minus) {
-                break;
-            }
+        while self.token_stream.at_end() {
+            let ty = self.token_stream.current_kind();
 
-            self.token_stream.consume(&token.ty)?;
+            let operator = match ty {
+                TokenType::Plus => BinaryOperator::Plus,
+                TokenType::Minus => BinaryOperator::Minus,
+                _ => break,
+            };
+
+            self.token_stream.advance();
             let right = self.parse_factor()?;
 
-            left = Box::new(BinaryOperator {
-                ty: token.ty,
+            left = Box::new(Expression::Binary {
+                operator,
                 left,
                 right,
             });
         }
 
-        return Ok(left);
+        Ok(left)
     }
 
-    fn parse_comparison(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+    fn parse_comparison(&mut self) -> Result<Box<Expression>, ErrorType> {
         let mut left = self.parse_term()?;
 
-        while let Some(token) = self.look_ahead() {
-            if !matches!(
-                token.ty,
-                TokenType::Greater
-                    | TokenType::GreaterEqual
-                    | TokenType::Less
-                    | TokenType::LessEqual
-            ) {
-                break;
-            }
+        while self.token_stream.at_end() {
+            let ty = self.token_stream.current_kind();
 
-            self.token_stream.consume(&token.ty)?;
+            let operator = match ty {
+                TokenType::Greater => BinaryOperator::Greater,
+                TokenType::GreaterEqual => BinaryOperator::GreaterEqual,
+                TokenType::Less => BinaryOperator::Less,
+                TokenType::LessEqual => BinaryOperator::LessEqual,
+                _ => break,
+            };
+
+            self.token_stream.advance();
             let right = self.parse_term()?;
 
-            left = Box::new(BinaryOperator {
-                ty: token.ty,
+            left = Box::new(Expression::Binary {
+                operator,
                 left,
                 right,
             });
         }
 
-        return Ok(left);
+        Ok(left)
     }
 
-    fn parse_equality(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+    fn parse_equality(&mut self) -> Result<Box<Expression>, ErrorType> {
         let mut left = self.parse_comparison()?;
 
-        while let Some(token) = self.look_ahead() {
-            if !matches!(token.ty, TokenType::Equal | TokenType::NotEqual) {
-                break;
-            }
+        while self.token_stream.at_end() {
+            let ty = self.token_stream.current_kind();
 
-            self.token_stream.consume(&token.ty)?;
+            let operator = match ty {
+                TokenType::Equal => BinaryOperator::Equal,
+                TokenType::NotEqual => BinaryOperator::NotEqual,
+                _ => break,
+            };
+
+            self.token_stream.advance();
             let right = self.parse_comparison()?;
 
-            left = Box::new(BinaryOperator {
-                ty: token.ty,
+            left = Box::new(Expression::Binary {
+                operator,
                 left,
                 right,
             });
         }
 
-        return Ok(left);
+        Ok(left)
     }
 
-    fn parse_and(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+    fn parse_and(&mut self) -> Result<Box<Expression>, ErrorType> {
         let mut left = self.parse_equality()?;
 
-        while let Some(token) = self.look_ahead() {
-            if token.ty != TokenType::And {
+        while self.token_stream.at_end() {
+            let ty = self.token_stream.current_kind();
+
+            if ty != TokenType::And {
                 break;
             }
 
-            self.token_stream.consume(&TokenType::And)?;
-
+            self.token_stream.advance();
             let right = self.parse_equality()?;
 
-            left = Box::new(BinaryOperator {
-                ty: token.ty,
+            left = Box::new(Expression::Binary {
+                operator: BinaryOperator::And,
                 left,
                 right,
             });
         }
 
-        return Ok(left);
+        Ok(left)
     }
 
-    fn parse_or(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+    fn parse_or(&mut self) -> Result<Box<Expression>, ErrorType> {
         let mut left = self.parse_and()?;
 
         while let Some(token) = self.look_ahead() {
@@ -200,47 +198,43 @@ impl Parser {
             }
 
             self.token_stream.consume(&TokenType::Or)?;
-
             let right = self.parse_and()?;
 
-            left = Box::new(BinaryOperator {
-                ty: token.ty,
+            left = Box::new(Expression::Binary {
+                operator: BinaryOperator::Or,
                 left,
                 right,
             });
         }
 
-        return Ok(left);
+        Ok(left)
     }
 
-    fn parse_assign(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+    fn parse_assign(&mut self) -> Result<Box<Expression>, ErrorType> {
         let expression = self.parse_or()?;
 
-        match expression.as_any().downcast_ref::<Identifier>() {
-            Some(identifier) => {
-                let Some(Token {
-                    ty: TokenType::Assign,
-                    ..
-                }) = self.look_ahead()
-                else {
-                    return Ok(expression);
-                };
+        // If expression is an Identifier, and next token is '=' -> parse assignment
+        if let Expression::Identifier(ref name) = *expression {
+            if let Some(token) = self.look_ahead() {
+                if token.ty == TokenType::Assign {
+                    self.token_stream.consume(&TokenType::Assign)?;
+                    let right = self.parse_assign()?;
 
-                self.token_stream.consume(&TokenType::Assign)?;
-
-                Ok(Box::new(AssignOperator {
-                    identifier: identifier.clone(),
-                    right: self.parse_assign()?,
-                }))
+                    return Ok(Box::new(Expression::Assign {
+                        identifier: name.clone(),
+                        right,
+                    }));
+                }
             }
-            _ => Ok(expression),
         }
+
+        Ok(expression)
     }
 
     fn parse_expression(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         return self.parse_assign();
     }
-
+    /*
     fn parse_expression_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         let expression = self.parse_expression()?;
         self.token_stream.consume(&TokenType::Semicolon)?;
@@ -451,5 +445,5 @@ impl Parser {
         self.pos = 0;
 
         return statements;
-    }
+    } */
 }
