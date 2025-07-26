@@ -50,4 +50,22 @@ impl TokenStream {
             return Err(ErrorType::SyntaxError);
         }
     }
+
+    pub fn look_ahead(&mut self, expected: &[TokenType]) -> bool {
+        for i in 0..expected.len() {
+            let j = self.index + i;
+
+            if j >= self.tokens.len() {
+                return false;
+            }
+
+            if self.tokens.get(j) == expected.get(i) {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
 }

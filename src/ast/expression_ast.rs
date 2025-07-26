@@ -1,22 +1,22 @@
-use crate::lexer::data::Data;
-
 #[derive(Debug)]
-pub enum Expression {
+pub enum ExpressionAST {
     Binary {
         operator: BinaryOperator,
-        left: Box<Expression>,
-        right: Box<Expression>,
+        left: Box<ExpressionAST>,
+        right: Box<ExpressionAST>,
     },
     Unary {
         operator: UnaryOperator,
-        right: Box<Expression>,
+        right: Box<ExpressionAST>,
     },
     Assign {
         identifier: String,
-        right: Box<Expression>,
+        right: Box<ExpressionAST>,
     },
     Identifier(String),
-    Literal(Data),
+    StringLiteral(String),
+    NumberLiteral(f64),
+    BooleanLiteral(bool),
 }
 
 #[derive(Debug, PartialEq, Clone)]

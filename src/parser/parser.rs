@@ -1,5 +1,5 @@
 use crate::{
-    ast::expression::{BinaryOperator, Expression, UnaryOperator},
+    ast::expression_ast::{BinaryOperator, ExpressionAST, UnaryOperator},
     lexer::{data::Data, token::Token, token_stream::TokenStream, token_type::TokenType},
     yf_error::{ErrorType, YFError},
 };
@@ -13,57 +13,52 @@ impl Parser {
         Self { token_stream }
     }
 
-    fn parse_primary(&mut self) -> Result<Box<Expression>, ErrorType> {
+    fn parse_primary(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let ty = self.token_stream.current_kind();
 
         match ty {
             TokenType::LeftParen => {
                 self.token_stream.consume(TokenType::LeftParen)?;
-                let expression = self.parse_expression()?;
+                let expr = self.parse_ExpressionAST()?;
                 self.token_stream.consume(TokenType::RightParen)?;
-                Ok(expression)
+                Ok(expr)
             }
             TokenType::Literal => {
                 self.token_stream.consume(TokenType::Literal)?;
-                Ok(Box::new(Expression::Literal(Data::Float(1.5))))
+                Ok(Box::new(ExpressionAST::Literal(Data::Float(1.5))))
             }
             TokenType::Identifier => {
                 self.token_stream.consume(TokenType::Identifier)?;
-                Ok(Box::new(Expression::Identifier(String::from("identifier"))))
+                Ok(Box::new(ExpressionAST::Identifier(String::from(
+                    "identifier",
+                ))))
             }
             _ => Err(ErrorType::SyntaxError),
         }
     }
 
-    fn parse_unary(&mut self) -> Result<Box<Expression>, ErrorType> {
+    fn parse_unary(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let ty = self.token_stream.current_kind();
 
-        match ty {
+        let operator = match ty {
             TokenType::Plus => {
-                self.token_stream.consume(TokenType::Plus)?;
-                self.parse_unary()
+                self.token_stream.advance();
+                return self.parse_unary();
             }
-            TokenType::Minus => {
-                self.token_stream.consume(TokenType::Minus)?;
-                let right = self.parse_unary()?;
-                Ok(Box::new(Expression::Unary {
-                    operator: UnaryOperator::Negate,
-                    right,
-                }))
-            }
-            TokenType::Not => {
-                self.token_stream.consume(TokenType::Not)?;
-                let right = self.parse_unary()?;
-                Ok(Box::new(Expression::Unary {
-                    operator: UnaryOperator::Not,
-                    right,
-                }))
-            }
-            _ => self.parse_primary(),
-        }
+            TokenType::Minus => UnaryOperator::Negate,
+            TokenType::Not => UnaryOperator::Not,
+            _ => return self.parse_primary(),
+        };
+
+        self.token_stream.advance();
+
+        Ok(Box::new(ExpressionAST::Unary {
+            operator,
+            right: self.parse_unary(),
+        }))
     }
 
-    fn parse_factor(&mut self) -> Result<Box<Expression>, ErrorType> {
+    fn parse_factor(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_unary()?;
 
         while !self.token_stream.at_end() {
@@ -79,7 +74,7 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_unary()?;
 
-            left = Box::new(Expression::Binary {
+            left = Box::new(ExpressionAST::Binary {
                 operator,
                 left,
                 right,
@@ -89,7 +84,7 @@ impl Parser {
         return Ok(left);
     }
 
-    fn parse_term(&mut self) -> Result<Box<Expression>, ErrorType> {
+    fn parse_term(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_factor()?;
 
         while self.token_stream.at_end() {
@@ -104,7 +99,7 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_factor()?;
 
-            left = Box::new(Expression::Binary {
+            left = Box::new(ExpressionAST::Binary {
                 operator,
                 left,
                 right,
@@ -114,7 +109,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_comparison(&mut self) -> Result<Box<Expression>, ErrorType> {
+    fn parse_comparison(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_term()?;
 
         while self.token_stream.at_end() {
@@ -131,7 +126,7 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_term()?;
 
-            left = Box::new(Expression::Binary {
+            left = Box::new(ExpressionAST::Binary {
                 operator,
                 left,
                 right,
@@ -141,7 +136,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_equality(&mut self) -> Result<Box<Expression>, ErrorType> {
+    fn parse_equality(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_comparison()?;
 
         while self.token_stream.at_end() {
@@ -156,7 +151,7 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_comparison()?;
 
-            left = Box::new(Expression::Binary {
+            left = Box::new(ExpressionAST::Binary {
                 operator,
                 left,
                 right,
@@ -166,7 +161,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_and(&mut self) -> Result<Box<Expression>, ErrorType> {
+    fn parse_and(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_equality()?;
 
         while self.token_stream.at_end() {
@@ -179,7 +174,7 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_equality()?;
 
-            left = Box::new(Expression::Binary {
+            left = Box::new(ExpressionAST::Binary {
                 operator: BinaryOperator::And,
                 left,
                 right,
@@ -189,7 +184,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_or(&mut self) -> Result<Box<Expression>, ErrorType> {
+    fn parse_or(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_and()?;
 
         while let Some(token) = self.look_ahead() {
@@ -200,7 +195,7 @@ impl Parser {
             self.token_stream.consume(&TokenType::Or)?;
             let right = self.parse_and()?;
 
-            left = Box::new(Expression::Binary {
+            left = Box::new(ExpressionAST::Binary {
                 operator: BinaryOperator::Or,
                 left,
                 right,
@@ -210,17 +205,16 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_assign(&mut self) -> Result<Box<Expression>, ErrorType> {
-        let expression = self.parse_or()?;
+    fn parse_assign(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
+        let expr = self.parse_or()?;
 
-        // If expression is an Identifier, and next token is '=' -> parse assignment
-        if let Expression::Identifier(ref name) = *expression {
+        if let ExpressionAST::Identifier(ref name) = *expr {
             if let Some(token) = self.look_ahead() {
                 if token.ty == TokenType::Assign {
                     self.token_stream.consume(&TokenType::Assign)?;
                     let right = self.parse_assign()?;
 
-                    return Ok(Box::new(Expression::Assign {
+                    return Ok(Box::new(ExpressionAST::Assign {
                         identifier: name.clone(),
                         right,
                     }));
@@ -228,32 +222,32 @@ impl Parser {
             }
         }
 
-        Ok(expression)
+        Ok(expr)
     }
 
-    fn parse_expression(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
+    fn parse_expression(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         return self.parse_assign();
     }
-    /*
+
     fn parse_expression_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         let expression = self.parse_expression()?;
         self.token_stream.consume(&TokenType::Semicolon)?;
 
-        return Ok(Box::new(ExpressionStatement {
-            expression,
+        return Ok(Box::new(ExpressionASTStatement {
+            ExpressionAST,
             line: self.line,
         }));
     }
-
+    /*
     fn parse_print_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         self.token_stream.consume(&TokenType::Print)?;
         self.token_stream.consume(&TokenType::LeftParen)?;
-        let expression = self.parse_expression()?;
+        let ExpressionAST = self.parse_ExpressionAST()?;
         self.token_stream.consume(&TokenType::RightParen)?;
         self.token_stream.consume(&TokenType::Semicolon)?;
 
         return Ok(Box::new(PrintStatement {
-            expression,
+            ExpressionAST,
             line: self.line,
         }));
     }
@@ -278,7 +272,7 @@ impl Parser {
 
         self.token_stream.consume(&TokenType::Assign)?;
 
-        let data = self.parse_expression()?;
+        let data = self.parse_ExpressionAST()?;
 
         self.token_stream.consume(&TokenType::Semicolon)?;
 
@@ -293,7 +287,7 @@ impl Parser {
     fn parse_if_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         self.token_stream.consume(&TokenType::If)?;
         self.token_stream.consume(&TokenType::LeftParen)?;
-        let condition = self.parse_expression()?;
+        let condition = self.parse_ExpressionAST()?;
         self.token_stream.consume(&TokenType::RightParen)?;
 
         let then_branch = self.parse_block_statement()?;
@@ -331,7 +325,7 @@ impl Parser {
     fn parse_while_loop_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         self.token_stream.consume(&TokenType::While)?;
 
-        let condition = self.parse_expression()?;
+        let condition = self.parse_ExpressionAST()?;
 
         let line = self.line;
 
@@ -350,11 +344,11 @@ impl Parser {
 
         let declaration = self.parse_variable_decl_statement()?;
 
-        let condition = self.parse_expression()?;
+        let condition = self.parse_ExpressionAST()?;
 
         self.token_stream.consume(&TokenType::Semicolon)?;
 
-        let increment = self.parse_expression()?;
+        let increment = self.parse_ExpressionAST()?;
 
         self.token_stream.consume(&TokenType::RightParen)?;
 
@@ -402,7 +396,7 @@ impl Parser {
             TokenType::If => self.parse_if_statement(),
             TokenType::While => self.parse_while_loop_statement(),
             TokenType::For => self.parse_for_loop_statement(),
-            _ => self.parse_expression_statement(),
+            _ => self.parse_ExpressionAST_statement(),
         }
     }
 
