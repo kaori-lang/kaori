@@ -6,7 +6,7 @@ use crate::{
             PrintStatement, Statement, VariableDeclStatement, WhileLoopStatement,
         },
     },
-    lexer::{data::Data, token::TokenType},
+    lexer::{data::Data, token_type::TokenType},
     yf_error::{ErrorType, YFError},
 };
 

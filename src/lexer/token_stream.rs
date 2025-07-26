@@ -1,12 +1,12 @@
-use super::{
-    token::{Token, TokenType},
-    token_type::TokenType,
-};
+use crate::yf_error::ErrorType;
 
+use super::{token::Token, token_type::TokenType};
+
+#[derive(Debug, Clone)]
 pub struct TokenStream {
     tokens: Vec<Token>,
     index: usize,
-    line: u32
+    line: u32,
 }
 
 impl TokenStream {
@@ -14,12 +14,8 @@ impl TokenStream {
         Self {
             tokens,
             index: 0,
-            line: 1
+            line: 1,
         }
-    }
-
-    pub fn at_end(&mut self) -> bool {
-        return self.index >= self.tokens.len();
     }
 
     pub fn current_kind(&mut self) -> TokenType {
@@ -30,11 +26,28 @@ impl TokenStream {
         return TokenType::Eof;
     }
 
+    pub fn at_end(&mut self) -> bool {
+        return self.current_kind() == TokenType::Eof;
+    }
+
     pub fn advance(&mut self) {
         self.index += 1;
 
         if let Some(token) = self.tokens.get(self.index) {
-            self.in
+            self.line = token.line;
+        }
+    }
+
+    pub fn consume(&mut self, expected: TokenType) -> Result<(), ErrorType> {
+        let Some(token) = self.tokens.get(self.index) else {
+            return Err(ErrorType::SyntaxError);
+        };
+
+        if expected == token.ty {
+            self.advance();
+            return Ok(());
+        } else {
+            return Err(ErrorType::SyntaxError);
         }
     }
 }

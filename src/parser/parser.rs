@@ -8,78 +8,39 @@ use crate::{
             Statement, VariableDeclStatement, WhileLoopStatement,
         },
     },
-    lexer::token::{Token, TokenType},
+    lexer::{data::Data, token::Token, token_stream::TokenStream, token_type::TokenType},
     yf_error::{ErrorType, YFError},
 };
 
 pub struct Parser {
-    tokens: Vec<Token>,
-    pos: usize,
-    line: u32,
-    errors: Vec<YFError>,
+    token_stream: TokenStream,
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
-        Self {
-            tokens,
-            pos: 0,
-            line: 1,
-            errors: Vec::new(),
-        }
-    }
-
-    fn look_ahead(&mut self) -> Option<Token> {
-        if let Some(token) = self.tokens.get(self.pos) {
-            return Some(token.clone());
-        }
-
-        return None;
-    }
-
-    fn advance(&mut self) {
-        if self.pos < self.tokens.len() {
-            self.pos += 1;
-        }
-    }
-
-    fn consume(&mut self, expected: &TokenType) -> Result<(), ErrorType> {
-        let Some(token) = self.look_ahead() else {
-            return Err(ErrorType::SyntaxError);
-        };
-
-        self.advance();
-
-        if token.ty == *expected {
-            self.line = token.line;
-            return Ok(());
-        } else {
-            return Err(ErrorType::SyntaxError);
-        }
+    pub fn new(token_stream: TokenStream) -> Self {
+        Self { token_stream }
     }
 
     fn parse_primary(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
-        let Some(token) = self.look_ahead() else {
-            return Err(ErrorType::SyntaxError);
-        };
+        let ty = self.token_stream.current_kind();
 
-        match token.ty {
+        match ty {
             TokenType::LeftParen => {
-                self.consume(&TokenType::LeftParen)?;
+                self.token_stream.consume(TokenType::LeftParen)?;
                 let expression = self.parse_expression()?;
-                self.consume(&TokenType::RightParen)?;
+                self.token_stream.consume(TokenType::RightParen)?;
                 Ok(expression)
             }
             TokenType::Literal => {
-                self.consume(&TokenType::Literal)?;
+                self.token_stream.consume(TokenType::Literal)?;
                 Ok(Box::new(Literal {
-                    value: token.literal,
+                    value: Data::Float(1.5),
                 }))
             }
             TokenType::Identifier => {
-                self.consume(&TokenType::Identifier)?;
+                self.token_stream.consume(TokenType::Identifier)?;
                 Ok(Box::new(Identifier {
-                    value: token.lexeme,
+                    value: String::from("identifier"),
                 }))
             }
             _ => Err(ErrorType::SyntaxError),
@@ -87,17 +48,15 @@ impl Parser {
     }
 
     fn parse_unary(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
-        let Some(Token { ty, .. }) = self.look_ahead() else {
-            return Err(ErrorType::SyntaxError);
-        };
+        let ty = self.token_stream.current_kind();
 
         match ty {
             TokenType::Plus => {
-                self.consume(&TokenType::Plus)?;
+                self.token_stream.consume(TokenType::Plus)?;
                 self.parse_unary()
             }
             TokenType::Minus | TokenType::Not => {
-                self.consume(&ty)?;
+                self.token_stream.consume(ty)?;
                 Ok(Box::new(UnaryOperator {
                     ty,
                     right: self.parse_unary()?,
@@ -110,16 +69,26 @@ impl Parser {
     fn parse_factor(&mut self) -> Result<Box<dyn Expression>, ErrorType> {
         let mut left = self.parse_unary()?;
 
-        while let Some(token) = self.look_ahead() {
-            if !matches!(
-                token.ty,
-                TokenType::Multiply | TokenType::Divide | TokenType::Remainder
-            ) {
-                break;
-            }
-
-            self.consume(&token.ty)?;
+        while !self.token_stream.at_end() {
+            let operator = self.token_stream.current_kind();
+            self.token_stream.advance();
             let right = self.parse_unary()?;
+
+           match operator {
+                TokenType::Multiply =>  {
+                    Expression::BinaryOperator {
+                        operator,
+                        left,
+                        right
+                    }
+                }
+                TokenType::
+                
+
+            };
+
+          
+            
 
             left = Box::new(BinaryOperator {
                 ty: token.ty,
@@ -139,7 +108,7 @@ impl Parser {
                 break;
             }
 
-            self.consume(&token.ty)?;
+            self.token_stream.consume(&token.ty)?;
             let right = self.parse_factor()?;
 
             left = Box::new(BinaryOperator {
@@ -166,7 +135,7 @@ impl Parser {
                 break;
             }
 
-            self.consume(&token.ty)?;
+            self.token_stream.consume(&token.ty)?;
             let right = self.parse_term()?;
 
             left = Box::new(BinaryOperator {
@@ -187,7 +156,7 @@ impl Parser {
                 break;
             }
 
-            self.consume(&token.ty)?;
+            self.token_stream.consume(&token.ty)?;
             let right = self.parse_comparison()?;
 
             left = Box::new(BinaryOperator {
@@ -208,7 +177,7 @@ impl Parser {
                 break;
             }
 
-            self.consume(&TokenType::And)?;
+            self.token_stream.consume(&TokenType::And)?;
 
             let right = self.parse_equality()?;
 
@@ -230,7 +199,7 @@ impl Parser {
                 break;
             }
 
-            self.consume(&TokenType::Or)?;
+            self.token_stream.consume(&TokenType::Or)?;
 
             let right = self.parse_and()?;
 
@@ -257,7 +226,7 @@ impl Parser {
                     return Ok(expression);
                 };
 
-                self.consume(&TokenType::Assign)?;
+                self.token_stream.consume(&TokenType::Assign)?;
 
                 Ok(Box::new(AssignOperator {
                     identifier: identifier.clone(),
@@ -274,7 +243,7 @@ impl Parser {
 
     fn parse_expression_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         let expression = self.parse_expression()?;
-        self.consume(&TokenType::Semicolon)?;
+        self.token_stream.consume(&TokenType::Semicolon)?;
 
         return Ok(Box::new(ExpressionStatement {
             expression,
@@ -283,11 +252,11 @@ impl Parser {
     }
 
     fn parse_print_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
-        self.consume(&TokenType::Print)?;
-        self.consume(&TokenType::LeftParen)?;
+        self.token_stream.consume(&TokenType::Print)?;
+        self.token_stream.consume(&TokenType::LeftParen)?;
         let expression = self.parse_expression()?;
-        self.consume(&TokenType::RightParen)?;
-        self.consume(&TokenType::Semicolon)?;
+        self.token_stream.consume(&TokenType::RightParen)?;
+        self.token_stream.consume(&TokenType::Semicolon)?;
 
         return Ok(Box::new(PrintStatement {
             expression,
@@ -305,19 +274,19 @@ impl Parser {
             _ => return Err(ErrorType::SyntaxError),
         };
 
-        self.consume(&data_type)?;
+        self.token_stream.consume(&data_type)?;
 
         let Some(identifier) = self.look_ahead() else {
             return Err(ErrorType::SyntaxError);
         };
 
-        self.consume(&TokenType::Identifier)?;
+        self.token_stream.consume(&TokenType::Identifier)?;
 
-        self.consume(&TokenType::Assign)?;
+        self.token_stream.consume(&TokenType::Assign)?;
 
         let data = self.parse_expression()?;
 
-        self.consume(&TokenType::Semicolon)?;
+        self.token_stream.consume(&TokenType::Semicolon)?;
 
         return Ok(Box::new(VariableDeclStatement {
             data_type,
@@ -328,10 +297,10 @@ impl Parser {
     }
 
     fn parse_if_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
-        self.consume(&TokenType::If)?;
-        self.consume(&TokenType::LeftParen)?;
+        self.token_stream.consume(&TokenType::If)?;
+        self.token_stream.consume(&TokenType::LeftParen)?;
         let condition = self.parse_expression()?;
-        self.consume(&TokenType::RightParen)?;
+        self.token_stream.consume(&TokenType::RightParen)?;
 
         let then_branch = self.parse_block_statement()?;
 
@@ -350,13 +319,13 @@ impl Parser {
             return Ok(Box::new(if_statement));
         };
 
-        self.consume(&TokenType::Else)?;
+        self.token_stream.consume(&TokenType::Else)?;
 
         let Some(token) = self.look_ahead() else {
             return Err(ErrorType::SyntaxError);
         };
 
-        if_statement.else_branch = match token.ty {
+        if_statement.else_branch = self.token_stream.current_kind() {
             TokenType::LeftBrace => Some(self.parse_block_statement()?),
             TokenType::If => Some(self.parse_if_statement()?),
             _ => return Err(ErrorType::SyntaxError),
@@ -366,7 +335,7 @@ impl Parser {
     }
 
     fn parse_while_loop_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
-        self.consume(&TokenType::While)?;
+        self.token_stream.consume(&TokenType::While)?;
 
         let condition = self.parse_expression()?;
 
@@ -382,18 +351,18 @@ impl Parser {
     }
 
     fn parse_for_loop_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
-        self.consume(&TokenType::For)?;
-        self.consume(&TokenType::LeftParen)?;
+        self.token_stream.consume(&TokenType::For)?;
+        self.token_stream.consume(&TokenType::LeftParen)?;
 
         let declaration = self.parse_variable_decl_statement()?;
 
         let condition = self.parse_expression()?;
 
-        self.consume(&TokenType::Semicolon)?;
+        self.token_stream.consume(&TokenType::Semicolon)?;
 
         let increment = self.parse_expression()?;
 
-        self.consume(&TokenType::RightParen)?;
+        self.token_stream.consume(&TokenType::RightParen)?;
 
         let line = self.line;
 
@@ -411,7 +380,7 @@ impl Parser {
     fn parse_block_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         let mut statements: Vec<Box<dyn Statement>> = Vec::new();
 
-        self.consume(&TokenType::LeftBrace)?;
+        self.token_stream.consume(&TokenType::LeftBrace)?;
 
         let line = self.line;
 
@@ -424,13 +393,13 @@ impl Parser {
             statements.push(statement);
         }
 
-        self.consume(&TokenType::RightBrace)?;
+        self.token_stream.consume(&TokenType::RightBrace)?;
 
         return Ok(Box::new(BlockStatement { statements, line }));
     }
 
     fn parse_statement(&mut self, token: Token) -> Result<Box<dyn Statement>, ErrorType> {
-        match token.ty {
+        self.token_stream.current_kind() {
             TokenType::Float | TokenType::Boolean | TokenType::String => {
                 self.parse_variable_decl_statement()
             }
@@ -457,9 +426,9 @@ impl Parser {
     /*
     fn recover_from_error(&mut self) {
         while let Some(token) = self.look_ahead() {
-            let _ = self.consume(&token.ty);
+            let _ = self.token_stream.consume(&token.ty);
 
-            match token.ty {
+            self.token_stream.current_kind() {
                 TokenType::Semicolon => break,
                 _ => (),
             };
