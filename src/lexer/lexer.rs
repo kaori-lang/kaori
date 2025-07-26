@@ -1,92 +1,87 @@
-use regex::Regex;
-
 use crate::yf_error::{ErrorType, YFError};
 
-use super::{data::Data, token::Token, token_type::TokenType};
+use super::{token::Token, token_type::TokenType};
 
 #[derive(Debug)]
-pub struct Lexer<'a> {
-    source: &'a str,
-    curr: &'a str,
+pub struct Lexer {
+    source: Vec<char>,
     line: u32,
-    number_re: Regex,
-    identifier_re: Regex,
-    string_re: Regex,
-    whitespace_re: Regex,
-    newline_re: Regex,
+    position: usize,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(source: &'a str) -> Self {
+impl Lexer {
+    pub fn new(source: Vec<char>) -> Self {
         Self {
             source,
-            curr: source,
             line: 1,
-            number_re: Regex::new(r"^\d+(\.\d*)?").unwrap(),
-            identifier_re: Regex::new(r"^[_a-zA-Z][_a-zA-Z0-9]*").unwrap(),
-            string_re: Regex::new(r#"^"[^"]*""#).unwrap(),
-            whitespace_re: Regex::new(r#"^[^\S\n\r]+"#).unwrap(),
-            newline_re: Regex::new(r#"^\n+"#).unwrap(),
+            position: 0,
         }
     }
 
-    fn advance(&mut self, prefix: &str) {
-        if let Some(curr) = self.curr.strip_prefix(prefix) {
-            self.curr = curr;
+    fn advance(&mut self, steps: usize) {
+        let end = self.position + steps;
+
+        for i in self.position..end {
+            if let Some('\n') = self.source.get(i) {
+                self.line += 1;
+            }
+
+            self.position += 1;
         }
     }
 
-    fn get_next_white_space(&mut self) -> bool {
-        let Some(string) = self.whitespace_re.find(&self.curr) else {
+    fn at_end(&mut self) -> bool {
+        return self.position >= self.source.len();
+    }
+
+    fn look_ahead(&mut self, expected: &[char]) -> bool {
+        for i in 0..expected.len() {
+            let j = self.position + i;
+
+            if j >= self.source.len() {
+                return false;
+            }
+
+            if expected[i] == self.source[j] {
+                continue;
+            }
+
             return false;
-        };
-
-        self.advance(string.as_str());
+        }
 
         return true;
     }
 
-    fn get_next_new_line(&mut self) -> bool {
-        let Some(string) = self.newline_re.find(&self.curr) else {
-            return false;
-        };
+    fn white_space(&mut self) {
+        let size = self.position;
 
-        let newline = string.len() as u32;
-        self.line += newline;
-        self.advance(string.as_str());
+        while !self.at_end() {
+            let c = self.source[self.position];
 
-        return true;
+            if !c.is_whitespace() {
+                break;
+            }
+
+            if c == '\n' {
+                self.line += 1;
+            }
+        }
     }
 
-    fn get_next_string(&mut self) -> Option<Token> {
-        let Some(string) = self.string_re.find(&self.curr) else {
-            return None;
-        };
+    fn identifier_or_keyword(&mut self) {
+        let start = self.position;
 
-        self.advance(string.as_str());
+        while !self.at_end() && self.source[self.position].is_alphabetic() {
+            self.position += 1;
+        }
 
-        let lexeme = string.as_str().to_string();
-        let literal = Data::String(String::from(&lexeme[1..lexeme.len() - 1]));
+        while !self.at_end() && self.source[self.position].is_alphanumeric()
+            || self.source[self.position] == '_'
+        {
+            self.position += 1;
+        }
 
-        return Some(Token {
-            ty: TokenType::Literal,
-            line: self.line,
-            lexeme,
-            literal,
-        });
-    }
-
-    fn get_next_identifier(&mut self) -> Option<Token> {
-        let Some(identifier) = self.identifier_re.find(&self.curr) else {
-            return None;
-        };
-
-        self.advance(identifier.as_str());
-
-        let token_type = match identifier.as_str() {
-            "str" => TokenType::String,
-            "float" => TokenType::Float,
-            "bool" => TokenType::Boolean,
+        let ty = match self.source[start..self.position].iter().collect() {
             "if" => TokenType::If,
             "else" => TokenType::Else,
             "while" => TokenType::While,
@@ -96,33 +91,9 @@ impl<'a> Lexer<'a> {
             "return" => TokenType::Return,
             "def" => TokenType::Function,
             "print" => TokenType::Print,
-            "true" => {
-                return Some(Token {
-                    ty: TokenType::Literal,
-                    line: self.line,
-                    lexeme: identifier.as_str().to_string(),
-                    literal: Data::Boolean(true),
-                });
-            }
-            "false" => {
-                return Some(Token {
-                    ty: TokenType::Literal,
-                    line: self.line,
-                    lexeme: identifier.as_str().to_string(),
-                    literal: Data::Boolean(false),
-                });
-            }
+            "true" | "false" => TokenType::Boolean,
             _ => TokenType::Identifier,
         };
-
-        let lexeme = identifier.as_str().to_string();
-
-        return Some(Token {
-            ty: token_type,
-            line: self.line,
-            lexeme,
-            literal: Data::None,
-        });
     }
 
     fn get_next_number(&mut self) -> Option<Token> {

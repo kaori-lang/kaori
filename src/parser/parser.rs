@@ -233,10 +233,7 @@ impl Parser {
         let expression = self.parse_expression()?;
         self.token_stream.consume(&TokenType::Semicolon)?;
 
-        return Ok(Box::new(ExpressionASTStatement {
-            ExpressionAST,
-            line: self.line,
-        }));
+        return Box::new(Stateme);
     }
     /*
     fn parse_print_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {

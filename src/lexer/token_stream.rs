@@ -59,7 +59,7 @@ impl TokenStream {
                 return false;
             }
 
-            if self.tokens.get(j) == expected.get(i) {
+            if self.tokens[j].ty == expected[i] {
                 continue;
             }
 

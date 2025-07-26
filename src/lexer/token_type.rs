@@ -41,7 +41,6 @@ pub enum TokenType {
     Float,
     Boolean,
     Identifier,
-    Literal,
 
     Eof,
 }
