@@ -17,36 +17,33 @@ pub fn run_program(source: String) -> Result<(), YFError> {
 
     let tokens = lexer.tokenize()?;
 
+    println!("{:#?}", tokens);
+    /*
     let mut parser = Parser::new(tokens);
     let statements = parser.execute()?;
 
     let mut interpreter = Interpreter::new();
-    interpreter.interpret(&statements)?;
+    interpreter.interpret(&statements)?; */
 
     Ok(())
 }
 
 fn main() {
     let source = r#"
-        
-        
 
-        for (float i = 5; i < 10; i = i + 1) {
-            print("hello world {i:f}");
-        }
-        
-        "#;
+
+
+           for (float i = 0; i < 100; i = i + 1) {
+               print("ok");
+           }
+
+           print("end");
+           "#;
 
     match run_program(source.to_string()) {
         Err(error) => println!("{}", error),
         Ok(()) => (),
     };
 
-    /*   match fs::read_to_string("src/source.yf") {
-        Ok(source) => match run_program(source) {
-            Err(error) => println!("{}", error),
-            _ => (),
-        },
-        Err(error) => println!("{}", error),
-    } */
+    println!("end");
 }

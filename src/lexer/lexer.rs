@@ -2,10 +2,7 @@ use regex::Regex;
 
 use crate::yf_error::{ErrorType, YFError};
 
-use super::{
-    data::Data,
-    token::{Token, TokenType},
-};
+use super::{data::Data, token::Token, token_type::TokenType};
 
 #[derive(Debug)]
 pub struct Lexer<'a> {
@@ -97,7 +94,7 @@ impl<'a> Lexer<'a> {
             "break" => TokenType::Break,
             "continue" => TokenType::Continue,
             "return" => TokenType::Return,
-            "func" => TokenType::Function,
+            "def" => TokenType::Function,
             "print" => TokenType::Print,
             "true" => {
                 return Some(Token {

@@ -10,10 +10,9 @@ use crate::{
     yf_error::{ErrorType, YFError},
 };
 
-use super::{environment::Environment, string_formatter::StringFormatter};
+use super::environment::Environment;
 
 pub struct Interpreter {
-    string_formatter: StringFormatter,
     env: Environment,
     line: u32,
     is_breaking: bool,
@@ -22,7 +21,6 @@ pub struct Interpreter {
 impl Interpreter {
     pub fn new() -> Self {
         Self {
-            string_formatter: StringFormatter::new(),
             env: Environment::new(),
             line: 1,
             is_breaking: false,
@@ -157,9 +155,9 @@ impl Interpreter {
             _ => return Err(ErrorType::SyntaxError),
         };
 
-        let formatted_string_literal = self.string_formatter.format(&string_literal, &self.env)?;
+        //let formatted_string_literal = self.string_formatter.format(&string_literal, &self.env)?;
 
-        println!("{}", formatted_string_literal);
+        println!("{}", string_literal);
 
         return Ok(());
     }

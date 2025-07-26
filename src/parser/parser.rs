@@ -4,9 +4,8 @@ use crate::{
             AssignOperator, BinaryOperator, Expression, Identifier, Literal, UnaryOperator,
         },
         statement::{
-            BlockStatement, BreakStatement, ContinueStatement, ExpressionStatement,
-            ForLoopStatement, IfStatement, PrintStatement, Statement, VariableDeclStatement,
-            WhileLoopStatement,
+            BlockStatement, ExpressionStatement, ForLoopStatement, IfStatement, PrintStatement,
+            Statement, VariableDeclStatement, WhileLoopStatement,
         },
     },
     lexer::token::{Token, TokenType},
@@ -18,7 +17,6 @@ pub struct Parser {
     pos: usize,
     line: u32,
     errors: Vec<YFError>,
-    active_loops: u32,
 }
 
 impl Parser {
@@ -28,7 +26,6 @@ impl Parser {
             pos: 0,
             line: 1,
             errors: Vec::new(),
-            active_loops: 0,
         }
     }
 
@@ -370,14 +367,12 @@ impl Parser {
 
     fn parse_while_loop_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
         self.consume(&TokenType::While)?;
-        self.consume(&TokenType::LeftParen)?;
+
         let condition = self.parse_expression()?;
-        self.consume(&TokenType::RightParen)?;
 
         let line = self.line;
-        self.active_loops += 1;
+
         let block = self.parse_block_statement()?;
-        self.active_loops -= 1;
 
         return Ok(Box::new(WhileLoopStatement {
             condition,
@@ -391,6 +386,7 @@ impl Parser {
         self.consume(&TokenType::LeftParen)?;
 
         let declaration = self.parse_variable_decl_statement()?;
+
         let condition = self.parse_expression()?;
 
         self.consume(&TokenType::Semicolon)?;
@@ -401,9 +397,7 @@ impl Parser {
 
         let line = self.line;
 
-        self.active_loops += 1;
         let block = self.parse_block_statement()?;
-        self.active_loops -= 1;
 
         return Ok(Box::new(ForLoopStatement {
             declaration,
@@ -412,25 +406,6 @@ impl Parser {
             block,
             line,
         }));
-    }
-
-    fn parse_loop_control_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
-        if self.active_loops == 0 {
-            return Err(ErrorType::SyntaxError);
-        }
-
-        let Some(token) = self.look_ahead() else {
-            return Err(ErrorType::SyntaxError);
-        };
-
-        self.consume(&token.ty)?;
-        self.consume(&TokenType::Semicolon)?;
-
-        match token.ty {
-            TokenType::Break => Ok(Box::new(BreakStatement { line: self.line })),
-            TokenType::Continue => Ok(Box::new(ContinueStatement { line: self.line })),
-            _ => Err(ErrorType::SyntaxError),
-        }
     }
 
     fn parse_block_statement(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
@@ -464,7 +439,6 @@ impl Parser {
             TokenType::If => self.parse_if_statement(),
             TokenType::While => self.parse_while_loop_statement(),
             TokenType::For => self.parse_for_loop_statement(),
-            TokenType::Break | TokenType::Continue => self.parse_loop_control_statement(),
             _ => self.parse_expression_statement(),
         }
     }
