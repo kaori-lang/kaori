@@ -27,7 +27,7 @@ pub fn run_program(source: String) -> Result<(), ErrorType> {
 }
 
 fn main() {
-    let source = r#"1 + 2.64 * 7 + 11;
+    let source = r#"1 + 2.64 * 7 + "abcd" * true / false;
            "#;
 
     match run_program(source.to_string()) {

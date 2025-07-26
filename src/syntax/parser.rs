@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    expression_ast::{BinaryOperator, ExpressionAST, UnaryOperator},
+    expression_ast::{BinaryOp, ExpressionAST, UnaryOp},
     statement_ast::StatementAST,
 };
 
@@ -33,18 +33,28 @@ impl Parser {
                 expr
             }
             TokenType::NumberLiteral => {
+                let lexeme = self.token_stream.lexeme();
+                println!("{:#?}", lexeme);
+                let number_literal = lexeme.parse::<f64>().unwrap();
+
                 self.token_stream.advance();
-                let number_literal = self.token_stream.lexeme().parse::<f64>().unwrap();
                 Box::new(ExpressionAST::NumberLiteral(number_literal))
             }
             TokenType::BooleanLiteral => {
+                let lexeme = self.token_stream.lexeme();
+                println!("{:#?}", lexeme);
+                let bool_literal = lexeme.parse::<bool>().unwrap();
+
                 self.token_stream.advance();
-                let bool_literal = self.token_stream.lexeme().parse::<bool>().unwrap();
                 Box::new(ExpressionAST::BooleanLiteral(bool_literal))
             }
             TokenType::StringLiteral => {
+                let lexeme = self.token_stream.lexeme();
+                println!("{:#?}", lexeme);
+
                 self.token_stream.advance();
-                let str_literal = self.token_stream.lexeme();
+                let str_literal = lexeme;
+
                 Box::new(ExpressionAST::StringLiteral(str_literal))
             }
             TokenType::Identifier => Box::new(ExpressionAST::Identifier(self.parse_identifier()?)),
@@ -60,8 +70,8 @@ impl Parser {
                 self.token_stream.advance();
                 return self.parse_unary();
             }
-            TokenType::Minus => UnaryOperator::Negate,
-            TokenType::Not => UnaryOperator::Not,
+            TokenType::Minus => UnaryOp::Negate,
+            TokenType::Not => UnaryOp::Not,
             _ => return self.parse_primary(),
         };
 
@@ -80,9 +90,9 @@ impl Parser {
             let ty = self.token_stream.current_kind();
 
             let operator = match ty {
-                TokenType::Multiply => BinaryOperator::Multiply,
-                TokenType::Divide => BinaryOperator::Divide,
-                TokenType::Remainder => BinaryOperator::Remainder,
+                TokenType::Multiply => BinaryOp::Multiply,
+                TokenType::Divide => BinaryOp::Divide,
+                TokenType::Remainder => BinaryOp::Remainder,
                 _ => break,
             };
 
@@ -102,12 +112,12 @@ impl Parser {
     fn parse_term(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_factor()?;
 
-        while self.token_stream.at_end() {
+        while !self.token_stream.at_end() {
             let ty = self.token_stream.current_kind();
 
             let operator = match ty {
-                TokenType::Plus => BinaryOperator::Plus,
-                TokenType::Minus => BinaryOperator::Minus,
+                TokenType::Plus => BinaryOp::Plus,
+                TokenType::Minus => BinaryOp::Minus,
                 _ => break,
             };
 
@@ -127,14 +137,14 @@ impl Parser {
     fn parse_comparison(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_term()?;
 
-        while self.token_stream.at_end() {
+        while !self.token_stream.at_end() {
             let ty = self.token_stream.current_kind();
 
             let operator = match ty {
-                TokenType::Greater => BinaryOperator::Greater,
-                TokenType::GreaterEqual => BinaryOperator::GreaterEqual,
-                TokenType::Less => BinaryOperator::Less,
-                TokenType::LessEqual => BinaryOperator::LessEqual,
+                TokenType::Greater => BinaryOp::Greater,
+                TokenType::GreaterEqual => BinaryOp::GreaterEqual,
+                TokenType::Less => BinaryOp::Less,
+                TokenType::LessEqual => BinaryOp::LessEqual,
                 _ => break,
             };
 
@@ -154,12 +164,12 @@ impl Parser {
     fn parse_equality(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_comparison()?;
 
-        while self.token_stream.at_end() {
+        while !self.token_stream.at_end() {
             let ty = self.token_stream.current_kind();
 
             let operator = match ty {
-                TokenType::Equal => BinaryOperator::Equal,
-                TokenType::NotEqual => BinaryOperator::NotEqual,
+                TokenType::Equal => BinaryOp::Equal,
+                TokenType::NotEqual => BinaryOp::NotEqual,
                 _ => break,
             };
 
@@ -179,7 +189,7 @@ impl Parser {
     fn parse_and(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_equality()?;
 
-        while self.token_stream.at_end() {
+        while !self.token_stream.at_end() {
             let ty = self.token_stream.current_kind();
 
             if ty != TokenType::And {
@@ -190,7 +200,7 @@ impl Parser {
             let right = self.parse_equality()?;
 
             left = Box::new(ExpressionAST::Binary {
-                operator: BinaryOperator::And,
+                operator: BinaryOp::And,
                 left,
                 right,
             });
@@ -202,7 +212,7 @@ impl Parser {
     fn parse_or(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
         let mut left = self.parse_and()?;
 
-        while self.token_stream.at_end() {
+        while !self.token_stream.at_end() {
             let ty = self.token_stream.current_kind();
 
             if ty != TokenType::Or {
@@ -214,7 +224,7 @@ impl Parser {
             let right = self.parse_and()?;
 
             left = Box::new(ExpressionAST::Binary {
-                operator: BinaryOperator::Or,
+                operator: BinaryOp::Or,
                 left,
                 right,
             });
@@ -237,13 +247,6 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
-        if self
-            .token_stream
-            .look_ahead(&[TokenType::Identifier, TokenType::Assign])
-        {
-            return self.parse_assign();
-        }
-
         return self.parse_or();
     }
 

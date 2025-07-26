@@ -1,12 +1,12 @@
 #[derive(Debug)]
 pub enum ExpressionAST {
     Binary {
-        operator: BinaryOperator,
+        operator: BinaryOp,
         left: Box<ExpressionAST>,
         right: Box<ExpressionAST>,
     },
     Unary {
-        operator: UnaryOperator,
+        operator: UnaryOp,
         right: Box<ExpressionAST>,
     },
     Assign {
@@ -20,7 +20,7 @@ pub enum ExpressionAST {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum BinaryOperator {
+pub enum BinaryOp {
     Plus,
     Minus,
     Multiply,
@@ -37,7 +37,7 @@ pub enum BinaryOperator {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum UnaryOperator {
+pub enum UnaryOp {
     Negate,
     Not,
 }
