@@ -7,6 +7,7 @@ pub struct Lexer {
     source: Vec<char>,
     line: u32,
     position: usize,
+    tokens: Vec<Token>,
 }
 
 impl Lexer {
@@ -15,18 +16,7 @@ impl Lexer {
             source,
             line: 1,
             position: 0,
-        }
-    }
-
-    fn advance(&mut self, steps: usize) {
-        let end = self.position + steps;
-
-        for i in self.position..end {
-            if let Some('\n') = self.source.get(i) {
-                self.line += 1;
-            }
-
-            self.position += 1;
+            tokens: Vec::new(),
         }
     }
 
@@ -52,9 +42,18 @@ impl Lexer {
         return true;
     }
 
-    fn white_space(&mut self) {
-        let size = self.position;
+    fn create_token(&mut self, ty: TokenType, position: usize, size: usize) {
+        let token = Token {
+            ty,
+            line: self.line,
+            position,
+            size,
+        };
 
+        self.tokens.push(token);
+    }
+
+    fn white_space(&mut self) {
         while !self.at_end() {
             let c = self.source[self.position];
 
@@ -80,8 +79,9 @@ impl Lexer {
         {
             self.position += 1;
         }
+        let sub: String = self.source[start..self.position].iter().collect();
 
-        let ty = match self.source[start..self.position].iter().collect() {
+        let ty = match sub.as_str() {
             "if" => TokenType::If,
             "else" => TokenType::Else,
             "while" => TokenType::While,
@@ -91,145 +91,125 @@ impl Lexer {
             "return" => TokenType::Return,
             "def" => TokenType::Function,
             "print" => TokenType::Print,
-            "true" | "false" => TokenType::Boolean,
+            "true" | "false" => TokenType::BooleanLiteral,
             _ => TokenType::Identifier,
         };
+
+        let size = self.position - start;
+
+        self.create_token(ty, start, size);
     }
 
-    fn get_next_number(&mut self) -> Option<Token> {
-        let Some(number) = self.number_re.find(&self.curr) else {
-            return None;
+    fn float_or_integer(&mut self) {
+        let start = self.position;
+
+        while !self.at_end() && self.source[self.position].is_ascii_digit() {
+            self.position += 1;
+        }
+
+        if !self.at_end() && self.source[self.position] == '.' {
+            self.position += 1;
+        }
+
+        while !self.at_end() && self.source[self.position].is_ascii_digit() {
+            self.position += 1;
+        }
+
+        let size = self.position - start;
+
+        self.create_token(TokenType::NumberLiteral, start, size);
+    }
+
+    pub fn symbol(&mut self) {
+        let ty = match self.source[self.position] {
+            '+' => {
+                if self.look_ahead(&['+', '+']) {
+                    TokenType::Increment
+                } else {
+                    TokenType::Plus
+                }
+            }
+            '-' => {
+                if self.look_ahead(&['-', '-']) {
+                    TokenType::Decrement
+                } else if self.look_ahead(&['-', '>']) {
+                    TokenType::ThinArrow
+                } else {
+                    TokenType::Minus
+                }
+            }
+            '*' => TokenType::Multiply,
+            '/' => TokenType::Divide,
+            '%' => TokenType::Remainder,
+
+            '&' => {
+                if self.look_ahead(&['&', '&']) {
+                    TokenType::And
+                } else {
+                    TokenType::Invalid
+                }
+            }
+            '|' => {
+                if self.look_ahead(&['|', '|']) {
+                    TokenType::Or
+                } else {
+                    TokenType::Invalid
+                }
+            }
+            '!' => {
+                if self.look_ahead(&['!', '=']) {
+                    TokenType::NotEqual
+                } else {
+                    TokenType::Not
+                }
+            }
+            '=' => {
+                if self.look_ahead(&['=', '=']) {
+                    TokenType::Equal
+                } else {
+                    TokenType::Assign
+                }
+            }
+            '>' => {
+                if self.look_ahead(&['=', '=']) {
+                    TokenType::GreaterEqual
+                } else {
+                    TokenType::Greater
+                }
+            }
+            '<' => {
+                if self.look_ahead(&['=', '=']) {
+                    TokenType::LessEqual
+                } else {
+                    TokenType::Less
+                }
+            }
+            '(' => TokenType::LeftParen,
+            ')' => TokenType::RightParen,
+            '{' => TokenType::LeftBrace,
+            '}' => TokenType::RightBrace,
+            ',' => TokenType::Comma,
+            ';' => TokenType::Semicolon,
+            ':' => TokenType::Colon,
+            _ => TokenType::Invalid,
         };
 
-        self.advance(number.as_str());
-
-        let lexeme = number.as_str().to_string();
-        let literal = Data::Float(lexeme.parse::<f64>().unwrap());
-
-        return Some(Token {
-            ty: TokenType::Literal,
-            line: self.line,
-            lexeme,
-            literal,
-        });
-    }
-
-    pub fn get_next_two_char_symbol(&mut self) -> Option<Token> {
-        if self.curr.len() < 2 {
-            return None;
-        }
-
-        if let Some(token_type) = match &self.curr[..2] {
-            "&&" => Some(TokenType::And),
-            "||" => Some(TokenType::Or),
-            "!=" => Some(TokenType::NotEqual),
-            "==" => Some(TokenType::Equal),
-            ">=" => Some(TokenType::GreaterEqual),
-            "<=" => Some(TokenType::LessEqual),
-            _ => None,
-        } {
-            let lexeme = String::from(&self.curr[..2]);
-            self.advance(&lexeme);
-
-            return Some(Token {
-                ty: token_type,
-                line: self.line,
-                lexeme,
-                literal: Data::None,
-            });
-        }
-        return None;
-    }
-
-    pub fn get_next_symbol(&mut self) -> Option<Token> {
-        if let Some(token) = self.get_next_two_char_symbol() {
-            return Some(token);
-        }
-
-        if self.curr.is_empty() {
-            return None;
-        }
-
-        if let Some(token_type) = match &self.curr[..1] {
-            "+" => Some(TokenType::Plus),
-            "-" => Some(TokenType::Minus),
-            "*" => Some(TokenType::Multiply),
-            "/" => Some(TokenType::Divide),
-            "%" => Some(TokenType::Remainder),
-            "(" => Some(TokenType::LeftParen),
-            ")" => Some(TokenType::RightParen),
-            "{" => Some(TokenType::LeftBrace),
-            "}" => Some(TokenType::RightBrace),
-            "," => Some(TokenType::Comma),
-            ";" => Some(TokenType::Semicolon),
-            "!" => Some(TokenType::Not),
-            "=" => Some(TokenType::Assign),
-            ">" => Some(TokenType::Greater),
-            "<" => Some(TokenType::Less),
-            _ => None,
-        } {
-            let lexeme = String::from(&self.curr[..1]);
-            self.advance(&lexeme);
-
-            return Some(Token {
-                ty: token_type,
-                line: self.line,
-                lexeme,
-                literal: Data::None,
-            });
-        }
-
-        return None;
-    }
-
-    fn get_next_token(&mut self) -> Result<Token, ErrorType> {
-        if let Some(token) = self.get_next_symbol() {
-            return Ok(token);
-        }
-
-        if let Some(token) = self.get_next_number() {
-            return Ok(token);
-        }
-
-        if let Some(token) = self.get_next_string() {
-            return Ok(token);
-        }
-
-        if let Some(token) = self.get_next_identifier() {
-            return Ok(token);
-        }
-
-        return Err(ErrorType::SyntaxError);
-    }
-
-    fn reset(&mut self) {
-        self.curr = &self.source[..];
-        self.line = 1;
+        let size = match ty {
+            TokenType::Increment     // "++"
+            | TokenType::Decrement   // "--"
+            | TokenType::And         // "&&"
+            | TokenType::Or          // "||"
+            | TokenType::NotEqual    // "!="
+            | TokenType::Equal       // "=="
+            | TokenType::GreaterEqual// ">="
+            | TokenType::LessEqual   // "<="
+            | TokenType::ThinArrow   // "->"
+            => 2,
+            _ => 1
+        };
     }
 
     pub fn tokenize(&mut self) -> Result<Vec<Token>, YFError> {
-        let mut tokens = Vec::new();
-
-        while !self.curr.is_empty() {
-            if self.get_next_white_space() || self.get_next_new_line() {
-                continue;
-            }
-
-            let token = match self.get_next_token() {
-                Ok(token) => token,
-                Err(error_type) => {
-                    return Err(YFError {
-                        error_type,
-                        line: self.line,
-                    });
-                }
-            };
-
-            tokens.push(token);
-        }
-
-        self.reset();
-
-        return Ok(tokens);
+        return Ok(self.tokens.clone());
     }
 }

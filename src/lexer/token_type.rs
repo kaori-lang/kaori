@@ -1,46 +1,60 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
+    // Arithmetic operators
     Plus,
     Minus,
     Multiply,
     Divide,
     Remainder,
 
-    And,
-    Or,
-    Not,
+    // Unary arithmetic operators
+    Increment, // ++
+    Decrement, // --
 
-    NotEqual,
-    Assign,
-    Equal,
-    Greater,
-    GreaterEqual,
-    Less,
-    LessEqual,
-    Comma,
-    Semicolon,
+    // Logical operators
+    And, // &&
+    Or,  // ||
+    Not, // !
 
-    LeftParen,
-    RightParen,
-    LeftBrace,
-    RightBrace,
+    // Comparison
+    NotEqual,     // !=
+    Equal,        // ==
+    Greater,      // >
+    GreaterEqual, // >=
+    Less,         // <
+    LessEqual,    // <=
 
-    Function,
+    // Assignment and separators
+    Assign,    // =
+    Comma,     // ,
+    Semicolon, // ;
+    Colon,     // :
+    ThinArrow, // ->
 
+    // Grouping
+    LeftParen,  // (
+    RightParen, // )
+    LeftBrace,  // {
+    RightBrace, // }
+
+    // Keywords
+    Function, // def
     For,
     While,
     Break,
     Continue,
-
     If,
     Else,
     Return,
     Print,
 
-    String,
-    Float,
-    Boolean,
+    // Literals and identifiers
     Identifier,
+    StringLiteral,
+    NumberLiteral,
+    BooleanLiteral,
 
+    // Special
+    Invalid,
     Eof,
 }
