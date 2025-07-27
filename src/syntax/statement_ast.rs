@@ -23,7 +23,7 @@ pub enum StatementAST {
         line: u32,
     },
     Block {
-        statements: Vec<Box<StatementAST>>,
+        statements: Box<Vec<StatementAST>>,
         line: u32,
     },
     Break {

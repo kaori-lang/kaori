@@ -51,7 +51,7 @@ impl Parser {
         Ok(declaration)
     }
 
-    fn parse_variable_declaration(&mut self) -> Result<Box<DeclarationAST>, ErrorType> {
+    fn parse_variable_declaration(&mut self) -> Result<DeclarationAST, ErrorType> {
         let line = self.token_stream.current_line();
 
         let identifier = self.parse_identifier()?;
@@ -64,16 +64,16 @@ impl Parser {
 
         let right = self.parse_expression()?;
 
-        return Ok(Box::new(DeclarationAST::Variable {
+        return Ok(DeclarationAST::Variable {
             identifier,
             right,
             ty,
             line,
-        }));
+        });
     }
 
     /* Statements */
-    fn parse_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+    fn parse_statement(&mut self) -> Result<StatementAST, ErrorType> {
         Ok(match self.token_stream.current_type() {
             TokenType::Print => self.parse_print_statement(),
             TokenType::LeftBrace => self.parse_block_statement(),
@@ -83,16 +83,16 @@ impl Parser {
         }?)
     }
 
-    fn parse_expression_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+    fn parse_expression_statement(&mut self) -> Result<StatementAST, ErrorType> {
         let line = self.token_stream.current_line();
 
         let expression = self.parse_expression()?;
         self.token_stream.consume(TokenType::Semicolon)?;
 
-        return Ok(Box::new(StatementAST::Expression { expression, line }));
+        return Ok(StatementAST::Expression { expression, line });
     }
 
-    fn parse_print_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+    fn parse_print_statement(&mut self) -> Result<StatementAST, ErrorType> {
         let line = self.token_stream.current_line();
 
         self.token_stream.consume(TokenType::Print)?;
@@ -101,65 +101,65 @@ impl Parser {
         self.token_stream.consume(TokenType::RightParen)?;
         self.token_stream.consume(TokenType::Semicolon)?;
 
-        return Ok(Box::new(StatementAST::Print { expression, line }));
+        return Ok(StatementAST::Print { expression, line });
     }
 
-    fn parse_if_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+    fn parse_if_statement(&mut self) -> Result<StatementAST, ErrorType> {
         let line = self.token_stream.current_line();
 
         self.token_stream.consume(TokenType::If)?;
 
         let condition = self.parse_expression()?;
 
-        let then_branch = self.parse_block_statement()?;
+        let then_branch = Box::new(self.parse_block_statement()?);
 
         if self.token_stream.current_type() != TokenType::Else {
-            return Ok(Box::new(StatementAST::If {
+            return Ok(StatementAST::If {
                 condition,
                 then_branch,
                 else_branch: None,
                 line,
-            }));
+            });
         }
 
         self.token_stream.advance();
 
         if self.token_stream.current_type() == TokenType::If {
-            return Ok(Box::new(StatementAST::If {
+            return Ok(StatementAST::If {
                 condition,
                 then_branch,
-                else_branch: Some(self.parse_if_statement()?),
+                else_branch: Some(Box::new(self.parse_if_statement()?)),
                 line,
-            }));
+            });
         }
 
-        return Ok(Box::new(StatementAST::If {
+        return Ok(StatementAST::If {
             condition,
             then_branch,
-            else_branch: Some(self.parse_block_statement()?),
+            else_branch: Some(Box::new(self.parse_block_statement()?)),
             line,
-        }));
+        });
     }
 
-    fn parse_while_loop_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+    fn parse_while_loop_statement(&mut self) -> Result<StatementAST, ErrorType> {
         let line = self.token_stream.current_line();
 
         self.token_stream.consume(TokenType::While)?;
 
         let condition = self.parse_expression()?;
-        let block = self.parse_block_statement()?;
+        let block = Box::new(self.parse_block_statement()?);
 
-        return Ok(Box::new(StatementAST::WhileLoop {
+        return Ok(StatementAST::WhileLoop {
             condition,
             block,
             line,
-        }));
+        });
     }
 
-    fn parse_block_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+    fn parse_block_statement(&mut self) -> Result<StatementAST, ErrorType> {
         let line = self.token_stream.current_line();
 
-        let mut statements: Vec<Box<StatementAST>> = Vec::new();
+        let mut statements: Vec<StatementAST> = Vec::new();
 
         self.token_stream.consume(TokenType::LeftBrace)?;
 
@@ -172,7 +172,10 @@ impl Parser {
 
         self.token_stream.consume(TokenType::RightBrace)?;
 
-        return Ok(Box::new(StatementAST::Block { statements, line }));
+        return Ok(StatementAST::Block {
+            statements: Box::new(statements),
+            line,
+        });
     }
 
     /* Expressions */
@@ -442,7 +445,7 @@ impl Parser {
         Ok(primitive)
     }
 
-    /*    fn parse_for_loop_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+    /*    fn parse_for_loop_statement(&mut self) -> Result<StatementAST, ErrorType> {
            let line = self.token_stream.current_line();
 
            self.token_stream.consume(&TokenType::For)?;
