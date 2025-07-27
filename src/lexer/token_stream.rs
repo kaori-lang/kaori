@@ -1,13 +1,13 @@
-use crate::error::syntax_error::{Syntax, SyntaxError};
+use crate::error::compiler_error::{CompilerError, Syntax};
 
-use super::{token::Token, token_type::TokenType};
+use super::{span::Span, token::Token, token_type::TokenType};
 
 #[derive(Debug, Clone)]
 pub struct TokenStream {
     source: String,
     tokens: Vec<Token>,
     index: usize,
-    line: u32,
+    span: &Span,
 }
 
 impl TokenStream {
@@ -16,7 +16,6 @@ impl TokenStream {
             source,
             tokens,
             index: 0,
-            line: 1,
         }
     }
 
@@ -36,12 +35,8 @@ impl TokenStream {
         self.index += 1;
 
         if let Some(token) = self.tokens.get(self.index) {
-            self.line = token.line;
+            self.span = &token.span;
         }
-    }
-
-    pub fn current_line(&mut self) -> u32 {
-        return self.line;
     }
 
     pub fn lexeme(&mut self) -> String {
@@ -52,14 +47,14 @@ impl TokenStream {
         return self.source[start..end].to_string();
     }
 
-    pub fn consume(&mut self, expected: TokenType) -> Result<(), SyntaxError> {
+    pub fn consume(&mut self, expected: TokenType) -> Result<(), CompilerError> {
         let found = self.current_type();
 
         if expected == found {
             self.advance();
             return Ok(());
         } else {
-            let err = SyntaxError {
+            let err = CompilerError {
                 error_type: Syntax::UnexpectedToken(expected, found),
                 line: self.current_line(),
             };

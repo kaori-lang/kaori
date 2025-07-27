@@ -1,5 +1,5 @@
 use crate::{
-    error::syntax_error::{Syntax, SyntaxError},
+    error::compiler_error::{CompilerError, Syntax},
     lexer::{token_stream::TokenStream, token_type::TokenType},
 };
 
@@ -20,7 +20,7 @@ impl Parser {
         Self { token_stream }
     }
 
-    pub fn execute(&mut self) -> Result<Vec<ASTNode>, SyntaxError> {
+    pub fn execute(&mut self) -> Result<Vec<ASTNode>, CompilerError> {
         let mut declarations: Vec<ASTNode> = Vec::new();
 
         while !self.token_stream.at_end() {
@@ -32,7 +32,7 @@ impl Parser {
     }
 
     /* Declarations */
-    fn parse_declaration(&mut self) -> Result<ASTNode, SyntaxError> {
+    fn parse_declaration(&mut self) -> Result<ASTNode, CompilerError> {
         let declaration = match self.token_stream.current_type() {
             _ => {
                 if !self
@@ -51,7 +51,7 @@ impl Parser {
         Ok(declaration)
     }
 
-    fn parse_variable_declaration(&mut self) -> Result<DeclarationAST, SyntaxError> {
+    fn parse_variable_declaration(&mut self) -> Result<DeclarationAST, CompilerError> {
         let line = self.token_stream.current_line();
 
         let identifier = self.parse_identifier()?;
@@ -73,7 +73,7 @@ impl Parser {
     }
 
     /* Statements */
-    fn parse_statement(&mut self) -> Result<StatementAST, SyntaxError> {
+    fn parse_statement(&mut self) -> Result<StatementAST, CompilerError> {
         Ok(match self.token_stream.current_type() {
             TokenType::Print => self.parse_print_statement(),
             TokenType::LeftBrace => self.parse_block_statement(),
@@ -83,7 +83,7 @@ impl Parser {
         }?)
     }
 
-    fn parse_expression_statement(&mut self) -> Result<StatementAST, SyntaxError> {
+    fn parse_expression_statement(&mut self) -> Result<StatementAST, CompilerError> {
         let line = self.token_stream.current_line();
 
         let expression = self.parse_expression()?;
@@ -92,7 +92,7 @@ impl Parser {
         return Ok(StatementAST::Expression { expression, line });
     }
 
-    fn parse_print_statement(&mut self) -> Result<StatementAST, SyntaxError> {
+    fn parse_print_statement(&mut self) -> Result<StatementAST, CompilerError> {
         let line = self.token_stream.current_line();
 
         self.token_stream.consume(TokenType::Print)?;
@@ -104,7 +104,7 @@ impl Parser {
         return Ok(StatementAST::Print { expression, line });
     }
 
-    fn parse_if_statement(&mut self) -> Result<StatementAST, SyntaxError> {
+    fn parse_if_statement(&mut self) -> Result<StatementAST, CompilerError> {
         let line = self.token_stream.current_line();
 
         self.token_stream.consume(TokenType::If)?;
@@ -141,7 +141,7 @@ impl Parser {
         });
     }
 
-    fn parse_while_loop_statement(&mut self) -> Result<StatementAST, SyntaxError> {
+    fn parse_while_loop_statement(&mut self) -> Result<StatementAST, CompilerError> {
         let line = self.token_stream.current_line();
 
         self.token_stream.consume(TokenType::While)?;
@@ -156,7 +156,7 @@ impl Parser {
         });
     }
 
-    fn parse_block_statement(&mut self) -> Result<StatementAST, SyntaxError> {
+    fn parse_block_statement(&mut self) -> Result<StatementAST, CompilerError> {
         let line = self.token_stream.current_line();
 
         let mut declarations: Vec<ASTNode> = Vec::new();
@@ -176,7 +176,7 @@ impl Parser {
     }
 
     /* Expressions */
-    fn parse_expression(&mut self) -> Result<Box<ExpressionAST>, SyntaxError> {
+    fn parse_expression(&mut self) -> Result<Box<ExpressionAST>, CompilerError> {
         if self
             .token_stream
             .look_ahead(&[TokenType::Identifier, TokenType::Assign])
@@ -187,7 +187,7 @@ impl Parser {
         return self.parse_or();
     }
 
-    fn parse_assign(&mut self) -> Result<Box<ExpressionAST>, SyntaxError> {
+    fn parse_assign(&mut self) -> Result<Box<ExpressionAST>, CompilerError> {
         let identifier = self.parse_identifier()?;
 
         self.token_stream.consume(TokenType::Assign)?;
@@ -200,7 +200,7 @@ impl Parser {
         }));
     }
 
-    fn parse_or(&mut self) -> Result<Box<ExpressionAST>, SyntaxError> {
+    fn parse_or(&mut self) -> Result<Box<ExpressionAST>, CompilerError> {
         let mut left = self.parse_and()?;
 
         while !self.token_stream.at_end() {
@@ -224,7 +224,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_and(&mut self) -> Result<Box<ExpressionAST>, SyntaxError> {
+    fn parse_and(&mut self) -> Result<Box<ExpressionAST>, CompilerError> {
         let mut left = self.parse_equality()?;
 
         while !self.token_stream.at_end() {
@@ -247,7 +247,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_equality(&mut self) -> Result<Box<ExpressionAST>, SyntaxError> {
+    fn parse_equality(&mut self) -> Result<Box<ExpressionAST>, CompilerError> {
         let mut left = self.parse_comparison()?;
 
         while !self.token_stream.at_end() {
@@ -272,7 +272,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_comparison(&mut self) -> Result<Box<ExpressionAST>, SyntaxError> {
+    fn parse_comparison(&mut self) -> Result<Box<ExpressionAST>, CompilerError> {
         let mut left = self.parse_term()?;
 
         while !self.token_stream.at_end() {
@@ -299,7 +299,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_term(&mut self) -> Result<Box<ExpressionAST>, SyntaxError> {
+    fn parse_term(&mut self) -> Result<Box<ExpressionAST>, CompilerError> {
         let mut left = self.parse_factor()?;
 
         while !self.token_stream.at_end() {
@@ -324,7 +324,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_factor(&mut self) -> Result<Box<ExpressionAST>, SyntaxError> {
+    fn parse_factor(&mut self) -> Result<Box<ExpressionAST>, CompilerError> {
         let mut left = self.parse_unary()?;
 
         while !self.token_stream.at_end() {
@@ -350,7 +350,7 @@ impl Parser {
         return Ok(left);
     }
 
-    fn parse_unary(&mut self) -> Result<Box<ExpressionAST>, SyntaxError> {
+    fn parse_unary(&mut self) -> Result<Box<ExpressionAST>, CompilerError> {
         let ty = self.token_stream.current_type();
 
         let operator = match ty {
@@ -371,7 +371,7 @@ impl Parser {
         }))
     }
 
-    fn parse_primary(&mut self) -> Result<Box<ExpressionAST>, SyntaxError> {
+    fn parse_primary(&mut self) -> Result<Box<ExpressionAST>, CompilerError> {
         let ty = self.token_stream.current_type();
 
         Ok(match ty {
@@ -403,7 +403,7 @@ impl Parser {
             }
             TokenType::Identifier => Box::new(ExpressionAST::Identifier(self.parse_identifier()?)),
             _ => {
-                return Err(SyntaxError {
+                return Err(CompilerError {
                     error_type: Syntax::InvalidOperand(ty),
                     line: self.token_stream.current_line(),
                 });
@@ -411,7 +411,7 @@ impl Parser {
         })
     }
 
-    fn parse_identifier(&mut self) -> Result<String, SyntaxError> {
+    fn parse_identifier(&mut self) -> Result<String, CompilerError> {
         let identifier = self.token_stream.lexeme();
 
         self.token_stream.consume(TokenType::Identifier)?;
@@ -420,23 +420,23 @@ impl Parser {
     }
 
     /* Types */
-    pub fn parse_type(&mut self) -> Result<TypeAST, SyntaxError> {
+    pub fn parse_type(&mut self) -> Result<TypeAST, CompilerError> {
         match self.token_stream.current_type() {
             TokenType::Identifier => self.parse_primitive_type(),
-            _ => Err(SyntaxError {
+            _ => Err(CompilerError {
                 error_type: Syntax::UnexpectedEof,
                 line: self.token_stream.current_line(),
             }),
         }
     }
 
-    pub fn parse_primitive_type(&mut self) -> Result<TypeAST, SyntaxError> {
+    pub fn parse_primitive_type(&mut self) -> Result<TypeAST, CompilerError> {
         let primitive = match self.token_stream.lexeme().as_str() {
             "bool" => TypeAST::Boolean,
             "str" => TypeAST::String,
             "number" => TypeAST::Number,
             _ => {
-                return Err(SyntaxError {
+                return Err(CompilerError {
                     error_type: Syntax::UnexpectedEof,
                     line: self.token_stream.current_line(),
                 });
@@ -448,7 +448,7 @@ impl Parser {
         Ok(primitive)
     }
 
-    /*    fn parse_for_loop_statement(&mut self) -> Result<StatementAST, SyntaxError> {
+    /*    fn parse_for_loop_statement(&mut self) -> Result<StatementAST, CompilerError> {
            let line = self.token_stream.current_line();
 
            self.token_stream.consume(&TokenType::For)?;

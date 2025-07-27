@@ -1,6 +1,6 @@
-use crate::error::compiler_error::{CompilerError, ErrorType};
+use crate::{compiler_error, error::compiler_error::CompilerError};
 
-use super::{token::Token, token_type::TokenType};
+use super::{span::Span, token::Token, token_type::TokenType};
 
 #[derive(Debug)]
 pub struct Lexer {
@@ -42,13 +42,16 @@ impl Lexer {
         return true;
     }
 
-    fn create_token(&mut self, ty: TokenType, position: usize, size: usize) -> Token {
-        let token = Token {
-            ty,
+    fn create_token(&mut self, ty: TokenType, start: usize) -> Token {
+        let size = self.position - start;
+
+        let span = Span {
             line: self.line,
-            position,
+            start,
             size,
         };
+
+        let token = Token { ty, span };
 
         return token;
     }
@@ -107,9 +110,8 @@ impl Lexer {
             _ => TokenType::Identifier,
         };
 
-        let size = self.position - start;
-
-        self.create_token(ty, start, size);
+        let token = self.create_token(ty, start);
+        self.tokens.push(token);
     }
 
     fn number_literal(&mut self) {
@@ -127,10 +129,8 @@ impl Lexer {
             self.position += 1;
         }
 
-        let size = self.position - start;
-        let ty = TokenType::NumberLiteral;
+        let token = self.create_token(TokenType::NumberLiteral, start);
 
-        let token = self.create_token(ty, start, size);
         self.tokens.push(token);
     }
 
@@ -154,25 +154,25 @@ impl Lexer {
         }
 
         if self.at_end() {
-            let size = self.position - start - 1;
-            let ty = TokenType::StringLiteral;
-            let token = self.create_token(ty, start, size);
+            let span = Span {
+                line: self.line,
+                start,
+                size: self.position - start,
+            };
 
-            return Err(compile_error!(token));
+            return Err(compiler_error!(span, "unfinished string literal"));
         }
 
         self.position += 1;
 
-        let size = self.position - start - 1;
-        let ty = TokenType::StringLiteral;
-        let token = self.create_token(ty, start, size);
+        let token = self.create_token(TokenType::StringLiteral, start);
 
         self.tokens.push(token);
 
         Ok(())
     }
 
-    pub fn symbol(&mut self) -> Result<(), SyntaxError> {
+    pub fn symbol(&mut self) -> Result<(), CompilerError> {
         let start = self.position;
 
         let curr_char = self.source[self.position];
@@ -251,10 +251,13 @@ impl Lexer {
         };
 
         if ty == TokenType::Invalid {
-            return Err(SyntaxError {
-                error_type: Syntax::InvalidToken(curr_char),
+            let span = Span {
                 line: self.line,
-            });
+                start,
+                size: self.position - start,
+            };
+
+            return Err(compiler_error!(span, "{} is not a valid token", curr_char));
         }
 
         let size = match ty {
@@ -272,12 +275,12 @@ impl Lexer {
 
         self.position += size;
 
-        let token = self.create_token(ty, start, size);
+        let token = self.create_token(ty, start);
         self.tokens.push(token);
         Ok(())
     }
 
-    pub fn get_next_token(&mut self) -> Result<(), SyntaxError> {
+    pub fn get_next_token(&mut self) -> Result<(), CompilerError> {
         let c = self.source[self.position];
 
         if c == '"' {
@@ -297,7 +300,7 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, SyntaxError> {
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, CompilerError> {
         while !self.at_end() {
             self.get_next_token()?;
         }

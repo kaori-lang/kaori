@@ -1,4 +1,4 @@
-use super::token_type::TokenType;
+use super::{span::Span, token_type::TokenType};
 
 #[derive(Debug, Clone)]
 pub struct Token {

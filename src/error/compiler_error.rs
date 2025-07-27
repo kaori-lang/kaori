@@ -1,22 +1,22 @@
-use crate::lexer::token::Token;
+use crate::lexer::span::Span;
 
 #[macro_export]
 macro_rules! compiler_error {
-    ($token:expr, $msg:literal $(, $arg:expr)* $(,)?) => {
-        $crate::CompilerError::new(
-            $token,
+    ($span:expr, $msg:literal $(, $arg:expr)* $(,)?) => {
+        CompilerError::new(
+            $span,
             format!($msg $(, $arg)*),
         )
     };
 }
 
 pub struct CompilerError {
-    pub token: Token,
+    pub span: Span,
     pub message: String,
 }
 
 impl CompilerError {
-    pub fn new(token: Token, message: String) -> Self {
-        Self { token, message }
+    pub fn new(span: Span, message: String) -> Self {
+        Self { span, message }
     }
 }
