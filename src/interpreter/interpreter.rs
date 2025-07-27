@@ -3,5 +3,7 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
-    pub fn new(nodes: ASTNode) {}
+    pub fn new(nodes: ASTNode) {
+        
+    }
 }

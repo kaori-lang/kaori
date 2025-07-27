@@ -1,4 +1,4 @@
-use crate::error::error_type::ErrorType;
+use crate::error::error_type::{ErrorType, SyntaxError};
 
 use super::{token::Token, token_stream::TokenStream, token_type::TokenType};
 
@@ -143,9 +143,8 @@ impl Lexer {
         }
 
         if self.at_end() {
-            return Err(ErrorType::SyntaxError(String::from(
-                "unexpected end of file",
-            )));
+            let err_type = ErrorType::Syntax(SyntaxError::UnexpectedEof);
+            return Err(ErrorType::Syntax(SyntaxError::UnexpectedEof));
         }
 
         self.position += 1;
@@ -234,7 +233,8 @@ impl Lexer {
         };
 
         if ty == TokenType::Invalid {
-            return Err(ErrorType::SyntaxError(String::from("Invalid token")));
+            let lexeme = self.source[self.position];
+            return Err(ErrorType::Syntax(SyntaxError::InvalidToken(lexeme)));
         }
 
         let size = match ty {

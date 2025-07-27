@@ -1,4 +1,4 @@
-use crate::error::error_type::ErrorType;
+use crate::error::syntax_error::{Syntax, SyntaxError};
 
 use super::{token::Token, token_type::TokenType};
 
@@ -52,22 +52,19 @@ impl TokenStream {
         return self.source[start..end].to_string();
     }
 
-    pub fn consume(&mut self, expected: TokenType) -> Result<(), ErrorType> {
-        let Some(token) = self.tokens.get(self.index) else {
-            return Err(ErrorType::SyntaxError(format!(
-                "expected {:?}, but found end of file",
-                expected
-            )));
-        };
+    pub fn consume(&mut self, expected: TokenType) -> Result<(), SyntaxError> {
+        let found = self.current_type();
 
-        if expected == token.ty {
+        if expected == found {
             self.advance();
             return Ok(());
         } else {
-            return Err(ErrorType::SyntaxError(format!(
-                "expected {:?} instead of {:?}",
-                expected, token.ty
-            )));
+            let err = SyntaxError {
+                error_type: Syntax::ExpectedToken(expected, found),
+                line: self.current_line(),
+            };
+
+            return Err(err);
         }
     }
 
