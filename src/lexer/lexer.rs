@@ -309,6 +309,19 @@ impl Lexer {
             self.get_next_token()?;
         }
 
+        let span = Span {
+            line: self.line,
+            start: self.position - 1,
+            size: 0,
+        };
+
+        let token = Token {
+            ty: TokenType::Eof,
+            span,
+        };
+
+        self.tokens.push(token);
+
         Ok(self.tokens.clone())
     }
 }

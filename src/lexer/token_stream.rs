@@ -18,32 +18,12 @@ impl TokenStream {
         }
     }
 
-    pub fn token_type(&mut self) -> TokenType {
-        if let Some(token) = self.tokens.get(self.index) {
-            return token.ty.clone();
-        }
-
-        return TokenType::Eof;
-    }
-
     pub fn at_end(&mut self) -> bool {
         return self.token_type() == TokenType::Eof;
     }
 
     pub fn advance(&mut self) {
         self.index += 1;
-    }
-
-    pub fn span(&mut self) -> Span {
-        let span = &self.tokens[self.index].span;
-
-        return span.clone();
-    }
-
-    pub fn lexeme(&mut self) -> String {
-        let span = self.span();
-
-        return self.source[span.start..span.start + span.size].to_string();
     }
 
     pub fn consume(&mut self, expected: TokenType) -> Result<(), CompilationError> {
@@ -55,7 +35,12 @@ impl TokenStream {
         } else {
             let span = self.span();
 
-            return Err(compilation_error!(span, "invalid"));
+            return Err(compilation_error!(
+                span,
+                "expected {:?}, but found {:?}",
+                expected,
+                found,
+            ));
         }
     }
 
@@ -75,5 +60,23 @@ impl TokenStream {
         }
 
         return true;
+    }
+
+    pub fn token_type(&mut self) -> TokenType {
+        let token = self.tokens.get(self.index).unwrap();
+
+        return token.ty.clone();
+    }
+
+    pub fn span(&mut self) -> Span {
+        let span = &self.tokens[self.index].span;
+
+        return span.clone();
+    }
+
+    pub fn lexeme(&mut self) -> String {
+        let span = self.span();
+
+        return self.source[span.start..span.start + span.size].to_string();
     }
 }
