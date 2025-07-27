@@ -1,4 +1,4 @@
-use crate::{compiler_error, error::compiler_error::CompilerError};
+use crate::{compilation_error, error::compilation_error::CompilationError};
 
 use super::{span::Span, token::Token, token_type::TokenType};
 
@@ -134,7 +134,7 @@ impl Lexer {
         self.tokens.push(token);
     }
 
-    fn string_literal(&mut self) -> Result<(), CompilerError> {
+    fn string_literal(&mut self) -> Result<(), CompilationError> {
         self.position += 1;
 
         let start = self.position;
@@ -160,7 +160,7 @@ impl Lexer {
                 size: self.position - start,
             };
 
-            return Err(compiler_error!(span, "unfinished string literal"));
+            return Err(compilation_error!(span, "unfinished string literal"));
         }
 
         self.position += 1;
@@ -172,7 +172,7 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn symbol(&mut self) -> Result<(), CompilerError> {
+    pub fn symbol(&mut self) -> Result<(), CompilationError> {
         let start = self.position;
 
         let curr_char = self.source[self.position];
@@ -257,7 +257,11 @@ impl Lexer {
                 size: self.position - start,
             };
 
-            return Err(compiler_error!(span, "{} is not a valid token", curr_char));
+            return Err(compilation_error!(
+                span,
+                "{} is not a valid token",
+                curr_char
+            ));
         }
 
         let size = match ty {
@@ -280,7 +284,7 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn get_next_token(&mut self) -> Result<(), CompilerError> {
+    pub fn get_next_token(&mut self) -> Result<(), CompilationError> {
         let c = self.source[self.position];
 
         if c == '"' {
@@ -300,7 +304,7 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, CompilerError> {
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, CompilationError> {
         while !self.at_end() {
             self.get_next_token()?;
         }

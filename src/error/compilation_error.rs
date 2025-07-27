@@ -1,21 +1,22 @@
 use crate::lexer::span::Span;
 
 #[macro_export]
-macro_rules! compiler_error {
+macro_rules! compilation_error {
     ($span:expr, $msg:literal $(, $arg:expr)* $(,)?) => {
-        CompilerError::new(
+        CompilationError::new(
             $span,
             format!($msg $(, $arg)*),
         )
     };
 }
 
-pub struct CompilerError {
+#[derive(Debug)]
+pub struct CompilationError {
     pub span: Span,
     pub message: String,
 }
 
-impl CompilerError {
+impl CompilationError {
     pub fn new(span: Span, message: String) -> Self {
         Self { span, message }
     }

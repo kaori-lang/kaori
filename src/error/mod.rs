@@ -1,1 +1,1 @@
-pub mod compiler_error;
+pub mod compilation_error;

@@ -1,35 +1,37 @@
+use crate::lexer::span::Span;
+
 use super::{ast_node::ASTNode, expression_ast::ExpressionAST};
 
 #[derive(Debug)]
 pub enum StatementAST {
     Print {
         expression: Box<ExpressionAST>,
-        line: u32,
+        span: Span,
     },
 
     Expression {
         expression: Box<ExpressionAST>,
-        line: u32,
+        span: Span,
     },
     If {
         condition: Box<ExpressionAST>,
         then_branch: Box<StatementAST>,
         else_branch: Option<Box<StatementAST>>,
-        line: u32,
+        span: Span,
     },
     WhileLoop {
         condition: Box<ExpressionAST>,
         block: Box<StatementAST>,
-        line: u32,
+        span: Span,
     },
     Block {
         declarations: Vec<ASTNode>,
-        line: u32,
+        span: Span,
     },
     Break {
-        line: u32,
+        span: Span,
     },
     Continue {
-        line: u32,
+        span: Span,
     },
 }

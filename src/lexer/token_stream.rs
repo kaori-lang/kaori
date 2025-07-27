@@ -1,4 +1,4 @@
-use crate::error::compiler_error::{CompilerError, Syntax};
+use crate::{compilation_error, error::compilation_error::CompilationError};
 
 use super::{span::Span, token::Token, token_type::TokenType};
 
@@ -7,7 +7,6 @@ pub struct TokenStream {
     source: String,
     tokens: Vec<Token>,
     index: usize,
-    span: &Span,
 }
 
 impl TokenStream {
@@ -19,7 +18,7 @@ impl TokenStream {
         }
     }
 
-    pub fn current_type(&mut self) -> TokenType {
+    pub fn token_type(&mut self) -> TokenType {
         if let Some(token) = self.tokens.get(self.index) {
             return token.ty.clone();
         }
@@ -28,38 +27,35 @@ impl TokenStream {
     }
 
     pub fn at_end(&mut self) -> bool {
-        return self.current_type() == TokenType::Eof;
+        return self.token_type() == TokenType::Eof;
     }
 
     pub fn advance(&mut self) {
         self.index += 1;
+    }
 
-        if let Some(token) = self.tokens.get(self.index) {
-            self.span = &token.span;
-        }
+    pub fn span(&mut self) -> Span {
+        let span = &self.tokens[self.index].span;
+
+        return span.clone();
     }
 
     pub fn lexeme(&mut self) -> String {
-        let current_token = &self.tokens[self.index];
-        let start = current_token.position;
-        let end = current_token.position + current_token.size;
+        let span = self.span();
 
-        return self.source[start..end].to_string();
+        return self.source[span.start..span.start + span.size].to_string();
     }
 
-    pub fn consume(&mut self, expected: TokenType) -> Result<(), CompilerError> {
-        let found = self.current_type();
+    pub fn consume(&mut self, expected: TokenType) -> Result<(), CompilationError> {
+        let found = self.token_type();
 
         if expected == found {
             self.advance();
             return Ok(());
         } else {
-            let err = CompilerError {
-                error_type: Syntax::UnexpectedToken(expected, found),
-                line: self.current_line(),
-            };
+            let span = self.span();
 
-            return Err(err);
+            return Err(compilation_error!(span, "invalid"));
         }
     }
 
