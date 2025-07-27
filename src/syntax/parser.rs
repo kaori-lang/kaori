@@ -33,9 +33,22 @@ impl Parser {
 
     /* Declarations */
     fn parse_declaration(&mut self) -> Result<ASTNode, ErrorType> {
-        Ok(match self.token_stream.current_type() {
-            _ => ASTNode::Statement(self.parse_statement()?),
-        })
+        let declaration = match self.token_stream.current_type() {
+            _ => {
+                if !self
+                    .token_stream
+                    .look_ahead(&[TokenType::Identifier, TokenType::Colon])
+                {
+                    return Ok(ASTNode::Statement(self.parse_statement()?));
+                }
+
+                let variable_declaration = ASTNode::Declaration(self.parse_variable_declaration()?);
+                self.token_stream.consume(TokenType::Semicolon)?;
+                variable_declaration
+            }
+        };
+
+        Ok(declaration)
     }
 
     fn parse_variable_declaration(&mut self) -> Result<Box<DeclarationAST>, ErrorType> {
@@ -75,7 +88,7 @@ impl Parser {
 
         let expression = self.parse_expression()?;
         self.token_stream.consume(TokenType::Semicolon)?;
-        
+
         return Ok(Box::new(StatementAST::Expression { expression, line }));
     }
 
@@ -413,7 +426,7 @@ impl Parser {
     }
 
     pub fn parse_primitive_type(&mut self) -> Result<TypeAST, ErrorType> {
-        Ok(match self.token_stream.lexeme().as_str() {
+        let primitive = match self.token_stream.lexeme().as_str() {
             "bool" => TypeAST::Boolean,
             "str" => TypeAST::String,
             "number" => TypeAST::Number,
@@ -422,7 +435,11 @@ impl Parser {
                     "invalid primitive type",
                 )))
             }
-        })
+        };
+
+        self.token_stream.advance();
+
+        Ok(primitive)
     }
 
     /*    fn parse_for_loop_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
