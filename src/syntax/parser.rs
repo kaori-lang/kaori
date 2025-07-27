@@ -414,7 +414,7 @@ impl Parser {
 
         self.token_stream.consume(TokenType::Identifier)?;
 
-        Ok(String::from("identifier"))
+        Ok(identifier)
     }
 
     /* Types */

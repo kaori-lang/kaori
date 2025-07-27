@@ -124,9 +124,9 @@ impl Lexer {
     }
 
     fn string_literal(&mut self) -> Result<(), ErrorType> {
-        let start = self.position;
-
         self.position += 1;
+
+        let start = self.position;
 
         while !self.at_end() {
             let c = self.source[self.position];
@@ -150,7 +150,7 @@ impl Lexer {
 
         self.position += 1;
 
-        let size = self.position - start;
+        let size = self.position - start - 1;
         let ty = TokenType::StringLiteral;
         self.create_token(ty, start, size);
 
