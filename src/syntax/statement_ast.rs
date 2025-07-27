@@ -1,4 +1,4 @@
-use super::expression_ast::ExpressionAST;
+use super::{ast_node::ASTNode, expression_ast::ExpressionAST};
 
 #[derive(Debug)]
 pub enum StatementAST {
@@ -23,7 +23,7 @@ pub enum StatementAST {
         line: u32,
     },
     Block {
-        statements: Box<Vec<StatementAST>>,
+        declarations: Vec<ASTNode>,
         line: u32,
     },
     Break {

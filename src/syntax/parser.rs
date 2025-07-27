@@ -159,23 +159,20 @@ impl Parser {
     fn parse_block_statement(&mut self) -> Result<StatementAST, ErrorType> {
         let line = self.token_stream.current_line();
 
-        let mut statements: Vec<StatementAST> = Vec::new();
+        let mut declarations: Vec<ASTNode> = Vec::new();
 
         self.token_stream.consume(TokenType::LeftBrace)?;
 
         while !self.token_stream.at_end()
             && self.token_stream.current_type() != TokenType::RightBrace
         {
-            let statement = self.parse_statement()?;
-            statements.push(statement);
+            let declaration = self.parse_declaration()?;
+            declarations.push(declaration);
         }
 
         self.token_stream.consume(TokenType::RightBrace)?;
 
-        return Ok(StatementAST::Block {
-            statements: Box::new(statements),
-            line,
-        });
+        return Ok(StatementAST::Block { declarations, line });
     }
 
     /* Expressions */
