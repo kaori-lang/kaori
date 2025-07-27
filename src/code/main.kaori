@@ -1,7 +1,15 @@
-
+/* 
 a: str = "hello woroodll";
 
 
+
+
+
+
+
+*/
 while a < 10 {
     print(1 * 1000 + (1.56 && 7));
+
+
 }

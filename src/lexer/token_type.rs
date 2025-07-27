@@ -55,5 +55,5 @@ pub enum TokenType {
 
     // Special
     Invalid,
-    Eof,
+    EndOfFile,
 }

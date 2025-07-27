@@ -19,7 +19,7 @@ impl TokenStream {
     }
 
     pub fn at_end(&mut self) -> bool {
-        return self.token_type() == TokenType::Eof;
+        return self.token_type() == TokenType::EndOfFile;
     }
 
     pub fn advance(&mut self) {

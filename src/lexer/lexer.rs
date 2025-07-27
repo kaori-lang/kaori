@@ -75,7 +75,13 @@ impl Lexer {
     fn comment(&mut self) {
         self.position += 2;
 
-        while !self.at_end() && self.look_ahead(&['*', '/']) {
+        while !self.at_end() && !self.look_ahead(&['*', '/']) {
+            let c = self.source[self.position];
+
+            if c == '\n' {
+                self.line += 1;
+            }
+
             self.position += 1;
         }
 
@@ -185,6 +191,7 @@ impl Lexer {
                     TokenType::Plus
                 }
             }
+
             '-' => {
                 if self.look_ahead(&['-', '-']) {
                     TokenType::Decrement
@@ -197,7 +204,6 @@ impl Lexer {
             '*' => TokenType::Multiply,
             '/' => TokenType::Divide,
             '%' => TokenType::Remainder,
-
             '&' => {
                 if self.look_ahead(&['&', '&']) {
                     TokenType::And
@@ -316,7 +322,7 @@ impl Lexer {
         };
 
         let token = Token {
-            ty: TokenType::Eof,
+            ty: TokenType::EndOfFile,
             span,
         };
 

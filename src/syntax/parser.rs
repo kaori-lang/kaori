@@ -105,6 +105,24 @@ impl Parser {
         return Ok(StatementAST::Print { expression, span });
     }
 
+    fn parse_block_statement(&mut self) -> Result<StatementAST, CompilationError> {
+        let span = self.token_stream.span();
+
+        let mut declarations: Vec<ASTNode> = Vec::new();
+
+        self.token_stream.consume(TokenType::LeftBrace)?;
+
+        while !self.token_stream.at_end() && self.token_stream.token_type() != TokenType::RightBrace
+        {
+            let declaration = self.parse_declaration()?;
+            declarations.push(declaration);
+        }
+
+        self.token_stream.consume(TokenType::RightBrace)?;
+
+        return Ok(StatementAST::Block { declarations, span });
+    }
+
     fn parse_if_statement(&mut self) -> Result<StatementAST, CompilationError> {
         let span = self.token_stream.span();
 
@@ -157,20 +175,37 @@ impl Parser {
         });
     }
 
-    fn parse_block_statement(&mut self) -> Result<StatementAST, CompilationError> {
+    fn parse_for_loop_statement(&mut self) -> Result<StatementAST, CompilationError> {
         let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenType::For)?;
+
+        let declaration = self.parse_variable_declaration()?;
+
+        self.token_stream.consume(TokenType::Semicolon)?;
+
+        let condition = self.parse_expression()?;
+
+        self.token_stream.consume(TokenType::Semicolon)?;
+
+        let increment = self.parse_expression_statement()?;
+
+        let mut block = self.parse_block_statement()?;
+
+        if let StatementAST::Block { declarations, .. } = &mut block {
+            declarations.push(ASTNode::Statement(increment));
+        }
+
+        let while_loop = StatementAST::WhileLoop {
+            condition,
+            block: Box::new(block),
+            span: span.clone(),
+        };
 
         let mut declarations: Vec<ASTNode> = Vec::new();
 
-        self.token_stream.consume(TokenType::LeftBrace)?;
-
-        while !self.token_stream.at_end() && self.token_stream.token_type() != TokenType::RightBrace
-        {
-            let declaration = self.parse_declaration()?;
-            declarations.push(declaration);
-        }
-
-        self.token_stream.consume(TokenType::RightBrace)?;
+        declarations.push(ASTNode::Declaration(declaration));
+        declarations.push(ASTNode::Statement(while_loop));
 
         return Ok(StatementAST::Block { declarations, span });
     }
@@ -449,34 +484,4 @@ impl Parser {
 
         Ok(primitive)
     }
-
-    /*    fn parse_for_loop_statement(&mut self) -> Result<StatementAST, CompilationError> {
-           let span = self.token_stream.span();
-
-           self.token_stream.consume(&TokenType::For)?;
-
-           let declaration = self.parse_variable_decl_statement()?;
-
-           let condition = self.parse_ExpressionAST()?;
-
-           self.token_stream.consume(&TokenType::Semicolon)?;
-
-           let increment = self.parse_ExpressionAST()?;
-
-           self.token_stream.consume(&TokenType::RightParen)?;
-
-
-
-           let block = self.parse_block_statement()?;
-
-           return Ok(Box::new(ForLoopStatement {
-               declaration,
-               condition,
-               increment,
-               block,
-               span,
-           }));
-       }
-
-    */
 }
