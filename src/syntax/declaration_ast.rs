@@ -1,8 +1,8 @@
-use super::expression_ast::ExpressionAST;
+use super::{ast_node::ASTNode, expression_ast::ExpressionAST};
 
 pub enum DeclarationAST {
     Variable {
-        left: ExpressionAST,
+        identifier: String,
         right: Box<ExpressionAST>,
         line: u32,
     },

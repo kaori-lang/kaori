@@ -4,6 +4,7 @@ use crate::{
 };
 
 use super::{
+    ast_node::ASTNode,
     declaration_ast::DeclarationAST,
     expression_ast::{BinaryOp, ExpressionAST, UnaryOp},
     statement_ast::StatementAST,
@@ -18,8 +19,136 @@ impl Parser {
         Self { token_stream }
     }
 
+    pub fn execute(&mut self) -> Result<Vec<ASTNode>, ErrorType> {
+        let mut declarations: Vec<ASTNode> = Vec::new();
+
+        while !self.token_stream.at_end() {
+            let declaration = self.parse_declaration()?;
+            declarations.push(declaration);
+        }
+
+        Ok(declarations)
+    }
+
+    /* Declarations */
+    fn parse_declaration(&mut self) -> Result<ASTNode, ErrorType> {
+        Ok(match self.token_stream.current_kind() {
+            _ => ASTNode::Statement(self.parse_statement()?),
+        })
+    }
+
+    fn parse_variable_declaration(&mut self) -> Result<Box<DeclarationAST>, ErrorType> {
+        let line = self.token_stream.current_line();
+
+        let identifier = self.parse_identifier()?;
+
+        self.token_stream.consume(TokenType::Assign)?;
+
+        let right = self.parse_expression()?;
+
+        self.token_stream.consume(TokenType::Semicolon)?;
+
+        return Ok(Box::new(DeclarationAST::Variable {
+            identifier,
+            right,
+            line,
+        }));
+    }
+
+    /* Statements */
+    fn parse_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+        Ok(match self.token_stream.current_kind() {
+            TokenType::Print => self.parse_print_statement()?,
+            TokenType::LeftBrace => self.parse_block_statement()?,
+            TokenType::If => self.parse_if_statement()?,
+            TokenType::While => self.parse_while_loop_statement()?,
+
+            _ => self.parse_expression_statement()?,
+        })
+    }
+
+    fn parse_expression_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+        let line = self.token_stream.current_line();
+
+        let expression = self.parse_expression()?;
+        self.token_stream.consume(TokenType::Semicolon)?;
+
+        return Ok(Box::new(StatementAST::Expression { expression, line }));
+    }
+
+    fn parse_print_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+        let line = self.token_stream.current_line();
+
+        self.token_stream.consume(TokenType::Print)?;
+        self.token_stream.consume(TokenType::LeftParen)?;
+        let expression = self.parse_expression()?;
+        self.token_stream.consume(TokenType::RightParen)?;
+
+        return Ok(Box::new(StatementAST::Print { expression, line }));
+    }
+
+    fn parse_if_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+        let line = self.token_stream.current_line();
+
+        self.token_stream.consume(TokenType::If)?;
+
+        let condition = self.parse_expression()?;
+
+        let then_branch = self.parse_block_statement()?;
+
+        let if_statement = StatementAST::If {
+            condition,
+            then_branch,
+            else_branch: None,
+            line,
+        };
+
+        return Ok(Box::new(if_statement));
+    }
+
+    fn parse_while_loop_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+        let line = self.token_stream.current_line();
+
+        self.token_stream.consume(TokenType::While)?;
+
+        let condition = self.parse_expression()?;
+        let block = self.parse_block_statement()?;
+
+        return Ok(Box::new(StatementAST::WhileLoop {
+            condition,
+            block,
+            line,
+        }));
+    }
+
+    fn parse_block_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
+        let line = self.token_stream.current_line();
+
+        let mut statements: Vec<Box<StatementAST>> = Vec::new();
+
+        self.token_stream.consume(TokenType::LeftBrace)?;
+
+        while !self.token_stream.at_end()
+            && self.token_stream.current_kind() != TokenType::RightBrace
+        {
+            let statement = self.parse_statement()?;
+            statements.push(statement);
+        }
+
+        self.token_stream.consume(TokenType::RightBrace)?;
+
+        return Ok(Box::new(StatementAST::Block { statements, line }));
+    }
+
     /* Expressions */
     fn parse_expression(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
+        if self
+            .token_stream
+            .look_ahead(&[TokenType::Identifier, TokenType::Assign])
+        {
+            return self.parse_assign();
+        }
+
         return self.parse_or();
     }
 
@@ -249,102 +378,6 @@ impl Parser {
         Ok(String::from("identifier"))
     }
 
-    /* Statements */
-    fn parse_statements(&mut self) -> Result<Vec<Box<StatementAST>>, ErrorType> {
-        let mut statements: Vec<Box<StatementAST>> = Vec::new();
-
-        while !self.token_stream.at_end() {
-            let statement = self.parse_statement()?;
-            statements.push(statement);
-        }
-
-        return Ok(statements);
-    }
-
-    fn parse_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
-        Ok(match self.token_stream.current_kind() {
-            TokenType::Print => self.parse_print_statement(),
-            TokenType::LeftBrace => self.parse_block_statement(),
-            TokenType::If => self.parse_if_statement(),
-            TokenType::While => self.parse_while_loop_statement(),
-            TokenType::For => self.parse_for_loop_statement(),
-            _ => self.parse_expression_statement(),
-        })
-    }
-
-    pub fn parse_expression_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
-        let line = self.token_stream.current_line();
-
-        let expression = self.parse_expression()?;
-        self.token_stream.consume(TokenType::Semicolon)?;
-
-        return Ok(Box::new(StatementAST::Expression { expression, line }));
-    }
-
-    fn parse_print_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
-        let line = self.token_stream.current_line();
-
-        self.token_stream.consume(TokenType::Print)?;
-        self.token_stream.consume(TokenType::LeftParen)?;
-        let expression = self.parse_expression()?;
-        self.token_stream.consume(TokenType::RightParen)?;
-
-        return Ok(Box::new(StatementAST::Print { expression, line }));
-    }
-
-    fn parse_if_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
-        let line = self.token_stream.current_line();
-
-        self.token_stream.consume(TokenType::If)?;
-
-        let condition = self.parse_expression()?;
-
-        let then_branch = self.parse_block_statement()?;
-
-        let if_statement = StatementAST::If {
-            condition,
-            then_branch,
-            else_branch: None,
-            line,
-        };
-
-        return Ok(Box::new(if_statement));
-    }
-
-    fn parse_while_loop_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
-        let line = self.token_stream.current_line();
-
-        self.token_stream.consume(TokenType::While)?;
-
-        let condition = self.parse_expression()?;
-        let block = self.parse_block_statement()?;
-
-        return Ok(Box::new(StatementAST::WhileLoop {
-            condition,
-            block,
-            line,
-        }));
-    }
-
-    fn parse_block_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
-        let line = self.token_stream.current_line();
-
-        let mut statements: Vec<Box<StatementAST>> = Vec::new();
-
-        self.token_stream.consume(TokenType::LeftBrace)?;
-
-        while !self.token_stream.at_end()
-            && self.token_stream.current_kind() != TokenType::RightBrace
-        {
-            let statement = self.parse_statement()?;
-            statements.push(statement);
-        }
-
-        self.token_stream.consume(TokenType::RightBrace)?;
-
-        return Ok(Box::new(StatementAST::Block { statements, line }));
-    }
-
     /*    fn parse_for_loop_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
            let line = self.token_stream.current_line();
 
@@ -373,39 +406,5 @@ impl Parser {
            }));
        }
 
-       fn parse_variable_declaration(&mut self) -> Result<Box<dyn Statement>, ErrorType> {
-        let Some(declaration) = self.look_ahead() else {
-            return Err(ErrorType::SyntaxError);
-        };
-
-        let data_type = match declaration.ty {
-            TokenType::String | TokenType::Float | TokenType::Boolean => declaration.ty,
-            _ => return Err(ErrorType::SyntaxError),
-        };
-
-        self.token_stream.consume(&data_type)?;
-
-        let Some(identifier) = self.look_ahead() else {
-            return Err(ErrorType::SyntaxError);
-        };
-
-        self.token_stream.consume(&TokenType::Identifier)?;
-
-        self.token_stream.consume(&TokenType::Assign)?;
-
-        let data = self.parse_ExpressionAST()?;
-
-        self.token_stream.consume(&TokenType::Semicolon)?;
-
-        return Ok(Box::new(VariableDeclStatement {
-            data_type,
-            identifier: identifier.lexeme,
-            data,
-            line: self.line,
-        }));
-    }
-
-    pub fn execute(&mut self) -> Result<Vec<Box<DeclarationAST>>, ErrorType> {
-        return self.pars;
-    }*/
+    */
 }

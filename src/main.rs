@@ -20,8 +20,6 @@ pub fn run_program(source: String) -> Result<(), ErrorType> {
     let token_stream = TokenStream::new(source.clone(), tokens);
 
     let mut parser = Parser::new(token_stream);
-    let expr = parser.parse_expression_statement()?;
-    println!("{:#?}", expr);
 
     Ok(())
 }
