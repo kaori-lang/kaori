@@ -1,3 +1,6 @@
+#[derive(Debug)]
 pub enum TypeAST {
-    Primitive(),
+    Boolean,
+    String,
+    Number,
 }

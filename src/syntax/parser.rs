@@ -8,6 +8,7 @@ use super::{
     declaration_ast::DeclarationAST,
     expression_ast::{BinaryOp, ExpressionAST, UnaryOp},
     statement_ast::StatementAST,
+    type_ast::TypeAST,
 };
 
 pub struct Parser {
@@ -32,7 +33,7 @@ impl Parser {
 
     /* Declarations */
     fn parse_declaration(&mut self) -> Result<ASTNode, ErrorType> {
-        Ok(match self.token_stream.current_kind() {
+        Ok(match self.token_stream.current_type() {
             _ => ASTNode::Statement(self.parse_statement()?),
         })
     }
@@ -42,29 +43,31 @@ impl Parser {
 
         let identifier = self.parse_identifier()?;
 
+        self.token_stream.consume(TokenType::Colon)?;
+
+        let ty = self.parse_type()?;
+
         self.token_stream.consume(TokenType::Assign)?;
 
         let right = self.parse_expression()?;
 
-        self.token_stream.consume(TokenType::Semicolon)?;
-
         return Ok(Box::new(DeclarationAST::Variable {
             identifier,
             right,
+            ty,
             line,
         }));
     }
 
     /* Statements */
     fn parse_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
-        Ok(match self.token_stream.current_kind() {
-            TokenType::Print => self.parse_print_statement()?,
-            TokenType::LeftBrace => self.parse_block_statement()?,
-            TokenType::If => self.parse_if_statement()?,
-            TokenType::While => self.parse_while_loop_statement()?,
-
-            _ => self.parse_expression_statement()?,
-        })
+        Ok(match self.token_stream.current_type() {
+            TokenType::Print => self.parse_print_statement(),
+            TokenType::LeftBrace => self.parse_block_statement(),
+            TokenType::If => self.parse_if_statement(),
+            TokenType::While => self.parse_while_loop_statement(),
+            _ => self.parse_expression_statement(),
+        }?)
     }
 
     fn parse_expression_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
@@ -72,7 +75,7 @@ impl Parser {
 
         let expression = self.parse_expression()?;
         self.token_stream.consume(TokenType::Semicolon)?;
-
+        
         return Ok(Box::new(StatementAST::Expression { expression, line }));
     }
 
@@ -83,6 +86,7 @@ impl Parser {
         self.token_stream.consume(TokenType::LeftParen)?;
         let expression = self.parse_expression()?;
         self.token_stream.consume(TokenType::RightParen)?;
+        self.token_stream.consume(TokenType::Semicolon)?;
 
         return Ok(Box::new(StatementAST::Print { expression, line }));
     }
@@ -96,14 +100,32 @@ impl Parser {
 
         let then_branch = self.parse_block_statement()?;
 
-        let if_statement = StatementAST::If {
+        if self.token_stream.current_type() != TokenType::Else {
+            return Ok(Box::new(StatementAST::If {
+                condition,
+                then_branch,
+                else_branch: None,
+                line,
+            }));
+        }
+
+        self.token_stream.advance();
+
+        if self.token_stream.current_type() == TokenType::If {
+            return Ok(Box::new(StatementAST::If {
+                condition,
+                then_branch,
+                else_branch: Some(self.parse_if_statement()?),
+                line,
+            }));
+        }
+
+        return Ok(Box::new(StatementAST::If {
             condition,
             then_branch,
-            else_branch: None,
+            else_branch: Some(self.parse_block_statement()?),
             line,
-        };
-
-        return Ok(Box::new(if_statement));
+        }));
     }
 
     fn parse_while_loop_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {
@@ -129,7 +151,7 @@ impl Parser {
         self.token_stream.consume(TokenType::LeftBrace)?;
 
         while !self.token_stream.at_end()
-            && self.token_stream.current_kind() != TokenType::RightBrace
+            && self.token_stream.current_type() != TokenType::RightBrace
         {
             let statement = self.parse_statement()?;
             statements.push(statement);
@@ -169,7 +191,7 @@ impl Parser {
         let mut left = self.parse_and()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.current_kind();
+            let ty = self.token_stream.current_type();
 
             if ty != TokenType::Or {
                 break;
@@ -193,7 +215,7 @@ impl Parser {
         let mut left = self.parse_equality()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.current_kind();
+            let ty = self.token_stream.current_type();
 
             if ty != TokenType::And {
                 break;
@@ -216,7 +238,7 @@ impl Parser {
         let mut left = self.parse_comparison()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.current_kind();
+            let ty = self.token_stream.current_type();
 
             let operator = match ty {
                 TokenType::Equal => BinaryOp::Equal,
@@ -241,7 +263,7 @@ impl Parser {
         let mut left = self.parse_term()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.current_kind();
+            let ty = self.token_stream.current_type();
 
             let operator = match ty {
                 TokenType::Greater => BinaryOp::Greater,
@@ -268,7 +290,7 @@ impl Parser {
         let mut left = self.parse_factor()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.current_kind();
+            let ty = self.token_stream.current_type();
 
             let operator = match ty {
                 TokenType::Plus => BinaryOp::Plus,
@@ -293,7 +315,7 @@ impl Parser {
         let mut left = self.parse_unary()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.current_kind();
+            let ty = self.token_stream.current_type();
 
             let operator = match ty {
                 TokenType::Multiply => BinaryOp::Multiply,
@@ -316,7 +338,7 @@ impl Parser {
     }
 
     fn parse_unary(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
-        let ty = self.token_stream.current_kind();
+        let ty = self.token_stream.current_type();
 
         let operator = match ty {
             TokenType::Plus => {
@@ -337,7 +359,7 @@ impl Parser {
     }
 
     fn parse_primary(&mut self) -> Result<Box<ExpressionAST>, ErrorType> {
-        let ty = self.token_stream.current_kind();
+        let ty = self.token_stream.current_type();
 
         Ok(match ty {
             TokenType::LeftParen => {
@@ -362,20 +384,45 @@ impl Parser {
             }
             TokenType::StringLiteral => {
                 let lexeme = self.token_stream.lexeme();
-                let str_literal = lexeme;
 
                 self.token_stream.advance();
-                Box::new(ExpressionAST::StringLiteral(str_literal))
+                Box::new(ExpressionAST::StringLiteral(lexeme))
             }
             TokenType::Identifier => Box::new(ExpressionAST::Identifier(self.parse_identifier()?)),
-            _ => return Err(ErrorType::SyntaxError(String::from("invalid primary"))),
+            _ => {
+                println!("{:?}", ty);
+                return Err(ErrorType::SyntaxError(String::from("primary")));
+            }
         })
     }
 
     fn parse_identifier(&mut self) -> Result<String, ErrorType> {
+        let identifier = self.token_stream.lexeme();
+
         self.token_stream.consume(TokenType::Identifier)?;
 
         Ok(String::from("identifier"))
+    }
+
+    /* Types */
+    pub fn parse_type(&mut self) -> Result<TypeAST, ErrorType> {
+        match self.token_stream.current_type() {
+            TokenType::Identifier => self.parse_primitive_type(),
+            _ => Err(ErrorType::SyntaxError(String::from("invalid type"))),
+        }
+    }
+
+    pub fn parse_primitive_type(&mut self) -> Result<TypeAST, ErrorType> {
+        Ok(match self.token_stream.lexeme().as_str() {
+            "bool" => TypeAST::Boolean,
+            "str" => TypeAST::String,
+            "number" => TypeAST::Number,
+            _ => {
+                return Err(ErrorType::SyntaxError(String::from(
+                    "invalid primitive type",
+                )))
+            }
+        })
     }
 
     /*    fn parse_for_loop_statement(&mut self) -> Result<Box<StatementAST>, ErrorType> {

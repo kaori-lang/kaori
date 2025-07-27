@@ -21,17 +21,20 @@ pub fn run_program(source: String) -> Result<(), ErrorType> {
 
     let mut parser = Parser::new(token_stream);
 
+    let ast = parser.execute()?;
+
+    println!("{:#?}", ast);
+
     Ok(())
 }
 
 fn main() {
-    let source = r#"1 + 2.64 * 7 + "abcd" * true / false;
-           "#;
-
-    match run_program(source.to_string()) {
-        Err(error) => println!("{}", error),
-        Ok(()) => (),
-    };
-
-    println!("end");
+    if let Ok(source) = fs::read_to_string("src/code/main.kaori") {
+        match run_program(source.to_string()) {
+            Err(error) => println!("{}", error),
+            Ok(()) => (),
+        };
+    } else {
+        println!("can't read");
+    }
 }

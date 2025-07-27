@@ -20,7 +20,7 @@ impl TokenStream {
         }
     }
 
-    pub fn current_kind(&mut self) -> TokenType {
+    pub fn current_type(&mut self) -> TokenType {
         if let Some(token) = self.tokens.get(self.index) {
             return token.ty.clone();
         }
@@ -29,7 +29,7 @@ impl TokenStream {
     }
 
     pub fn at_end(&mut self) -> bool {
-        return self.current_kind() == TokenType::Eof;
+        return self.current_type() == TokenType::Eof;
     }
 
     pub fn advance(&mut self) {

@@ -1,9 +1,11 @@
-use super::{ast_node::ASTNode, expression_ast::ExpressionAST};
+use super::{expression_ast::ExpressionAST, type_ast::TypeAST};
 
+#[derive(Debug)]
 pub enum DeclarationAST {
     Variable {
         identifier: String,
         right: Box<ExpressionAST>,
+        ty: TypeAST,
         line: u32,
     },
 }
