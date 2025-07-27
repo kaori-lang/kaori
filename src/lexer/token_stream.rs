@@ -60,7 +60,7 @@ impl TokenStream {
             return Ok(());
         } else {
             let err = SyntaxError {
-                error_type: Syntax::ExpectedToken(expected, found),
+                error_type: Syntax::UnexpectedToken(expected, found),
                 line: self.current_line(),
             };
 

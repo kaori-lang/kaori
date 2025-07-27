@@ -1,6 +1,6 @@
-use crate::error::error_type::{ErrorType, SyntaxError};
+use crate::error::syntax_error::{Syntax, SyntaxError};
 
-use super::{token::Token, token_stream::TokenStream, token_type::TokenType};
+use super::{token::Token, token_type::TokenType};
 
 #[derive(Debug)]
 pub struct Lexer {
@@ -69,6 +69,16 @@ impl Lexer {
         }
     }
 
+    fn comment(&mut self) {
+        self.position += 2;
+
+        while !self.at_end() && self.look_ahead(&['*', '/']) {
+            self.position += 1;
+        }
+
+        self.position += 2;
+    }
+
     fn identifier_or_keyword(&mut self) {
         let start = self.position;
 
@@ -123,7 +133,7 @@ impl Lexer {
         self.create_token(ty, start, size);
     }
 
-    fn string_literal(&mut self) -> Result<(), ErrorType> {
+    fn string_literal(&mut self) -> Result<(), SyntaxError> {
         self.position += 1;
 
         let start = self.position;
@@ -143,8 +153,10 @@ impl Lexer {
         }
 
         if self.at_end() {
-            let err_type = ErrorType::Syntax(SyntaxError::UnexpectedEof);
-            return Err(ErrorType::Syntax(SyntaxError::UnexpectedEof));
+            return Err(SyntaxError {
+                error_type: Syntax::UnexpectedEof,
+                line: self.line,
+            });
         }
 
         self.position += 1;
@@ -156,10 +168,12 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn symbol(&mut self) -> Result<(), ErrorType> {
+    pub fn symbol(&mut self) -> Result<(), SyntaxError> {
         let start = self.position;
 
-        let ty = match self.source[self.position] {
+        let curr_char = self.source[self.position];
+
+        let ty = match curr_char {
             '+' => {
                 if self.look_ahead(&['+', '+']) {
                     TokenType::Increment
@@ -233,8 +247,10 @@ impl Lexer {
         };
 
         if ty == TokenType::Invalid {
-            let lexeme = self.source[self.position];
-            return Err(ErrorType::Syntax(SyntaxError::InvalidToken(lexeme)));
+            return Err(SyntaxError {
+                error_type: Syntax::InvalidToken(curr_char),
+                line: self.line,
+            });
         }
 
         let size = match ty {
@@ -256,11 +272,13 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn get_next_token(&mut self) -> Result<(), ErrorType> {
+    pub fn get_next_token(&mut self) -> Result<(), SyntaxError> {
         let c = self.source[self.position];
 
         if c == '"' {
             self.string_literal()?;
+        } else if self.look_ahead(&['/', '*']) {
+            self.comment();
         } else if c.is_alphabetic() {
             self.identifier_or_keyword();
         } else if c.is_ascii_digit() {
@@ -274,7 +292,7 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, ErrorType> {
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, SyntaxError> {
         while !self.at_end() {
             self.get_next_token()?;
         }

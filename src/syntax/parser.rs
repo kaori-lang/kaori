@@ -1,5 +1,5 @@
 use crate::{
-    error::error_type::SyntaxError,
+    error::syntax_error::{Syntax, SyntaxError},
     lexer::{token_stream::TokenStream, token_type::TokenType},
 };
 
@@ -421,7 +421,10 @@ impl Parser {
     pub fn parse_type(&mut self) -> Result<TypeAST, SyntaxError> {
         match self.token_stream.current_type() {
             TokenType::Identifier => self.parse_primitive_type(),
-            _ => Err(SyntaxError::SyntaxError(String::from("invalid type"))),
+            _ => Err(SyntaxError {
+                error_type: Syntax::UnexpectedEof,
+                line: self.token_stream.current_line(),
+            }),
         }
     }
 
@@ -431,7 +434,10 @@ impl Parser {
             "str" => TypeAST::String,
             "number" => TypeAST::Number,
             _ => {
-                return Err(SyntaxError::UnexpectedToken(TokenType::Invalid));
+                return Err(SyntaxError {
+                    error_type: Syntax::UnexpectedEof,
+                    line: self.token_stream.current_line(),
+                });
             }
         };
 

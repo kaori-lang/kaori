@@ -9,14 +9,14 @@ pub struct SyntaxError {
 #[derive(Debug)]
 pub enum Syntax {
     InvalidToken(char),
-    ExpectedToken(TokenType, TokenType),
+    UnexpectedToken(TokenType, TokenType),
     UnexpectedEof,
 }
 
 impl fmt::Display for Syntax {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Syntax::ExpectedToken(expected, found) => {
+            Syntax::UnexpectedToken(expected, found) => {
                 write!(f, "expected {:?} token, but found {:?}", expected, found)
             }
             Syntax::InvalidToken(c) => {
