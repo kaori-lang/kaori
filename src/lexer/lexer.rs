@@ -1,4 +1,4 @@
-use crate::error::syntax_error::{Syntax, SyntaxError};
+use crate::error::compiler_error::{CompilerError, ErrorType};
 
 use super::{token::Token, token_type::TokenType};
 
@@ -42,7 +42,7 @@ impl Lexer {
         return true;
     }
 
-    fn create_token(&mut self, ty: TokenType, position: usize, size: usize) {
+    fn create_token(&mut self, ty: TokenType, position: usize, size: usize) -> Token {
         let token = Token {
             ty,
             line: self.line,
@@ -50,7 +50,7 @@ impl Lexer {
             size,
         };
 
-        self.tokens.push(token);
+        return token;
     }
 
     fn white_space(&mut self) {
@@ -130,10 +130,11 @@ impl Lexer {
         let size = self.position - start;
         let ty = TokenType::NumberLiteral;
 
-        self.create_token(ty, start, size);
+        let token = self.create_token(ty, start, size);
+        self.tokens.push(token);
     }
 
-    fn string_literal(&mut self) -> Result<(), SyntaxError> {
+    fn string_literal(&mut self) -> Result<(), CompilerError> {
         self.position += 1;
 
         let start = self.position;
@@ -153,17 +154,20 @@ impl Lexer {
         }
 
         if self.at_end() {
-            return Err(SyntaxError {
-                error_type: Syntax::UnexpectedEof,
-                line: self.line,
-            });
+            let size = self.position - start - 1;
+            let ty = TokenType::StringLiteral;
+            let token = self.create_token(ty, start, size);
+
+            return Err(compile_error!(token));
         }
 
         self.position += 1;
 
         let size = self.position - start - 1;
         let ty = TokenType::StringLiteral;
-        self.create_token(ty, start, size);
+        let token = self.create_token(ty, start, size);
+
+        self.tokens.push(token);
 
         Ok(())
     }
@@ -268,7 +272,8 @@ impl Lexer {
 
         self.position += size;
 
-        self.create_token(ty, start, size);
+        let token = self.create_token(ty, start, size);
+        self.tokens.push(token);
         Ok(())
     }
 

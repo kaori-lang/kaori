@@ -1,1 +1,1 @@
-pub mod syntax_error;
+pub mod compiler_error;

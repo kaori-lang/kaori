@@ -403,8 +403,10 @@ impl Parser {
             }
             TokenType::Identifier => Box::new(ExpressionAST::Identifier(self.parse_identifier()?)),
             _ => {
-                println!("{:?}", ty);
-                return Err(SyntaxError::SyntaxError(String::from("primary")));
+                return Err(SyntaxError {
+                    error_type: Syntax::InvalidOperand(ty),
+                    line: self.token_stream.current_line(),
+                });
             }
         })
     }

@@ -8,24 +8,21 @@ use std::fs;
 
 use regex::{Captures, Regex};
 use yellow_flash::{
-    error::error_type::ErrorType,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     syntax::parser::Parser,
 };
 
-pub fn run_program(source: String) -> Result<(), ErrorType> {
+pub fn run_program(source: String) {
     let mut lexer = Lexer::new(source.clone());
 
-    let tokens = lexer.tokenize()?;
+    let tokens = lexer.tokenize();
     let token_stream = TokenStream::new(source.clone(), tokens);
 
     let mut parser = Parser::new(token_stream);
 
-    let ast = parser.execute()?;
+    let ast = parser.execute();
 
     println!("{:#?}", ast);
-
-    Ok(())
 }
 
 fn main() {
@@ -34,7 +31,5 @@ fn main() {
             Err(error) => println!("{}", error),
             Ok(()) => (),
         };
-    } else {
-        println!("can't read");
     }
 }
