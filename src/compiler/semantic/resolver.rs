@@ -18,11 +18,6 @@ pub struct Resolver {
     span: Span,
 }
 
-pub struct Resolution {
-    offset: usize,
-    global: bool,
-}
-
 impl Resolver {
     fn new(declarations: Vec<ASTNode>) -> Self {
         Self {
@@ -179,7 +174,7 @@ impl Visitor<()> for Resolver {
                 Ok(())
             }
             ExpressionAST::Identifier(identifier, span) => {
-                let Some(_) = self.search(&identifier) else {
+                let Some(resolution) = self.search(&identifier) else {
                     return Err(compilation_error!(span, "{} is not declared", identifier));
                 };
 

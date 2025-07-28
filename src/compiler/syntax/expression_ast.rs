@@ -1,4 +1,4 @@
-use crate::compiler::lexer::span::Span;
+use crate::compiler::{lexer::span::Span, semantic::resolver::Resolution};
 
 #[derive(Debug)]
 pub enum ExpressionAST {
@@ -18,7 +18,11 @@ pub enum ExpressionAST {
         right: Box<ExpressionAST>,
         span: Span,
     },
-    Identifier(String, Span),
+    Identifier {
+        name: value,
+        resolution: Resolution,
+        span: Span,
+    },
     StringLiteral(String, Span),
     NumberLiteral(f64, Span),
     BooleanLiteral(bool, Span),
