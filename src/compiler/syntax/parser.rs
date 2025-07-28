@@ -234,13 +234,15 @@ impl Parser {
     fn parse_assign(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
         let identifier = self.parse_identifier()?;
 
+        let span = self.token_stream.span();
         self.token_stream.consume(TokenType::Assign)?;
 
-        let expression = self.parse_expression()?;
+        let right = self.parse_expression()?;
 
         return Ok(Box::new(ExpressionAST::Assign {
             identifier,
-            right: expression,
+            right,
+            span,
         }));
     }
 
@@ -249,6 +251,7 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let ty = self.token_stream.token_type();
+            let span = self.token_stream.span();
 
             if ty != TokenType::Or {
                 break;
@@ -262,6 +265,7 @@ impl Parser {
                 operator: BinaryOp::Or,
                 left,
                 right,
+                span,
             });
         }
 
@@ -273,6 +277,7 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let ty = self.token_stream.token_type();
+            let span = self.token_stream.span();
 
             if ty != TokenType::And {
                 break;
@@ -285,6 +290,7 @@ impl Parser {
                 operator: BinaryOp::And,
                 left,
                 right,
+                span,
             });
         }
 
@@ -296,6 +302,7 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let ty = self.token_stream.token_type();
+            let span = self.token_stream.span();
 
             let operator = match ty {
                 TokenType::Equal => BinaryOp::Equal,
@@ -310,6 +317,7 @@ impl Parser {
                 operator,
                 left,
                 right,
+                span,
             });
         }
 
@@ -321,6 +329,7 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let ty = self.token_stream.token_type();
+            let span = self.token_stream.span();
 
             let operator = match ty {
                 TokenType::Greater => BinaryOp::Greater,
@@ -337,6 +346,7 @@ impl Parser {
                 operator,
                 left,
                 right,
+                span,
             });
         }
 
@@ -348,6 +358,7 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let ty = self.token_stream.token_type();
+            let span = self.token_stream.span();
 
             let operator = match ty {
                 TokenType::Plus => BinaryOp::Plus,
@@ -362,6 +373,7 @@ impl Parser {
                 operator,
                 left,
                 right,
+                span,
             });
         }
 
@@ -373,6 +385,7 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let ty = self.token_stream.token_type();
+            let span = self.token_stream.span();
 
             let operator = match ty {
                 TokenType::Multiply => BinaryOp::Multiply,
@@ -388,6 +401,7 @@ impl Parser {
                 operator,
                 left,
                 right,
+                span,
             })
         }
 
@@ -396,6 +410,7 @@ impl Parser {
 
     fn parse_unary(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
         let ty = self.token_stream.token_type();
+        let span = self.token_stream.span();
 
         let operator = match ty {
             TokenType::Plus => {
@@ -412,11 +427,13 @@ impl Parser {
         Ok(Box::new(ExpressionAST::Unary {
             operator,
             right: self.parse_unary()?,
+            span,
         }))
     }
 
     fn parse_primary(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
         let ty = self.token_stream.token_type();
+        let span = self.token_stream.span();
 
         Ok(match ty {
             TokenType::LeftParen => {
@@ -430,22 +447,26 @@ impl Parser {
                 let number_literal = lexeme.parse::<f64>().unwrap();
 
                 self.token_stream.advance();
-                Box::new(ExpressionAST::NumberLiteral(number_literal))
+                Box::new(ExpressionAST::NumberLiteral(number_literal, span))
             }
             TokenType::BooleanLiteral => {
                 let lexeme = self.token_stream.lexeme();
                 let bool_literal = lexeme.parse::<bool>().unwrap();
 
                 self.token_stream.advance();
-                Box::new(ExpressionAST::BooleanLiteral(bool_literal))
+                Box::new(ExpressionAST::BooleanLiteral(bool_literal, span))
             }
             TokenType::StringLiteral => {
                 let lexeme = self.token_stream.lexeme();
 
                 self.token_stream.advance();
-                Box::new(ExpressionAST::StringLiteral(lexeme))
+                Box::new(ExpressionAST::StringLiteral(lexeme, span))
             }
-            TokenType::Identifier => Box::new(ExpressionAST::Identifier(self.parse_identifier()?)),
+            TokenType::Identifier => {
+                let identifier = self.parse_identifier()?;
+                Box::new(ExpressionAST::Identifier(identifier, span))
+            }
+
             _ => {
                 let span = self.token_stream.span();
                 return Err(compilation_error!(span, "{:?} is a invalid operand", ty));
@@ -462,7 +483,7 @@ impl Parser {
     }
 
     /* Types */
-    fn parse_type(&mut self) -> Result<TypeAST, CompilationError> {
+    pub fn parse_type(&mut self) -> Result<TypeAST, CompilationError> {
         match self.token_stream.token_type() {
             TokenType::Identifier => self.parse_primitive_type(),
             _ => Err(compilation_error!(

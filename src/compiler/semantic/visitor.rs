@@ -1,10 +1,12 @@
-use crate::compiler::syntax::{
-    ast_node::ASTNode, declaration_ast::DeclarationAST, expression_ast::ExpressionAST,
-    statement_ast::StatementAST,
+use crate::{
+    compiler::syntax::{
+        declaration_ast::DeclarationAST, expression_ast::ExpressionAST, statement_ast::StatementAST,
+    },
+    error::compilation_error::CompilationError,
 };
 
 pub trait Visitor<T> {
-    fn visit_expression(&self, expression: ExpressionAST) -> T;
-    fn visit_statement(&self, statement: StatementAST);
-    fn visit_declaration(&self, declaration: DeclarationAST);
+    fn visit_expression(&self, expression: ExpressionAST) -> Result<T, CompilationError>;
+    fn visit_statement(&self, statement: StatementAST) -> Result<(), CompilationError>;
+    fn visit_declaration(&self, declaration: DeclarationAST) -> Result<(), CompilationError>;
 }

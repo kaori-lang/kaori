@@ -1,7 +1,7 @@
-use crate::compiler::syntax::{
+use crate::{compiler::syntax::{
     ast_node::ASTNode, declaration_ast::DeclarationAST, expression_ast::ExpressionAST,
     statement_ast::StatementAST, type_ast::TypeAST,
-};
+}, error::compilation_error::CompilationError};
 
 use super::{environment::Environment, visitor::Visitor};
 
@@ -12,7 +12,7 @@ pub struct Resolver {
 
 pub struct Resolution {
     offset: usize,
-    local: bool,
+    global: bool,
 }
 
 impl Resolver {
@@ -25,24 +25,40 @@ impl Resolver {
 
     fn search_current_scope(&mut self, identifier: String) -> Option<Resolution> {
         let start = self.environment.stack.len() - 1;
-        let end = self.environment.scopes_start.last().unwrap();
+        let end = self.environment.scopes_pointer.last().unwrap();
 
         for i in start..=*end {
             if identifier == self.environment.stack[i] {
-                let offset = return Some(i);
+                let global =
+                    self.environment.frame_pointer == 0 || i < self.environment.frame_pointer;
+                let mut offset = i;
+
+                if (!global) {
+                    offset += self.environment.frame_pointer;
+                }
+
+                return Some(Resolution { offset, global });
             }
         }
 
         return None;
     }
 
-    fn search(&mut self, identifier: String) -> Option<usize> {
+    fn search(&mut self, identifier: String) -> Option<Resolution> {
         let start = self.environment.stack.len() - 1;
         let end = 0;
 
         for i in start..=end {
             if identifier == self.environment.stack[i] {
-                return Some(i);
+                let global =
+                    self.environment.frame_pointer == 0 || i < self.environment.frame_pointer;
+                let mut offset = i;
+
+                if (!global) {
+                    offset += self.environment.frame_pointer;
+                }
+
+                return Some(Resolution { offset, global });
             }
         }
 
@@ -73,9 +89,16 @@ impl Visitor<()> for Resolver {
         }
     }
 
-    fn visit_expression(&self, expression: ExpressionAST) {
+    fn visit_expression(&self, expression: ExpressionAST) -> Result<(), CompilationError> {
         match expression {
-            ExpressionAST::Identifier(identifier) => {}
+            ExpressionAST::Identifier(identifier, span) => {
+                let Some(value) = self.search_current_scope(identifier) else {
+                    return Err()
+                }
+
+                
+
+            }
             ExpressionAST::Assign { identifier, right } => TypeAST::String,
             ExpressionAST::Binary {
                 operator,

@@ -28,10 +28,6 @@ pub enum StatementAST {
         declarations: Vec<ASTNode>,
         span: Span,
     },
-    Break {
-        span: Span,
-    },
-    Continue {
-        span: Span,
-    },
+    Break(Span),
+    Continue(Span),
 }

@@ -1,22 +1,27 @@
+use crate::compiler::lexer::span::Span;
+
 #[derive(Debug)]
 pub enum ExpressionAST {
     Binary {
         operator: BinaryOp,
         left: Box<ExpressionAST>,
         right: Box<ExpressionAST>,
+        span: Span,
     },
     Unary {
         operator: UnaryOp,
         right: Box<ExpressionAST>,
+        span: Span,
     },
     Assign {
         identifier: String,
         right: Box<ExpressionAST>,
+        span: Span,
     },
-    Identifier(String),
-    StringLiteral(String),
-    NumberLiteral(f64),
-    BooleanLiteral(bool),
+    Identifier(String, Span),
+    StringLiteral(String, Span),
+    NumberLiteral(f64, Span),
+    BooleanLiteral(bool, Span),
 }
 
 #[derive(Debug, PartialEq, Clone)]
