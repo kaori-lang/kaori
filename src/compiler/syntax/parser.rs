@@ -1,7 +1,7 @@
 use crate::{
     compilation_error,
+    compiler::lexer::{token_stream::TokenStream, token_type::TokenType},
     error::compilation_error::CompilationError,
-    lexer::{token_stream::TokenStream, token_type::TokenType},
 };
 
 use super::{
@@ -21,7 +21,7 @@ impl Parser {
         Self { token_stream }
     }
 
-    pub fn execute(&mut self) -> Result<Vec<ASTNode>, CompilationError> {
+    pub fn declarations(&mut self) -> Result<Vec<ASTNode>, CompilationError> {
         let mut declarations: Vec<ASTNode> = Vec::new();
 
         while !self.token_stream.at_end() {
@@ -462,7 +462,7 @@ impl Parser {
     }
 
     /* Types */
-    pub fn parse_type(&mut self) -> Result<TypeAST, CompilationError> {
+    fn parse_type(&mut self) -> Result<TypeAST, CompilationError> {
         match self.token_stream.token_type() {
             TokenType::Identifier => self.parse_primitive_type(),
             _ => Err(compilation_error!(
@@ -473,7 +473,7 @@ impl Parser {
         }
     }
 
-    pub fn parse_primitive_type(&mut self) -> Result<TypeAST, CompilationError> {
+    fn parse_primitive_type(&mut self) -> Result<TypeAST, CompilationError> {
         let sub = self.token_stream.lexeme();
 
         let primitive = match sub.as_str() {

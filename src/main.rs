@@ -6,12 +6,14 @@
 
 use std::fs;
 
-use regex::{Captures, Regex};
-use yellow_flash::{
+use kaori::{
+    compiler::{
+        lexer::{lexer::Lexer, token_stream::TokenStream},
+        syntax::parser::Parser,
+    },
     error::compilation_error::CompilationError,
-    lexer::{lexer::Lexer, token_stream::TokenStream},
-    syntax::parser::Parser,
 };
+use regex::{Captures, Regex};
 
 pub fn run_program(source: String) -> Result<(), CompilationError> {
     let mut lexer = Lexer::new(source.clone());
@@ -22,8 +24,8 @@ pub fn run_program(source: String) -> Result<(), CompilationError> {
 
     let mut parser = Parser::new(token_stream);
 
-    let ast = parser.execute()?;
-    println!("{:#?}", ast);
+    let declarations = parser.declarations()?;
+    println!("{:#?}", declarations);
     Ok(())
 }
 

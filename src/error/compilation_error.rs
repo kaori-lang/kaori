@@ -1,4 +1,4 @@
-use crate::lexer::span::Span;
+use crate::compiler::lexer::span::Span;
 
 #[macro_export]
 macro_rules! compilation_error {

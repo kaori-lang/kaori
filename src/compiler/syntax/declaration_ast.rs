@@ -1,4 +1,4 @@
-use crate::lexer::span::Span;
+use crate::compiler::lexer::span::Span;
 
 use super::{expression_ast::ExpressionAST, type_ast::TypeAST};
 
