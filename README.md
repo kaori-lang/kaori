@@ -1,6 +1,6 @@
 # 🎻 Kaori - Programming Language
 
-**Kaori** is an interpreted statically typed programming language built with **Rust**, previously implemented with Java 17
+**Kaori** is an interpreted statically typed programming language, now implemented fully in **Rust**, previously implemented in Java 17
 
 ## Features
 
