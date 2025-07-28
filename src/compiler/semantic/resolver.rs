@@ -1,7 +1,11 @@
-use crate::{compiler::syntax::{
-    ast_node::ASTNode, declaration_ast::DeclarationAST, expression_ast::ExpressionAST,
-    statement_ast::StatementAST, type_ast::TypeAST,
-}, error::compilation_error::CompilationError};
+use crate::{
+    compilation_error,
+    compiler::syntax::{
+        ast_node::ASTNode, declaration_ast::DeclarationAST, expression_ast::ExpressionAST,
+        statement_ast::StatementAST, type_ast::TypeAST,
+    },
+    error::compilation_error::{self, CompilationError},
+};
 
 use super::{environment::Environment, visitor::Visitor};
 
@@ -90,27 +94,6 @@ impl Visitor<()> for Resolver {
     }
 
     fn visit_expression(&self, expression: ExpressionAST) -> Result<(), CompilationError> {
-        match expression {
-            ExpressionAST::Identifier(identifier, span) => {
-                let Some(value) = self.search_current_scope(identifier) else {
-                    return Err()
-                }
-
-                
-
-            }
-            ExpressionAST::Assign { identifier, right } => TypeAST::String,
-            ExpressionAST::Binary {
-                operator,
-                left,
-                right,
-            } => {
-                let left = self.visit_expression(*left);
-                let right = self.visit_expression(*right);
-
-                ()
-            }
-            _ => (),
-        }
+        Ok(())
     }
 }
