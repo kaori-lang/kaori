@@ -70,25 +70,35 @@ impl Parser {
             right,
             ty,
             span,
+            offset: 0,
         });
     }
 
     /* Statements */
     fn parse_statement(&mut self) -> Result<StatementAST, CompilationError> {
-        Ok(match self.token_stream.token_type() {
+        let statement = match self.token_stream.token_type() {
             TokenType::Print => self.parse_print_statement(),
             TokenType::LeftBrace => self.parse_block_statement(),
             TokenType::If => self.parse_if_statement(),
             TokenType::While => self.parse_while_loop_statement(),
+            TokenType::For => self.parse_for_loop_statement(),
             _ => self.parse_expression_statement(),
-        }?)
+        }?;
+
+        match statement {
+            StatementAST::Print { .. } | StatementAST::Expression { .. } => {
+                self.token_stream.consume(TokenType::Semicolon)?
+            }
+            _ => (),
+        };
+
+        return Ok(statement);
     }
 
     fn parse_expression_statement(&mut self) -> Result<StatementAST, CompilationError> {
         let span = self.token_stream.span();
 
         let expression = self.parse_expression()?;
-        self.token_stream.consume(TokenType::Semicolon)?;
 
         return Ok(StatementAST::Expression { expression, span });
     }
@@ -100,7 +110,6 @@ impl Parser {
         self.token_stream.consume(TokenType::LeftParen)?;
         let expression = self.parse_expression()?;
         self.token_stream.consume(TokenType::RightParen)?;
-        self.token_stream.consume(TokenType::Semicolon)?;
 
         return Ok(StatementAST::Print { expression, span });
     }
@@ -199,7 +208,7 @@ impl Parser {
         let while_loop = StatementAST::WhileLoop {
             condition,
             block: Box::new(block),
-            span: span.clone(),
+            span,
         };
 
         let mut declarations: Vec<ASTNode> = Vec::new();

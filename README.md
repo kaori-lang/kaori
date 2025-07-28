@@ -1,67 +1,110 @@
-# Yellow Flash ⚡ - Programming Language
+# 🎻 Kaori - Programming Language
 
-Yellow Flash is an interpreted and statically typed small programming language built with Rust
+**Kaori** is an interpreted statically typed programming language built with **Rust**, previously implemented with Java 17
 
+## Features
 
-## ✨ Features ✨
+-   **Statically Typed**  
+    Enforces type safety for predictable, and faster runtimes
 
-- **Statically Typed 🔒:**  
-  Catch errors early with a strict type system that prevents bugs and ensures reliability.
-- **Interpreted Execution 🚀:**  
-  Write and run code instantly without waiting for compilation.
-- **Modern, Clean Syntax ✍️:**  
-  Intuitive syntax designed for productivity and readability.
-- **Error Reporting 🎯:**  
-  Clear and friendly runtime error messages.
+-   **Detailed Error Messages**  
+    Developer-friendly diagnostics for syntax and runtime issues
 
+-   **Implemented Language Features**
+
+    -   [x] Variable declaration (`x: f64 = 10;`, `x: bool = true;`, `x: str = "Hello world";`)
+    -   [x] Assign operators (`x = 5;`)
+    -   [x] Logical operators (`&&`, `||`, `!`)
+    -   [x] Arithmetic operators (`+`, `-`, `*`, `/`)
+    -   [x] Comparison operators (`==`, `!=`, `<`, `>`, `<=`, `>=`)
+    -   [ ] Postfix operators (`++`, `--`)
+    -   [x] `if / else` statements
+    -   [x] `for` loops
+    -   [x] `while` loops
+    -   [x] block statements for scope (`{ ... }`)
+    -   [x] Output with `print` statements
+    -   [x] Code comments (`/* this is a comment */`)
+    -   [ ] Functions
+    -   [ ] Bytecode generation
+    -   [ ] Virtual machine to interpret bytecode
+    -   [ ] function and loop control flow (`break`, `continue`, `return`)
+    -   [ ] Native data structures (e.g., lists, maps)
+    -   [ ] Classes and inheritance
 
 ## 🛠️ Technologies Used 🛠️
 
-- **Rust 🦀** — Core engine for speed and safety.
+-   **Rust 🦀** — Core engine for speed and safety.
 
-
-## 📜 Grammar
+## Grammar
 
 ```text
-program                   -> statement*
-statement                 -> block_stmt
-                           | expression_stmt
-                           | print_stmt
-                           | variable_decl_stmt
-                           | if_stmt
-                           | while_loop_stmt
-                           | for_loop_stmt
+program                  -> declaration* EOF
 
-type                      -> "float" | "str" | "bool"
-else                      -> "else" (if_stmt | block_stmt)
+type                     -> function_type | primitive_type
+primitive_type           -> bool | f64 | str
+function_type            -> ( [type [, type]*] ) -> type
 
-block_stmt                -> "{" statement* "}"
-expression_stmt           -> expression ";"
-print_stmt                -> "print" "(" expression ")" ";"
-variable_decl_stmt        -> type identifier "=" expression ";"
-if_stmt                   -> "if" "(" expression ")" block_stmt else?
-while_loop_stmt           -> "while" "(" expression ")" block_stmt
-for_loop_stmt             -> "for" "(" variable_decl_stmt expression ";" expression ")" block_stmt
+declaration              -> variable_declaration
+                         | function_declaration | statement
 
-expression                -> assign
-assign                    -> (identifier "=" assign) | logic_or
-logic_or                  -> logic_and ( "or" logic_and )*
-logic_and                 -> equality ( "and" equality )*
-equality                  -> comparison ( ( "!=" | "==" ) comparison )*
-comparison                -> term ( ( ">" | ">=" | "<=" | "<" ) term )*
-term                      -> factor ( ( "-" | "+" ) factor )*
-factor                    -> unary ( ( "/" | "*" ) unary )*
-unary                     -> ("-" | "!") unary | primary
-primary                   -> "(" expression ")" | literal | identifier
+variable_declaration     -> identifier : type = expression ;
+
+function_declaration     -> def identifier ( [variable_declaration*] ) : type block_statement
+
+statement                -> expression_statement
+                         | print_statement
+                         | if_statement
+                         | while_statement
+                         | for_statement
+                         | block_statement
+
+expression_statement     -> expression ;
+
+print_statement          -> print ( expression ) ;
+
+if_statement             -> if expression block_statement [else [if_statement | block_statement]]?
+
+while_statement          -> while expression block_statement
+
+for_statement            -> for variable_declaration ; expression ; expression block_statement
+
+block_statement          -> { declaration* }
+
+expression               -> assignment | logic_or
+
+assignment               -> identifier = expression
+
+logic_or                 -> logic_and [|| logic_and]*
+
+logic_and                -> equality [&& equality]*
+
+equality                 -> comparison [[!= | ==] comparison]*
+
+comparison               -> term [[> | >= | < | <=] term]*
+
+term                     -> factor [[+ | -] factor]*
+
+factor                   -> prefix_unary [[* | /] prefix_unary]*
+
+prefix_unary             -> [! | -] unary | primary
+
+primary                  -> number_literal
+                         | string_literal
+                         | boolean_literal
+                         | postfix_unary
+                         | ( expression )
+
+postfix_unary            -> [identifier [++ | --]? | function_call]
+
+function_call             -> callee [(expression [, expression]*)]*
 ```
 
-## 🚀 Getting Started 🚀
+## Getting Started
 
 ### 📋 Prerequisites
 
-- [Rust](https://www.rust-lang.org/) (>= 1.70)
-- Cargo (comes bundled with Rust)
-
+-   [Rust](https://www.rust-lang.org/) (>= 1.70)
+-   Cargo (comes bundled with Rust)
 
 ### ⬇️ Installation
 
@@ -69,7 +112,7 @@ primary                   -> "(" expression ")" | literal | identifier
 
     ```bash
     git clone <repository_url>
-    cd yellow-flash
+    cd kaori
     ```
 
 2. Build the project:
@@ -84,25 +127,7 @@ primary                   -> "(" expression ")" | literal | identifier
     cargo install --path .
     ```
 
----
-
-### 🏃 Running Yellow Flash
-
-- Run a script:
-
-    ```bash
-    yellow-flash run path/to/your_script.yf
-    ```
-
-- Open the interactive REPL:
-
-    ```bash
-    yellow-flash repl
-    ```
-
----
-
-### 📦 Building for Production
+### Building for Production
 
 Build an optimized release binary:
 
@@ -110,23 +135,39 @@ Build an optimized release binary:
 cargo build --release
 ```
 
-## 🤝 Contributing 🤝
+## Contributing
 
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create.  
-Any contributions you make are **greatly appreciated**!
+Contributions are warmly welcome!
 
-### How to Contribute:
+### Ways to Contribute:
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+-   🚨 Report bugs
+-   ✨ Propose new features or syntax ideas
+-   🧪 Add new test cases
+-   📚 Improve the documentation
 
-You can also open issues for bugs, improvements, or feature requests.
+### Steps:
 
+1. Fork the repo
+2. Create a new branch:
 
-## 📄 License 📄
+    ```bash
+    git checkout -b feature/my-feature
+    ```
 
-Distributed under the **MIT License**.  
-See [`LICENSE`](LICENSE) for more information.
+3. Make your changes and commit:
+
+    ```bash
+    git commit -m 'feat: add my feature'
+    ```
+
+4. Push and open a PR
+
+## 💖 Name Inspiration
+
+The name Kaori is inspired by the character Kaori Miyazono from the anime "Your Lie in April". She represents inspiration, motivation, and the desire to create something different from the standard — the same spirit behind creating this language
+
+## License
+
+Kaori is released under the **MIT License**.  
+See the [`LICENSE`](LICENSE) file for more details

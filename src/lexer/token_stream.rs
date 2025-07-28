@@ -69,9 +69,7 @@ impl TokenStream {
     }
 
     pub fn span(&mut self) -> Span {
-        let span = &self.tokens[self.index].span;
-
-        return span.clone();
+        return self.tokens[self.index].span;
     }
 
     pub fn lexeme(&mut self) -> String {
