@@ -8,5 +8,5 @@ use crate::{
 pub trait Visitor<T> {
     fn visit_expression(&self, expression: ExpressionAST) -> Result<T, CompilationError>;
     fn visit_statement(&self, statement: StatementAST) -> Result<(), CompilationError>;
-    fn visit_declaration(&self, declaration: DeclarationAST) -> Result<(), CompilationError>;
+    fn visit_declaration(&mut self, declaration: DeclarationAST) -> Result<(), CompilationError>;
 }

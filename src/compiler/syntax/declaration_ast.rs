@@ -9,6 +9,5 @@ pub enum DeclarationAST {
         right: Box<ExpressionAST>,
         ty: TypeAST,
         span: Span,
-        offset: u32,
     },
 }

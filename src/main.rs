@@ -31,8 +31,8 @@ pub fn run_program(source: String) -> Result<(), CompilationError> {
 
 fn main() {
     if let Ok(source) = fs::read_to_string("src/code/main.kaori") {
-        match run_program(source) {
-            Err(error) => println!("{:#?}", error),
+        match run_program(source.clone()) {
+            Err(error) => error.report(&source),
             Ok(()) => (),
         };
     }

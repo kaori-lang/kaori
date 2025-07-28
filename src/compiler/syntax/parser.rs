@@ -70,7 +70,6 @@ impl Parser {
             right,
             ty,
             span,
-            offset: 0,
         });
     }
 
@@ -96,11 +95,9 @@ impl Parser {
     }
 
     fn parse_expression_statement(&mut self) -> Result<StatementAST, CompilationError> {
-        let span = self.token_stream.span();
-
         let expression = self.parse_expression()?;
 
-        return Ok(StatementAST::Expression { expression, span });
+        return Ok(StatementAST::Expression(expression));
     }
 
     fn parse_print_statement(&mut self) -> Result<StatementAST, CompilationError> {

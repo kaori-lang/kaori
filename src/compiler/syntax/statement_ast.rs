@@ -8,11 +8,6 @@ pub enum StatementAST {
         expression: Box<ExpressionAST>,
         span: Span,
     },
-
-    Expression {
-        expression: Box<ExpressionAST>,
-        span: Span,
-    },
     If {
         condition: Box<ExpressionAST>,
         then_branch: Box<StatementAST>,
@@ -28,6 +23,7 @@ pub enum StatementAST {
         declarations: Vec<ASTNode>,
         span: Span,
     },
+    Expression(Box<ExpressionAST>),
     Break(Span),
     Continue(Span),
 }
