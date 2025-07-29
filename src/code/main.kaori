@@ -10,5 +10,11 @@
 
 
 
+a: bool = true;
+b: bool = false;
+a = b = "hello";
 
-print(123+true);
+
+if 2 * 5 + 10 {
+
+}

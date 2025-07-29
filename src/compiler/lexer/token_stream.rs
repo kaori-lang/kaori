@@ -78,6 +78,6 @@ impl TokenStream {
     pub fn lexeme(&mut self) -> String {
         let span = self.span();
 
-        return self.source[span.start..span.end + 1].to_string();
+        return self.source[span.start..span.end].to_string();
     }
 }

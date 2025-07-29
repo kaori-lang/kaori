@@ -47,18 +47,18 @@ impl Visitor<Type> for TypeChecker {
 
     fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError> {
         match &mut declaration.kind {
-            DeclKind::Variable { name, right, ty } => {
-                let right = self.visit_expression(right)?;
+            DeclKind::Variable { right, ty, .. } => {
+                let right_type = self.visit_expression(right)?;
 
-                if right != *ty {
+                if right_type != *ty {
                     return Err(kaori_error!(
-                        declaration.span,
+                        right.span,
                         "expected value of type {:?} in variable declaration",
                         ty,
                     ));
                 }
 
-                self.environment.declare(right);
+                self.environment.declare(right_type);
             }
         }
 
@@ -90,7 +90,17 @@ impl Visitor<Type> for TypeChecker {
                 else_branch,
                 ..
             } => {
-                self.visit_expression(condition)?;
+                let expr = self.visit_expression(condition)?;
+
+                if !expr.eq(&Type::Boolean) {
+                    return Err(kaori_error!(
+                        condition.span,
+                        "expected {:?} for if statement condition, but found {:?}",
+                        Type::Boolean,
+                        expr
+                    ));
+                }
+
                 self.visit_statement(then_branch)?;
 
                 if let Some(branch) = else_branch {
@@ -100,7 +110,17 @@ impl Visitor<Type> for TypeChecker {
             StmtKind::WhileLoop {
                 condition, block, ..
             } => {
-                self.visit_expression(condition)?;
+                let expr = self.visit_expression(condition)?;
+
+                if !expr.eq(&Type::Boolean) {
+                    return Err(kaori_error!(
+                        condition.span,
+                        "expected {:?} for while loop statement condition, but found {:?}",
+                        Type::Boolean,
+                        expr
+                    ));
+                }
+
                 self.visit_statement(block)?;
             }
             _ => (),
@@ -114,12 +134,12 @@ impl Visitor<Type> for TypeChecker {
                 let right = self.visit_expression(right)?;
                 let identifier = self.visit_expression(identifier)?;
 
-                if right != identifier {
+                if !right.eq(&identifier) {
                     return Err(kaori_error!(
                         expression.span,
-                        "can't assign type {:?} to type {:?}",
-                        right,
-                        identifier
+                        "expected {:?} for assign, but found {:?}",
+                        identifier,
+                        right
                     ));
                 }
 

@@ -92,7 +92,7 @@ impl Lexer {
             _ => TokenKind::Identifier,
         };
 
-        let end = self.position - 1;
+        let end = self.position;
         let token = self.create_token(kind, start, end);
         self.tokens.push(token);
     }
@@ -112,7 +112,7 @@ impl Lexer {
             self.position += 1;
         }
 
-        let end = self.position - 1;
+        let end = self.position;
         let token = self.create_token(TokenKind::NumberLiteral, start, end);
 
         self.tokens.push(token);
@@ -128,7 +128,7 @@ impl Lexer {
         }
 
         if self.at_end() {
-            let end = self.position - 1;
+            let end = self.position;
             let span = Span { start, end };
 
             return Err(kaori_error!(span, "unfinished string literal"));
@@ -136,7 +136,7 @@ impl Lexer {
 
         self.position += 1;
 
-        let end = self.position - 1;
+        let end = self.position;
         let token = self.create_token(TokenKind::StringLiteral, start, end);
 
         self.tokens.push(token);
@@ -223,7 +223,7 @@ impl Lexer {
         };
 
         if kind == TokenKind::Invalid {
-            let end = self.position - 1;
+            let end = self.position;
             let span = Span { start, end };
 
             return Err(kaori_error!(span, "{} is not a valid token", curr_char));
@@ -244,7 +244,7 @@ impl Lexer {
 
         self.position += size;
 
-        let end = self.position - 1;
+        let end = self.position;
         let token = self.create_token(kind, start, end);
 
         self.tokens.push(token);
