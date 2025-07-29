@@ -1,5 +1,4 @@
 use crate::{
-    compilation_error,
     compiler::syntax::{
         ast_node::ASTNode,
         declaration::{Decl, DeclKind},
@@ -8,7 +7,8 @@ use crate::{
         r#type::Type,
         statement::{Stmt, StmtKind},
     },
-    error::compilation_error::{self, CompilationError},
+    error::kaori_error::KaoriError,
+    kaori_error,
 };
 
 use super::{environment::Environment, visitor::Visitor};
@@ -26,7 +26,7 @@ impl TypeChecker {
 }
 
 impl Visitor<Type> for TypeChecker {
-    fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), CompilationError> {
+    fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), KaoriError> {
         self.environment.enter_function();
 
         for node in ast {
@@ -38,20 +38,20 @@ impl Visitor<Type> for TypeChecker {
         Ok(())
     }
 
-    fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), CompilationError> {
+    fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), KaoriError> {
         match ast_node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),
             ASTNode::Statement(statement) => self.visit_statement(statement),
         }
     }
 
-    fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), CompilationError> {
+    fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError> {
         match &mut declaration.kind {
             DeclKind::Variable { name, right, ty } => {
                 let right = self.visit_expression(right)?;
 
                 if right != *ty {
-                    return Err(compilation_error!(
+                    return Err(kaori_error!(
                         declaration.span,
                         "expected value of type {:?} in variable declaration",
                         ty,
@@ -65,7 +65,7 @@ impl Visitor<Type> for TypeChecker {
         Ok(())
     }
 
-    fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), CompilationError> {
+    fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), KaoriError> {
         match &mut statement.kind {
             StmtKind::Expression(expression) => {
                 self.visit_expression(expression.as_mut())?;
@@ -108,14 +108,14 @@ impl Visitor<Type> for TypeChecker {
 
         Ok(())
     }
-    fn visit_expression(&mut self, expression: &mut Expr) -> Result<Type, CompilationError> {
+    fn visit_expression(&mut self, expression: &mut Expr) -> Result<Type, KaoriError> {
         let expr_type = match &mut expression.kind {
             ExprKind::Assign { identifier, right } => {
                 let right = self.visit_expression(right)?;
                 let identifier = self.visit_expression(identifier)?;
 
                 if right != identifier {
-                    return Err(compilation_error!(
+                    return Err(kaori_error!(
                         expression.span,
                         "can't assign type {:?} to type {:?}",
                         right,
@@ -154,7 +154,7 @@ impl Visitor<Type> for TypeChecker {
                     (Type::Number, BinaryOp::Less, Type::Number) => Type::Boolean,
                     (Type::Number, BinaryOp::LessEqual, Type::Number) => Type::Boolean,
                     _ => {
-                        return Err(compilation_error!(
+                        return Err(kaori_error!(
                             expression.span,
                             "invalid {:?} operation between {:?} and {:?}",
                             operator,
@@ -171,7 +171,7 @@ impl Visitor<Type> for TypeChecker {
                     (UnaryOp::Negate, Type::Number) => Type::Number,
                     (UnaryOp::Not, Type::Boolean) => Type::Boolean,
                     _ => {
-                        return Err(compilation_error!(
+                        return Err(kaori_error!(
                             expression.span,
                             "invalid {:?} operation for right {:?}",
                             operator,

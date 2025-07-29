@@ -1,7 +1,7 @@
 use crate::{
-    compilation_error,
     compiler::lexer::{token_kind::TokenKind, token_stream::TokenStream},
-    error::compilation_error::CompilationError,
+    error::kaori_error::KaoriError,
+    kaori_error,
 };
 
 use super::{
@@ -22,7 +22,7 @@ impl Parser {
         Self { token_stream }
     }
 
-    pub fn declarations(&mut self) -> Result<Vec<ASTNode>, CompilationError> {
+    pub fn declarations(&mut self) -> Result<Vec<ASTNode>, KaoriError> {
         let mut declarations: Vec<ASTNode> = Vec::new();
 
         while !self.token_stream.at_end() {
@@ -34,7 +34,7 @@ impl Parser {
     }
 
     /* Declarations */
-    fn parse_declaration(&mut self) -> Result<ASTNode, CompilationError> {
+    fn parse_declaration(&mut self) -> Result<ASTNode, KaoriError> {
         let declaration = match self.token_stream.token_kind() {
             _ => {
                 if !self
@@ -53,7 +53,7 @@ impl Parser {
         Ok(declaration)
     }
 
-    fn parse_variable_declaration(&mut self) -> Result<Decl, CompilationError> {
+    fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
         let span = self.token_stream.span();
         let name = self.token_stream.lexeme();
 
@@ -70,7 +70,7 @@ impl Parser {
     }
 
     /* Statements */
-    fn parse_statement(&mut self) -> Result<Stmt, CompilationError> {
+    fn parse_statement(&mut self) -> Result<Stmt, KaoriError> {
         let statement = match self.token_stream.token_kind() {
             TokenKind::Print => self.parse_print_statement(),
             TokenKind::LeftBrace => self.parse_block_statement(),
@@ -90,14 +90,14 @@ impl Parser {
         return Ok(statement);
     }
 
-    fn parse_expr_statement(&mut self) -> Result<Stmt, CompilationError> {
+    fn parse_expr_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
         let expression = self.parse_expr()?;
 
         return Ok(Stmt::expression(expression, span));
     }
 
-    fn parse_print_statement(&mut self) -> Result<Stmt, CompilationError> {
+    fn parse_print_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::Print)?;
@@ -108,7 +108,7 @@ impl Parser {
         return Ok(Stmt::print(expression, span));
     }
 
-    fn parse_block_statement(&mut self) -> Result<Stmt, CompilationError> {
+    fn parse_block_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
 
         let mut declarations: Vec<ASTNode> = Vec::new();
@@ -126,7 +126,7 @@ impl Parser {
         return Ok(Stmt::block(declarations, span));
     }
 
-    fn parse_if_statement(&mut self) -> Result<Stmt, CompilationError> {
+    fn parse_if_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::If)?;
@@ -152,7 +152,7 @@ impl Parser {
         return Ok(Stmt::if_(condition, then_branch, else_branch, span));
     }
 
-    fn parse_while_loop_statement(&mut self) -> Result<Stmt, CompilationError> {
+    fn parse_while_loop_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::While)?;
@@ -163,7 +163,7 @@ impl Parser {
         return Ok(Stmt::while_loop(condition, block, span));
     }
 
-    fn parse_for_loop_statement(&mut self) -> Result<Stmt, CompilationError> {
+    fn parse_for_loop_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::For)?;
@@ -195,7 +195,7 @@ impl Parser {
     }
 
     /* Exprs */
-    fn parse_expr(&mut self) -> Result<Box<Expr>, CompilationError> {
+    fn parse_expr(&mut self) -> Result<Box<Expr>, KaoriError> {
         if self
             .token_stream
             .look_ahead(&[TokenKind::Identifier, TokenKind::Assign])
@@ -206,7 +206,7 @@ impl Parser {
         return self.parse_or();
     }
 
-    fn parse_assign(&mut self) -> Result<Box<Expr>, CompilationError> {
+    fn parse_assign(&mut self) -> Result<Box<Expr>, KaoriError> {
         let identifier = self.parse_identifier()?;
 
         let span = self.token_stream.span();
@@ -217,7 +217,7 @@ impl Parser {
         return Ok(Box::new(Expr::assign(identifier, right, span)));
     }
 
-    fn parse_or(&mut self) -> Result<Box<Expr>, CompilationError> {
+    fn parse_or(&mut self) -> Result<Box<Expr>, KaoriError> {
         let mut left = self.parse_and()?;
 
         while !self.token_stream.at_end() {
@@ -238,7 +238,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_and(&mut self) -> Result<Box<Expr>, CompilationError> {
+    fn parse_and(&mut self) -> Result<Box<Expr>, KaoriError> {
         let mut left = self.parse_equality()?;
 
         while !self.token_stream.at_end() {
@@ -258,7 +258,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_equality(&mut self) -> Result<Box<Expr>, CompilationError> {
+    fn parse_equality(&mut self) -> Result<Box<Expr>, KaoriError> {
         let mut left = self.parse_comparison()?;
 
         while !self.token_stream.at_end() {
@@ -280,7 +280,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_comparison(&mut self) -> Result<Box<Expr>, CompilationError> {
+    fn parse_comparison(&mut self) -> Result<Box<Expr>, KaoriError> {
         let mut left = self.parse_term()?;
 
         while !self.token_stream.at_end() {
@@ -304,7 +304,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_term(&mut self) -> Result<Box<Expr>, CompilationError> {
+    fn parse_term(&mut self) -> Result<Box<Expr>, KaoriError> {
         let mut left = self.parse_factor()?;
 
         while !self.token_stream.at_end() {
@@ -326,7 +326,7 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_factor(&mut self) -> Result<Box<Expr>, CompilationError> {
+    fn parse_factor(&mut self) -> Result<Box<Expr>, KaoriError> {
         let mut left = self.parse_unary()?;
 
         while !self.token_stream.at_end() {
@@ -349,7 +349,7 @@ impl Parser {
         return Ok(left);
     }
 
-    fn parse_unary(&mut self) -> Result<Box<Expr>, CompilationError> {
+    fn parse_unary(&mut self) -> Result<Box<Expr>, KaoriError> {
         let kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
 
@@ -368,7 +368,7 @@ impl Parser {
         Ok(Box::new(Expr::unary(operator, self.parse_unary()?, span)))
     }
 
-    fn parse_primary(&mut self) -> Result<Box<Expr>, CompilationError> {
+    fn parse_primary(&mut self) -> Result<Box<Expr>, KaoriError> {
         let kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
 
@@ -402,12 +402,12 @@ impl Parser {
             TokenKind::Identifier => self.parse_identifier()?,
             _ => {
                 let span = self.token_stream.span();
-                return Err(compilation_error!(span, "{:?} is a invalid operand", kind));
+                return Err(kaori_error!(span, "{:?} is a invalid operand", kind));
             }
         })
     }
 
-    fn parse_identifier(&mut self) -> Result<Box<Expr>, CompilationError> {
+    fn parse_identifier(&mut self) -> Result<Box<Expr>, KaoriError> {
         let name = self.token_stream.lexeme();
         let span = self.token_stream.span();
 
@@ -419,18 +419,18 @@ impl Parser {
     }
 
     /* Types */
-    pub fn parse_type(&mut self) -> Result<Type, CompilationError> {
+    pub fn parse_type(&mut self) -> Result<Type, KaoriError> {
         match self.token_stream.token_kind() {
             TokenKind::Identifier => self.parse_primitive_type(),
-            _ => Err(compilation_error!(
+            _ => Err(kaori_error!(
                 self.token_stream.span(),
                 "invalid type annotation: {:?}",
-                self.token_stream.token_kind()
+                self.token_stream.token_kind(),
             )),
         }
     }
 
-    fn parse_primitive_type(&mut self) -> Result<Type, CompilationError> {
+    fn parse_primitive_type(&mut self) -> Result<Type, KaoriError> {
         let sub = self.token_stream.lexeme();
 
         let primitive = match sub.as_str() {
@@ -438,10 +438,10 @@ impl Parser {
             "str" => Type::String,
             "number" => Type::Number,
             _ => {
-                return Err(compilation_error!(
+                return Err(kaori_error!(
                     self.token_stream.span(),
                     "invalid primitive type: {:?}",
-                    self.token_stream.token_kind()
+                    self.token_stream.token_kind(),
                 ));
             }
         };

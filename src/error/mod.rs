@@ -1,1 +1,1 @@
-pub mod compilation_error;
+pub mod kaori_error;

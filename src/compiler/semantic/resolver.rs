@@ -1,12 +1,12 @@
 use crate::{
-    compilation_error,
     compiler::syntax::{
         ast_node::ASTNode,
         declaration::{Decl, DeclKind},
         expression::{Expr, ExprKind},
         statement::{Stmt, StmtKind},
     },
-    error::compilation_error::CompilationError,
+    error::kaori_error::{self, KaoriError},
+    kaori_error,
 };
 
 use super::{environment::Environment, resolution::Resolution, visitor::Visitor};
@@ -70,7 +70,7 @@ impl Resolver {
 }
 
 impl Visitor<()> for Resolver {
-    fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), CompilationError> {
+    fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), KaoriError> {
         self.environment.enter_function();
 
         for node in ast {
@@ -82,20 +82,20 @@ impl Visitor<()> for Resolver {
         Ok(())
     }
 
-    fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), CompilationError> {
+    fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), KaoriError> {
         match ast_node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),
             ASTNode::Statement(statement) => self.visit_statement(statement),
         }
     }
 
-    fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), CompilationError> {
+    fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError> {
         match &mut declaration.kind {
             DeclKind::Variable { name, right, .. } => {
                 self.visit_expression(right)?;
 
                 if let Some(_) = self.search_current_scope(&name) {
-                    return Err(compilation_error!(
+                    return Err(kaori_error!(
                         declaration.span,
                         "{} is already declared",
                         name
@@ -109,7 +109,7 @@ impl Visitor<()> for Resolver {
         Ok(())
     }
 
-    fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), CompilationError> {
+    fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), KaoriError> {
         match &mut statement.kind {
             StmtKind::Expression(expression) => self.visit_expression(expression)?,
             StmtKind::Print(expression) => self.visit_expression(expression)?,
@@ -147,7 +147,7 @@ impl Visitor<()> for Resolver {
         Ok(())
     }
 
-    fn visit_expression(&mut self, expression: &mut Expr) -> Result<(), CompilationError> {
+    fn visit_expression(&mut self, expression: &mut Expr) -> Result<(), KaoriError> {
         match &mut expression.kind {
             ExprKind::Assign { identifier, right } => {
                 self.visit_expression(right)?;
@@ -164,7 +164,7 @@ impl Visitor<()> for Resolver {
                 resolution,
             } => {
                 let Some(res) = self.search(name) else {
-                    return Err(compilation_error!(*span, "{} is not declared", name));
+                    return Err(kaori_error!(*span, "{} is not declared", name));
                 };
 
                 *resolution = res;

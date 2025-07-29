@@ -1,4 +1,7 @@
-use crate::{compilation_error, error::compilation_error::CompilationError};
+use crate::{
+    error::kaori_error::{self, KaoriError},
+    kaori_error,
+};
 
 use super::{span::Span, token::Token, token_kind::TokenKind};
 
@@ -26,7 +29,7 @@ impl TokenStream {
         self.index += 1;
     }
 
-    pub fn consume(&mut self, expected: TokenKind) -> Result<(), CompilationError> {
+    pub fn consume(&mut self, expected: TokenKind) -> Result<(), KaoriError> {
         let found = self.token_kind();
 
         if expected == found {
@@ -35,7 +38,7 @@ impl TokenStream {
         } else {
             let span = self.span();
 
-            return Err(compilation_error!(
+            return Err(kaori_error!(
                 span,
                 "expected {:?}, but found {:?}",
                 expected,

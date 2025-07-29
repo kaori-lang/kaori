@@ -9,14 +9,18 @@ use std::fs;
 use kaori::{
     compiler::{
         lexer::{lexer::Lexer, token_stream::TokenStream},
-        semantic::{resolver::Resolver, visitor::Visitor},
+        semantic::{
+            resolver::Resolver,
+            type_checker::{self, TypeChecker},
+            visitor::Visitor,
+        },
         syntax::parser::Parser,
     },
-    error::compilation_error::CompilationError,
+    error::kaori_error::KaoriError,
 };
 use regex::{Captures, Regex};
 
-pub fn run_program(source: String) -> Result<(), CompilationError> {
+pub fn run_program(source: String) -> Result<(), KaoriError> {
     let mut lexer = Lexer::new(source.clone());
 
     let tokens = lexer.tokenize()?;
@@ -29,6 +33,10 @@ pub fn run_program(source: String) -> Result<(), CompilationError> {
 
     let mut resolver = Resolver::new();
     resolver.run(&mut declarations)?;
+
+    let mut type_checker = TypeChecker::new();
+
+    type_checker.run(&mut declarations)?;
     Ok(())
 }
 

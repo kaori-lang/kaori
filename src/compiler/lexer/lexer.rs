@@ -1,4 +1,4 @@
-use crate::{compilation_error, error::compilation_error::CompilationError};
+use crate::{error::kaori_error::KaoriError, kaori_error};
 
 use super::{span::Span, token::Token, token_kind::TokenKind};
 
@@ -118,7 +118,7 @@ impl Lexer {
         self.tokens.push(token);
     }
 
-    fn string_literal(&mut self) -> Result<(), CompilationError> {
+    fn string_literal(&mut self) -> Result<(), KaoriError> {
         let start = self.position;
 
         self.position += 1;
@@ -131,7 +131,7 @@ impl Lexer {
             let end = self.position - 1;
             let span = Span { start, end };
 
-            return Err(compilation_error!(span, "unfinished string literal"));
+            return Err(kaori_error!(span, "unfinished string literal"));
         }
 
         self.position += 1;
@@ -144,7 +144,7 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn symbol(&mut self) -> Result<(), CompilationError> {
+    pub fn symbol(&mut self) -> Result<(), KaoriError> {
         let start = self.position;
 
         let curr_char = self.source[self.position];
@@ -226,11 +226,7 @@ impl Lexer {
             let end = self.position - 1;
             let span = Span { start, end };
 
-            return Err(compilation_error!(
-                span,
-                "{} is not a valid token",
-                curr_char
-            ));
+            return Err(kaori_error!(span, "{} is not a valid token", curr_char));
         }
 
         let size = match kind {
@@ -255,7 +251,7 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn get_next_token(&mut self) -> Result<(), CompilationError> {
+    pub fn get_next_token(&mut self) -> Result<(), KaoriError> {
         let c = self.source[self.position];
 
         if c == '"' {
@@ -275,7 +271,7 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, CompilationError> {
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, KaoriError> {
         while !self.at_end() {
             self.get_next_token()?;
         }

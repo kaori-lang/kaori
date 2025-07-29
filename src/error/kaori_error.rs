@@ -3,21 +3,21 @@ use ariadne::{Color, Label, Report, ReportKind, Source};
 use crate::compiler::lexer::span::Span;
 
 #[macro_export]
-macro_rules! compilation_error {
+macro_rules! kaori_error {
     ($span:expr, $msg:literal $(, $arg:expr)* $(,)?) => {
-        CompilationError::new(
+        KaoriError::new(
             $span,
             format!($msg $(, $arg)*),
         )
     };
 }
 
-pub struct CompilationError {
+pub struct KaoriError {
     pub span: Span,
     pub message: String,
 }
 
-impl CompilationError {
+impl KaoriError {
     pub fn new(span: Span, message: String) -> Self {
         Self { span, message }
     }
