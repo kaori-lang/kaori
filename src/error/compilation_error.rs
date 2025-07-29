@@ -12,7 +12,6 @@ macro_rules! compilation_error {
     };
 }
 
-#[derive(Debug)]
 pub struct CompilationError {
     pub span: Span,
     pub message: String,

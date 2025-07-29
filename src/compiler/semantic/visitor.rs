@@ -7,7 +7,7 @@ use crate::{
 };
 
 pub trait Visitor<T> {
-    fn run(&mut self) -> Result<(), CompilationError>;
+    fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), CompilationError>;
     fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), CompilationError>;
     fn visit_declaration(
         &mut self,

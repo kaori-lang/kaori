@@ -1,49 +1,36 @@
 use crate::{
     compilation_error,
-    compiler::{
-        lexer::span::Span,
-        syntax::{
-            ast_node::ASTNode, declaration_ast::DeclarationAST, expression_ast::ExpressionAST,
-            statement_ast::StatementAST,
-        },
+    compiler::syntax::{
+        ast_node::ASTNode, declaration_ast::DeclarationAST, expression_ast::ExpressionAST,
+        statement_ast::StatementAST,
     },
     error::compilation_error::CompilationError,
 };
 
-use super::{
-    environment::Environment,
-    resolution::{self, Resolution},
-    visitor::Visitor,
-};
+use super::{environment::Environment, resolution::Resolution, visitor::Visitor};
 
 pub struct Resolver {
-    declarations: Vec<ASTNode>,
     environment: Environment<String>,
-    span: Span,
 }
 
 impl Resolver {
-    pub fn new(declarations: Vec<ASTNode>) -> Self {
+    pub fn new() -> Self {
         Self {
-            declarations,
             environment: Environment::new(),
-            span: Span {
-                line: 1,
-                start: 0,
-                size: 0,
-            },
         }
     }
 
     fn search_current_scope(&mut self, identifier: &str) -> Option<Resolution> {
-        let start = self.environment.stack.len() - 1;
-        let end = self.environment.scopes_pointer.last().unwrap();
+        let mut start = self.environment.declarations.len();
+        let end = *self.environment.scopes_pointer.last().unwrap();
 
-        for i in start..=*end {
-            if identifier == self.environment.stack[i] {
+        while start > end {
+            start -= 1;
+
+            if identifier == self.environment.declarations[start] {
                 let global =
-                    self.environment.frame_pointer == 0 || i < self.environment.frame_pointer;
-                let mut offset = i;
+                    self.environment.frame_pointer == 0 || start < self.environment.frame_pointer;
+                let mut offset = start;
 
                 if !global {
                     offset += self.environment.frame_pointer;
@@ -57,14 +44,16 @@ impl Resolver {
     }
 
     fn search(&mut self, identifier: &str) -> Option<Resolution> {
-        let start = self.environment.stack.len() - 1;
-        let end = 0;
+        let mut start = self.environment.declarations.len();
+        let end: usize = 0;
 
-        for i in start..=end {
-            if identifier == self.environment.stack[i] {
+        while start > end {
+            start -= 1;
+
+            if identifier == self.environment.declarations[start] {
                 let global =
-                    self.environment.frame_pointer == 0 || i < self.environment.frame_pointer;
-                let mut offset = i;
+                    self.environment.frame_pointer == 0 || start < self.environment.frame_pointer;
+                let mut offset = start;
 
                 if !global {
                     offset += self.environment.frame_pointer;
@@ -79,6 +68,18 @@ impl Resolver {
 }
 
 impl Visitor<()> for Resolver {
+    fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), CompilationError> {
+        self.environment.enter_function();
+
+        for node in ast {
+            self.visit_ast_node(node)?;
+        }
+
+        self.environment.exit_function();
+
+        Ok(())
+    }
+
     fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), CompilationError> {
         match ast_node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),

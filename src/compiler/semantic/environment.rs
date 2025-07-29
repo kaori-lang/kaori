@@ -1,5 +1,5 @@
 pub struct Environment<T> {
-    pub stack: Vec<T>,
+    pub declarations: Vec<T>,
     pub scopes_pointer: Vec<usize>,
     pub frame_pointer: usize,
 }
@@ -7,14 +7,14 @@ pub struct Environment<T> {
 impl<T> Environment<T> {
     pub fn new() -> Self {
         Self {
-            stack: Vec::new(),
+            declarations: Vec::new(),
             scopes_pointer: Vec::new(),
             frame_pointer: 0,
         }
     }
 
     pub fn enter_scope(&mut self) {
-        let current = self.stack.len();
+        let current = self.declarations.len();
 
         self.scopes_pointer.push(current);
     }
@@ -22,13 +22,13 @@ impl<T> Environment<T> {
     pub fn exit_scope(&mut self) {
         let start = self.scopes_pointer.pop().unwrap();
 
-        while self.stack.len() > start {
-            self.stack.pop();
+        while self.declarations.len() > start {
+            self.declarations.pop();
         }
     }
 
     pub fn enter_function(&mut self) {
-        self.frame_pointer = self.stack.len();
+        self.frame_pointer = self.declarations.len();
         self.enter_scope();
     }
 
@@ -38,6 +38,6 @@ impl<T> Environment<T> {
     }
 
     pub fn declare(&mut self, value: T) {
-        self.stack.push(value);
+        self.declarations.push(value);
     }
 }
