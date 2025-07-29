@@ -1,12 +1,12 @@
 use crate::{
-    compiler::lexer::{token::Token, token_kind::TokenKind, token_stream::TokenStream},
+    compiler::lexer::{token_kind::TokenKind, token_stream::TokenStream},
     error::kaori_error::KaoriError,
     kaori_error,
 };
 
 use super::{
     ast_node::ASTNode,
-    declaration::{self, Decl},
+    declaration::{Decl, DeclKind},
     expression::Expr,
     operator::{BinaryOp, UnaryOp},
     r#type::Type,
@@ -60,13 +60,13 @@ impl Parser {
         self.token_stream.consume(TokenKind::Identifier)?;
         self.token_stream.consume(TokenKind::Colon)?;
 
-        let ty = self.parse_type()?;
+        let type_annotation = self.parse_type()?;
 
         self.token_stream.consume(TokenKind::Assign)?;
 
         let right = self.parse_expr()?;
 
-        return Ok(Decl::variable(name, right, ty, span));
+        return Ok(Decl::variable(name, right, type_annotation, span));
     }
 
     fn parse_function_declaration(&mut self) -> Result<Decl, KaoriError> {
@@ -80,7 +80,47 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::LeftParen);
 
-        let parameters: Vec<Decl> = Vec::new();
+        let mut parameters: Vec<Decl> = Vec::new();
+
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightParen
+        {
+            let parameter = self.parse_variable_declaration()?;
+            parameters.push(parameter);
+
+            if self.token_stream.token_kind() == TokenKind::RightParen {
+                break;
+            }
+
+            self.token_stream.consume(TokenKind::Comma)?;
+        }
+
+        self.token_stream.consume(TokenKind::RightParen)?;
+        self.token_stream.consume(TokenKind::ThinArrow)?;
+
+        let return_type = self.parse_type()?;
+
+        let block = self.parse_block_statement()?;
+
+        let type_annotation = Type::Function {
+            parameters: parameters
+                .iter()
+                .map(|param| match &param.kind {
+                    DeclKind::Function {
+                        type_annotation, ..
+                    } => type_annotation.clone(),
+                    _ => unreachable!(),
+                })
+                .collect(),
+            return_type: Box::new(return_type),
+        };
+
+        Ok(Decl::function(
+            name,
+            parameters,
+            block,
+            type_annotation,
+            span,
+        ))
     }
 
     /* Statements */

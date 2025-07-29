@@ -47,14 +47,18 @@ impl Visitor<Type> for TypeChecker {
 
     fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError> {
         match &mut declaration.kind {
-            DeclKind::Variable { right, ty, .. } => {
+            DeclKind::Variable {
+                right,
+                type_annotation,
+                ..
+            } => {
                 let right_type = self.visit_expression(right)?;
 
-                if right_type != *ty {
+                if right_type != *type_annotation {
                     return Err(kaori_error!(
                         right.span,
                         "expected value of type {:?} in variable declaration",
-                        ty,
+                        type_annotation,
                     ));
                 }
 
