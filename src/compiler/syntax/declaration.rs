@@ -4,28 +4,24 @@ use super::{expression::Expr, type_ast::TypeAST};
 
 #[derive(Debug)]
 pub struct Decl {
-    span: Span,
-    kind: DeclKind,
+    pub span: Span,
+    pub kind: DeclKind,
 }
 
 #[derive(Debug)]
 pub enum DeclKind {
     Variable {
-        identifier: Box<Expr>,
+        name: String,
         right: Box<Expr>,
         ty: TypeAST,
     },
 }
 
 impl Decl {
-    pub fn variable(identifier: Box<Expr>, right: Box<Expr>, ty: TypeAST, span: Span) -> Decl {
+    pub fn variable(name: String, right: Box<Expr>, ty: TypeAST, span: Span) -> Decl {
         Decl {
             span,
-            kind: DeclKind::Variable {
-                identifier,
-                right,
-                ty,
-            },
+            kind: DeclKind::Variable { name, right, ty },
         }
     }
 }

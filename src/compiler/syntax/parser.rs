@@ -55,9 +55,9 @@ impl Parser {
 
     fn parse_variable_declaration(&mut self) -> Result<Decl, CompilationError> {
         let span = self.token_stream.span();
+        let name = self.token_stream.lexeme();
 
-        let identifier = self.parse_identifier()?;
-
+        self.token_stream.consume(TokenType::Identifier)?;
         self.token_stream.consume(TokenType::Colon)?;
 
         let ty = self.parse_type()?;
@@ -66,12 +66,7 @@ impl Parser {
 
         let right = self.parse_expr()?;
 
-        return Ok(Decl::Variable {
-            identifier,
-            right,
-            ty,
-            span,
-        });
+        return Ok(Decl::variable(name, right, ty, span));
     }
 
     /* Statements */

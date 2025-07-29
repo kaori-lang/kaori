@@ -1,8 +1,10 @@
 use crate::{
     compilation_error,
     compiler::syntax::{
-        ast_node::ASTNode, declaration_ast::DeclarationAST, expression_ast::ExpressionAST,
-        statement_ast::StatementAST,
+        ast_node::ASTNode,
+        declaration::{Decl, DeclKind},
+        expression::{Expr, ExprKind},
+        statement::{Stmt, StmtKind},
     },
     error::compilation_error::CompilationError,
 };
@@ -87,33 +89,16 @@ impl Visitor<()> for Resolver {
         }
     }
 
-    fn visit_declaration(
-        &mut self,
-        declaration: &mut DeclarationAST,
-    ) -> Result<(), CompilationError> {
-        match declaration {
-            DeclarationAST::Variable {
-                identifier,
-                right,
-                span,
-                ..
-            } => {
+    fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), CompilationError> {
+        match &mut declaration.kind {
+            DeclKind::Variable { name, right, .. } => {
                 self.visit_expression(right)?;
-
-                let ExpressionAST::Identifier {
-                    name,
-                    resolution,
-                    span,
-                } = **identifier
-                else {
-                    return Err(compilation_error!(*span, "invalid identifier",));
-                };
 
                 if let Some(_) = self.search_current_scope(&name) {
                     return Err(compilation_error!(
-                        span,
+                        declaration.span,
                         "{} is already declared",
-                        name.clone()
+                        name
                     ));
                 };
 
@@ -124,12 +109,11 @@ impl Visitor<()> for Resolver {
         }
     }
 
-    fn visit_statement(&mut self, statement: &mut StatementAST) -> Result<(), CompilationError> {
-        match statement {
-            StatementAST::Expression(expression) => self.visit_expression(expression.as_mut())?,
-
-            StatementAST::Print { expression, .. } => self.visit_expression(expression.as_mut())?,
-            StatementAST::Block { declarations, .. } => {
+    fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), CompilationError> {
+        match &mut statement.kind {
+            StmtKind::Expression(expression) => self.visit_expression(expression.as_mut())?,
+            StmtKind::Print(expression) => self.visit_expression(expression.as_mut())?,
+            StmtKind::Block(declarations) => {
                 self.environment.enter_scope();
 
                 for declaration in declarations {
@@ -138,7 +122,7 @@ impl Visitor<()> for Resolver {
 
                 self.environment.exit_scope();
             }
-            StatementAST::If {
+            StmtKind::If {
                 condition,
                 then_branch,
                 else_branch,
@@ -151,7 +135,7 @@ impl Visitor<()> for Resolver {
                     self.visit_statement(branch)?;
                 }
             }
-            StatementAST::WhileLoop {
+            StmtKind::WhileLoop {
                 condition, block, ..
             } => {
                 self.visit_expression(condition)?;
@@ -163,29 +147,18 @@ impl Visitor<()> for Resolver {
         Ok(())
     }
 
-    fn visit_expression(&mut self, expression: &mut ExpressionAST) -> Result<(), CompilationError> {
-        match expression {
-            ExpressionAST::Assign {
-                identifier,
-                right,
-                span,
-            } => {
+    fn visit_expression(&mut self, expression: &mut Expr) -> Result<(), CompilationError> {
+        match &mut expression.kind {
+            ExprKind::Assign { identifier, right } => {
                 self.visit_expression(right)?;
-
-                let Some(_) = self.search(&identifier) else {
-                    return Err(compilation_error!(
-                        span.clone(),
-                        "{} is not declared",
-                        identifier
-                    ));
-                };
+                self.visit_expression(identifier)?;
             }
-            ExpressionAST::Binary { left, right, .. } => {
+            ExprKind::Binary { left, right, .. } => {
                 self.visit_expression(left)?;
                 self.visit_expression(right)?;
             }
-            ExpressionAST::Unary { right, .. } => self.visit_expression(right)?,
-            ExpressionAST::Identifier {
+            ExprKind::Unary { right, .. } => self.visit_expression(right)?,
+            ExprKind::Identifier {
                 name,
                 span,
                 resolution,
