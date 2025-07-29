@@ -25,7 +25,7 @@ pub enum ExprKind {
     },
     Identifier {
         name: String,
-        resolution: Option<Resolution>,
+        resolution: Resolution,
         span: Span,
     },
     StringLiteral(String),
@@ -59,12 +59,15 @@ impl Expr {
         }
     }
 
-    pub fn identifier(name: String, resolution: Option<Resolution>, span: Span) -> Expr {
+    pub fn identifier(name: String, span: Span) -> Expr {
         Expr {
             span,
             kind: ExprKind::Identifier {
                 name,
-                resolution,
+                resolution: Resolution {
+                    global: false,
+                    offset: 0,
+                },
                 span,
             },
         }

@@ -5,4 +5,4 @@ pub mod parser;
 
 pub mod operator;
 pub mod statement;
-pub mod type_ast;
+pub mod r#type;

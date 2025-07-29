@@ -15,7 +15,7 @@ impl<T> Environment<T> {
         }
     }
 
-    pub fn get(&mut self, resolution: &Resolution) -> &T {
+    pub fn get(&mut self, resolution: Resolution) -> &T {
         let mut index = self.frame_pointer + resolution.offset;
 
         if resolution.global {

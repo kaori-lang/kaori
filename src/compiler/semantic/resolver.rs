@@ -103,10 +103,10 @@ impl Visitor<()> for Resolver {
                 };
 
                 self.environment.declare(name.clone());
-
-                Ok(())
             }
         }
+
+        Ok(())
     }
 
     fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), CompilationError> {
@@ -141,7 +141,7 @@ impl Visitor<()> for Resolver {
                 self.visit_expression(condition)?;
                 self.visit_statement(block)?;
             }
-            _ => (),
+            _ => {}
         };
 
         Ok(())
@@ -167,9 +167,9 @@ impl Visitor<()> for Resolver {
                     return Err(compilation_error!(*span, "{} is not declared", name));
                 };
 
-                *resolution = Some(res);
+                *resolution = res;
             }
-            _ => (),
+            _ => {}
         };
 
         Ok(())

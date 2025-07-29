@@ -1,73 +1,30 @@
 use crate::{
     compilation_error,
     compiler::syntax::{
-        ast_node::ASTNode, declaration::DeclarationAST, expression::ExpressionAST,
-        statement::StatementAST, type_ast::TypeAST,
+        ast_node::ASTNode,
+        declaration::{Decl, DeclKind},
+        expression::{Expr, ExprKind},
+        r#type::Type,
+        statement::{Stmt, StmtKind},
     },
     error::compilation_error::CompilationError,
 };
 
-use super::{environment::Environment, resolution::Resolution, visitor::Visitor};
+use super::{environment::Environment, visitor::Visitor};
 
-pub struct Resolver {
-    environment: Environment<String>,
+pub struct TypeChecker {
+    environment: Environment<Type>,
 }
 
-impl Resolver {
+impl TypeChecker {
     pub fn new() -> Self {
         Self {
             environment: Environment::new(),
         }
     }
-
-    fn search_current_scope(&mut self, identifier: &str) -> Option<Resolution> {
-        let mut start = self.environment.declarations.len();
-        let end = *self.environment.scopes_pointer.last().unwrap();
-
-        while start > end {
-            start -= 1;
-
-            if identifier == self.environment.declarations[start] {
-                let global =
-                    self.environment.frame_pointer == 0 || start < self.environment.frame_pointer;
-                let mut offset = start;
-
-                if !global {
-                    offset += self.environment.frame_pointer;
-                }
-
-                return Some(Resolution { offset, global });
-            }
-        }
-
-        return None;
-    }
-
-    fn search(&mut self, identifier: &str) -> Option<Resolution> {
-        let mut start = self.environment.declarations.len();
-        let end: usize = 0;
-
-        while start > end {
-            start -= 1;
-
-            if identifier == self.environment.declarations[start] {
-                let global =
-                    self.environment.frame_pointer == 0 || start < self.environment.frame_pointer;
-                let mut offset = start;
-
-                if !global {
-                    offset += self.environment.frame_pointer;
-                }
-
-                return Some(Resolution { offset, global });
-            }
-        }
-
-        return None;
-    }
 }
 
-impl Visitor<()> for Resolver {
+impl Visitor<Type> for TypeChecker {
     fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), CompilationError> {
         self.environment.enter_function();
 
@@ -87,43 +44,27 @@ impl Visitor<()> for Resolver {
         }
     }
 
-    fn visit_declaration(
-        &mut self,
-        declaration: &mut DeclarationAST,
-    ) -> Result<TypeAST, CompilationError> {
-        match declaration {
-            DeclarationAST::Variable {
-                identifier,
-                right,
-                span,
-                ..
-            } => {
-                self.visit_expression(right)?;
+    fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), CompilationError> {
+        match &mut declaration.kind {
+            DeclKind::Variable { name, right, ty } => {
+                let right = self.visit_expression(right)?;
 
-                if let Some(_) = self.search_current_scope(identifier) {
-                    return Err(compilation_error!(
-                        *span,
-                        "{} is already declared",
-                        identifier
-                    ));
-                };
+                if right != ty {
+                    return Err(compile_error!(declaration.span,));
+                }
 
-                self.environment.declare((*identifier).clone());
-
-                Ok(())
+                self.environment.declare(name.clone());
             }
         }
+
+        Ok(())
     }
 
-    fn visit_statement(
-        &mut self,
-        statement: &mut StatementAST,
-    ) -> Result<TypeAST, CompilationError> {
-        match statement {
-            StatementAST::Expression(expression) => self.visit_expression(expression.as_mut())?,
-
-            StatementAST::Print { expression, .. } => self.visit_expression(expression.as_mut())?,
-            StatementAST::Block { declarations, .. } => {
+    fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), CompilationError> {
+        let stmt = match &mut statement.kind {
+            StmtKind::Expression(expression) => self.visit_expression(expression.as_mut())?,
+            StmtKind::Print(expression) => self.visit_expression(expression.as_mut())?,
+            StmtKind::Block(declarations) => {
                 self.environment.enter_scope();
 
                 for declaration in declarations {
@@ -132,7 +73,7 @@ impl Visitor<()> for Resolver {
 
                 self.environment.exit_scope();
             }
-            StatementAST::If {
+            StmtKind::If {
                 condition,
                 then_branch,
                 else_branch,
@@ -145,7 +86,7 @@ impl Visitor<()> for Resolver {
                     self.visit_statement(branch)?;
                 }
             }
-            StatementAST::WhileLoop {
+            StmtKind::WhileLoop {
                 condition, block, ..
             } => {
                 self.visit_expression(condition)?;
@@ -156,34 +97,45 @@ impl Visitor<()> for Resolver {
 
         Ok(())
     }
-
-    fn visit_expression(
-        &mut self,
-        expression: &mut ExpressionAST,
-    ) -> Result<TypeAST, CompilationError> {
-        Ok(match expression {
-            ExpressionAST::Assign {
-                identifier,
-                right,
-                span,
-            } => {
+    fn visit_expression(&mut self, expression: &mut Expr) -> Result<Type, CompilationError> {
+        let expr_type = match &mut expression.kind {
+            ExprKind::Assign { identifier, right } => {
                 let right = self.visit_expression(right)?;
+                let identifier = self.visit_expression(identifier)?;
 
-                
+                if right != identifier {
+                    return Err(compilation_error!(
+                        expression.span,
+                        "can't assign type {:?} to type {:?}",
+                        right,
+                        identifier
+                    ));
+                }
+
+                right
             }
-            ExpressionAST::Binary { left, right, .. } => {
-                self.visit_expression(left)?;
-                self.visit_expression(right)?;
+            ExprKind::Binary { left, right, .. } => {
+                let left_type = self.visit_expression(left)?;
+                let right_type = self.visit_expression(right)?;
+
+                if left_type != right_type {
+                    return Err(compilation_error!(
+                        expression.span,
+                        "binary operator cannot be applied to types {:?} and {:?}",
+                        left_type,
+                        right_type
+                    ));
+                }
+
+                left_type // or right_type; they are equal
             }
-            ExpressionAST::Unary { right, .. } => self.visit_expression(right)?,
-            ExpressionAST::Identifier {
-                name,
-                span,
-                resolution,
-            } => self.environment.get(resolution),
-            ExpressionAST::NumberLiteral(..) => TypeAST::Number,
-            ExpressionAST::BooleanLiteral(..) => TypeAST::Boolean,
-            ExpressionAST::StringLiteral(..) => TypeAST::String,
-        })
+            ExprKind::Unary { right, .. } => self.visit_expression(right)?,
+            ExprKind::Identifier { resolution, .. } => self.environment.get(*resolution).clone(),
+            ExprKind::NumberLiteral(..) => Type::Number,
+            ExprKind::BooleanLiteral(..) => Type::Boolean,
+            ExprKind::StringLiteral(..) => Type::String,
+        };
+
+        Ok(expr_type)
     }
 }

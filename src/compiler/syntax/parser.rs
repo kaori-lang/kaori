@@ -9,8 +9,8 @@ use super::{
     declaration::Decl,
     expression::Expr,
     operator::{BinaryOp, UnaryOp},
+    r#type::Type,
     statement::{Stmt, StmtKind},
-    type_ast::TypeAST,
 };
 
 pub struct Parser {
@@ -411,7 +411,7 @@ impl Parser {
         let name = self.token_stream.lexeme();
         let span = self.token_stream.span();
 
-        let identifier = Box::new(Expr::identifier(name, None, span));
+        let identifier = Box::new(Expr::identifier(name, span));
 
         self.token_stream.consume(TokenKind::Identifier)?;
 
@@ -419,7 +419,7 @@ impl Parser {
     }
 
     /* Types */
-    pub fn parse_type(&mut self) -> Result<TypeAST, CompilationError> {
+    pub fn parse_type(&mut self) -> Result<Type, CompilationError> {
         match self.token_stream.token_kind() {
             TokenKind::Identifier => self.parse_primitive_type(),
             _ => Err(compilation_error!(
@@ -430,13 +430,13 @@ impl Parser {
         }
     }
 
-    fn parse_primitive_type(&mut self) -> Result<TypeAST, CompilationError> {
+    fn parse_primitive_type(&mut self) -> Result<Type, CompilationError> {
         let sub = self.token_stream.lexeme();
 
         let primitive = match sub.as_str() {
-            "bool" => TypeAST::Boolean,
-            "str" => TypeAST::String,
-            "number" => TypeAST::Number,
+            "bool" => Type::Boolean,
+            "str" => Type::String,
+            "number" => Type::Number,
             _ => {
                 return Err(compilation_error!(
                     self.token_stream.span(),
