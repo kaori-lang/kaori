@@ -1,5 +1,7 @@
 use crate::compiler::{lexer::span::Span, semantic::resolution::Resolution};
 
+use super::operator::{BinaryOp, UnaryOp};
+
 #[derive(Debug)]
 pub struct Expr {
     pub span: Span,
@@ -88,27 +90,4 @@ impl Expr {
             kind: ExprKind::BooleanLiteral(value),
         }
     }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum BinaryOp {
-    Plus,
-    Minus,
-    Multiply,
-    Divide,
-    Remainder,
-    And,
-    Or,
-    Equal,
-    NotEqual,
-    Greater,
-    GreaterEqual,
-    Less,
-    LessEqual,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum UnaryOp {
-    Negate,
-    Not,
 }

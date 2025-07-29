@@ -1,7 +1,7 @@
-use super::{declaration_ast::DeclarationAST, statement_ast::StatementAST};
+use super::{declaration_ast::DeclarationAST, statement::Stmt};
 
 #[derive(Debug)]
 pub enum ASTNode {
     Declaration(DeclarationAST),
-    Statement(StatementAST),
+    Statement(Stmt),
 }

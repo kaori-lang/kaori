@@ -7,8 +7,9 @@ use crate::{
 use super::{
     ast_node::ASTNode,
     declaration_ast::DeclarationAST,
-    expression::{BinaryOp, Expr, UnaryOp},
-    statement::Stmt,
+    expression::Expr,
+    operator::{BinaryOp, UnaryOp},
+    statement::{Stmt, StmtKind},
     type_ast::TypeAST,
 };
 
@@ -84,8 +85,8 @@ impl Parser {
             _ => self.parse_expr_statement(),
         }?;
 
-        match statement {
-            Stmt::Print { .. } | Stmt::Expression { .. } => {
+        match statement.kind {
+            StmtKind::Print(..) | StmtKind::Expression(..) => {
                 self.token_stream.consume(TokenType::Semicolon)?
             }
             _ => (),
@@ -95,9 +96,10 @@ impl Parser {
     }
 
     fn parse_expr_statement(&mut self) -> Result<Stmt, CompilationError> {
+        let span = self.token_stream.span();
         let expression = self.parse_expr()?;
 
-        return Ok(Stmt::Expression(expression));
+        return Ok(Stmt::expression(expression, span));
     }
 
     fn parse_print_statement(&mut self) -> Result<Stmt, CompilationError> {
@@ -108,7 +110,7 @@ impl Parser {
         let expression = self.parse_expr()?;
         self.token_stream.consume(TokenType::RightParen)?;
 
-        return Ok(Stmt::Print { expression, span });
+        return Ok(Stmt::print(expression, span));
     }
 
     fn parse_block_statement(&mut self) -> Result<Stmt, CompilationError> {
@@ -126,7 +128,7 @@ impl Parser {
 
         self.token_stream.consume(TokenType::RightBrace)?;
 
-        return Ok(Stmt::Block { declarations, span });
+        return Ok(Stmt::block(declarations, span));
     }
 
     fn parse_if_statement(&mut self) -> Result<Stmt, CompilationError> {
@@ -139,31 +141,20 @@ impl Parser {
         let then_branch = Box::new(self.parse_block_statement()?);
 
         if self.token_stream.token_type() != TokenType::Else {
-            return Ok(Stmt::If {
-                condition,
-                then_branch,
-                else_branch: None,
-                span,
-            });
+            return Ok(Stmt::if_(condition, then_branch, None, span));
         }
 
         self.token_stream.advance();
 
         if self.token_stream.token_type() == TokenType::If {
-            return Ok(Stmt::If {
-                condition,
-                then_branch,
-                else_branch: Some(Box::new(self.parse_if_statement()?)),
-                span,
-            });
+            let else_branch = Some(Box::new(self.parse_if_statement()?));
+
+            return Ok(Stmt::if_(condition, then_branch, else_branch, span));
         }
 
-        return Ok(Stmt::If {
-            condition,
-            then_branch,
-            else_branch: Some(Box::new(self.parse_block_statement()?)),
-            span,
-        });
+        let else_branch = Some(Box::new(self.parse_block_statement()?));
+
+        return Ok(Stmt::if_(condition, then_branch, else_branch, span));
     }
 
     fn parse_while_loop_statement(&mut self) -> Result<Stmt, CompilationError> {
@@ -174,11 +165,7 @@ impl Parser {
         let condition = self.parse_expr()?;
         let block = Box::new(self.parse_block_statement()?);
 
-        return Ok(Stmt::WhileLoop {
-            condition,
-            block,
-            span,
-        });
+        return Ok(Stmt::while_loop(condition, block, span));
     }
 
     fn parse_for_loop_statement(&mut self) -> Result<Stmt, CompilationError> {
@@ -198,22 +185,18 @@ impl Parser {
 
         let mut block = self.parse_block_statement()?;
 
-        if let Stmt::Block { declarations, .. } = &mut block {
+        if let StmtKind::Block(declarations) = &mut block.kind {
             declarations.push(ASTNode::Statement(increment));
         }
 
-        let while_loop = Stmt::WhileLoop {
-            condition,
-            block: Box::new(block),
-            span,
-        };
+        let while_loop = Stmt::while_loop(condition, Box::new(block), span);
 
         let mut declarations: Vec<ASTNode> = Vec::new();
 
         declarations.push(ASTNode::Declaration(declaration));
         declarations.push(ASTNode::Statement(while_loop));
 
-        return Ok(Stmt::Block { declarations, span });
+        return Ok(Stmt::block(declarations, span));
     }
 
     /* Exprs */
