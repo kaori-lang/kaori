@@ -9,6 +9,7 @@ use std::fs;
 use kaori::{
     compiler::{
         lexer::{lexer::Lexer, token_stream::TokenStream},
+        semantic::resolver::Resolver,
         syntax::parser::Parser,
     },
     error::compilation_error::CompilationError,
@@ -25,7 +26,9 @@ pub fn run_program(source: String) -> Result<(), CompilationError> {
     let mut parser = Parser::new(token_stream);
 
     let declarations = parser.declarations()?;
-    println!("{:#?}", declarations);
+
+    let resolver = Resolver::new(declarations);
+
     Ok(())
 }
 

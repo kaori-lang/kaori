@@ -10,7 +10,11 @@ use crate::{
     error::compilation_error::CompilationError,
 };
 
-use super::{environment::Environment, visitor::Visitor};
+use super::{
+    environment::Environment,
+    resolution::{self, Resolution},
+    visitor::Visitor,
+};
 
 pub struct Resolver {
     declarations: Vec<ASTNode>,
@@ -19,7 +23,7 @@ pub struct Resolver {
 }
 
 impl Resolver {
-    fn new(declarations: Vec<ASTNode>) -> Self {
+    pub fn new(declarations: Vec<ASTNode>) -> Self {
         Self {
             declarations,
             environment: Environment::new(),
@@ -75,14 +79,17 @@ impl Resolver {
 }
 
 impl Visitor<()> for Resolver {
-    fn visit_ast_node(&mut self, ast_node: ASTNode) -> Result<(), CompilationError> {
+    fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), CompilationError> {
         match ast_node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),
             ASTNode::Statement(statement) => self.visit_statement(statement),
         }
     }
 
-    fn visit_declaration(&mut self, declaration: DeclarationAST) -> Result<(), CompilationError> {
+    fn visit_declaration(
+        &mut self,
+        declaration: &mut DeclarationAST,
+    ) -> Result<(), CompilationError> {
         match declaration {
             DeclarationAST::Variable {
                 identifier,
@@ -90,33 +97,28 @@ impl Visitor<()> for Resolver {
                 span,
                 ..
             } => {
-                self.visit_expression(*right)?;
+                self.visit_expression(right)?;
 
-                if let Some(_) = self.search_current_scope(&identifier) {
+                if let Some(_) = self.search_current_scope(identifier) {
                     return Err(compilation_error!(
-                        span,
+                        *span,
                         "{} is already declared",
                         identifier
                     ));
                 };
 
-                self.environment.declare(identifier);
+                self.environment.declare((*identifier).clone());
 
                 Ok(())
             }
         }
     }
 
-    fn visit_statement(&mut self, statement: StatementAST) -> Result<(), CompilationError> {
+    fn visit_statement(&mut self, statement: &mut StatementAST) -> Result<(), CompilationError> {
         match statement {
-            StatementAST::Expression(expression) => {
-                self.visit_expression(*expression)?;
-                Ok(())
-            }
-            StatementAST::Print { expression, .. } => {
-                self.visit_expression(*expression)?;
-                Ok(())
-            }
+            StatementAST::Expression(expression) => self.visit_expression(expression.as_mut())?,
+
+            StatementAST::Print { expression, .. } => self.visit_expression(expression.as_mut())?,
             StatementAST::Block { declarations, .. } => {
                 self.environment.enter_scope();
 
@@ -125,8 +127,6 @@ impl Visitor<()> for Resolver {
                 }
 
                 self.environment.exit_scope();
-
-                Ok(())
             }
             StatementAST::If {
                 condition,
@@ -134,53 +134,61 @@ impl Visitor<()> for Resolver {
                 else_branch,
                 ..
             } => {
-                self.visit_expression(*condition)?;
-                self.visit_statement(*then_branch)?;
+                self.visit_expression(condition)?;
+                self.visit_statement(then_branch)?;
 
                 if let Some(branch) = else_branch {
-                    self.visit_statement(*branch)?;
+                    self.visit_statement(branch)?;
                 }
-
-                Ok(())
             }
-            _ => Ok(()),
-        }
+            StatementAST::WhileLoop {
+                condition, block, ..
+            } => {
+                self.visit_expression(condition)?;
+                self.visit_statement(block)?;
+            }
+            _ => (),
+        };
+
+        Ok(())
     }
 
-    fn visit_expression(&mut self, expression: ExpressionAST) -> Result<(), CompilationError> {
+    fn visit_expression(&mut self, expression: &mut ExpressionAST) -> Result<(), CompilationError> {
         match expression {
             ExpressionAST::Assign {
                 identifier,
                 right,
                 span,
             } => {
-                self.visit_expression(*right)?;
+                self.visit_expression(right)?;
 
                 let Some(_) = self.search(&identifier) else {
-                    return Err(compilation_error!(span, "{} is not declared", identifier));
+                    return Err(compilation_error!(
+                        span.clone(),
+                        "{} is not declared",
+                        identifier
+                    ));
                 };
-
-                Ok(())
             }
             ExpressionAST::Binary { left, right, .. } => {
-                self.visit_expression(*left)?;
-                self.visit_expression(*right)?;
-
-                Ok(())
+                self.visit_expression(left)?;
+                self.visit_expression(right)?;
             }
-            ExpressionAST::Unary { right, .. } => {
-                self.visit_expression(*right)?;
-
-                Ok(())
-            }
-            ExpressionAST::Identifier(identifier, span) => {
-                let Some(resolution) = self.search(&identifier) else {
-                    return Err(compilation_error!(span, "{} is not declared", identifier));
+            ExpressionAST::Unary { right, .. } => self.visit_expression(right)?,
+            ExpressionAST::Identifier {
+                name,
+                span,
+                resolution,
+            } => {
+                let Some(res) = self.search(name) else {
+                    return Err(compilation_error!(*span, "{} is not declared", name));
                 };
 
-                Ok(())
+                *resolution = Some(res);
             }
-            _ => Ok(()),
-        }
+            _ => (),
+        };
+
+        Ok(())
     }
 }

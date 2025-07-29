@@ -8,6 +8,7 @@ a: str = "hello woroodll";
 
 
 */
+
 for i: number = 0; i < 10; i = i + 1 {
     print("hi");
 

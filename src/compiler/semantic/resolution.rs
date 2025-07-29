@@ -1,5 +1,5 @@
 #[derive(Debug)]
 pub struct Resolution {
-    offset: usize,
-    global: bool,
+    pub offset: usize,
+    pub global: bool,
 }

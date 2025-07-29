@@ -7,8 +7,12 @@ use crate::{
 };
 
 pub trait Visitor<T> {
-    fn visit_ast_node(&mut self, ast_node: ASTNode) -> Result<(), CompilationError>;
-    fn visit_declaration(&mut self, declaration: DeclarationAST) -> Result<(), CompilationError>;
-    fn visit_statement(&mut self, statement: StatementAST) -> Result<(), CompilationError>;
-    fn visit_expression(&mut self, expression: ExpressionAST) -> Result<T, CompilationError>;
+    fn run(&mut self) -> Result<(), CompilationError>;
+    fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), CompilationError>;
+    fn visit_declaration(
+        &mut self,
+        declaration: &mut DeclarationAST,
+    ) -> Result<(), CompilationError>;
+    fn visit_statement(&mut self, statement: &mut StatementAST) -> Result<(), CompilationError>;
+    fn visit_expression(&mut self, expression: &mut ExpressionAST) -> Result<T, CompilationError>;
 }

@@ -461,7 +461,11 @@ impl Parser {
             }
             TokenType::Identifier => {
                 let identifier = self.parse_identifier()?;
-                Box::new(ExpressionAST::Identifier(identifier, span))
+                Box::new(ExpressionAST::Identifier {
+                    name: identifier,
+                    resolution: None,
+                    span,
+                })
             }
 
             _ => {
