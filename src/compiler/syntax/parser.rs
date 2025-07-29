@@ -6,7 +6,7 @@ use crate::{
 
 use super::{
     ast_node::ASTNode,
-    declaration_ast::DeclarationAST,
+    declaration::Decl,
     expression::Expr,
     operator::{BinaryOp, UnaryOp},
     statement::{Stmt, StmtKind},
@@ -53,7 +53,7 @@ impl Parser {
         Ok(declaration)
     }
 
-    fn parse_variable_declaration(&mut self) -> Result<DeclarationAST, CompilationError> {
+    fn parse_variable_declaration(&mut self) -> Result<Decl, CompilationError> {
         let span = self.token_stream.span();
 
         let identifier = self.parse_identifier()?;
@@ -66,7 +66,7 @@ impl Parser {
 
         let right = self.parse_expr()?;
 
-        return Ok(DeclarationAST::Variable {
+        return Ok(Decl::Variable {
             identifier,
             right,
             ty,

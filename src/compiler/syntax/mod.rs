@@ -1,5 +1,5 @@
 pub mod ast_node;
-pub mod declaration_ast;
+pub mod declaration;
 pub mod expression;
 pub mod parser;
 
