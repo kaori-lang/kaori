@@ -100,15 +100,24 @@ impl Visitor<()> for Resolver {
             } => {
                 self.visit_expression(right)?;
 
-                if let Some(_) = self.search_current_scope(identifier) {
+                let ExpressionAST::Identifier {
+                    name,
+                    resolution,
+                    span,
+                } = **identifier
+                else {
+                    return Err(compilation_error!(*span, "invalid identifier",));
+                };
+
+                if let Some(_) = self.search_current_scope(&name) {
                     return Err(compilation_error!(
-                        *span,
+                        span,
                         "{} is already declared",
-                        identifier
+                        name.clone()
                     ));
                 };
 
-                self.environment.declare((*identifier).clone());
+                self.environment.declare(name.clone());
 
                 Ok(())
             }

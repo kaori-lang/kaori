@@ -7,7 +7,7 @@ use crate::{
 use super::{
     ast_node::ASTNode,
     declaration_ast::DeclarationAST,
-    expression_ast::{BinaryOp, ExpressionAST, UnaryOp},
+    expression::{BinaryOp, Expression, UnaryOp},
     statement_ast::StatementAST,
     type_ast::TypeAST,
 };
@@ -217,7 +217,7 @@ impl Parser {
     }
 
     /* Expressions */
-    fn parse_expression(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
+    fn parse_expression(&mut self) -> Result<Box<Expression>, CompilationError> {
         if self
             .token_stream
             .look_ahead(&[TokenType::Identifier, TokenType::Assign])
@@ -228,7 +228,7 @@ impl Parser {
         return self.parse_or();
     }
 
-    fn parse_assign(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
+    fn parse_assign(&mut self) -> Result<Box<Expression>, CompilationError> {
         let identifier = self.parse_identifier()?;
 
         let span = self.token_stream.span();
@@ -236,14 +236,10 @@ impl Parser {
 
         let right = self.parse_expression()?;
 
-        return Ok(Box::new(ExpressionAST::Assign {
-            identifier,
-            right,
-            span,
-        }));
+        return Ok(Box::new(Expression::assign(identifier, right, span)));
     }
 
-    fn parse_or(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
+    fn parse_or(&mut self) -> Result<Box<Expression>, CompilationError> {
         let mut left = self.parse_and()?;
 
         while !self.token_stream.at_end() {
@@ -258,18 +254,13 @@ impl Parser {
 
             let right = self.parse_and()?;
 
-            left = Box::new(ExpressionAST::Binary {
-                operator: BinaryOp::Or,
-                left,
-                right,
-                span,
-            });
+            left = Box::new(Expression::binary(BinaryOp::Or, left, right, span));
         }
 
         Ok(left)
     }
 
-    fn parse_and(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
+    fn parse_and(&mut self) -> Result<Box<Expression>, CompilationError> {
         let mut left = self.parse_equality()?;
 
         while !self.token_stream.at_end() {
@@ -283,18 +274,13 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_equality()?;
 
-            left = Box::new(ExpressionAST::Binary {
-                operator: BinaryOp::And,
-                left,
-                right,
-                span,
-            });
+            left = Box::new(Expression::binary(BinaryOp::And, left, right, span));
         }
 
         Ok(left)
     }
 
-    fn parse_equality(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
+    fn parse_equality(&mut self) -> Result<Box<Expression>, CompilationError> {
         let mut left = self.parse_comparison()?;
 
         while !self.token_stream.at_end() {
@@ -310,18 +296,13 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_comparison()?;
 
-            left = Box::new(ExpressionAST::Binary {
-                operator,
-                left,
-                right,
-                span,
-            });
+            left = Box::new(Expression::binary(operator, left, right, span));
         }
 
         Ok(left)
     }
 
-    fn parse_comparison(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
+    fn parse_comparison(&mut self) -> Result<Box<Expression>, CompilationError> {
         let mut left = self.parse_term()?;
 
         while !self.token_stream.at_end() {
@@ -339,18 +320,13 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_term()?;
 
-            left = Box::new(ExpressionAST::Binary {
-                operator,
-                left,
-                right,
-                span,
-            });
+            left = Box::new(Expression::binary(operator, left, right, span));
         }
 
         Ok(left)
     }
 
-    fn parse_term(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
+    fn parse_term(&mut self) -> Result<Box<Expression>, CompilationError> {
         let mut left = self.parse_factor()?;
 
         while !self.token_stream.at_end() {
@@ -366,18 +342,13 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_factor()?;
 
-            left = Box::new(ExpressionAST::Binary {
-                operator,
-                left,
-                right,
-                span,
-            });
+            left = Box::new(Expression::binary(operator, left, right, span));
         }
 
         Ok(left)
     }
 
-    fn parse_factor(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
+    fn parse_factor(&mut self) -> Result<Box<Expression>, CompilationError> {
         let mut left = self.parse_unary()?;
 
         while !self.token_stream.at_end() {
@@ -394,18 +365,13 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_unary()?;
 
-            left = Box::new(ExpressionAST::Binary {
-                operator,
-                left,
-                right,
-                span,
-            })
+            left = Box::new(Expression::binary(operator, left, right, span))
         }
 
         return Ok(left);
     }
 
-    fn parse_unary(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
+    fn parse_unary(&mut self) -> Result<Box<Expression>, CompilationError> {
         let ty = self.token_stream.token_type();
         let span = self.token_stream.span();
 
@@ -421,14 +387,14 @@ impl Parser {
 
         self.token_stream.advance();
 
-        Ok(Box::new(ExpressionAST::Unary {
+        Ok(Box::new(Expression::unary(
             operator,
-            right: self.parse_unary()?,
+            self.parse_unary()?,
             span,
-        }))
+        )))
     }
 
-    fn parse_primary(&mut self) -> Result<Box<ExpressionAST>, CompilationError> {
+    fn parse_primary(&mut self) -> Result<Box<Expression>, CompilationError> {
         let ty = self.token_stream.token_type();
         let span = self.token_stream.span();
 
@@ -441,33 +407,25 @@ impl Parser {
             }
             TokenType::NumberLiteral => {
                 let lexeme = self.token_stream.lexeme();
-                let number_literal = lexeme.parse::<f64>().unwrap();
+                let value = lexeme.parse::<f64>().unwrap();
 
                 self.token_stream.advance();
-                Box::new(ExpressionAST::NumberLiteral(number_literal, span))
+                Box::new(Expression::number_literal(value, span))
             }
             TokenType::BooleanLiteral => {
                 let lexeme = self.token_stream.lexeme();
-                let bool_literal = lexeme.parse::<bool>().unwrap();
+                let value = lexeme.parse::<bool>().unwrap();
 
                 self.token_stream.advance();
-                Box::new(ExpressionAST::BooleanLiteral(bool_literal, span))
+                Box::new(Expression::boolean_literal(value, span))
             }
             TokenType::StringLiteral => {
                 let lexeme = self.token_stream.lexeme();
 
                 self.token_stream.advance();
-                Box::new(ExpressionAST::StringLiteral(lexeme, span))
+                Box::new(Expression::string_literal(lexeme, span))
             }
-            TokenType::Identifier => {
-                let identifier = self.parse_identifier()?;
-                Box::new(ExpressionAST::Identifier {
-                    name: identifier,
-                    resolution: None,
-                    span,
-                })
-            }
-
+            TokenType::Identifier => self.parse_identifier()?,
             _ => {
                 let span = self.token_stream.span();
                 return Err(compilation_error!(span, "{:?} is a invalid operand", ty));
@@ -475,8 +433,11 @@ impl Parser {
         })
     }
 
-    fn parse_identifier(&mut self) -> Result<String, CompilationError> {
-        let identifier = self.token_stream.lexeme();
+    fn parse_identifier(&mut self) -> Result<Box<Expression>, CompilationError> {
+        let name = self.token_stream.lexeme();
+        let span = self.token_stream.span();
+
+        let identifier = Box::new(Expression::identifier(name, None, span));
 
         self.token_stream.consume(TokenType::Identifier)?;
 

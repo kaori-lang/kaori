@@ -1,3 +1,5 @@
+use super::resolution::Resolution;
+
 pub struct Environment<T> {
     pub declarations: Vec<T>,
     pub scopes_pointer: Vec<usize>,
@@ -11,6 +13,16 @@ impl<T> Environment<T> {
             scopes_pointer: Vec::new(),
             frame_pointer: 0,
         }
+    }
+
+    pub fn get(&mut self, resolution: &Resolution) -> &T {
+        let mut index = self.frame_pointer + resolution.offset;
+
+        if resolution.global {
+            index -= self.frame_pointer;
+        }
+
+        return self.declarations.get(index).unwrap();
     }
 
     pub fn enter_scope(&mut self) {
