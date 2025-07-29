@@ -95,8 +95,8 @@ impl Lexer {
             self.position += 1;
         }
 
-        while !self.at_end() && self.source[self.position].is_alphanumeric()
-            || self.source[self.position] == '_'
+        while !self.at_end()
+            && (self.source[self.position].is_alphanumeric() || self.source[self.position] == '_')
         {
             self.position += 1;
         }

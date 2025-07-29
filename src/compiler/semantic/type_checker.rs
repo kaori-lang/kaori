@@ -1,8 +1,8 @@
 use crate::{
     compilation_error,
     compiler::syntax::{
-        ast_node::ASTNode, declaration_ast::DeclarationAST, expression_ast::ExpressionAST,
-        statement_ast::StatementAST, type_ast::TypeAST,
+        ast_node::ASTNode, declaration::DeclarationAST, expression::ExpressionAST,
+        statement::StatementAST, type_ast::TypeAST,
     },
     error::compilation_error::CompilationError,
 };
@@ -169,13 +169,7 @@ impl Visitor<()> for Resolver {
             } => {
                 let right = self.visit_expression(right)?;
 
-                let Some(_) = self.search(&identifier) else {
-                    return Err(compilation_error!(
-                        span.clone(),
-                        "{} is not declared",
-                        identifier
-                    ));
-                };
+                
             }
             ExpressionAST::Binary { left, right, .. } => {
                 self.visit_expression(left)?;
