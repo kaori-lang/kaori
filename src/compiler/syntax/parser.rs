@@ -1,12 +1,12 @@
 use crate::{
-    compiler::lexer::{token_kind::TokenKind, token_stream::TokenStream},
+    compiler::lexer::{token::Token, token_kind::TokenKind, token_stream::TokenStream},
     error::kaori_error::KaoriError,
     kaori_error,
 };
 
 use super::{
     ast_node::ASTNode,
-    declaration::Decl,
+    declaration::{self, Decl},
     expression::Expr,
     operator::{BinaryOp, UnaryOp},
     r#type::Type,
@@ -67,6 +67,20 @@ impl Parser {
         let right = self.parse_expr()?;
 
         return Ok(Decl::variable(name, right, ty, span));
+    }
+
+    fn parse_function_declaration(&mut self) -> Result<Decl, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Function)?;
+
+        let name = self.token_stream.lexeme();
+
+        self.token_stream.consume(TokenKind::Identifier);
+
+        self.token_stream.consume(TokenKind::LeftParen);
+
+        let parameters: Vec<Decl> = Vec::new();
     }
 
     /* Statements */
