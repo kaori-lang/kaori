@@ -1,12 +1,12 @@
 use crate::compiler::lexer::span::Span;
 
-use super::{expression::Expression, type_ast::TypeAST};
+use super::{expression::Expr, type_ast::TypeAST};
 
 #[derive(Debug)]
 pub enum DeclarationAST {
     Variable {
-        identifier: Box<Expression>,
-        right: Box<Expression>,
+        identifier: Box<Expr>,
+        right: Box<Expr>,
         ty: TypeAST,
         span: Span,
     },

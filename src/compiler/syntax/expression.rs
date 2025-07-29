@@ -1,25 +1,25 @@
 use crate::compiler::{lexer::span::Span, semantic::resolution::Resolution};
 
 #[derive(Debug)]
-pub struct Expression {
+pub struct Expr {
     pub span: Span,
-    pub kind: ExpressionKind,
+    pub kind: ExprKind,
 }
 
 #[derive(Debug)]
-pub enum ExpressionKind {
+pub enum ExprKind {
     Binary {
         operator: BinaryOp,
-        left: Box<Expression>,
-        right: Box<Expression>,
+        left: Box<Expr>,
+        right: Box<Expr>,
     },
     Unary {
         operator: UnaryOp,
-        right: Box<Expression>,
+        right: Box<Expr>,
     },
     Assign {
-        identifier: Box<Expression>,
-        right: Box<Expression>,
+        identifier: Box<Expr>,
+        right: Box<Expr>,
     },
     Identifier {
         name: String,
@@ -31,16 +31,11 @@ pub enum ExpressionKind {
     BooleanLiteral(bool),
 }
 
-impl Expression {
-    pub fn binary(
-        operator: BinaryOp,
-        left: Box<Expression>,
-        right: Box<Expression>,
-        span: Span,
-    ) -> Expression {
-        Expression {
+impl Expr {
+    pub fn binary(operator: BinaryOp, left: Box<Expr>, right: Box<Expr>, span: Span) -> Expr {
+        Expr {
             span,
-            kind: ExpressionKind::Binary {
+            kind: ExprKind::Binary {
                 operator,
                 left,
                 right,
@@ -48,24 +43,24 @@ impl Expression {
         }
     }
 
-    pub fn unary(operator: UnaryOp, right: Box<Expression>, span: Span) -> Expression {
-        Expression {
+    pub fn unary(operator: UnaryOp, right: Box<Expr>, span: Span) -> Expr {
+        Expr {
             span,
-            kind: ExpressionKind::Unary { operator, right },
+            kind: ExprKind::Unary { operator, right },
         }
     }
 
-    pub fn assign(identifier: Box<Expression>, right: Box<Expression>, span: Span) -> Expression {
-        Expression {
+    pub fn assign(identifier: Box<Expr>, right: Box<Expr>, span: Span) -> Expr {
+        Expr {
             span,
-            kind: ExpressionKind::Assign { identifier, right },
+            kind: ExprKind::Assign { identifier, right },
         }
     }
 
-    pub fn identifier(name: String, resolution: Option<Resolution>, span: Span) -> Expression {
-        Expression {
+    pub fn identifier(name: String, resolution: Option<Resolution>, span: Span) -> Expr {
+        Expr {
             span,
-            kind: ExpressionKind::Identifier {
+            kind: ExprKind::Identifier {
                 name,
                 resolution,
                 span,
@@ -73,24 +68,24 @@ impl Expression {
         }
     }
 
-    pub fn string_literal(value: String, span: Span) -> Expression {
-        Expression {
+    pub fn string_literal(value: String, span: Span) -> Expr {
+        Expr {
             span,
-            kind: ExpressionKind::StringLiteral(value),
+            kind: ExprKind::StringLiteral(value),
         }
     }
 
-    pub fn number_literal(value: f64, span: Span) -> Expression {
-        Expression {
+    pub fn number_literal(value: f64, span: Span) -> Expr {
+        Expr {
             span,
-            kind: ExpressionKind::NumberLiteral(value),
+            kind: ExprKind::NumberLiteral(value),
         }
     }
 
-    pub fn boolean_literal(value: bool, span: Span) -> Expression {
-        Expression {
+    pub fn boolean_literal(value: bool, span: Span) -> Expr {
+        Expr {
             span,
-            kind: ExpressionKind::BooleanLiteral(value),
+            kind: ExprKind::BooleanLiteral(value),
         }
     }
 }
