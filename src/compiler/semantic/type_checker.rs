@@ -4,10 +4,11 @@ use crate::{
         ast_node::ASTNode,
         declaration::{Decl, DeclKind},
         expression::{Expr, ExprKind},
+        operator::{BinaryOp, UnaryOp},
         r#type::Type,
         statement::{Stmt, StmtKind},
     },
-    error::compilation_error::CompilationError,
+    error::compilation_error::{self, CompilationError},
 };
 
 use super::{environment::Environment, visitor::Visitor};
@@ -49,11 +50,15 @@ impl Visitor<Type> for TypeChecker {
             DeclKind::Variable { name, right, ty } => {
                 let right = self.visit_expression(right)?;
 
-                if right != ty {
-                    return Err(compile_error!(declaration.span,));
+                if right != *ty {
+                    return Err(compilation_error!(
+                        declaration.span,
+                        "expected value of type {:?} in variable declaration",
+                        ty,
+                    ));
                 }
 
-                self.environment.declare(name.clone());
+                self.environment.declare(right);
             }
         }
 
@@ -61,9 +66,15 @@ impl Visitor<Type> for TypeChecker {
     }
 
     fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), CompilationError> {
-        let stmt = match &mut statement.kind {
-            StmtKind::Expression(expression) => self.visit_expression(expression.as_mut())?,
-            StmtKind::Print(expression) => self.visit_expression(expression.as_mut())?,
+        match &mut statement.kind {
+            StmtKind::Expression(expression) => {
+                self.visit_expression(expression.as_mut())?;
+                ()
+            }
+            StmtKind::Print(expression) => {
+                self.visit_expression(expression.as_mut())?;
+                ()
+            }
             StmtKind::Block(declarations) => {
                 self.environment.enter_scope();
 
@@ -114,22 +125,61 @@ impl Visitor<Type> for TypeChecker {
 
                 right
             }
-            ExprKind::Binary { left, right, .. } => {
-                let left_type = self.visit_expression(left)?;
-                let right_type = self.visit_expression(right)?;
+            ExprKind::Binary {
+                left,
+                right,
+                operator,
+            } => {
+                let left = self.visit_expression(left)?;
+                let right = self.visit_expression(right)?;
 
-                if left_type != right_type {
-                    return Err(compilation_error!(
-                        expression.span,
-                        "binary operator cannot be applied to types {:?} and {:?}",
-                        left_type,
-                        right_type
-                    ));
+                match (&left, &operator, &right) {
+                    (Type::Number, BinaryOp::Plus, Type::Number) => Type::Number,
+                    (Type::Number, BinaryOp::Minus, Type::Number) => Type::Number,
+                    (Type::Number, BinaryOp::Multiply, Type::Number) => Type::Number,
+                    (Type::Number, BinaryOp::Divide, Type::Number) => Type::Number,
+                    (Type::Number, BinaryOp::Remainder, Type::Number) => Type::Number,
+
+                    (Type::Boolean, BinaryOp::And, Type::Boolean) => Type::Boolean,
+                    (Type::Boolean, BinaryOp::Or, Type::Boolean) => Type::Boolean,
+
+                    (Type::Number, BinaryOp::Equal, Type::Number) => Type::Boolean,
+                    (Type::Boolean, BinaryOp::Equal, Type::Boolean) => Type::Boolean,
+
+                    (Type::Number, BinaryOp::NotEqual, Type::Number) => Type::Boolean,
+                    (Type::Boolean, BinaryOp::NotEqual, Type::Boolean) => Type::Boolean,
+
+                    (Type::Number, BinaryOp::Greater, Type::Number) => Type::Boolean,
+                    (Type::Number, BinaryOp::GreaterEqual, Type::Number) => Type::Boolean,
+                    (Type::Number, BinaryOp::Less, Type::Number) => Type::Boolean,
+                    (Type::Number, BinaryOp::LessEqual, Type::Number) => Type::Boolean,
+                    _ => {
+                        return Err(compilation_error!(
+                            expression.span,
+                            "invalid {:?} operation between {:?} and {:?}",
+                            operator,
+                            left,
+                            right
+                        ))
+                    }
                 }
-
-                left_type // or right_type; they are equal
             }
-            ExprKind::Unary { right, .. } => self.visit_expression(right)?,
+            ExprKind::Unary { right, operator } => {
+                let right = self.visit_expression(right)?;
+
+                match (&operator, &right) {
+                    (UnaryOp::Negate, Type::Number) => Type::Number,
+                    (UnaryOp::Not, Type::Boolean) => Type::Boolean,
+                    _ => {
+                        return Err(compilation_error!(
+                            expression.span,
+                            "invalid {:?} operation for right {:?}",
+                            operator,
+                            right
+                        ))
+                    }
+                }
+            }
             ExprKind::Identifier { resolution, .. } => self.environment.get(*resolution).clone(),
             ExprKind::NumberLiteral(..) => Type::Number,
             ExprKind::BooleanLiteral(..) => Type::Boolean,
