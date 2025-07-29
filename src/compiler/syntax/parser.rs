@@ -1,6 +1,6 @@
 use crate::{
     compilation_error,
-    compiler::lexer::{token_stream::TokenStream, token_type::TokenType},
+    compiler::lexer::{token_kind::TokenKind, token_stream::TokenStream},
     error::compilation_error::CompilationError,
 };
 
@@ -35,17 +35,17 @@ impl Parser {
 
     /* Declarations */
     fn parse_declaration(&mut self) -> Result<ASTNode, CompilationError> {
-        let declaration = match self.token_stream.token_type() {
+        let declaration = match self.token_stream.token_kind() {
             _ => {
                 if !self
                     .token_stream
-                    .look_ahead(&[TokenType::Identifier, TokenType::Colon])
+                    .look_ahead(&[TokenKind::Identifier, TokenKind::Colon])
                 {
                     return Ok(ASTNode::Statement(self.parse_statement()?));
                 }
 
                 let variable_declaration = ASTNode::Declaration(self.parse_variable_declaration()?);
-                self.token_stream.consume(TokenType::Semicolon)?;
+                self.token_stream.consume(TokenKind::Semicolon)?;
                 variable_declaration
             }
         };
@@ -57,12 +57,12 @@ impl Parser {
         let span = self.token_stream.span();
         let name = self.token_stream.lexeme();
 
-        self.token_stream.consume(TokenType::Identifier)?;
-        self.token_stream.consume(TokenType::Colon)?;
+        self.token_stream.consume(TokenKind::Identifier)?;
+        self.token_stream.consume(TokenKind::Colon)?;
 
         let ty = self.parse_type()?;
 
-        self.token_stream.consume(TokenType::Assign)?;
+        self.token_stream.consume(TokenKind::Assign)?;
 
         let right = self.parse_expr()?;
 
@@ -71,18 +71,18 @@ impl Parser {
 
     /* Statements */
     fn parse_statement(&mut self) -> Result<Stmt, CompilationError> {
-        let statement = match self.token_stream.token_type() {
-            TokenType::Print => self.parse_print_statement(),
-            TokenType::LeftBrace => self.parse_block_statement(),
-            TokenType::If => self.parse_if_statement(),
-            TokenType::While => self.parse_while_loop_statement(),
-            TokenType::For => self.parse_for_loop_statement(),
+        let statement = match self.token_stream.token_kind() {
+            TokenKind::Print => self.parse_print_statement(),
+            TokenKind::LeftBrace => self.parse_block_statement(),
+            TokenKind::If => self.parse_if_statement(),
+            TokenKind::While => self.parse_while_loop_statement(),
+            TokenKind::For => self.parse_for_loop_statement(),
             _ => self.parse_expr_statement(),
         }?;
 
         match statement.kind {
             StmtKind::Print(..) | StmtKind::Expression(..) => {
-                self.token_stream.consume(TokenType::Semicolon)?
+                self.token_stream.consume(TokenKind::Semicolon)?
             }
             _ => (),
         };
@@ -100,10 +100,10 @@ impl Parser {
     fn parse_print_statement(&mut self) -> Result<Stmt, CompilationError> {
         let span = self.token_stream.span();
 
-        self.token_stream.consume(TokenType::Print)?;
-        self.token_stream.consume(TokenType::LeftParen)?;
+        self.token_stream.consume(TokenKind::Print)?;
+        self.token_stream.consume(TokenKind::LeftParen)?;
         let expression = self.parse_expr()?;
-        self.token_stream.consume(TokenType::RightParen)?;
+        self.token_stream.consume(TokenKind::RightParen)?;
 
         return Ok(Stmt::print(expression, span));
     }
@@ -113,15 +113,15 @@ impl Parser {
 
         let mut declarations: Vec<ASTNode> = Vec::new();
 
-        self.token_stream.consume(TokenType::LeftBrace)?;
+        self.token_stream.consume(TokenKind::LeftBrace)?;
 
-        while !self.token_stream.at_end() && self.token_stream.token_type() != TokenType::RightBrace
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
         {
             let declaration = self.parse_declaration()?;
             declarations.push(declaration);
         }
 
-        self.token_stream.consume(TokenType::RightBrace)?;
+        self.token_stream.consume(TokenKind::RightBrace)?;
 
         return Ok(Stmt::block(declarations, span));
     }
@@ -129,19 +129,19 @@ impl Parser {
     fn parse_if_statement(&mut self) -> Result<Stmt, CompilationError> {
         let span = self.token_stream.span();
 
-        self.token_stream.consume(TokenType::If)?;
+        self.token_stream.consume(TokenKind::If)?;
 
         let condition = self.parse_expr()?;
 
         let then_branch = Box::new(self.parse_block_statement()?);
 
-        if self.token_stream.token_type() != TokenType::Else {
+        if self.token_stream.token_kind() != TokenKind::Else {
             return Ok(Stmt::if_(condition, then_branch, None, span));
         }
 
         self.token_stream.advance();
 
-        if self.token_stream.token_type() == TokenType::If {
+        if self.token_stream.token_kind() == TokenKind::If {
             let else_branch = Some(Box::new(self.parse_if_statement()?));
 
             return Ok(Stmt::if_(condition, then_branch, else_branch, span));
@@ -155,7 +155,7 @@ impl Parser {
     fn parse_while_loop_statement(&mut self) -> Result<Stmt, CompilationError> {
         let span = self.token_stream.span();
 
-        self.token_stream.consume(TokenType::While)?;
+        self.token_stream.consume(TokenKind::While)?;
 
         let condition = self.parse_expr()?;
         let block = Box::new(self.parse_block_statement()?);
@@ -166,15 +166,15 @@ impl Parser {
     fn parse_for_loop_statement(&mut self) -> Result<Stmt, CompilationError> {
         let span = self.token_stream.span();
 
-        self.token_stream.consume(TokenType::For)?;
+        self.token_stream.consume(TokenKind::For)?;
 
         let declaration = self.parse_variable_declaration()?;
 
-        self.token_stream.consume(TokenType::Semicolon)?;
+        self.token_stream.consume(TokenKind::Semicolon)?;
 
         let condition = self.parse_expr()?;
 
-        self.token_stream.consume(TokenType::Semicolon)?;
+        self.token_stream.consume(TokenKind::Semicolon)?;
 
         let increment = self.parse_expr_statement()?;
 
@@ -198,7 +198,7 @@ impl Parser {
     fn parse_expr(&mut self) -> Result<Box<Expr>, CompilationError> {
         if self
             .token_stream
-            .look_ahead(&[TokenType::Identifier, TokenType::Assign])
+            .look_ahead(&[TokenKind::Identifier, TokenKind::Assign])
         {
             return self.parse_assign();
         }
@@ -210,7 +210,7 @@ impl Parser {
         let identifier = self.parse_identifier()?;
 
         let span = self.token_stream.span();
-        self.token_stream.consume(TokenType::Assign)?;
+        self.token_stream.consume(TokenKind::Assign)?;
 
         let right = self.parse_expr()?;
 
@@ -221,10 +221,10 @@ impl Parser {
         let mut left = self.parse_and()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.token_type();
+            let kind = self.token_stream.token_kind();
             let span = self.token_stream.span();
 
-            if ty != TokenType::Or {
+            if kind != TokenKind::Or {
                 break;
             }
 
@@ -242,10 +242,10 @@ impl Parser {
         let mut left = self.parse_equality()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.token_type();
+            let kind = self.token_stream.token_kind();
             let span = self.token_stream.span();
 
-            if ty != TokenType::And {
+            if kind != TokenKind::And {
                 break;
             }
 
@@ -262,12 +262,12 @@ impl Parser {
         let mut left = self.parse_comparison()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.token_type();
+            let kind = self.token_stream.token_kind();
             let span = self.token_stream.span();
 
-            let operator = match ty {
-                TokenType::Equal => BinaryOp::Equal,
-                TokenType::NotEqual => BinaryOp::NotEqual,
+            let operator = match kind {
+                TokenKind::Equal => BinaryOp::Equal,
+                TokenKind::NotEqual => BinaryOp::NotEqual,
                 _ => break,
             };
 
@@ -284,14 +284,14 @@ impl Parser {
         let mut left = self.parse_term()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.token_type();
+            let kind = self.token_stream.token_kind();
             let span = self.token_stream.span();
 
-            let operator = match ty {
-                TokenType::Greater => BinaryOp::Greater,
-                TokenType::GreaterEqual => BinaryOp::GreaterEqual,
-                TokenType::Less => BinaryOp::Less,
-                TokenType::LessEqual => BinaryOp::LessEqual,
+            let operator = match kind {
+                TokenKind::Greater => BinaryOp::Greater,
+                TokenKind::GreaterEqual => BinaryOp::GreaterEqual,
+                TokenKind::Less => BinaryOp::Less,
+                TokenKind::LessEqual => BinaryOp::LessEqual,
                 _ => break,
             };
 
@@ -308,12 +308,12 @@ impl Parser {
         let mut left = self.parse_factor()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.token_type();
+            let kind = self.token_stream.token_kind();
             let span = self.token_stream.span();
 
-            let operator = match ty {
-                TokenType::Plus => BinaryOp::Plus,
-                TokenType::Minus => BinaryOp::Minus,
+            let operator = match kind {
+                TokenKind::Plus => BinaryOp::Plus,
+                TokenKind::Minus => BinaryOp::Minus,
                 _ => break,
             };
 
@@ -330,13 +330,13 @@ impl Parser {
         let mut left = self.parse_unary()?;
 
         while !self.token_stream.at_end() {
-            let ty = self.token_stream.token_type();
+            let kind = self.token_stream.token_kind();
             let span = self.token_stream.span();
 
-            let operator = match ty {
-                TokenType::Multiply => BinaryOp::Multiply,
-                TokenType::Divide => BinaryOp::Divide,
-                TokenType::Remainder => BinaryOp::Remainder,
+            let operator = match kind {
+                TokenKind::Multiply => BinaryOp::Multiply,
+                TokenKind::Divide => BinaryOp::Divide,
+                TokenKind::Remainder => BinaryOp::Remainder,
                 _ => break,
             };
 
@@ -350,16 +350,16 @@ impl Parser {
     }
 
     fn parse_unary(&mut self) -> Result<Box<Expr>, CompilationError> {
-        let ty = self.token_stream.token_type();
+        let kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
 
-        let operator = match ty {
-            TokenType::Plus => {
+        let operator = match kind {
+            TokenKind::Plus => {
                 self.token_stream.advance();
                 return self.parse_unary();
             }
-            TokenType::Minus => UnaryOp::Negate,
-            TokenType::Not => UnaryOp::Not,
+            TokenKind::Minus => UnaryOp::Negate,
+            TokenKind::Not => UnaryOp::Not,
             _ => return self.parse_primary(),
         };
 
@@ -369,40 +369,40 @@ impl Parser {
     }
 
     fn parse_primary(&mut self) -> Result<Box<Expr>, CompilationError> {
-        let ty = self.token_stream.token_type();
+        let kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
 
-        Ok(match ty {
-            TokenType::LeftParen => {
-                self.token_stream.consume(TokenType::LeftParen)?;
+        Ok(match kind {
+            TokenKind::LeftParen => {
+                self.token_stream.consume(TokenKind::LeftParen)?;
                 let expr = self.parse_expr()?;
-                self.token_stream.consume(TokenType::RightParen)?;
+                self.token_stream.consume(TokenKind::RightParen)?;
                 expr
             }
-            TokenType::NumberLiteral => {
+            TokenKind::NumberLiteral => {
                 let lexeme = self.token_stream.lexeme();
                 let value = lexeme.parse::<f64>().unwrap();
 
                 self.token_stream.advance();
                 Box::new(Expr::number_literal(value, span))
             }
-            TokenType::BooleanLiteral => {
+            TokenKind::BooleanLiteral => {
                 let lexeme = self.token_stream.lexeme();
                 let value = lexeme.parse::<bool>().unwrap();
 
                 self.token_stream.advance();
                 Box::new(Expr::boolean_literal(value, span))
             }
-            TokenType::StringLiteral => {
+            TokenKind::StringLiteral => {
                 let lexeme = self.token_stream.lexeme();
 
                 self.token_stream.advance();
                 Box::new(Expr::string_literal(lexeme, span))
             }
-            TokenType::Identifier => self.parse_identifier()?,
+            TokenKind::Identifier => self.parse_identifier()?,
             _ => {
                 let span = self.token_stream.span();
-                return Err(compilation_error!(span, "{:?} is a invalid operand", ty));
+                return Err(compilation_error!(span, "{:?} is a invalid operand", kind));
             }
         })
     }
@@ -413,19 +413,19 @@ impl Parser {
 
         let identifier = Box::new(Expr::identifier(name, None, span));
 
-        self.token_stream.consume(TokenType::Identifier)?;
+        self.token_stream.consume(TokenKind::Identifier)?;
 
         Ok(identifier)
     }
 
     /* Types */
     pub fn parse_type(&mut self) -> Result<TypeAST, CompilationError> {
-        match self.token_stream.token_type() {
-            TokenType::Identifier => self.parse_primitive_type(),
+        match self.token_stream.token_kind() {
+            TokenKind::Identifier => self.parse_primitive_type(),
             _ => Err(compilation_error!(
                 self.token_stream.span(),
                 "invalid type annotation: {:?}",
-                self.token_stream.token_type()
+                self.token_stream.token_kind()
             )),
         }
     }
@@ -441,7 +441,7 @@ impl Parser {
                 return Err(compilation_error!(
                     self.token_stream.span(),
                     "invalid primitive type: {:?}",
-                    self.token_stream.token_type()
+                    self.token_stream.token_kind()
                 ));
             }
         };

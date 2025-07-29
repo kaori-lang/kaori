@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq, Clone)]
-pub enum TokenType {
+pub enum TokenKind {
     // Arithmetic operators
     Plus,
     Minus,

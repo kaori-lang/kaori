@@ -1,6 +1,6 @@
 use crate::{compilation_error, error::compilation_error::CompilationError};
 
-use super::{span::Span, token::Token, token_type::TokenType};
+use super::{span::Span, token::Token, token_kind::TokenKind};
 
 #[derive(Debug, Clone)]
 pub struct TokenStream {
@@ -19,15 +19,15 @@ impl TokenStream {
     }
 
     pub fn at_end(&mut self) -> bool {
-        return self.token_type() == TokenType::EndOfFile;
+        return self.token_kind() == TokenKind::EndOfFile;
     }
 
     pub fn advance(&mut self) {
         self.index += 1;
     }
 
-    pub fn consume(&mut self, expected: TokenType) -> Result<(), CompilationError> {
-        let found = self.token_type();
+    pub fn consume(&mut self, expected: TokenKind) -> Result<(), CompilationError> {
+        let found = self.token_kind();
 
         if expected == found {
             self.advance();
@@ -44,7 +44,7 @@ impl TokenStream {
         }
     }
 
-    pub fn look_ahead(&mut self, expected: &[TokenType]) -> bool {
+    pub fn look_ahead(&mut self, expected: &[TokenKind]) -> bool {
         for i in 0..expected.len() {
             let j = self.index + i;
 
@@ -52,7 +52,7 @@ impl TokenStream {
                 return false;
             }
 
-            if self.tokens[j].ty == expected[i] {
+            if self.tokens[j].kind == expected[i] {
                 continue;
             }
 
@@ -62,10 +62,10 @@ impl TokenStream {
         return true;
     }
 
-    pub fn token_type(&mut self) -> TokenType {
+    pub fn token_kind(&mut self) -> TokenKind {
         let token = self.tokens.get(self.index).unwrap();
 
-        return token.ty.clone();
+        return token.kind.clone();
     }
 
     pub fn span(&mut self) -> Span {
@@ -75,6 +75,6 @@ impl TokenStream {
     pub fn lexeme(&mut self) -> String {
         let span = self.span();
 
-        return self.source[span.start..span.start + span.size].to_string();
+        return self.source[span.start..span.end + 1].to_string();
     }
 }

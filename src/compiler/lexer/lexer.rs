@@ -1,11 +1,10 @@
 use crate::{compilation_error, error::compilation_error::CompilationError};
 
-use super::{span::Span, token::Token, token_type::TokenType};
+use super::{span::Span, token::Token, token_kind::TokenKind};
 
 #[derive(Debug)]
 pub struct Lexer {
     source: Vec<char>,
-    line: u32,
     position: usize,
     tokens: Vec<Token>,
 }
@@ -14,7 +13,6 @@ impl Lexer {
     pub fn new(source: String) -> Self {
         Self {
             source: source.chars().collect(),
-            line: 1,
             position: 0,
             tokens: Vec::new(),
         }
@@ -42,32 +40,16 @@ impl Lexer {
         return true;
     }
 
-    fn create_token(&mut self, ty: TokenType, start: usize) -> Token {
-        let size = self.position - start;
+    fn create_token(&mut self, kind: TokenKind, start: usize, end: usize) -> Token {
+        let span = Span { start, end };
 
-        let span = Span {
-            line: self.line,
-            start,
-            size,
-        };
-
-        let token = Token { ty, span };
+        let token = Token { kind, span };
 
         return token;
     }
 
     fn white_space(&mut self) {
-        while !self.at_end() {
-            let c = self.source[self.position];
-
-            if !c.is_whitespace() {
-                break;
-            }
-
-            if c == '\n' {
-                self.line += 1;
-            }
-
+        while !self.at_end() && self.source[self.position].is_whitespace() {
             self.position += 1;
         }
     }
@@ -76,12 +58,6 @@ impl Lexer {
         self.position += 2;
 
         while !self.at_end() && !self.look_ahead(&['*', '/']) {
-            let c = self.source[self.position];
-
-            if c == '\n' {
-                self.line += 1;
-            }
-
             self.position += 1;
         }
 
@@ -102,21 +78,22 @@ impl Lexer {
         }
         let sub: String = self.source[start..self.position].iter().collect();
 
-        let ty = match sub.as_str() {
-            "if" => TokenType::If,
-            "else" => TokenType::Else,
-            "while" => TokenType::While,
-            "for" => TokenType::For,
-            "break" => TokenType::Break,
-            "continue" => TokenType::Continue,
-            "return" => TokenType::Return,
-            "def" => TokenType::Function,
-            "print" => TokenType::Print,
-            "true" | "false" => TokenType::BooleanLiteral,
-            _ => TokenType::Identifier,
+        let kind = match sub.as_str() {
+            "if" => TokenKind::If,
+            "else" => TokenKind::Else,
+            "while" => TokenKind::While,
+            "for" => TokenKind::For,
+            "break" => TokenKind::Break,
+            "continue" => TokenKind::Continue,
+            "return" => TokenKind::Return,
+            "def" => TokenKind::Function,
+            "print" => TokenKind::Print,
+            "true" | "false" => TokenKind::BooleanLiteral,
+            _ => TokenKind::Identifier,
         };
 
-        let token = self.create_token(ty, start);
+        let end = self.position - 1;
+        let token = self.create_token(kind, start, end);
         self.tokens.push(token);
     }
 
@@ -135,7 +112,8 @@ impl Lexer {
             self.position += 1;
         }
 
-        let token = self.create_token(TokenType::NumberLiteral, start);
+        let end = self.position - 1;
+        let token = self.create_token(TokenKind::NumberLiteral, start, end);
 
         self.tokens.push(token);
     }
@@ -145,36 +123,21 @@ impl Lexer {
 
         self.position += 1;
 
-        while !self.at_end() {
-            let c = self.source[self.position];
-
-            if c == '"' {
-                break;
-            }
-
-            if c == '\n' {
-                self.line += 1;
-            }
-
+        while !self.at_end() && self.source[self.position] != '"' {
             self.position += 1;
         }
 
         if self.at_end() {
-            let span = Span {
-                line: self.line,
-                start,
-                size: self.position - start,
-            };
+            let end = self.position - 1;
+            let span = Span { start, end };
 
             return Err(compilation_error!(span, "unfinished string literal"));
         }
 
         self.position += 1;
 
-        let mut token = self.create_token(TokenType::StringLiteral, start);
-
-        token.span.start += 1;
-        token.span.size -= 2;
+        let end = self.position - 1;
+        let token = self.create_token(TokenKind::StringLiteral, start, end);
 
         self.tokens.push(token);
 
@@ -186,85 +149,82 @@ impl Lexer {
 
         let curr_char = self.source[self.position];
 
-        let ty = match curr_char {
+        let kind = match curr_char {
             '+' => {
                 if self.look_ahead(&['+', '+']) {
-                    TokenType::Increment
+                    TokenKind::Increment
                 } else {
-                    TokenType::Plus
+                    TokenKind::Plus
                 }
             }
 
             '-' => {
                 if self.look_ahead(&['-', '-']) {
-                    TokenType::Decrement
+                    TokenKind::Decrement
                 } else if self.look_ahead(&['-', '>']) {
-                    TokenType::ThinArrow
+                    TokenKind::ThinArrow
                 } else {
-                    TokenType::Minus
+                    TokenKind::Minus
                 }
             }
-            '*' => TokenType::Multiply,
-            '/' => TokenType::Divide,
-            '%' => TokenType::Remainder,
+            '*' => TokenKind::Multiply,
+            '/' => TokenKind::Divide,
+            '%' => TokenKind::Remainder,
             '&' => {
                 if self.look_ahead(&['&', '&']) {
-                    TokenType::And
+                    TokenKind::And
                 } else {
-                    TokenType::Invalid
+                    TokenKind::Invalid
                 }
             }
             '|' => {
                 if self.look_ahead(&['|', '|']) {
-                    TokenType::Or
+                    TokenKind::Or
                 } else {
-                    TokenType::Invalid
+                    TokenKind::Invalid
                 }
             }
             '!' => {
                 if self.look_ahead(&['!', '=']) {
-                    TokenType::NotEqual
+                    TokenKind::NotEqual
                 } else {
-                    TokenType::Not
+                    TokenKind::Not
                 }
             }
             '=' => {
                 if self.look_ahead(&['=', '=']) {
-                    TokenType::Equal
+                    TokenKind::Equal
                 } else {
-                    TokenType::Assign
+                    TokenKind::Assign
                 }
             }
             '>' => {
                 if self.look_ahead(&['>', '=']) {
-                    TokenType::GreaterEqual
+                    TokenKind::GreaterEqual
                 } else {
-                    TokenType::Greater
+                    TokenKind::Greater
                 }
             }
             '<' => {
                 if self.look_ahead(&['<', '=']) {
-                    TokenType::LessEqual
+                    TokenKind::LessEqual
                 } else {
-                    TokenType::Less
+                    TokenKind::Less
                 }
             }
-            '(' => TokenType::LeftParen,
-            ')' => TokenType::RightParen,
-            '{' => TokenType::LeftBrace,
-            '}' => TokenType::RightBrace,
-            ',' => TokenType::Comma,
-            ';' => TokenType::Semicolon,
-            ':' => TokenType::Colon,
-            _ => TokenType::Invalid,
+            '(' => TokenKind::LeftParen,
+            ')' => TokenKind::RightParen,
+            '{' => TokenKind::LeftBrace,
+            '}' => TokenKind::RightBrace,
+            ',' => TokenKind::Comma,
+            ';' => TokenKind::Semicolon,
+            ':' => TokenKind::Colon,
+            _ => TokenKind::Invalid,
         };
 
-        if ty == TokenType::Invalid {
-            let span = Span {
-                line: self.line,
-                start,
-                size: self.position - start,
-            };
+        if kind == TokenKind::Invalid {
+            let end = self.position - 1;
+            let span = Span { start, end };
 
             return Err(compilation_error!(
                 span,
@@ -273,22 +233,24 @@ impl Lexer {
             ));
         }
 
-        let size = match ty {
-            TokenType::Increment
-            | TokenType::Decrement
-            | TokenType::And
-            | TokenType::Or
-            | TokenType::NotEqual
-            | TokenType::Equal
-            | TokenType::GreaterEqual
-            | TokenType::LessEqual
-            | TokenType::ThinArrow => 2,
+        let size = match kind {
+            TokenKind::Increment
+            | TokenKind::Decrement
+            | TokenKind::And
+            | TokenKind::Or
+            | TokenKind::NotEqual
+            | TokenKind::Equal
+            | TokenKind::GreaterEqual
+            | TokenKind::LessEqual
+            | TokenKind::ThinArrow => 2,
             _ => 1,
         };
 
         self.position += size;
 
-        let token = self.create_token(ty, start);
+        let end = self.position - 1;
+        let token = self.create_token(kind, start, end);
+
         self.tokens.push(token);
         Ok(())
     }
@@ -319,13 +281,12 @@ impl Lexer {
         }
 
         let span = Span {
-            line: self.line,
             start: self.position - 1,
-            size: 0,
+            end: self.position - 1,
         };
 
         let token = Token {
-            ty: TokenType::EndOfFile,
+            kind: TokenKind::EndOfFile,
             span,
         };
 
