@@ -12,9 +12,13 @@
 
 a: bool = true;
 b: bool = false;
-a = b = "hello";
 
-
-if 2 * 5 + 10 {
+def foo(b: bool = 5) -> bool {
 
 }
+
+def foo(a: bool = 5, ) -> bool {
+
+}
+
+

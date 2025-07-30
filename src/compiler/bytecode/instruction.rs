@@ -32,7 +32,7 @@ pub enum Instruction {
     ExitScope,
 
     // Constants
-    PushConst,
+    PushConst(String, f64, ),
 
     // Control flow
     Jump,

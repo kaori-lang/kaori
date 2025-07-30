@@ -1,7 +1,4 @@
-use crate::{
-    error::kaori_error::{self, KaoriError},
-    kaori_error,
-};
+use crate::{error::kaori_error::KaoriError, kaori_error};
 
 use super::{span::Span, token::Token, token_kind::TokenKind};
 

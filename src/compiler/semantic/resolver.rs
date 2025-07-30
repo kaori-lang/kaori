@@ -5,7 +5,7 @@ use crate::{
         expression::{Expr, ExprKind},
         statement::{Stmt, StmtKind},
     },
-    error::kaori_error::{self, KaoriError},
+    error::kaori_error::KaoriError,
     kaori_error,
 };
 
@@ -88,10 +88,10 @@ impl Visitor<()> for Resolver {
         self.environment.enter_function();
 
         for i in 0..ast.len() {
-            if let Some(ASTNode::Declaration(decl)) = ast.get(i) {
-                if let DeclKind::Function { .. } = decl.kind {
-                    self.declare_function(decl)?;
-                }
+            if let Some(ASTNode::Declaration(decl)) = ast.get(i)
+                && let DeclKind::Function { .. } = decl.kind
+            {
+                self.declare_function(decl)?;
             }
         }
 

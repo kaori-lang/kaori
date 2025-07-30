@@ -4,8 +4,8 @@ use crate::{
         declaration::{Decl, DeclKind},
         expression::{Expr, ExprKind},
         operator::{BinaryOp, UnaryOp},
-        r#type::Type,
         statement::{Stmt, StmtKind},
+        r#type::Type,
     },
     error::kaori_error::KaoriError,
     kaori_error,
@@ -190,7 +190,7 @@ impl Visitor<Type> for TypeChecker {
                             operator,
                             left,
                             right
-                        ))
+                        ));
                     }
                 }
             }
@@ -206,7 +206,7 @@ impl Visitor<Type> for TypeChecker {
                             "invalid {:?} operation for right {:?}",
                             operator,
                             right
-                        ))
+                        ));
                     }
                 }
             }

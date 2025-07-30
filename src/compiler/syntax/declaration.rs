@@ -1,6 +1,6 @@
 use crate::compiler::lexer::span::Span;
 
-use super::{ast_node::ASTNode, expression::Expr, r#type::Type, statement::Stmt};
+use super::{expression::Expr, statement::Stmt, r#type::Type};
 
 #[derive(Debug)]
 pub struct Decl {
