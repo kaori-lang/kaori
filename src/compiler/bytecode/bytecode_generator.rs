@@ -2,18 +2,19 @@
 
 use crate::{
     compiler::{
-        semantic::{environment::Environment, visitor::Visitor},
+        semantic::visitor::Visitor,
         syntax::{
             ast_node::ASTNode,
-            declaration::DeclKind,
+            declaration::{self, Decl, DeclKind},
             expression::{Expr, ExprKind},
             operator::{BinaryOp, UnaryOp},
+            statement::{Stmt, StmtKind},
         },
     },
     error::kaori_error::KaoriError,
 };
 
-use super::instruction::{self, Instruction};
+use super::instruction::Instruction;
 
 pub struct BytecodeGenerator {
     bytecode: Vec<Instruction>,
@@ -25,19 +26,15 @@ impl BytecodeGenerator {
             bytecode: Vec::new(),
         }
     }
-}
 
-impl Visitor<()> for BytecodeGenerator {
-    fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), KaoriError> {
-        self.environment.enter_function();
+    pub fn generate(&mut self, ast: &mut Vec<ASTNode>) -> Result<&Vec<Instruction>, KaoriError> {
+        self.bytecode.push(Instruction::EnterScope);
 
         for i in 0..ast.len() {
             if let Some(ASTNode::Declaration(decl)) = ast.get(i)
-                && let DeclKind::Function {
-                    type_annotation, ..
-                } = &decl.kind
+                && let DeclKind::Function { .. } = &decl.kind
             {
-                self.environment.declare(type_annotation.clone());
+                //self.environment.declare(type_annotation.clone());
             }
         }
 
@@ -47,11 +44,13 @@ impl Visitor<()> for BytecodeGenerator {
             }
         }
 
-        self.environment.exit_function();
+        self.bytecode.push(Instruction::ExitScope);
 
-        Ok(())
+        Ok(&self.bytecode)
     }
+}
 
+impl Visitor<()> for BytecodeGenerator {
     fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), KaoriError> {
         match ast_node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),
@@ -61,28 +60,13 @@ impl Visitor<()> for BytecodeGenerator {
 
     fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError> {
         match &mut declaration.kind {
-            DeclKind::Variable {
-                right,
-                type_annotation,
-                ..
-            } => {
-                let right_type = self.visit_expression(right)?;
-
-                if right_type != *type_annotation {
-                    return Err(kaori_error!(
-                        right.span,
-                        "expected value of type {:?} in variable declaration",
-                        type_annotation,
-                    ));
-                }
-
-                self.environment.declare(right_type);
+            DeclKind::Variable { right, .. } => {
+                self.visit_expression(right)?;
+                self.bytecode.push(Instruction::Declare);
             }
             DeclKind::Function {
                 parameters, block, ..
             } => {
-                self.environment.enter_function();
-
                 for parameter in parameters {
                     self.visit_declaration(parameter)?;
                 }
@@ -94,8 +78,6 @@ impl Visitor<()> for BytecodeGenerator {
                 for declaration in declarations {
                     self.visit_ast_node(declaration)?;
                 }
-
-                self.environment.exit_function();
             }
         }
 
@@ -109,62 +91,34 @@ impl Visitor<()> for BytecodeGenerator {
             }
             StmtKind::Print(expression) => {
                 self.visit_expression(expression.as_mut())?;
+
+                self.bytecode.push(Instruction::Print);
             }
             StmtKind::Block(declarations) => {
-                self.environment.enter_scope();
+                self.bytecode.push(Instruction::EnterScope);
 
                 for declaration in declarations {
                     self.visit_ast_node(declaration)?;
                 }
 
-                self.environment.exit_scope();
+                self.bytecode.push(Instruction::ExitScope);
             }
             StmtKind::If {
                 condition,
                 then_branch,
                 else_branch,
                 ..
-            } => {
-                let expr = self.visit_expression(condition)?;
-
-                if !expr.eq(&Type::Boolean) {
-                    return Err(kaori_error!(
-                        condition.span,
-                        "expected {:?} for if statement condition, but found {:?}",
-                        Type::Boolean,
-                        expr
-                    ));
-                }
-
-                self.visit_statement(then_branch)?;
-
-                if let Some(branch) = else_branch {
-                    self.visit_statement(branch)?;
-                }
-            }
+            } => {}
             StmtKind::WhileLoop {
                 condition, block, ..
-            } => {
-                let expr = self.visit_expression(condition)?;
-
-                if !expr.eq(&Type::Boolean) {
-                    return Err(kaori_error!(
-                        condition.span,
-                        "expected {:?} for while loop statement condition, but found {:?}",
-                        Type::Boolean,
-                        expr
-                    ));
-                }
-
-                self.visit_statement(block)?;
-            }
+            } => {}
             _ => (),
         };
 
         Ok(())
     }
     fn visit_expression(&mut self, expression: &mut Expr) -> Result<(), KaoriError> {
-        let expr_type = match &mut expression.kind {
+        match &mut expression.kind {
             ExprKind::Assign { identifier, right } => {
                 self.visit_expression(right)?;
 
@@ -235,11 +189,11 @@ impl Visitor<()> for BytecodeGenerator {
                 self.bytecode.push(instruction);
             }
             ExprKind::StringLiteral(value) => {
-                let instruction = Instruction::str_const(&value);
+                let instruction = Instruction::str_const(value);
                 self.bytecode.push(instruction);
             }
         };
 
-        Ok(expr_type)
+        Ok(())
     }
 }

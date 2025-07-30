@@ -24,10 +24,8 @@ impl TypeChecker {
             environment: Environment::new(),
         }
     }
-}
 
-impl Visitor<Type> for TypeChecker {
-    fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), KaoriError> {
+    fn check(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), KaoriError> {
         self.environment.enter_function();
 
         for i in 0..ast.len() {
@@ -50,7 +48,9 @@ impl Visitor<Type> for TypeChecker {
 
         Ok(())
     }
+}
 
+impl Visitor<Type> for TypeChecker {
     fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), KaoriError> {
         match ast_node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),

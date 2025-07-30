@@ -9,10 +9,5 @@
 
 
 
-print(foo);
-a: bool = true;
-b: bool = false;
 
-def foo() -> bool {
-    print(b + a);
-}
+2 * 5 + 3;
