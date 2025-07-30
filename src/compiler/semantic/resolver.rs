@@ -1,3 +1,4 @@
+#![allow(clippy::new_without_default)]
 use crate::{
     compiler::syntax::{
         ast_node::ASTNode,
@@ -67,20 +68,6 @@ impl Resolver {
 
         None
     }
-
-    fn declare_function(&mut self, decl: &Decl) -> Result<(), KaoriError> {
-        let DeclKind::Function { name, .. } = &decl.kind else {
-            unreachable!();
-        };
-
-        if let Some(..) = self.search(name) {
-            return Err(kaori_error!(decl.span, "{} is already declared", name));
-        }
-
-        self.environment.declare(name.clone());
-
-        Ok(())
-    }
 }
 
 impl Visitor<()> for Resolver {
@@ -89,9 +76,13 @@ impl Visitor<()> for Resolver {
 
         for i in 0..ast.len() {
             if let Some(ASTNode::Declaration(decl)) = ast.get(i)
-                && let DeclKind::Function { .. } = decl.kind
+                && let DeclKind::Function { name, .. } = &decl.kind
             {
-                self.declare_function(decl)?;
+                if self.search(name).is_some() {
+                    return Err(kaori_error!(decl.span, "{} is already declared", name));
+                }
+
+                self.environment.declare(name.clone());
             }
         }
 
@@ -118,7 +109,7 @@ impl Visitor<()> for Resolver {
             DeclKind::Variable { name, right, .. } => {
                 self.visit_expression(right)?;
 
-                if let Some(_) = self.search_current_scope(name) {
+                if self.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
                         "{} is already declared",

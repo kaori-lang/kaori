@@ -1,3 +1,4 @@
+#![allow(clippy::new_without_default)]
 use crate::{
     compiler::syntax::{
         ast_node::ASTNode,
@@ -29,8 +30,20 @@ impl Visitor<Type> for TypeChecker {
     fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), KaoriError> {
         self.environment.enter_function();
 
-        for node in ast {
-            self.visit_ast_node(node)?;
+        for i in 0..ast.len() {
+            if let Some(ASTNode::Declaration(decl)) = ast.get(i)
+                && let DeclKind::Function {
+                    type_annotation, ..
+                } = &decl.kind
+            {
+                self.environment.declare(type_annotation.clone());
+            }
+        }
+
+        for i in 0..ast.len() {
+            if let Some(node) = ast.get_mut(i) {
+                self.visit_ast_node(node)?;
+            }
         }
 
         self.environment.exit_function();
@@ -69,7 +82,23 @@ impl Visitor<Type> for TypeChecker {
                 parameters,
                 block,
                 type_annotation,
-            } => {}
+            } => {
+                self.environment.enter_function();
+
+                for parameter in parameters {
+                    self.visit_declaration(parameter)?;
+                }
+
+                let StmtKind::Block(declarations) = &mut block.kind else {
+                    unreachable!()
+                };
+
+                for declaration in declarations {
+                    self.visit_ast_node(declaration)?;
+                }
+
+                self.environment.exit_function();
+            }
         }
 
         Ok(())
@@ -79,11 +108,9 @@ impl Visitor<Type> for TypeChecker {
         match &mut statement.kind {
             StmtKind::Expression(expression) => {
                 self.visit_expression(expression.as_mut())?;
-                ()
             }
             StmtKind::Print(expression) => {
                 self.visit_expression(expression.as_mut())?;
-                ()
             }
             StmtKind::Block(declarations) => {
                 self.environment.enter_scope();

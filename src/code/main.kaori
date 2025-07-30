@@ -9,16 +9,11 @@
 
 
 
-
+print(foo);
 a: bool = true;
 b: bool = false;
 
-def foo(b: bool = 5) -> bool {
-
+def foo() -> bool {
+    print(b + a);
 }
-
-def foo(a: bool = 5, ) -> bool {
-
-}
-
 

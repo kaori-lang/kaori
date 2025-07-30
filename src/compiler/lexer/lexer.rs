@@ -23,7 +23,7 @@ impl Lexer {
     }
 
     fn look_ahead(&mut self, expected: &[char]) -> bool {
-        for i in 0..expected.len() {
+        for (i, _) in expected.iter().enumerate() {
             let j = self.position + i;
 
             if j >= self.source.len() {

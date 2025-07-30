@@ -1,24 +1,15 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_mut)]
-#![allow(unused_imports)]
-#![allow(unused_assignments)]
+#![allow(clippy::new_without_default)]
 
 use std::fs;
 
 use kaori::{
     compiler::{
         lexer::{lexer::Lexer, token_stream::TokenStream},
-        semantic::{
-            resolver::Resolver,
-            type_checker::{self, TypeChecker},
-            visitor::Visitor,
-        },
+        semantic::{resolver::Resolver, type_checker::TypeChecker, visitor::Visitor},
         syntax::parser::Parser,
     },
-    error::kaori_error::{self, KaoriError},
+    error::kaori_error::KaoriError,
 };
-use regex::{Captures, Regex};
 
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let mut lexer = Lexer::new(source.clone());
