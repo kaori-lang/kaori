@@ -64,6 +64,12 @@ impl Visitor<Type> for TypeChecker {
 
                 self.environment.declare(right_type);
             }
+            DeclKind::Function {
+                name,
+                parameters,
+                block,
+                type_annotation,
+            } => {}
         }
 
         Ok(())

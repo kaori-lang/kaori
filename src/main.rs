@@ -48,3 +48,10 @@ fn main() {
         };
     }
 }
+
+
+if let ASTNode::Declaration(decl) = node {
+    if let DeclKind::Function { ..} = decl.kind {
+        
+    }
+}

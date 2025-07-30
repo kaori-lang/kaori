@@ -22,14 +22,14 @@ impl Resolver {
         }
     }
 
-    fn search_current_scope(&mut self, identifier: &str) -> Option<Resolution> {
+    fn search_current_scope(&mut self, name: &str) -> Option<Resolution> {
         let mut start = self.environment.declarations.len();
         let end = *self.environment.scopes_pointer.last().unwrap();
 
         while start > end {
             start -= 1;
 
-            if identifier == self.environment.declarations[start] {
+            if name == self.environment.declarations[start] {
                 let global =
                     self.environment.frame_pointer == 0 || start < self.environment.frame_pointer;
                 let mut offset = start;
@@ -45,14 +45,14 @@ impl Resolver {
         return None;
     }
 
-    fn search(&mut self, identifier: &str) -> Option<Resolution> {
+    fn search(&mut self, name: &str) -> Option<Resolution> {
         let mut start = self.environment.declarations.len();
         let end: usize = 0;
 
         while start > end {
             start -= 1;
 
-            if identifier == self.environment.declarations[start] {
+            if name == self.environment.declarations[start] {
                 let global =
                     self.environment.frame_pointer == 0 || start < self.environment.frame_pointer;
                 let mut offset = start;
@@ -66,6 +66,20 @@ impl Resolver {
         }
 
         return None;
+    }
+
+    fn declare_function(&mut self, decl: &Decl) -> Result<(), KaoriError> {
+        let DeclKind::Function { name, .. } = &decl.kind else {
+            unreachable!();
+        };
+
+        if let Some(_) = self.search(name) {
+            return Err(kaori_error!(decl.span, "{} is already declared", name));
+        }
+
+        self.environment.declare(name.clone());
+
+        Ok(())
     }
 }
 
@@ -73,8 +87,18 @@ impl Visitor<()> for Resolver {
     fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), KaoriError> {
         self.environment.enter_function();
 
-        for node in ast {
-            self.visit_ast_node(node)?;
+        for i in 0..ast.len() {
+            if let Some(ASTNode::Declaration(decl)) = ast.get(i) {
+                if let DeclKind::Function { .. } = decl.kind {
+                    self.declare_function(decl)?;
+                }
+            }
+        }
+
+        for i in 0..ast.len() {
+            if let Some(node) = ast.get_mut(i) {
+                self.visit_ast_node(node)?;
+            }
         }
 
         self.environment.exit_function();
@@ -103,6 +127,19 @@ impl Visitor<()> for Resolver {
                 };
 
                 self.environment.declare(name.clone());
+            }
+            DeclKind::Function {
+                parameters, block, ..
+            } => {
+                self.environment.enter_function();
+
+                for parameter in parameters {
+                    self.visit_declaration(parameter)?;
+                }
+
+                self.visit_statement(block)?;
+
+                self.environment.exit_function();
             }
         }
 

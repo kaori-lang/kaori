@@ -36,6 +36,7 @@ impl Parser {
     /* Declarations */
     fn parse_declaration(&mut self) -> Result<ASTNode, KaoriError> {
         let declaration = match self.token_stream.token_kind() {
+            TokenKind::Function => self.parse_function_declaration()?,
             _ => {
                 if !self
                     .token_stream
@@ -44,13 +45,13 @@ impl Parser {
                     return Ok(ASTNode::Statement(self.parse_statement()?));
                 }
 
-                let variable_declaration = ASTNode::Declaration(self.parse_variable_declaration()?);
+                let variable_declaration = self.parse_variable_declaration()?;
                 self.token_stream.consume(TokenKind::Semicolon)?;
                 variable_declaration
             }
         };
 
-        Ok(declaration)
+        Ok(ASTNode::Declaration(declaration))
     }
 
     fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
@@ -105,7 +106,7 @@ impl Parser {
             parameters: parameters
                 .iter()
                 .map(|param| match &param.kind {
-                    DeclKind::Function {
+                    DeclKind::Variable {
                         type_annotation, ..
                     } => type_annotation.clone(),
                     _ => unreachable!(),
