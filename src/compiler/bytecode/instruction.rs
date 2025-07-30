@@ -36,11 +36,14 @@ pub enum Instruction {
     PushConst(String, f64, bool),
 
     // Control flow
-    Jump,
-    JumpIfFalse,
+    Jump(usize),
+    JumpIfFalse(usize),
 
     // I/O
     Print,
+
+    // Do nothing
+    Nothing,
 }
 
 impl Instruction {

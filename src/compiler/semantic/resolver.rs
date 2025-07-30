@@ -69,7 +69,7 @@ impl Resolver {
         None
     }
 
-    fn resolve(&mut self, declarations: &mut Vec<ASTNode>) -> Result<(), KaoriError> {
+    pub fn resolve(&mut self, declarations: &mut [ASTNode]) -> Result<(), KaoriError> {
         self.environment.enter_function();
 
         for i in 0..declarations.len() {

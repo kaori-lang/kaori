@@ -32,16 +32,17 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     let mut declarations = parser.declarations()?;
 
     let mut resolver = Resolver::new();
-    resolver.run(&mut declarations)?;
+    resolver.resolve(&mut declarations)?;
 
     let mut type_checker = TypeChecker::new();
 
-    type_checker.run(&mut declarations)?;
+    type_checker.check(&mut declarations)?;
 
     let mut bytecode_generator = BytecodeGenerator::new();
 
-    bytecode_generator.run(&mut declarations)?;
+    let bytecode = bytecode_generator.generate(&mut declarations)?;
 
-    println!("{:#?}", bytecode_generator.bytecode());
+    println!("{:#?}", bytecode);
+
     Ok(())
 }

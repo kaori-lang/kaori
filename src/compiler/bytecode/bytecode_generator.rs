@@ -5,7 +5,7 @@ use crate::{
         semantic::visitor::Visitor,
         syntax::{
             ast_node::ASTNode,
-            declaration::{self, Decl, DeclKind},
+            declaration::{Decl, DeclKind},
             expression::{Expr, ExprKind},
             operator::{BinaryOp, UnaryOp},
             statement::{Stmt, StmtKind},
@@ -14,21 +14,21 @@ use crate::{
     error::kaori_error::KaoriError,
 };
 
-use super::instruction::Instruction;
+use super::{bytecode::Bytecode, instruction::Instruction};
 
 pub struct BytecodeGenerator {
-    bytecode: Vec<Instruction>,
+    bytecode: Bytecode,
 }
 
 impl BytecodeGenerator {
     pub fn new() -> Self {
         Self {
-            bytecode: Vec::new(),
+            bytecode: Bytecode::new(),
         }
     }
 
-    pub fn generate(&mut self, ast: &mut Vec<ASTNode>) -> Result<&Vec<Instruction>, KaoriError> {
-        self.bytecode.push(Instruction::EnterScope);
+    pub fn generate(&mut self, ast: &mut [ASTNode]) -> Result<&Bytecode, KaoriError> {
+        self.bytecode.emit(Instruction::EnterScope);
 
         for i in 0..ast.len() {
             if let Some(ASTNode::Declaration(decl)) = ast.get(i)
@@ -44,7 +44,7 @@ impl BytecodeGenerator {
             }
         }
 
-        self.bytecode.push(Instruction::ExitScope);
+        self.bytecode.emit(Instruction::ExitScope);
 
         Ok(&self.bytecode)
     }
@@ -62,7 +62,7 @@ impl Visitor<()> for BytecodeGenerator {
         match &mut declaration.kind {
             DeclKind::Variable { right, .. } => {
                 self.visit_expression(right)?;
-                self.bytecode.push(Instruction::Declare);
+                self.bytecode.emit(Instruction::Declare);
             }
             DeclKind::Function {
                 parameters, block, ..
@@ -92,23 +92,40 @@ impl Visitor<()> for BytecodeGenerator {
             StmtKind::Print(expression) => {
                 self.visit_expression(expression.as_mut())?;
 
-                self.bytecode.push(Instruction::Print);
+                self.bytecode.emit(Instruction::Print);
             }
             StmtKind::Block(declarations) => {
-                self.bytecode.push(Instruction::EnterScope);
+                self.bytecode.emit(Instruction::EnterScope);
 
                 for declaration in declarations {
                     self.visit_ast_node(declaration)?;
                 }
 
-                self.bytecode.push(Instruction::ExitScope);
+                self.bytecode.emit(Instruction::ExitScope);
             }
             StmtKind::If {
                 condition,
                 then_branch,
                 else_branch,
                 ..
-            } => {}
+            } => {
+                self.visit_expression(condition)?;
+
+                let jump_if_false_instruction_index = self.bytecode.place_holder();
+
+                self.visit_statement(then_branch)?;
+
+                let jump_end_instruction_index = self.bytecode.place_holder();
+
+                self.bytecode
+                    .emit_jump_if_false(jump_if_false_instruction_index);
+
+                if let Some(branch) = else_branch {
+                    self.visit_statement(branch)?;
+                }
+
+                self.bytecode.emit_jump(jump_end_instruction_index);
+            }
             StmtKind::WhileLoop {
                 condition, block, ..
             } => {}
@@ -128,10 +145,10 @@ impl Visitor<()> for BytecodeGenerator {
 
                 if resolution.global {
                     let instruction = Instruction::StoreGlobal(resolution.offset);
-                    self.bytecode.push(instruction);
+                    self.bytecode.emit(instruction);
                 } else {
                     let instruction = Instruction::StoreLocal(resolution.offset);
-                    self.bytecode.push(instruction);
+                    self.bytecode.emit(instruction);
                 }
             }
             ExprKind::Binary {
@@ -143,54 +160,54 @@ impl Visitor<()> for BytecodeGenerator {
                 self.visit_expression(right)?;
 
                 match operator {
-                    BinaryOp::Plus => self.bytecode.push(Instruction::Plus),
-                    BinaryOp::Minus => self.bytecode.push(Instruction::Minus),
-                    BinaryOp::Multiply => self.bytecode.push(Instruction::Multiply),
-                    BinaryOp::Divide => self.bytecode.push(Instruction::Divide),
-                    BinaryOp::Modulo => self.bytecode.push(Instruction::Modulo),
+                    BinaryOp::Plus => self.bytecode.emit(Instruction::Plus),
+                    BinaryOp::Minus => self.bytecode.emit(Instruction::Minus),
+                    BinaryOp::Multiply => self.bytecode.emit(Instruction::Multiply),
+                    BinaryOp::Divide => self.bytecode.emit(Instruction::Divide),
+                    BinaryOp::Modulo => self.bytecode.emit(Instruction::Modulo),
 
-                    BinaryOp::And => self.bytecode.push(Instruction::And),
-                    BinaryOp::Or => self.bytecode.push(Instruction::Or),
+                    BinaryOp::And => self.bytecode.emit(Instruction::And),
+                    BinaryOp::Or => self.bytecode.emit(Instruction::Or),
 
-                    BinaryOp::Equal => self.bytecode.push(Instruction::Equal),
-                    BinaryOp::NotEqual => self.bytecode.push(Instruction::NotEqual),
+                    BinaryOp::Equal => self.bytecode.emit(Instruction::Equal),
+                    BinaryOp::NotEqual => self.bytecode.emit(Instruction::NotEqual),
 
-                    BinaryOp::Greater => self.bytecode.push(Instruction::Greater),
-                    BinaryOp::GreaterEqual => self.bytecode.push(Instruction::GreaterEqual),
-                    BinaryOp::Less => self.bytecode.push(Instruction::Less),
-                    BinaryOp::LessEqual => self.bytecode.push(Instruction::LessEqual),
+                    BinaryOp::Greater => self.bytecode.emit(Instruction::Greater),
+                    BinaryOp::GreaterEqual => self.bytecode.emit(Instruction::GreaterEqual),
+                    BinaryOp::Less => self.bytecode.emit(Instruction::Less),
+                    BinaryOp::LessEqual => self.bytecode.emit(Instruction::LessEqual),
                 }
             }
             ExprKind::Unary { right, operator } => {
                 self.visit_expression(right)?;
 
-                match &operator {
-                    UnaryOp::Negate => self.bytecode.push(Instruction::Negate),
-                    UnaryOp::Not => self.bytecode.push(Instruction::Not),
+                match operator {
+                    UnaryOp::Negate => self.bytecode.emit(Instruction::Negate),
+                    UnaryOp::Not => self.bytecode.emit(Instruction::Not),
                 }
             }
             ExprKind::Identifier { resolution, .. } => {
                 if resolution.global {
                     let instruction = Instruction::LoadGlobal(resolution.offset);
 
-                    self.bytecode.push(instruction);
+                    self.bytecode.emit(instruction);
                 } else {
                     let instruction = Instruction::LoadLocal(resolution.offset);
 
-                    self.bytecode.push(instruction);
+                    self.bytecode.emit(instruction);
                 }
             }
             ExprKind::NumberLiteral(value) => {
                 let instruction = Instruction::number_const(*value);
-                self.bytecode.push(instruction);
+                self.bytecode.emit(instruction);
             }
             ExprKind::BooleanLiteral(value) => {
                 let instruction = Instruction::bool_const(*value);
-                self.bytecode.push(instruction);
+                self.bytecode.emit(instruction);
             }
             ExprKind::StringLiteral(value) => {
                 let instruction = Instruction::str_const(value);
-                self.bytecode.push(instruction);
+                self.bytecode.emit(instruction);
             }
         };
 

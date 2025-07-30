@@ -25,7 +25,7 @@ impl TypeChecker {
         }
     }
 
-    fn check(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), KaoriError> {
+    pub fn check(&mut self, ast: &mut [ASTNode]) -> Result<(), KaoriError> {
         self.environment.enter_function();
 
         for i in 0..ast.len() {
