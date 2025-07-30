@@ -42,7 +42,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     let bytecode = bytecode_generator.generate(&mut declarations)?;
 
-    println!("{:#?}", bytecode);
+    println!("{:#?}", bytecode.bytecode);
 
     Ok(())
 }

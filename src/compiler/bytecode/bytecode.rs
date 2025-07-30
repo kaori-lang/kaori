@@ -1,7 +1,8 @@
+#![allow(clippy::new_without_default)]
 use super::instruction::Instruction;
 
 pub struct Bytecode {
-    bytecode: Vec<Instruction>,
+    pub bytecode: Vec<Instruction>,
 }
 
 impl Bytecode {

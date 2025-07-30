@@ -122,7 +122,6 @@ impl Visitor<Type> for TypeChecker {
                 condition,
                 then_branch,
                 else_branch,
-                ..
             } => {
                 let expr = self.visit_expression(condition)?;
 
@@ -141,9 +140,7 @@ impl Visitor<Type> for TypeChecker {
                     self.visit_statement(branch)?;
                 }
             }
-            StmtKind::WhileLoop {
-                condition, block, ..
-            } => {
+            StmtKind::WhileLoop { condition, block } => {
                 let expr = self.visit_expression(condition)?;
 
                 if !expr.eq(&Type::Boolean) {

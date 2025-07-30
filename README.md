@@ -1,6 +1,6 @@
 # 🎻 Kaori - Programming Language
 
-**Kaori** is an interpreted statically typed programming language, now implemented fully in **Rust**, previously implemented in Java 17
+**Kaori** is a statically typed programming language, now implemented fully in **Rust**, previously implemented in Java 17
 
 ## Features
 
@@ -25,7 +25,7 @@
     -   [x] Output with `print` statements
     -   [x] Code comments (`/* this is a comment */`)
     -   [ ] Functions
-    -   [ ] Bytecode generation
+    -   [x] Bytecode generation
     -   [ ] Virtual machine to interpret bytecode
     -   [ ] function and loop control flow (`break`, `continue`, `return`)
     -   [ ] Native data structures (e.g., lists, maps)

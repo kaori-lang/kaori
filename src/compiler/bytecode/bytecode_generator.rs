@@ -107,24 +107,22 @@ impl Visitor<()> for BytecodeGenerator {
                 condition,
                 then_branch,
                 else_branch,
-                ..
             } => {
                 self.visit_expression(condition)?;
 
-                let jump_if_false_instruction_index = self.bytecode.place_holder();
+                let jump_if_false_placeholder = self.bytecode.place_holder();
 
                 self.visit_statement(then_branch)?;
 
-                let jump_end_instruction_index = self.bytecode.place_holder();
+                let jump_end_placeholder = self.bytecode.place_holder();
 
-                self.bytecode
-                    .emit_jump_if_false(jump_if_false_instruction_index);
+                self.bytecode.emit_jump_if_false(jump_if_false_placeholder);
 
                 if let Some(branch) = else_branch {
                     self.visit_statement(branch)?;
                 }
 
-                self.bytecode.emit_jump(jump_end_instruction_index);
+                self.bytecode.emit_jump(jump_end_placeholder);
             }
             StmtKind::WhileLoop {
                 condition, block, ..
