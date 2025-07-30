@@ -167,7 +167,7 @@ impl Lexer {
             }
             '*' => TokenKind::Multiply,
             '/' => TokenKind::Divide,
-            '%' => TokenKind::Remainder,
+            '%' => TokenKind::Modulo,
             '&' => {
                 if self.look_ahead(&['&', '&']) {
                     TokenKind::And

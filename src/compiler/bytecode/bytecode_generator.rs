@@ -1,32 +1,33 @@
 #![allow(clippy::new_without_default)]
+
 use crate::{
-    compiler::syntax::{
-        ast_node::ASTNode,
-        declaration::{Decl, DeclKind},
-        expression::{Expr, ExprKind},
-        operator::{BinaryOp, UnaryOp},
-        statement::{Stmt, StmtKind},
-        r#type::Type,
+    compiler::{
+        semantic::{environment::Environment, visitor::Visitor},
+        syntax::{
+            ast_node::ASTNode,
+            declaration::DeclKind,
+            expression::{Expr, ExprKind},
+            operator::{BinaryOp, UnaryOp},
+        },
     },
     error::kaori_error::KaoriError,
-    kaori_error,
 };
 
-use super::{environment::Environment, visitor::Visitor};
+use super::instruction::{self, Instruction};
 
 pub struct BytecodeGenerator {
-    environment: Environment<Type>,
+    bytecode: Vec<Instruction>,
 }
 
 impl BytecodeGenerator {
     pub fn new() -> Self {
         Self {
-            environment: Environment::new(),
+            bytecode: Vec::new(),
         }
     }
 }
 
-impl Visitor<Type> for BytecodeGenerator {
+impl Visitor<()> for BytecodeGenerator {
     fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), KaoriError> {
         self.environment.enter_function();
 
@@ -162,82 +163,81 @@ impl Visitor<Type> for BytecodeGenerator {
 
         Ok(())
     }
-    fn visit_expression(&mut self, expression: &mut Expr) -> Result<Type, KaoriError> {
+    fn visit_expression(&mut self, expression: &mut Expr) -> Result<(), KaoriError> {
         let expr_type = match &mut expression.kind {
             ExprKind::Assign { identifier, right } => {
-                let right = self.visit_expression(right)?;
-                let identifier = self.visit_expression(identifier)?;
+                self.visit_expression(right)?;
 
-                if !right.eq(&identifier) {
-                    return Err(kaori_error!(
-                        expression.span,
-                        "expected {:?} for assign, but found {:?}",
-                        identifier,
-                        right
-                    ));
+                let ExprKind::Identifier { resolution, .. } = &identifier.kind else {
+                    unreachable!();
+                };
+
+                if resolution.global {
+                    let instruction = Instruction::StoreGlobal(resolution.offset);
+                    self.bytecode.push(instruction);
+                } else {
+                    let instruction = Instruction::StoreLocal(resolution.offset);
+                    self.bytecode.push(instruction);
                 }
-
-                right
             }
             ExprKind::Binary {
                 left,
                 right,
                 operator,
             } => {
-                let left = self.visit_expression(left)?;
-                let right = self.visit_expression(right)?;
+                self.visit_expression(left)?;
+                self.visit_expression(right)?;
 
-                match (&left, &operator, &right) {
-                    (Type::Number, BinaryOp::Plus, Type::Number) => Type::Number,
-                    (Type::Number, BinaryOp::Minus, Type::Number) => Type::Number,
-                    (Type::Number, BinaryOp::Multiply, Type::Number) => Type::Number,
-                    (Type::Number, BinaryOp::Divide, Type::Number) => Type::Number,
-                    (Type::Number, BinaryOp::Remainder, Type::Number) => Type::Number,
+                match operator {
+                    BinaryOp::Plus => self.bytecode.push(Instruction::Plus),
+                    BinaryOp::Minus => self.bytecode.push(Instruction::Minus),
+                    BinaryOp::Multiply => self.bytecode.push(Instruction::Multiply),
+                    BinaryOp::Divide => self.bytecode.push(Instruction::Divide),
+                    BinaryOp::Modulo => self.bytecode.push(Instruction::Modulo),
 
-                    (Type::Boolean, BinaryOp::And, Type::Boolean) => Type::Boolean,
-                    (Type::Boolean, BinaryOp::Or, Type::Boolean) => Type::Boolean,
+                    BinaryOp::And => self.bytecode.push(Instruction::And),
+                    BinaryOp::Or => self.bytecode.push(Instruction::Or),
 
-                    (Type::Number, BinaryOp::Equal, Type::Number) => Type::Boolean,
-                    (Type::Boolean, BinaryOp::Equal, Type::Boolean) => Type::Boolean,
+                    BinaryOp::Equal => self.bytecode.push(Instruction::Equal),
+                    BinaryOp::NotEqual => self.bytecode.push(Instruction::NotEqual),
 
-                    (Type::Number, BinaryOp::NotEqual, Type::Number) => Type::Boolean,
-                    (Type::Boolean, BinaryOp::NotEqual, Type::Boolean) => Type::Boolean,
-
-                    (Type::Number, BinaryOp::Greater, Type::Number) => Type::Boolean,
-                    (Type::Number, BinaryOp::GreaterEqual, Type::Number) => Type::Boolean,
-                    (Type::Number, BinaryOp::Less, Type::Number) => Type::Boolean,
-                    (Type::Number, BinaryOp::LessEqual, Type::Number) => Type::Boolean,
-                    _ => {
-                        return Err(kaori_error!(
-                            expression.span,
-                            "invalid {:?} operation between {:?} and {:?}",
-                            operator,
-                            left,
-                            right
-                        ));
-                    }
+                    BinaryOp::Greater => self.bytecode.push(Instruction::Greater),
+                    BinaryOp::GreaterEqual => self.bytecode.push(Instruction::GreaterEqual),
+                    BinaryOp::Less => self.bytecode.push(Instruction::Less),
+                    BinaryOp::LessEqual => self.bytecode.push(Instruction::LessEqual),
                 }
             }
             ExprKind::Unary { right, operator } => {
-                let right = self.visit_expression(right)?;
+                self.visit_expression(right)?;
 
-                match (&operator, &right) {
-                    (UnaryOp::Negate, Type::Number) => Type::Number,
-                    (UnaryOp::Not, Type::Boolean) => Type::Boolean,
-                    _ => {
-                        return Err(kaori_error!(
-                            expression.span,
-                            "invalid {:?} operation for right {:?}",
-                            operator,
-                            right
-                        ));
-                    }
+                match &operator {
+                    UnaryOp::Negate => self.bytecode.push(Instruction::Negate),
+                    UnaryOp::Not => self.bytecode.push(Instruction::Not),
                 }
             }
-            ExprKind::Identifier { resolution, .. } => self.environment.get(*resolution).clone(),
-            ExprKind::NumberLiteral(..) => Type::Number,
-            ExprKind::BooleanLiteral(..) => Type::Boolean,
-            ExprKind::StringLiteral(..) => Type::String,
+            ExprKind::Identifier { resolution, .. } => {
+                if resolution.global {
+                    let instruction = Instruction::LoadGlobal(resolution.offset);
+
+                    self.bytecode.push(instruction);
+                } else {
+                    let instruction = Instruction::LoadLocal(resolution.offset);
+
+                    self.bytecode.push(instruction);
+                }
+            }
+            ExprKind::NumberLiteral(value) => {
+                let instruction = Instruction::number_const(*value);
+                self.bytecode.push(instruction);
+            }
+            ExprKind::BooleanLiteral(value) => {
+                let instruction = Instruction::bool_const(*value);
+                self.bytecode.push(instruction);
+            }
+            ExprKind::StringLiteral(value) => {
+                let instruction = Instruction::str_const(&value);
+                self.bytecode.push(instruction);
+            }
         };
 
         Ok(expr_type)

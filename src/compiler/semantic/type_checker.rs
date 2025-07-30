@@ -192,7 +192,7 @@ impl Visitor<Type> for TypeChecker {
                     (Type::Number, BinaryOp::Minus, Type::Number) => Type::Number,
                     (Type::Number, BinaryOp::Multiply, Type::Number) => Type::Number,
                     (Type::Number, BinaryOp::Divide, Type::Number) => Type::Number,
-                    (Type::Number, BinaryOp::Remainder, Type::Number) => Type::Number,
+                    (Type::Number, BinaryOp::Modulo, Type::Number) => Type::Number,
 
                     (Type::Boolean, BinaryOp::And, Type::Boolean) => Type::Boolean,
                     (Type::Boolean, BinaryOp::Or, Type::Boolean) => Type::Boolean,

@@ -5,7 +5,7 @@ pub enum TokenKind {
     Minus,
     Multiply,
     Divide,
-    Remainder,
+    Modulo,
 
     // Unary arithmetic operators
     Increment,

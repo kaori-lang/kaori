@@ -4,7 +4,7 @@ pub enum BinaryOp {
     Minus,
     Multiply,
     Divide,
-    Remainder,
+    Modulo,
     And,
     Or,
     Equal,

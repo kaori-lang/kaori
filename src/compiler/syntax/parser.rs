@@ -391,7 +391,7 @@ impl Parser {
             let operator = match kind {
                 TokenKind::Multiply => BinaryOp::Multiply,
                 TokenKind::Divide => BinaryOp::Divide,
-                TokenKind::Remainder => BinaryOp::Remainder,
+                TokenKind::Modulo => BinaryOp::Modulo,
                 _ => break,
             };
 
