@@ -14,11 +14,11 @@ use crate::{
 
 use super::{environment::Environment, visitor::Visitor};
 
-pub struct TypeChecker {
+pub struct BytecodeGenerator {
     environment: Environment<Type>,
 }
 
-impl TypeChecker {
+impl BytecodeGenerator {
     pub fn new() -> Self {
         Self {
             environment: Environment::new(),
@@ -26,7 +26,7 @@ impl TypeChecker {
     }
 }
 
-impl Visitor<Type> for TypeChecker {
+impl Visitor<Type> for BytecodeGenerator {
     fn run(&mut self, ast: &mut Vec<ASTNode>) -> Result<(), KaoriError> {
         self.environment.enter_function();
 

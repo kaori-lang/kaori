@@ -16,4 +16,3 @@ b: bool = false;
 def foo() -> bool {
     print(b + a);
 }
-

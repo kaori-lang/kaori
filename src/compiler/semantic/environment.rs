@@ -1,3 +1,4 @@
+#![allow(clippy::new_without_default)]
 use super::resolution::Resolution;
 
 pub struct Environment<T> {
