@@ -9,8 +9,8 @@ use super::{
     declaration::{Decl, DeclKind},
     expression::Expr,
     operator::{BinaryOp, UnaryOp},
-    r#type::Type,
     statement::{Stmt, StmtKind},
+    r#type::Type,
 };
 
 pub struct Parser {
@@ -67,7 +67,7 @@ impl Parser {
 
         let right = self.parse_expr()?;
 
-        return Ok(Decl::variable(name, right, type_annotation, span));
+        Ok(Decl::variable(name, right, type_annotation, span))
     }
 
     fn parse_function_declaration(&mut self) -> Result<Decl, KaoriError> {
@@ -77,9 +77,9 @@ impl Parser {
 
         let name = self.token_stream.lexeme();
 
-        self.token_stream.consume(TokenKind::Identifier);
+        self.token_stream.consume(TokenKind::Identifier)?;
 
-        self.token_stream.consume(TokenKind::LeftParen);
+        self.token_stream.consume(TokenKind::LeftParen)?;
 
         let mut parameters: Vec<Decl> = Vec::new();
 
@@ -142,14 +142,14 @@ impl Parser {
             _ => (),
         };
 
-        return Ok(statement);
+        Ok(statement)
     }
 
     fn parse_expr_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
         let expression = self.parse_expr()?;
 
-        return Ok(Stmt::expression(expression, span));
+        Ok(Stmt::expression(expression, span))
     }
 
     fn parse_print_statement(&mut self) -> Result<Stmt, KaoriError> {
@@ -160,7 +160,7 @@ impl Parser {
         let expression = self.parse_expr()?;
         self.token_stream.consume(TokenKind::RightParen)?;
 
-        return Ok(Stmt::print(expression, span));
+        Ok(Stmt::print(expression, span))
     }
 
     fn parse_block_statement(&mut self) -> Result<Stmt, KaoriError> {
@@ -178,7 +178,7 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        return Ok(Stmt::block(declarations, span));
+        Ok(Stmt::block(declarations, span))
     }
 
     fn parse_if_statement(&mut self) -> Result<Stmt, KaoriError> {
@@ -204,7 +204,7 @@ impl Parser {
 
         let else_branch = Some(Box::new(self.parse_block_statement()?));
 
-        return Ok(Stmt::if_(condition, then_branch, else_branch, span));
+        Ok(Stmt::if_(condition, then_branch, else_branch, span))
     }
 
     fn parse_while_loop_statement(&mut self) -> Result<Stmt, KaoriError> {
@@ -215,7 +215,7 @@ impl Parser {
         let condition = self.parse_expr()?;
         let block = Box::new(self.parse_block_statement()?);
 
-        return Ok(Stmt::while_loop(condition, block, span));
+        Ok(Stmt::while_loop(condition, block, span))
     }
 
     fn parse_for_loop_statement(&mut self) -> Result<Stmt, KaoriError> {
@@ -241,12 +241,12 @@ impl Parser {
 
         let while_loop = Stmt::while_loop(condition, Box::new(block), span);
 
-        let mut declarations: Vec<ASTNode> = Vec::new();
+        let declarations: Vec<ASTNode> = vec![
+            ASTNode::Declaration(declaration),
+            ASTNode::Statement(while_loop),
+        ];
 
-        declarations.push(ASTNode::Declaration(declaration));
-        declarations.push(ASTNode::Statement(while_loop));
-
-        return Ok(Stmt::block(declarations, span));
+        Ok(Stmt::block(declarations, span))
     }
 
     /* Exprs */
@@ -258,7 +258,7 @@ impl Parser {
             return self.parse_assign();
         }
 
-        return self.parse_or();
+        self.parse_or()
     }
 
     fn parse_assign(&mut self) -> Result<Box<Expr>, KaoriError> {
@@ -269,7 +269,7 @@ impl Parser {
 
         let right = self.parse_expr()?;
 
-        return Ok(Box::new(Expr::assign(identifier, right, span)));
+        Ok(Box::new(Expr::assign(identifier, right, span)))
     }
 
     fn parse_or(&mut self) -> Result<Box<Expr>, KaoriError> {
@@ -401,7 +401,7 @@ impl Parser {
             left = Box::new(Expr::binary(operator, left, right, span))
         }
 
-        return Ok(left);
+        Ok(left)
     }
 
     fn parse_unary(&mut self) -> Result<Box<Expr>, KaoriError> {

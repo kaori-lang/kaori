@@ -42,7 +42,7 @@ impl Resolver {
             }
         }
 
-        return None;
+        None
     }
 
     fn search(&mut self, name: &str) -> Option<Resolution> {
@@ -65,7 +65,7 @@ impl Resolver {
             }
         }
 
-        return None;
+        None
     }
 
     fn declare_function(&mut self, decl: &Decl) -> Result<(), KaoriError> {
@@ -73,7 +73,7 @@ impl Resolver {
             unreachable!();
         };
 
-        if let Some(_) = self.search(name) {
+        if let Some(..) = self.search(name) {
             return Err(kaori_error!(decl.span, "{} is already declared", name));
         }
 
@@ -118,7 +118,7 @@ impl Visitor<()> for Resolver {
             DeclKind::Variable { name, right, .. } => {
                 self.visit_expression(right)?;
 
-                if let Some(_) = self.search_current_scope(&name) {
+                if let Some(_) = self.search_current_scope(name) {
                     return Err(kaori_error!(
                         declaration.span,
                         "{} is already declared",

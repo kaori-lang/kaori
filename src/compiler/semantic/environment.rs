@@ -22,7 +22,7 @@ impl<T> Environment<T> {
             index -= self.frame_pointer;
         }
 
-        return self.declarations.get(index).unwrap();
+        self.declarations.get(index).unwrap()
     }
 
     pub fn enter_scope(&mut self) {

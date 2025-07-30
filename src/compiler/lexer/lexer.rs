@@ -19,7 +19,7 @@ impl Lexer {
     }
 
     fn at_end(&mut self) -> bool {
-        return self.position >= self.source.len();
+        self.position >= self.source.len()
     }
 
     fn look_ahead(&mut self, expected: &[char]) -> bool {
@@ -37,15 +37,13 @@ impl Lexer {
             return false;
         }
 
-        return true;
+        true
     }
 
     fn create_token(&mut self, kind: TokenKind, start: usize, end: usize) -> Token {
         let span = Span { start, end };
 
-        let token = Token { kind, span };
-
-        return token;
+        Token { kind, span }
     }
 
     fn white_space(&mut self) {

@@ -16,7 +16,7 @@ use kaori::{
         },
         syntax::parser::Parser,
     },
-    error::kaori_error::KaoriError,
+    error::kaori_error::{self, KaoriError},
 };
 use regex::{Captures, Regex};
 
@@ -42,9 +42,8 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
 fn main() {
     if let Ok(source) = fs::read_to_string("src/code/main.kaori") {
-        match run_program(source.clone()) {
-            Err(error) => error.report(&source),
-            Ok(()) => (),
-        };
+        if let Err(err) = run_program(source.clone()) {
+            err.report(&source);
+        }
     }
 }

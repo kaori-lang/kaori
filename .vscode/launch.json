@@ -7,15 +7,11 @@
 		{
 			"type": "lldb",
 			"request": "launch",
-			"name": "Debug executable 'yellow_flash'",
+			"name": "Debug executable 'kaori'",
 			"cargo": {
-				"args": [
-					"build",
-					"--bin=yellow_flash",
-					"--package=yellow_flash"
-				],
+				"args": ["build", "--bin=kaori", "--package=kaori"],
 				"filter": {
-					"name": "yellow_flash",
+					"name": "kaori",
 					"kind": "bin"
 				}
 			},
@@ -25,16 +21,11 @@
 		{
 			"type": "lldb",
 			"request": "launch",
-			"name": "Debug unit tests in executable 'yellow_flash'",
+			"name": "Debug unit tests in executable 'kaori'",
 			"cargo": {
-				"args": [
-					"test",
-					"--no-run",
-					"--bin=yellow_flash",
-					"--package=yellow_flash"
-				],
+				"args": ["test", "--no-run", "--bin=kaori", "--package=kaori"],
 				"filter": {
-					"name": "yellow_flash",
+					"name": "kaori",
 					"kind": "bin"
 				}
 			},

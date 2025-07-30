@@ -19,7 +19,7 @@ impl TokenStream {
     }
 
     pub fn at_end(&mut self) -> bool {
-        return self.token_kind() == TokenKind::EndOfFile;
+        self.token_kind() == TokenKind::EndOfFile
     }
 
     pub fn advance(&mut self) {
@@ -31,16 +31,16 @@ impl TokenStream {
 
         if expected == found {
             self.advance();
-            return Ok(());
+            Ok(())
         } else {
             let span = self.span();
 
-            return Err(kaori_error!(
+            Err(kaori_error!(
                 span,
                 "expected {:?}, but found {:?}",
                 expected,
                 found,
-            ));
+            ))
         }
     }
 
@@ -59,22 +59,22 @@ impl TokenStream {
             return false;
         }
 
-        return true;
+        true
     }
 
     pub fn token_kind(&mut self) -> TokenKind {
         let token = self.tokens.get(self.index).unwrap();
 
-        return token.kind.clone();
+        token.kind.clone()
     }
 
     pub fn span(&mut self) -> Span {
-        return self.tokens[self.index].span;
+        self.tokens[self.index].span
     }
 
     pub fn lexeme(&mut self) -> String {
         let span = self.span();
 
-        return self.source[span.start..span.end].to_string();
+        self.source[span.start..span.end].to_string()
     }
 }
