@@ -9,8 +9,8 @@
 
 
 
-if 2 > 3 {
-    print(1);
-} else if (4 > 5) {
-    print(2);
+i: number = 0;
+
+while i < 10 {
+    print(i);
 }

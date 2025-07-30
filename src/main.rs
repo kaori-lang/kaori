@@ -4,9 +4,9 @@ use std::fs;
 
 use kaori::{
     compiler::{
-        bytecode::bytecode_generator::{self, BytecodeGenerator},
+        codegen::bytecode_generator::BytecodeGenerator,
         lexer::{lexer::Lexer, token_stream::TokenStream},
-        semantic::{resolver::Resolver, type_checker::TypeChecker, visitor::Visitor},
+        semantic::{resolver::Resolver, type_checker::TypeChecker},
         syntax::parser::Parser,
     },
     error::kaori_error::KaoriError,

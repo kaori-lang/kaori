@@ -116,17 +116,36 @@ impl Visitor<()> for BytecodeGenerator {
 
                 let jump_end_placeholder = self.bytecode.place_holder();
 
-                self.bytecode.emit_jump_if_false(jump_if_false_placeholder);
+                self.bytecode.update_placeholder(
+                    jump_if_false_placeholder,
+                    Instruction::JumpIfFalse(self.bytecode.index()),
+                );
 
                 if let Some(branch) = else_branch {
                     self.visit_statement(branch)?;
                 }
 
-                self.bytecode.emit_jump(jump_end_placeholder);
+                self.bytecode.update_placeholder(
+                    jump_end_placeholder,
+                    Instruction::Jump(self.bytecode.index()),
+                );
             }
-            StmtKind::WhileLoop {
-                condition, block, ..
-            } => {}
+            StmtKind::WhileLoop { condition, block } => {
+                let start = self.bytecode.index();
+
+                self.visit_expression(condition)?;
+
+                let jump_if_false_placeholder = self.bytecode.place_holder();
+
+                self.visit_statement(block)?;
+
+                self.bytecode.emit(Instruction::Jump(start));
+
+                self.bytecode.update_placeholder(
+                    jump_if_false_placeholder,
+                    Instruction::JumpIfFalse(self.bytecode.index()),
+                );
+            }
             _ => (),
         };
 

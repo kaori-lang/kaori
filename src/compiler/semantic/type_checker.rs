@@ -224,7 +224,7 @@ impl Visitor<Type> for TypeChecker {
                     _ => {
                         return Err(kaori_error!(
                             expression.span,
-                            "invalid {:?} operation for right {:?}",
+                            "invalid {:?} operation for {:?}",
                             operator,
                             right
                         ));

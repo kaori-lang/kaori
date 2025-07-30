@@ -20,15 +20,15 @@ impl Bytecode {
         index
     }
 
+    pub fn index(&self) -> usize {
+        self.bytecode.len()
+    }
+
     pub fn emit(&mut self, instruction: Instruction) {
         self.bytecode.push(instruction);
     }
 
-    pub fn emit_jump_if_false(&mut self, index: usize) {
-        self.bytecode[index] = Instruction::JumpIfFalse(self.bytecode.len());
-    }
-
-    pub fn emit_jump(&mut self, index: usize) {
-        self.bytecode[index] = Instruction::Jump(self.bytecode.len());
+    pub fn update_placeholder(&mut self, index: usize, instruction: Instruction) {
+        self.bytecode[index] = instruction;
     }
 }
