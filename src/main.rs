@@ -42,13 +42,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     let bytecode = bytecode_generator.generate(&mut declarations)?;
 
-    println!("{:#?}", bytecode.bytecode);
-
-    let values: Vec<Value> = Vec::new();
-
-    values.push(Value::Bool(true));
-
-    if let Some(Value::Bool(b)) = values.get(0) {}
+    print!("{:#?}", bytecode);
 
     Ok(())
 }

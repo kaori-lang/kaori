@@ -14,7 +14,7 @@ use crate::{
     error::kaori_error::KaoriError,
 };
 
-use super::{bytecode::Bytecode, instruction::Instruction};
+use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
 
 pub struct BytecodeGenerator {
     bytecode: Bytecode,
@@ -161,11 +161,11 @@ impl Visitor<()> for BytecodeGenerator {
                 };
 
                 if resolution.global {
-                    let instruction = Instruction::StoreGlobal(resolution.offset);
-                    self.bytecode.emit(instruction);
+                    self.bytecode
+                        .emit(Instruction::StoreGlobal(resolution.offset));
                 } else {
-                    let instruction = Instruction::StoreLocal(resolution.offset);
-                    self.bytecode.emit(instruction);
+                    self.bytecode
+                        .emit(Instruction::StoreLocal(resolution.offset));
                 }
             }
             ExprKind::Binary {
@@ -205,26 +205,17 @@ impl Visitor<()> for BytecodeGenerator {
             }
             ExprKind::Identifier { resolution, .. } => {
                 if resolution.global {
-                    let instruction = Instruction::LoadGlobal(resolution.offset);
-
-                    self.bytecode.emit(instruction);
+                    self.bytecode
+                        .emit(Instruction::LoadGlobal(resolution.offset));
                 } else {
-                    let instruction = Instruction::LoadLocal(resolution.offset);
-
-                    self.bytecode.emit(instruction);
+                    self.bytecode
+                        .emit(Instruction::LoadLocal(resolution.offset));
                 }
             }
-            ExprKind::NumberLiteral(value) => {
-                let instruction = Instruction::PushNumber(*value);
-                self.bytecode.emit(instruction);
-            }
-            ExprKind::BooleanLiteral(value) => {
-                let instruction = Instruction::PushBool(*value);
-                self.bytecode.emit(instruction);
-            }
+            ExprKind::NumberLiteral(value) => self.bytecode.emit_constant(Value::Number(*value)),
+            ExprKind::BooleanLiteral(value) => self.bytecode.emit_constant(Value::Bool(*value)),
             ExprKind::StringLiteral(value) => {
-                let instruction = Instruction::PushStr(value.clone());
-                self.bytecode.emit(instruction);
+                self.bytecode.emit_constant(Value::Str(value.to_string()))
             }
         };
 

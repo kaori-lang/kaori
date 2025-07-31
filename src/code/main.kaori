@@ -10,6 +10,7 @@
 
 
 i: number = 0;
+j: number = 10;
 
 while i < 10 {
     print(i);
