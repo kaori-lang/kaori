@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub enum Instruction {
+pub enum Opcode {
     // Arithmetic
     Plus,
     Minus,
@@ -23,22 +23,21 @@ pub enum Instruction {
 
     // Variable operations
     Declare,
-    LoadLocal(usize),
-    LoadGlobal(usize),
-    StoreLocal(usize),
-    StoreGlobal(usize),
+    LoadLocal,
+    LoadGlobal,
+    StoreLocal,
+    StoreGlobal,
 
     // Scope control
     EnterScope,
     ExitScope,
 
     // Constants
-    PushStr(String),
-    PushBool(bool),
-    PushNumber(f64),
+    PushConst,
+
     // Control flow
-    Jump(usize),
-    JumpIfFalse(usize),
+    Jump,
+    JumpIfFalse,
 
     // I/O
     Print,

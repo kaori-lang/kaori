@@ -12,7 +12,7 @@ impl Bytecode {
         }
     }
 
-    pub fn place_holder(&mut self) -> usize {
+    pub fn create_placeholder(&mut self) -> usize {
         let index = self.bytecode.len();
 
         self.bytecode.push(Instruction::Nothing);

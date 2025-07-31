@@ -110,11 +110,11 @@ impl Visitor<()> for BytecodeGenerator {
             } => {
                 self.visit_expression(condition)?;
 
-                let jump_if_false_placeholder = self.bytecode.place_holder();
+                let jump_if_false_placeholder = self.bytecode.create_placeholder();
 
                 self.visit_statement(then_branch)?;
 
-                let jump_end_placeholder = self.bytecode.place_holder();
+                let jump_end_placeholder = self.bytecode.create_placeholder();
 
                 self.bytecode.update_placeholder(
                     jump_if_false_placeholder,
@@ -135,7 +135,7 @@ impl Visitor<()> for BytecodeGenerator {
 
                 self.visit_expression(condition)?;
 
-                let jump_if_false_placeholder = self.bytecode.place_holder();
+                let jump_if_false_placeholder = self.bytecode.create_placeholder();
 
                 self.visit_statement(block)?;
 
@@ -215,15 +215,15 @@ impl Visitor<()> for BytecodeGenerator {
                 }
             }
             ExprKind::NumberLiteral(value) => {
-                let instruction = Instruction::number_const(*value);
+                let instruction = Instruction::PushNumber(*value);
                 self.bytecode.emit(instruction);
             }
             ExprKind::BooleanLiteral(value) => {
-                let instruction = Instruction::bool_const(*value);
+                let instruction = Instruction::PushBool(*value);
                 self.bytecode.emit(instruction);
             }
             ExprKind::StringLiteral(value) => {
-                let instruction = Instruction::str_const(value);
+                let instruction = Instruction::PushStr(value.clone());
                 self.bytecode.emit(instruction);
             }
         };
