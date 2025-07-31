@@ -1,34 +1,35 @@
 #![allow(clippy::new_without_default)]
-use super::instruction::Instruction;
+use super::{instruction::Instruction, value::Value};
 
 pub struct Bytecode {
-    pub bytecode: Vec<Instruction>,
+    pub instructions: Vec<Instruction>,
+    pub constant_pool: Vec<Value>,
 }
 
 impl Bytecode {
     pub fn new() -> Self {
         Self {
-            bytecode: Vec::new(),
+            instructions: Vec::new(),
         }
     }
 
     pub fn create_placeholder(&mut self) -> usize {
-        let index = self.bytecode.len();
+        let index = self.instructions.len();
 
-        self.bytecode.push(Instruction::Nothing);
+        self.instructions.push(Instruction::Nothing);
 
         index
     }
 
     pub fn index(&self) -> usize {
-        self.bytecode.len()
+        self.instructions.len()
     }
 
     pub fn emit(&mut self, instruction: Instruction) {
-        self.bytecode.push(instruction);
+        self.instructions.push(instruction);
     }
 
     pub fn update_placeholder(&mut self, index: usize, instruction: Instruction) {
-        self.bytecode[index] = instruction;
+        self.instructions[index] = instruction;
     }
 }

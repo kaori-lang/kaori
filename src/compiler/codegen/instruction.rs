@@ -33,9 +33,8 @@ pub enum Instruction {
     ExitScope,
 
     // Constants
-    PushStr(String),
-    PushBool(bool),
-    PushNumber(f64),
+    PushConst(usize),
+
     // Control flow
     Jump(usize),
     JumpIfFalse(usize),
