@@ -15,6 +15,12 @@ impl Value {
     }
 }
 
+impl Default for Value {
+    fn default() -> Self {
+        Value { boolean: false }
+    }
+}
+
 pub enum ConstValue {
     Bool(Value),
     Number(Value),
