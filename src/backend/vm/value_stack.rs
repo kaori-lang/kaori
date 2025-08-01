@@ -1,4 +1,4 @@
-use crate::frontend::codegen::value::Value;
+use super::value::Value;
 
 pub struct ValueStack {
     index: usize,
@@ -6,13 +6,6 @@ pub struct ValueStack {
 }
 
 impl ValueStack {
-    pub fn new() -> Self {
-        Self {
-            index: 0,
-            values: [Value::default(); 1024],
-        }
-    }
-
     pub fn push(&mut self, value: Value) {
         self.values[self.index] = value;
 
@@ -25,5 +18,14 @@ impl ValueStack {
         self.index -= 1;
 
         value
+    }
+}
+
+impl Default for ValueStack {
+    fn default() -> Self {
+        Self {
+            index: 0,
+            values: [Value::default(); 1024],
+        }
     }
 }

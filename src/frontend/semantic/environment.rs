@@ -1,4 +1,3 @@
-#![allow(clippy::new_without_default)]
 use super::resolution::Resolution;
 
 pub struct Environment<T> {
@@ -7,15 +6,17 @@ pub struct Environment<T> {
     pub frame_pointer: usize,
 }
 
-impl<T> Environment<T> {
-    pub fn new() -> Self {
+impl<T> Default for Environment<T> {
+    fn default() -> Self {
         Self {
             declarations: Vec::new(),
             scopes_pointer: Vec::new(),
             frame_pointer: 0,
         }
     }
+}
 
+impl<T> Environment<T> {
     pub fn get(&mut self, resolution: Resolution) -> &T {
         let mut index = self.frame_pointer + resolution.offset;
 

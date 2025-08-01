@@ -1,5 +1,6 @@
-#![allow(clippy::new_without_default)]
-use super::{instruction::Instruction, value::Value};
+use crate::backend::vm::value::Value;
+
+use super::{const_value::ConstValue, instruction::Instruction};
 
 pub struct Bytecode {
     pub instructions: Vec<Instruction>,
@@ -7,10 +8,10 @@ pub struct Bytecode {
 }
 
 impl Bytecode {
-    pub fn new() -> Self {
+    pub fn new(instructions: Vec<Instruction>, constant_pool: Vec<ConstValue>) -> Self {
         Self {
-            instructions: Vec::new(),
-            constant_pool: Vec::new(),
+            instructions,
+            constant_pool: constant_pool.iter().map(|v| v.to_union()).collect(),
         }
     }
 }

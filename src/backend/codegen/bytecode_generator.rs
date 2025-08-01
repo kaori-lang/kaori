@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-use super::{instruction::Instruction, value::ConstValue};
+use super::{const_value::ConstValue, instruction::Instruction};
 
 pub struct BytecodeGenerator {
     instructions: Vec<Instruction>,

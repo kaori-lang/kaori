@@ -1,6 +1,6 @@
-use crate::frontend::codegen::{bytecode::Bytecode, instruction::Instruction, value::Value};
+use crate::backend::codegen::{bytecode::Bytecode, instruction::Instruction};
 
-use super::value_stack::ValueStack;
+use super::{value::Value, value_stack::ValueStack};
 
 pub struct KaoriVM {
     bytecode: Bytecode,
@@ -13,7 +13,7 @@ impl KaoriVM {
 
     pub fn execute_instructions(&self) {
         let index = 0;
-        let mut stack: ValueStack = ValueStack::new();
+        let mut stack: ValueStack = ValueStack::default();
 
         while index < self.bytecode.instructions.len() {
             match self.bytecode.instructions[index] {
@@ -21,10 +21,9 @@ impl KaoriVM {
                     let right = stack.pop();
                     let left = stack.pop();
 
-                    stack.push(Value {
-                        number: left.as_number() + right.as_number(),
-                    });
+                    stack.push(Value::number(left.as_number() + right.as_number()));
                 }
+                _ => (),
             }
         }
     }

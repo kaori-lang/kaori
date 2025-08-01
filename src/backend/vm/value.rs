@@ -6,6 +6,14 @@ pub union Value {
 }
 
 impl Value {
+    pub fn number(value: f64) -> Value {
+        Value { number: value }
+    }
+
+    pub fn boolean(value: bool) -> Value {
+        Value { boolean: value }
+    }
+
     pub fn as_number(&self) -> f64 {
         unsafe { self.number }
     }
@@ -18,20 +26,5 @@ impl Value {
 impl Default for Value {
     fn default() -> Self {
         Value { boolean: false }
-    }
-}
-
-pub enum ConstValue {
-    Bool(bool),
-    Number(f64),
-}
-
-impl ConstValue {
-    pub fn equal(&self, other: &ConstValue) -> bool {
-        match (self, other) {
-            (ConstValue::Bool(l), ConstValue::Bool(r)) => l == r,
-            (ConstValue::Number(l), ConstValue::Number(r)) => l == r,
-            _ => false,
-        }
     }
 }
