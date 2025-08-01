@@ -4,7 +4,7 @@ use std::fs;
 
 use kaori::{
     compiler::{
-        codegen::{bytecode_generator::BytecodeGenerator, value::Value},
+        codegen::bytecode_generator::BytecodeGenerator,
         scanner::{lexer::Lexer, token_stream::TokenStream},
         semantic::{resolver::Resolver, type_checker::TypeChecker},
         syntax::parser::Parser,
@@ -41,8 +41,6 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     let mut bytecode_generator = BytecodeGenerator::new();
 
     let bytecode = bytecode_generator.generate(&mut declarations)?;
-
-    print!("{:#?}", bytecode);
 
     Ok(())
 }

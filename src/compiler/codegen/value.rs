@@ -1,42 +1,46 @@
-pub struct Value {
-    tag: u8,
-    value_data: ValueData,
-}
-
-pub union ValueData {
+#[derive(Clone, Copy)]
+pub union Value {
     number: f64,
     boolean: bool,
     str: *mut String,
 }
 
 impl Value {
-    pub fn number(value: f64) -> Value {
-        Value {
-            tag: 0,
-            value_data: ValueData { number: value },
-        }
-    }
-
-    pub fn bool(value: bool) -> Value {
-        Value {
-            tag: 1,
-            value_data: ValueData { boolean: value },
-        }
-    }
-
     pub fn as_number(&self) -> f64 {
-        unsafe { self.value_data.number }
+        unsafe { self.number }
     }
 
     pub fn as_bool(&self) -> bool {
-        unsafe { self.value_data.boolean }
+        unsafe { self.boolean }
+    }
+}
+
+pub enum ConstValue {
+    Bool(Value),
+    Number(Value),
+}
+
+impl ConstValue {
+    pub fn bool(value: bool) -> ConstValue {
+        ConstValue::Bool(Value { boolean: value })
     }
 
-    pub fn is_number(&self) -> bool {
-        self.tag == 0
+    pub fn number(value: f64) -> ConstValue {
+        ConstValue::Bool(Value { number: value })
     }
 
-    pub fn is_bool(&self) -> bool {
-        self.tag == 1
+    pub fn equal(&self, other: &ConstValue) -> bool {
+        match (self, other) {
+            (ConstValue::Bool(l), ConstValue::Bool(r)) => l.as_bool() == r.as_bool(),
+            (ConstValue::Number(l), ConstValue::Number(r)) => l.as_number() == r.as_number(),
+            _ => false,
+        }
+    }
+
+    pub fn to_value(&self) -> Value {
+        match self {
+            ConstValue::Bool(value) => *value,
+            ConstValue::Number(value) => *value,
+        }
     }
 }

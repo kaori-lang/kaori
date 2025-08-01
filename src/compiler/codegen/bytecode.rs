@@ -1,17 +1,24 @@
 #![allow(clippy::new_without_default)]
-use super::{instruction::Instruction, value::Value};
+use super::{
+    instruction::Instruction,
+    value::{ConstValue, Value},
+};
 
 pub struct Bytecode {
     pub instructions: Vec<Instruction>,
-    pub constant_pool: Vec<Value>,
+    pub temp_const_pool: Vec<ConstValue>,
 }
 
 impl Bytecode {
     pub fn new() -> Self {
         Self {
             instructions: Vec::new(),
-            constant_pool: Vec::new(),
+            temp_const_pool: Vec::new(),
         }
+    }
+
+    pub fn get_const_pool(&self) -> Vec<Value> {
+        self.temp_const_pool.iter().map(|c| c.to_value()).collect()
     }
 
     pub fn index(&self) -> usize {
@@ -22,8 +29,22 @@ impl Bytecode {
         self.instructions.push(instruction);
     }
 
-    pub fn emit_constant(&mut self, value: Value) {
+    pub fn emit_constant(&mut self, other: ConstValue) {
         let mut index = 0;
+
+        while index < self.temp_const_pool.len() {
+            let current = &self.temp_const_pool[index];
+
+            if current.equal(&other) {
+                break;
+            }
+
+            index += 1;
+        }
+
+        if index == self.temp_const_pool.len() {
+            self.temp_const_pool.push(other);
+        }
 
         self.emit(Instruction::LoadConst(index));
     }

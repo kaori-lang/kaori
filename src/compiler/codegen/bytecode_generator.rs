@@ -14,7 +14,11 @@ use crate::{
     error::kaori_error::KaoriError,
 };
 
-use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
+use super::{
+    bytecode::Bytecode,
+    instruction::Instruction,
+    value::{ConstValue, Value},
+};
 
 pub struct BytecodeGenerator {
     bytecode: Bytecode,
@@ -212,8 +216,12 @@ impl Visitor<()> for BytecodeGenerator {
                         .emit(Instruction::LoadLocal(resolution.offset));
                 }
             }
-            ExprKind::NumberLiteral(value) => self.bytecode.emit_constant(Value::number(*value)),
-            ExprKind::BooleanLiteral(value) => self.bytecode.emit_constant(Value::bool(*value)),
+            ExprKind::NumberLiteral(value) => {
+                self.bytecode.emit_constant(ConstValue::number(*value))
+            }
+            ExprKind::BooleanLiteral(value) => {
+                self.bytecode.emit_constant(ConstValue::bool(*value))
+            }
             /* ExprKind::StringLiteral(value) => {
                 self.bytecode.emit_constant(Value::Str(value.to_string()))
             } */
