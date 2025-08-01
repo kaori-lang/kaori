@@ -1,2 +1,2 @@
-pub mod callstack;
-pub mod kaori_vm;
+pub mod codegen;
+pub mod vm;

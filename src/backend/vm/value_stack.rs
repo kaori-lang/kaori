@@ -1,8 +1,15 @@
+use crate::frontend::codegen::value::Value;
+
+pub struct ValueStack {
+    index: usize,
+    values: [Value; 1024],
+}
+
 impl ValueStack {
     pub fn new() -> Self {
         Self {
             index: 0,
-            values: [Value::default(); 1000],
+            values: [Value::default(); 1024],
         }
     }
 
