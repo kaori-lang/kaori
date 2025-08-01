@@ -1,7 +1,8 @@
 #![allow(clippy::new_without_default)]
 
 use crate::{
-    compiler::{
+    error::kaori_error::KaoriError,
+    frontend::{
         semantic::visitor::Visitor,
         syntax::{
             ast_node::ASTNode,
@@ -11,14 +12,9 @@ use crate::{
             statement::{Stmt, StmtKind},
         },
     },
-    error::kaori_error::KaoriError,
 };
 
-use super::{
-    bytecode::Bytecode,
-    instruction::Instruction,
-    value::{ConstValue, Value},
-};
+use super::{bytecode::Bytecode, instruction::Instruction, value::ConstValue};
 
 pub struct BytecodeGenerator {
     bytecode: Bytecode,

@@ -1,6 +1,6 @@
 use crate::{
-    compiler::syntax::{ast_node::ASTNode, declaration::Decl, expression::Expr, statement::Stmt},
     error::kaori_error::KaoriError,
+    frontend::syntax::{ast_node::ASTNode, declaration::Decl, expression::Expr, statement::Stmt},
 };
 
 pub trait Visitor<T> {

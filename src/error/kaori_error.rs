@@ -1,6 +1,6 @@
 use ariadne::{Color, Label, Report, ReportKind, Source};
 
-use crate::compiler::scanner::span::Span;
+use crate::frontend::scanner::span::Span;
 
 #[macro_export]
 macro_rules! kaori_error {

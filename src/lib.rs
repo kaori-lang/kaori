@@ -1,3 +1,3 @@
-pub mod compiler;
+pub mod backend;
 pub mod error;
-pub mod runtime;
+pub mod frontend;

@@ -1,4 +1,4 @@
-use crate::compiler::scanner::span::Span;
+use crate::frontend::scanner::span::Span;
 
 use super::{expression::Expr, statement::Stmt, r#type::Type};
 

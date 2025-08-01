@@ -1,6 +1,7 @@
 #![allow(clippy::new_without_default)]
 use crate::{
-    compiler::syntax::{
+    error::kaori_error::KaoriError,
+    frontend::syntax::{
         ast_node::ASTNode,
         declaration::{Decl, DeclKind},
         expression::{Expr, ExprKind},
@@ -8,7 +9,6 @@ use crate::{
         statement::{Stmt, StmtKind},
         r#type::Type,
     },
-    error::kaori_error::KaoriError,
     kaori_error,
 };
 

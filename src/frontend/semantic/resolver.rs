@@ -1,12 +1,12 @@
 #![allow(clippy::new_without_default)]
 use crate::{
-    compiler::syntax::{
+    error::kaori_error::KaoriError,
+    frontend::syntax::{
         ast_node::ASTNode,
         declaration::{Decl, DeclKind},
         expression::{Expr, ExprKind},
         statement::{Stmt, StmtKind},
     },
-    error::kaori_error::KaoriError,
     kaori_error,
 };
 

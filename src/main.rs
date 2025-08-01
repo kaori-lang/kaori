@@ -3,13 +3,13 @@
 use std::fs;
 
 use kaori::{
-    compiler::{
+    error::kaori_error::KaoriError,
+    frontend::{
         codegen::bytecode_generator::BytecodeGenerator,
         scanner::{lexer::Lexer, token_stream::TokenStream},
         semantic::{resolver::Resolver, type_checker::TypeChecker},
         syntax::parser::Parser,
     },
-    error::kaori_error::KaoriError,
 };
 
 fn main() {

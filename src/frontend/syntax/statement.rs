@@ -1,4 +1,4 @@
-use crate::compiler::scanner::span::Span;
+use crate::frontend::scanner::span::Span;
 
 use super::{ast_node::ASTNode, expression::Expr};
 
