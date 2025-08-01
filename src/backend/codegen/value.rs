@@ -22,31 +22,16 @@ impl Default for Value {
 }
 
 pub enum ConstValue {
-    Bool(Value),
-    Number(Value),
+    Bool(bool),
+    Number(f64),
 }
 
 impl ConstValue {
-    pub fn bool(value: bool) -> ConstValue {
-        ConstValue::Bool(Value { boolean: value })
-    }
-
-    pub fn number(value: f64) -> ConstValue {
-        ConstValue::Bool(Value { number: value })
-    }
-
     pub fn equal(&self, other: &ConstValue) -> bool {
         match (self, other) {
-            (ConstValue::Bool(l), ConstValue::Bool(r)) => l.as_bool() == r.as_bool(),
-            (ConstValue::Number(l), ConstValue::Number(r)) => l.as_number() == r.as_number(),
+            (ConstValue::Bool(l), ConstValue::Bool(r)) => l == r,
+            (ConstValue::Number(l), ConstValue::Number(r)) => l == r,
             _ => false,
-        }
-    }
-
-    pub fn to_value(&self) -> Value {
-        match self {
-            ConstValue::Bool(value) => *value,
-            ConstValue::Number(value) => *value,
         }
     }
 }
