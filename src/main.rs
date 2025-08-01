@@ -1,9 +1,7 @@
-#![allow(clippy::new_without_default)]
-
 use std::fs;
 
 use kaori::{
-    backend::codegen::bytecode_generator::BytecodeGenerator,
+    backend::{codegen::bytecode_generator::BytecodeGenerator, vm::kaori_vm::KaoriVM},
     error::kaori_error::KaoriError,
     frontend::{
         scanner::{lexer::Lexer, token_stream::TokenStream},
@@ -41,6 +39,10 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     let mut bytecode_generator = BytecodeGenerator::new();
 
     let bytecode = bytecode_generator.generate(&mut declarations)?;
+
+    let vm = KaoriVM::new(bytecode);
+
+    vm.execute_instructions();
 
     Ok(())
 }

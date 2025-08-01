@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-use super::{const_value::ConstValue, instruction::Instruction};
+use super::{bytecode::Bytecode, const_value::ConstValue, instruction::Instruction};
 
 pub struct BytecodeGenerator {
     instructions: Vec<Instruction>,
@@ -29,7 +29,7 @@ impl BytecodeGenerator {
         }
     }
 
-    pub fn generate(&mut self, ast: &mut [ASTNode]) -> Result<(), KaoriError> {
+    pub fn generate(&mut self, ast: &mut [ASTNode]) -> Result<Bytecode, KaoriError> {
         self.emit(Instruction::EnterScope);
 
         for i in 0..ast.len() {
@@ -48,7 +48,9 @@ impl BytecodeGenerator {
 
         self.emit(Instruction::ExitScope);
 
-        Ok(())
+        let bytecode = Bytecode::new(&self.instructions, &self.constant_pool);
+
+        Ok(bytecode)
     }
 
     pub fn emit(&mut self, instruction: Instruction) {
@@ -61,7 +63,7 @@ impl BytecodeGenerator {
         while index < self.constant_pool.len() {
             let current = &self.constant_pool[index];
 
-            if current.equal(&other) {
+            if current == &other {
                 break;
             }
 

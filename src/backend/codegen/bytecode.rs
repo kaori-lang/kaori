@@ -8,9 +8,9 @@ pub struct Bytecode {
 }
 
 impl Bytecode {
-    pub fn new(instructions: Vec<Instruction>, constant_pool: Vec<ConstValue>) -> Self {
+    pub fn new(instructions: &[Instruction], constant_pool: &[ConstValue]) -> Self {
         Self {
-            instructions,
+            instructions: instructions.to_vec(),
             constant_pool: constant_pool.iter().map(|v| v.to_union()).collect(),
         }
     }

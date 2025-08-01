@@ -13,11 +13,9 @@ impl ValueStack {
     }
 
     pub fn pop(&mut self) -> Value {
-        let value = self.values[self.index];
-
         self.index -= 1;
 
-        value
+        self.values[self.index]
     }
 }
 

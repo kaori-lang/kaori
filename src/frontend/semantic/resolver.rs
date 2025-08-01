@@ -19,7 +19,7 @@ pub struct Resolver {
 impl Resolver {
     pub fn new() -> Self {
         Self {
-            environment: Environment::new(),
+            environment: Environment::default(),
         }
     }
 
