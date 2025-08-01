@@ -104,10 +104,10 @@ impl Visitor<Type> for TypeChecker {
     fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), KaoriError> {
         match &mut statement.kind {
             StmtKind::Expression(expression) => {
-                self.visit_expression(expression.as_mut())?;
+                self.visit_expression(expression)?;
             }
             StmtKind::Print(expression) => {
-                self.visit_expression(expression.as_mut())?;
+                self.visit_expression(expression)?;
             }
             StmtKind::Block(declarations) => {
                 self.environment.enter_scope();
