@@ -5,7 +5,7 @@ use std::fs;
 use kaori::{
     compiler::{
         codegen::{bytecode_generator::BytecodeGenerator, value::Value},
-        lexer::{lexer::Lexer, token_stream::TokenStream},
+        scanner::{lexer::Lexer, token_stream::TokenStream},
         semantic::{resolver::Resolver, type_checker::TypeChecker},
         syntax::parser::Parser,
     },

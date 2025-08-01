@@ -1,5 +1,5 @@
 use crate::{
-    compiler::lexer::{token_kind::TokenKind, token_stream::TokenStream},
+    compiler::scanner::{token_kind::TokenKind, token_stream::TokenStream},
     error::kaori_error::KaoriError,
     kaori_error,
 };

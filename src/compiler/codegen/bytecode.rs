@@ -1,7 +1,6 @@
 #![allow(clippy::new_without_default)]
 use super::{instruction::Instruction, value::Value};
 
-#[derive(Debug)]
 pub struct Bytecode {
     pub instructions: Vec<Instruction>,
     pub constant_pool: Vec<Value>,
@@ -25,33 +24,6 @@ impl Bytecode {
 
     pub fn emit_constant(&mut self, value: Value) {
         let mut index = 0;
-
-        while index < self.constant_pool.len() {
-            match (self.constant_pool.get(index), &value) {
-                (Some(Value::Str(left)), Value::Str(right)) => {
-                    if left == right {
-                        break;
-                    }
-                }
-                (Some(Value::Bool(left)), Value::Bool(right)) => {
-                    if left == right {
-                        break;
-                    }
-                }
-                (Some(Value::Number(left)), Value::Number(right)) => {
-                    if left == right {
-                        break;
-                    }
-                }
-                _ => {}
-            };
-
-            index += 1;
-        }
-
-        if index == self.constant_pool.len() {
-            self.constant_pool.push(value);
-        }
 
         self.emit(Instruction::LoadConst(index));
     }

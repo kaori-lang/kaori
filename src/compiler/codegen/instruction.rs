@@ -29,9 +29,7 @@ pub enum Instruction {
     Jump(usize),
     JumpIfFalse(usize),
 
-    // I/O
     Print,
 
-    // Do nothing
     Nothing,
 }

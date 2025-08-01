@@ -1,4 +1,4 @@
 pub mod codegen;
-pub mod lexer;
+pub mod scanner;
 pub mod semantic;
 pub mod syntax;

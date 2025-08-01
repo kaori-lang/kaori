@@ -1,4 +1,4 @@
-use crate::compiler::{lexer::span::Span, semantic::resolution::Resolution};
+use crate::compiler::{scanner::span::Span, semantic::resolution::Resolution};
 
 use super::operator::{BinaryOp, UnaryOp};
 

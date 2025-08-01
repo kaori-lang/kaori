@@ -212,11 +212,12 @@ impl Visitor<()> for BytecodeGenerator {
                         .emit(Instruction::LoadLocal(resolution.offset));
                 }
             }
-            ExprKind::NumberLiteral(value) => self.bytecode.emit_constant(Value::Number(*value)),
-            ExprKind::BooleanLiteral(value) => self.bytecode.emit_constant(Value::Bool(*value)),
-            ExprKind::StringLiteral(value) => {
+            ExprKind::NumberLiteral(value) => self.bytecode.emit_constant(Value::number(*value)),
+            ExprKind::BooleanLiteral(value) => self.bytecode.emit_constant(Value::bool(*value)),
+            /* ExprKind::StringLiteral(value) => {
                 self.bytecode.emit_constant(Value::Str(value.to_string()))
-            }
+            } */
+            _ => (),
         };
 
         Ok(())
