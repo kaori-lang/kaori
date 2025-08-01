@@ -22,15 +22,15 @@ impl Parser {
         Self { token_stream }
     }
 
-    pub fn declarations(&mut self) -> Result<Vec<ASTNode>, KaoriError> {
-        let mut declarations: Vec<ASTNode> = Vec::new();
+    pub fn parse(&mut self) -> Result<Vec<ASTNode>, KaoriError> {
+        let mut nodes: Vec<ASTNode> = Vec::new();
 
         while !self.token_stream.at_end() {
-            let declaration = self.parse_declaration()?;
-            declarations.push(declaration);
+            let node = self.parse_declaration()?;
+            nodes.push(node);
         }
 
-        Ok(declarations)
+        Ok(nodes)
     }
 
     /* Declarations */

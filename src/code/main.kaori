@@ -9,4 +9,9 @@
 
 
 
-print(2 + 5 * 11);
+sum: number = 0;
+
+for i: number = 0; i < 100000000; i = i + 1 {
+    sum = sum + i;
+}
+print(sum);

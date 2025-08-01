@@ -5,6 +5,7 @@ use super::{callstack::Callstack, value::Value, value_stack::ValueStack};
 pub struct KaoriVM {
     bytecode: Bytecode,
     callstack: Callstack,
+    instruction_ptr: usize,
 }
 
 impl KaoriVM {
@@ -12,15 +13,15 @@ impl KaoriVM {
         Self {
             bytecode,
             callstack: Callstack::default(),
+            instruction_ptr: 0,
         }
     }
 
     pub fn execute_instructions(&mut self) {
-        let mut index = 0;
         let mut value_stack: ValueStack = ValueStack::default();
 
-        while index < self.bytecode.instructions.len() {
-            match self.bytecode.instructions[index] {
+        while self.instruction_ptr < self.bytecode.instructions.len() {
+            match self.bytecode.instructions[self.instruction_ptr] {
                 Instruction::Plus => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
@@ -134,10 +135,24 @@ impl KaoriVM {
 
                     value_stack.push(value);
                 }
+                Instruction::EnterScope => self.callstack.enter_scope(),
+                Instruction::ExitScope => self.callstack.exit_scope(),
+                Instruction::Jump(ptr) => {
+                    self.instruction_ptr = ptr;
+                    continue;
+                }
+                Instruction::JumpIfFalse(ptr) => {
+                    let value = value_stack.pop();
+
+                    if !value.as_bool() {
+                        self.instruction_ptr = ptr;
+                        continue;
+                    }
+                }
                 _ => (),
             }
 
-            index += 1;
+            self.instruction_ptr += 1;
         }
     }
 }

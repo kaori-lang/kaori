@@ -1,3 +1,6 @@
-num = "-" *5000 + "1"
+number = 0
 
-print(num)
+for i in range(100000000):
+    number += i
+
+print(number)

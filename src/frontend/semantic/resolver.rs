@@ -69,11 +69,11 @@ impl Resolver {
         None
     }
 
-    pub fn resolve(&mut self, declarations: &mut [ASTNode]) -> Result<(), KaoriError> {
+    pub fn resolve(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
         self.environment.enter_function();
 
-        for i in 0..declarations.len() {
-            if let Some(ASTNode::Declaration(decl)) = declarations.get(i)
+        for i in 0..nodes.len() {
+            if let Some(ASTNode::Declaration(decl)) = nodes.get(i)
                 && let DeclKind::Function { name, .. } = &decl.kind
             {
                 if self.search(name).is_some() {
@@ -84,8 +84,8 @@ impl Resolver {
             }
         }
 
-        for i in 0..declarations.len() {
-            if let Some(node) = declarations.get_mut(i) {
+        for i in 0..nodes.len() {
+            if let Some(node) = nodes.get_mut(i) {
                 self.visit_ast_node(node)?;
             }
         }
@@ -97,8 +97,8 @@ impl Resolver {
 }
 
 impl Visitor<()> for Resolver {
-    fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), KaoriError> {
-        match ast_node {
+    fn visit_ast_node(&mut self, node: &mut ASTNode) -> Result<(), KaoriError> {
+        match node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),
             ASTNode::Statement(statement) => self.visit_statement(statement),
         }

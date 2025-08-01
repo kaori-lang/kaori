@@ -29,19 +29,19 @@ impl BytecodeGenerator {
         }
     }
 
-    pub fn generate(&mut self, ast: &mut [ASTNode]) -> Result<Bytecode, KaoriError> {
+    pub fn generate(&mut self, nodes: &mut [ASTNode]) -> Result<Bytecode, KaoriError> {
         self.emit(Instruction::EnterScope);
 
-        for i in 0..ast.len() {
-            if let Some(ASTNode::Declaration(decl)) = ast.get(i)
+        for i in 0..nodes.len() {
+            if let Some(ASTNode::Declaration(decl)) = nodes.get(i)
                 && let DeclKind::Function { .. } = &decl.kind
             {
                 //self.environment.declare(type_annotation.clone());
             }
         }
 
-        for i in 0..ast.len() {
-            if let Some(node) = ast.get_mut(i) {
+        for i in 0..nodes.len() {
+            if let Some(node) = nodes.get_mut(i) {
                 self.visit_ast_node(node)?;
             }
         }
@@ -91,8 +91,8 @@ impl BytecodeGenerator {
 }
 
 impl Visitor<()> for BytecodeGenerator {
-    fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), KaoriError> {
-        match ast_node {
+    fn visit_ast_node(&mut self, node: &mut ASTNode) -> Result<(), KaoriError> {
+        match node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),
             ASTNode::Statement(statement) => self.visit_statement(statement),
         }

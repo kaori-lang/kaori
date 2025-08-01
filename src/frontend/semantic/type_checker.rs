@@ -25,11 +25,11 @@ impl TypeChecker {
         }
     }
 
-    pub fn check(&mut self, ast: &mut [ASTNode]) -> Result<(), KaoriError> {
+    pub fn check(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
         self.environment.enter_function();
 
-        for i in 0..ast.len() {
-            if let Some(ASTNode::Declaration(decl)) = ast.get(i)
+        for i in 0..nodes.len() {
+            if let Some(ASTNode::Declaration(decl)) = nodes.get(i)
                 && let DeclKind::Function {
                     type_annotation, ..
                 } = &decl.kind
@@ -38,8 +38,8 @@ impl TypeChecker {
             }
         }
 
-        for i in 0..ast.len() {
-            if let Some(node) = ast.get_mut(i) {
+        for i in 0..nodes.len() {
+            if let Some(node) = nodes.get_mut(i) {
                 self.visit_ast_node(node)?;
             }
         }
@@ -51,8 +51,8 @@ impl TypeChecker {
 }
 
 impl Visitor<Type> for TypeChecker {
-    fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), KaoriError> {
-        match ast_node {
+    fn visit_ast_node(&mut self, node: &mut ASTNode) -> Result<(), KaoriError> {
+        match node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),
             ASTNode::Statement(statement) => self.visit_statement(statement),
         }

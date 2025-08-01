@@ -4,7 +4,7 @@ use crate::{
 };
 
 pub trait Visitor<T> {
-    fn visit_ast_node(&mut self, ast_node: &mut ASTNode) -> Result<(), KaoriError>;
+    fn visit_ast_node(&mut self, node: &mut ASTNode) -> Result<(), KaoriError>;
 
     fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError>;
 
