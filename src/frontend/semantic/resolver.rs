@@ -8,9 +8,10 @@ use crate::{
         statement::{Stmt, StmtKind},
     },
     kaori_error,
+    utils::visitor::Visitor,
 };
 
-use super::{environment::Environment, resolution::Resolution, visitor::Visitor};
+use super::{environment::Environment, resolution::Resolution};
 
 pub struct Resolver {
     environment: Environment<String>,

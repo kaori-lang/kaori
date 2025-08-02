@@ -1,8 +1,9 @@
-use std::fs;
+use std::{fs, time::Instant};
 
 use kaori::{
     backend::{codegen::bytecode_generator::BytecodeGenerator, vm::kaori_vm::KaoriVM},
     error::kaori_error::KaoriError,
+    frontend::generate_ast::generate_ast,
 };
 
 fn main() {
@@ -14,13 +15,22 @@ fn main() {
 }
 
 pub fn run_program(source: String) -> Result<(), KaoriError> {
+    let start = Instant::now();
+    let mut nodes = generate_ast(source)?;
+
     let mut bytecode_generator = BytecodeGenerator::new();
 
     let bytecode = bytecode_generator.generate(&mut nodes)?;
 
+    println!("Compilation done in: {:#?}", start.elapsed());
+
     let mut vm = KaoriVM::new(bytecode);
 
+    let start = Instant::now();
+
     vm.execute_instructions();
+
+    println!("Execution time: {:#?}", start.elapsed());
 
     Ok(())
 }

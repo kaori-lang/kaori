@@ -1,5 +1,10 @@
+pub struct Instruction {
+    opcode: Opcode,
+    operand: u8,
+}
+
 #[derive(Debug, Clone)]
-pub enum Instruction {
+pub enum Opcode {
     Plus,
     Minus,
     Multiply,
@@ -17,17 +22,17 @@ pub enum Instruction {
     Negate,
 
     Declare,
-    LoadLocal(usize),
-    LoadGlobal(usize),
-    StoreLocal(usize),
-    StoreGlobal(usize),
-    LoadConst(usize),
+    LoadLocal,
+    LoadGlobal,
+    StoreLocal,
+    StoreGlobal,
+    LoadConst,
 
     EnterScope,
     ExitScope,
 
-    Jump(usize),
-    JumpIfFalse(usize),
+    Jump,
+    JumpIfFalse,
 
     Print,
 

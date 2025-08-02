@@ -10,9 +10,10 @@ use crate::{
         r#type::Type,
     },
     kaori_error,
+    utils::visitor::Visitor,
 };
 
-use super::{environment::Environment, visitor::Visitor};
+use super::environment::Environment;
 
 pub struct TypeChecker {
     environment: Environment<Type>,

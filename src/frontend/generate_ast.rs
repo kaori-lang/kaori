@@ -6,7 +6,7 @@ use super::{
     syntax::{ast_node::ASTNode, parser::Parser},
 };
 
-pub fn build_ast(source: String) -> Result<Vec<ASTNode>, KaoriError> {
+pub fn generate_ast(source: String) -> Result<Vec<ASTNode>, KaoriError> {
     let mut lexer = Lexer::new(source.clone());
 
     let tokens = lexer.tokenize()?;

@@ -7,15 +7,16 @@ pub struct ValueStack {
 
 impl ValueStack {
     pub fn push(&mut self, value: Value) {
-        self.values[self.index] = value;
+        unsafe {
+            *self.values.get_unchecked_mut(self.index) = value;
+        }
 
         self.index += 1;
     }
 
     pub fn pop(&mut self) -> Value {
         self.index -= 1;
-
-        self.values[self.index]
+        unsafe { *self.values.get_unchecked(self.index) }
     }
 }
 

@@ -2,16 +2,14 @@
 
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::{
-        semantic::visitor::Visitor,
-        syntax::{
-            ast_node::ASTNode,
-            declaration::{Decl, DeclKind},
-            expression::{Expr, ExprKind},
-            operator::{BinaryOp, UnaryOp},
-            statement::{Stmt, StmtKind},
-        },
+    frontend::syntax::{
+        ast_node::ASTNode,
+        declaration::{Decl, DeclKind},
+        expression::{Expr, ExprKind},
+        operator::{BinaryOp, UnaryOp},
+        statement::{Stmt, StmtKind},
     },
+    utils::visitor::Visitor,
 };
 
 use super::{bytecode::Bytecode, const_value::ConstValue, instruction::Instruction};
