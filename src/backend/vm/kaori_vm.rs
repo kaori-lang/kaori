@@ -122,9 +122,13 @@ impl KaoriVM {
                     println!("{:?}", value.as_number());
                 }
                 Opcode::LoadConst => {
-                    let value = self.bytecode.constant_pool[instruction.operand];
+                    let value = unsafe {
+                        self.bytecode
+                            .constant_pool
+                            .get_unchecked(instruction.operand)
+                    };
 
-                    value_stack.push(value);
+                    value_stack.push(*value);
                 }
                 Opcode::Declare => {
                     let value = value_stack.pop();
