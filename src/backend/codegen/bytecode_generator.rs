@@ -50,7 +50,7 @@ impl BytecodeGenerator {
 
         self.emit(Instruction::nullary(Opcode::ExitScope));
 
-        let bytecode = Bytecode::new(&self.instructions, &self.constant_pool);
+        let bytecode = Bytecode::new(self.instructions.clone(), &self.constant_pool);
 
         Ok(bytecode)
     }

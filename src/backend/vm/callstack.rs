@@ -14,11 +14,11 @@ impl Callstack {
     }
 
     pub fn load_global(&self, offset: usize) -> Value {
-        self.declarations[offset]
+        unsafe { *self.declarations.get_unchecked(offset) }
     }
 
     pub fn store_global(&mut self, value: Value, offset: usize) {
-        self.declarations[offset] = value
+        unsafe { *self.declarations.get_unchecked_mut(offset) = value }
     }
 
     pub fn enter_scope(&mut self) {

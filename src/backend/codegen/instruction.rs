@@ -1,9 +1,11 @@
+#[derive(Debug, Clone)]
 pub struct Instruction {
     pub opcode: Opcode,
     pub operand: usize,
 }
 
 #[derive(Debug, Clone)]
+#[repr(u8)]
 pub enum Opcode {
     Plus,
     Minus,

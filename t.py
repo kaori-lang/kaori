@@ -2,7 +2,7 @@ import time
 
 start = time.perf_counter()
 
-number = 1.0
+number = 0.0
 
 
 
@@ -17,4 +17,4 @@ print(number)
 
 end = time.perf_counter()
 
-print(end - start)
+print(f"{end - start}s")

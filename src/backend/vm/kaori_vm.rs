@@ -1,4 +1,4 @@
-use crate::backend::codegen::{Opcode::Instruction, bytecode::Bytecode, instruction::Opcode};
+use crate::backend::codegen::{bytecode::Bytecode, instruction::Opcode};
 
 use super::{callstack::Callstack, value::Value, value_stack::ValueStack};
 
@@ -21,7 +21,11 @@ impl KaoriVM {
         let mut value_stack: ValueStack = ValueStack::default();
 
         while self.instruction_ptr < self.bytecode.instructions.len() {
-            let instruction = self.bytecode.instructions[self.instruction_ptr];
+            let instruction = unsafe {
+                self.bytecode
+                    .instructions
+                    .get_unchecked(self.instruction_ptr)
+            };
 
             match instruction.opcode {
                 Opcode::Plus => {
