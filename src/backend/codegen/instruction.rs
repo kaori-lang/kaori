@@ -1,6 +1,6 @@
 pub struct Instruction {
-    opcode: Opcode,
-    operand: u8,
+    pub opcode: Opcode,
+    pub operand: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -37,4 +37,14 @@ pub enum Opcode {
     Print,
 
     Nothing,
+}
+
+impl Instruction {
+    pub fn nullary(opcode: Opcode) -> Instruction {
+        Instruction { opcode, operand: 0 }
+    }
+
+    pub fn unary(opcode: Opcode, operand: usize) -> Instruction {
+        Instruction { opcode, operand }
+    }
 }
