@@ -55,8 +55,8 @@ impl BytecodeGenerator {
         Ok(bytecode)
     }
 
-    pub fn emit(&mut self, instruction: Instruction) -> i16 {
-        let index = self.instructions.len() as i16;
+    pub fn emit(&mut self, instruction: Instruction) -> usize {
+        let index = self.instructions.len();
 
         self.instructions.push(instruction);
 
@@ -148,21 +148,24 @@ impl Visitor<()> for BytecodeGenerator {
             } => {
                 self.visit_expression(condition)?;
 
-                let mut jump_if_false = self.emit(Instruction::unary(
+                let jump_if_false = self.emit(Instruction::unary(
                     Opcode::JumpIfFalse,
                     self.instruction_ptr(),
                 ));
 
                 self.visit_statement(then_branch)?;
 
-                let jump_end_placeholder =
-                    self.emit(Instruction::unary(Opcode::Jump, self.instruction_ptr()));
+                let jump_end = self.emit(Instruction::unary(Opcode::Jump, self.instruction_ptr()));
 
-                self.instructions[jump_if_false]
+                self.instructions[jump_if_false].operand =
+                    self.instruction_ptr() - self.instructions[jump_if_false].operand;
 
                 if let Some(branch) = else_branch {
                     self.visit_statement(branch)?;
                 }
+
+                self.instructions[jump_end].operand =
+                    self.instruction_ptr() - self.instructions[jump_end].operand;
             }
             StmtKind::WhileLoop { condition, block } => {
                 let start = self.instruction_ptr();
@@ -181,7 +184,8 @@ impl Visitor<()> for BytecodeGenerator {
                     start - self.instruction_ptr(),
                 ));
 
-               
+                self.instructions[jump_if_false].operand =
+                    self.instruction_ptr() - self.instructions[jump_if_false].operand;
             }
             _ => (),
         };
