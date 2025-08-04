@@ -12,7 +12,7 @@
 
 -   **Implemented Language Features**
 
-    -   [x] Variable declaration (`x: f64 = 10;`, `x: bool = true;`, `x: str = "Hello world";`)
+    -   [x] Variable declaration (`x: number = 10;`, `x: bool = true;`, `x: str = "Hello world";`)
     -   [x] Assign operators (`x = 5;`)
     -   [x] Logical operators (`&&`, `||`, `!`)
     -   [x] Arithmetic operators (`+`, `-`, `*`, `/`)
@@ -24,11 +24,12 @@
     -   [x] block statements for scope (`{ ... }`)
     -   [x] Output with `print` statements
     -   [x] Code comments (`/* this is a comment */`)
-    -   [ ] Functions
     -   [x] Bytecode generation
-    -   [ ] Virtual machine to interpret bytecode
-    -   [ ] function and loop control flow (`break`, `continue`, `return`)
+    -   [x] Virtual machine to interpret bytecode
+    -   [ ] Functions
+    -   [ ] Function and loop control flow (`break`, `continue`, `return`)
     -   [ ] Native data structures (e.g., lists, maps)
+    -   [ ] Constant folding
     -   [ ] Classes and inheritance
 
 ## 🛠️ Technologies Used 🛠️

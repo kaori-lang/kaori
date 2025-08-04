@@ -491,7 +491,7 @@ impl Parser {
         let primitive = match sub.as_str() {
             "bool" => Type::Boolean,
             "str" => Type::String,
-            "number" => Type::Number,
+            "num" => Type::Number,
             _ => {
                 return Err(kaori_error!(
                     self.token_stream.span(),

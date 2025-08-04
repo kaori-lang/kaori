@@ -7,15 +7,15 @@
 
 
 
-iterations: number = 100000;
+iterations: num = 100000;
 
-for i: number = 0; i < iterations; i = i + 1 {
-    a: number = 0;
-    b: number = 1;
-    max_fib: number = 100;
+for i: num = 0; i < iterations; i = i + 1 {
+    a: num = 0;
+    b: num = 1;
+    max_fib: num = 100;
 
-    for j: number = 0; j < max_fib; j = j + 1 {
-        temp: number = a + b;
+    for j: num = 0; j < max_fib; j = j + 1 {
+        temp: num = a + b;
         a = b;
 
         if temp < b {
@@ -27,12 +27,12 @@ for i: number = 0; i < iterations; i = i + 1 {
         }
 
 
-        c: number = (a * 3.1415) + (b / 2.718);
-        d: number = (c * c) - (b * a) + (temp % 7);
+        c: num = (a * 3.1415) + (b / 2.718);
+        d: num = (c * c) - (b * a) + (temp % 7);
 
  
-        e: number = 0;
-        for k: number = 0; k < 10; k = k + 1 {
+        e: num = 0;
+        for k: num = 0; k < 10; k = k + 1 {
             e = e + (d % (k + 1)) + (c / (k + 2));
         }
 
@@ -45,3 +45,7 @@ for i: number = 0; i < iterations; i = i + 1 {
     }
 
 }
+
+f: bool = 5;
+g: str = 7;
+h: num = 11;
