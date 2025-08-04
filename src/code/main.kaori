@@ -45,6 +45,3 @@ for i: number = 0; i < iterations; i = i + 1 {
     }
 
 }
-
-
-

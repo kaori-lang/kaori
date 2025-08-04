@@ -18,11 +18,11 @@ pub enum Instruction {
     Negate,
 
     Declare,
+    LoadConst(i16),
     LoadLocal(i16),
     LoadGlobal(i16),
     StoreLocal(i16),
     StoreGlobal(i16),
-    LoadConst(i16),
 
     EnterScope,
     ExitScope,

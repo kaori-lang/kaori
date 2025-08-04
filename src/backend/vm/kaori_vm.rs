@@ -19,15 +19,16 @@ impl KaoriVM {
 
     pub fn execute_instructions(&mut self) {
         let mut value_stack: ValueStack = ValueStack::default();
+        let size = self.bytecode.instructions.len();
 
-        while self.instruction_ptr < self.bytecode.instructions.len() {
+        while self.instruction_ptr < size {
             let instruction = unsafe {
                 self.bytecode
                     .instructions
                     .get_unchecked(self.instruction_ptr)
             };
 
-            match instruction {
+            match *instruction {
                 Instruction::Plus => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
@@ -121,7 +122,7 @@ impl KaoriVM {
 
                     println!("{:?}", value.as_number());
                 }
-                Instruction::LoadConst => {
+                Instruction::LoadConst(offset) => {
                     let value = self.bytecode.constant_pool[offset as usize];
 
                     value_stack.push(value);
