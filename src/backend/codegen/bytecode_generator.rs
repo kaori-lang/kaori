@@ -55,8 +55,12 @@ impl BytecodeGenerator {
         Ok(bytecode)
     }
 
-    pub fn emit(&mut self, instruction: Instruction) {
+    pub fn emit(&mut self, instruction: Instruction) -> i16 {
+        let index = self.instructions.len() as i16;
+
         self.instructions.push(instruction);
+
+        index
     }
 
     pub fn emit_constant(&mut self, other: ConstValue) {
@@ -76,20 +80,11 @@ impl BytecodeGenerator {
             self.constant_pool.push(other);
         }
 
-        self.emit(Instruction::unary(Opcode::LoadConst, index));
+        self.emit(Instruction::unary(Opcode::LoadConst, index as i16));
     }
 
-    pub fn create_placeholder(&mut self) -> usize {
-        let index = self.instructions.len();
-
-        self.instructions
-            .push(Instruction::nullary(Opcode::Nothing));
-
-        index
-    }
-
-    pub fn update_placeholder(&mut self, index: usize, instruction: Instruction) {
-        self.instructions[index] = instruction;
+    pub fn instruction_ptr(&self) -> i16 {
+        self.instructions.len() as i16
     }
 }
 
@@ -153,41 +148,40 @@ impl Visitor<()> for BytecodeGenerator {
             } => {
                 self.visit_expression(condition)?;
 
-                let jump_if_false_placeholder = self.create_placeholder();
+                let mut jump_if_false = self.emit(Instruction::unary(
+                    Opcode::JumpIfFalse,
+                    self.instruction_ptr(),
+                ));
 
                 self.visit_statement(then_branch)?;
 
-                let jump_end_placeholder = self.create_placeholder();
+                let jump_end_placeholder =
+                    self.emit(Instruction::unary(Opcode::Jump, self.instruction_ptr()));
 
-                self.update_placeholder(
-                    jump_if_false_placeholder,
-                    Instruction::unary(Opcode::JumpIfFalse, self.instructions.len()),
-                );
+                self.instructions[jump_if_false]
 
                 if let Some(branch) = else_branch {
                     self.visit_statement(branch)?;
                 }
-
-                self.update_placeholder(
-                    jump_end_placeholder,
-                    Instruction::unary(Opcode::Jump, self.instructions.len()),
-                );
             }
             StmtKind::WhileLoop { condition, block } => {
-                let start = self.instructions.len();
+                let start = self.instruction_ptr();
 
                 self.visit_expression(condition)?;
 
-                let jump_if_false_placeholder = self.create_placeholder();
+                let jump_if_false = self.emit(Instruction::unary(
+                    Opcode::JumpIfFalse,
+                    self.instruction_ptr(),
+                ));
 
                 self.visit_statement(block)?;
 
-                self.emit(Instruction::unary(Opcode::Jump, start));
+                self.emit(Instruction::unary(
+                    Opcode::Jump,
+                    start - self.instruction_ptr(),
+                ));
 
-                self.update_placeholder(
-                    jump_if_false_placeholder,
-                    Instruction::unary(Opcode::JumpIfFalse, self.instructions.len()),
-                );
+               
             }
             _ => (),
         };
@@ -204,9 +198,15 @@ impl Visitor<()> for BytecodeGenerator {
                 };
 
                 if resolution.global {
-                    self.emit(Instruction::unary(Opcode::StoreGlobal, resolution.offset));
+                    self.emit(Instruction::unary(
+                        Opcode::StoreGlobal,
+                        resolution.offset as i16,
+                    ));
                 } else {
-                    self.emit(Instruction::unary(Opcode::StoreLocal, resolution.offset));
+                    self.emit(Instruction::unary(
+                        Opcode::StoreLocal,
+                        resolution.offset as i16,
+                    ));
                 }
             }
             ExprKind::Binary {
@@ -234,7 +234,7 @@ impl Visitor<()> for BytecodeGenerator {
                     BinaryOp::GreaterEqual => self.emit(Instruction::nullary(Opcode::GreaterEqual)),
                     BinaryOp::Less => self.emit(Instruction::nullary(Opcode::Less)),
                     BinaryOp::LessEqual => self.emit(Instruction::nullary(Opcode::LessEqual)),
-                }
+                };
             }
             ExprKind::Unary { right, operator } => {
                 self.visit_expression(right)?;
@@ -242,13 +242,19 @@ impl Visitor<()> for BytecodeGenerator {
                 match operator {
                     UnaryOp::Negate => self.emit(Instruction::nullary(Opcode::Negate)),
                     UnaryOp::Not => self.emit(Instruction::nullary(Opcode::Not)),
-                }
+                };
             }
             ExprKind::Identifier { resolution, .. } => {
                 if resolution.global {
-                    self.emit(Instruction::unary(Opcode::LoadGlobal, resolution.offset));
+                    self.emit(Instruction::unary(
+                        Opcode::LoadGlobal,
+                        resolution.offset as i16,
+                    ));
                 } else {
-                    self.emit(Instruction::unary(Opcode::LoadLocal, resolution.offset));
+                    self.emit(Instruction::unary(
+                        Opcode::LoadLocal,
+                        resolution.offset as i16,
+                    ));
                 }
             }
             ExprKind::NumberLiteral(value) => self.emit_constant(ConstValue::Number(*value)),

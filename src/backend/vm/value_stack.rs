@@ -18,6 +18,13 @@ impl ValueStack {
         self.index -= 1;
         unsafe { *self.values.get_unchecked(self.index) }
     }
+
+    fn find(&mut self) {
+        unsafe {
+            let i: isize = 1;
+            self.values.get_unchecked(i as usize);
+        }
+    }
 }
 
 impl Default for ValueStack {

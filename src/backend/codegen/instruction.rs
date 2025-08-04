@@ -1,7 +1,7 @@
 #[derive(Debug, Clone)]
 pub struct Instruction {
     pub opcode: Opcode,
-    pub operand: usize,
+    pub operand: i16,
 }
 
 #[derive(Debug, Clone)]
@@ -46,7 +46,7 @@ impl Instruction {
         Instruction { opcode, operand: 0 }
     }
 
-    pub fn unary(opcode: Opcode, operand: usize) -> Instruction {
+    pub fn unary(opcode: Opcode, operand: i16) -> Instruction {
         Instruction { opcode, operand }
     }
 }

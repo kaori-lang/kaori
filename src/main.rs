@@ -15,8 +15,6 @@ fn main() {
 }
 
 pub fn run_program(source: String) -> Result<(), KaoriError> {
-    let start = Instant::now();
-
     let mut nodes = generate_ast(source)?;
 
     let mut bytecode_generator = BytecodeGenerator::new();
@@ -25,9 +23,11 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     let mut vm = KaoriVM::new(bytecode);
 
+    let start = Instant::now();
+
     vm.execute_instructions();
 
-    println!("Execution time: {:#?}", start.elapsed());
+    println!("Vm executed in: {:#?}", start.elapsed());
 
     Ok(())
 }
