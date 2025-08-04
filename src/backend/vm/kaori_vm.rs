@@ -1,4 +1,4 @@
-use crate::backend::codegen::{bytecode::Bytecode, instruction::Opcode};
+use crate::backend::codegen::{bytecode::Bytecode, instruction::Instruction};
 
 use super::{callstack::Callstack, value::Value, value_stack::ValueStack};
 
@@ -27,132 +27,133 @@ impl KaoriVM {
                     .get_unchecked(self.instruction_ptr)
             };
 
-            match instruction.opcode {
-                Opcode::Plus => {
+            match instruction {
+                Instruction::Plus => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::number(left.as_number() + right.as_number()));
                 }
-                Opcode::Minus => {
+                Instruction::Minus => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::number(left.as_number() - right.as_number()));
                 }
-                Opcode::Multiply => {
+                Instruction::Multiply => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::number(left.as_number() * right.as_number()));
                 }
-                Opcode::Divide => {
+                Instruction::Divide => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::number(left.as_number() / right.as_number()));
                 }
-                Opcode::Modulo => {
+                Instruction::Modulo => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::number(left.as_number() % right.as_number()));
                 }
-                Opcode::And => {
+                Instruction::And => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::boolean(left.as_bool() && right.as_bool()));
                 }
-                Opcode::Or => {
+                Instruction::Or => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::boolean(left.as_bool() || right.as_bool()));
                 }
-                Opcode::NotEqual => {
+                Instruction::NotEqual => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::boolean(left.as_number() != right.as_number()));
                 }
-                Opcode::Equal => {
+                Instruction::Equal => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::boolean(left.as_number() == right.as_number()));
                 }
-                Opcode::Greater => {
+                Instruction::Greater => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::boolean(left.as_number() > right.as_number()));
                 }
-                Opcode::GreaterEqual => {
+                Instruction::GreaterEqual => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::boolean(left.as_number() >= right.as_number()));
                 }
-                Opcode::Less => {
+                Instruction::Less => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::boolean(left.as_number() < right.as_number()));
                 }
-                Opcode::LessEqual => {
+                Instruction::LessEqual => {
                     let right = value_stack.pop();
                     let left = value_stack.pop();
 
                     value_stack.push(Value::boolean(left.as_number() <= right.as_number()));
                 }
-                Opcode::Not => {
+                Instruction::Not => {
                     let value = value_stack.pop();
 
                     value_stack.push(Value::boolean(!value.as_bool()));
                 }
-                Opcode::Negate => {
+                Instruction::Negate => {
                     let value = value_stack.pop();
 
                     value_stack.push(Value::number(-value.as_number()));
                 }
-                Opcode::Print => {
+                Instruction::Print => {
                     let value = value_stack.pop();
 
                     println!("{:?}", value.as_number());
                 }
-                Opcode::LoadConst => {
-                    let value = self.bytecode.constant_pool[instruction.operand];
+                Instruction::LoadConst => {
+                    let value = self.bytecode.constant_pool[offset as usize];
 
                     value_stack.push(value);
                 }
-                Opcode::Declare => {
+                Instruction::Declare => {
                     let value = value_stack.pop();
 
                     self.callstack.declare(value);
                 }
-                Opcode::StoreGlobal => {
+                Instruction::StoreGlobal(offset) => {
                     let value = value_stack.pop();
 
-                    self.callstack.store_global(value, instruction.operand);
+                    self.callstack.store_global(value, offset as usize);
                 }
-                Opcode::LoadGlobal => {
-                    let value = self.callstack.load_global(instruction.operand);
+                Instruction::LoadGlobal(offset) => {
+                    let value = self.callstack.load_global(offset as usize);
 
                     value_stack.push(value);
                 }
-                Opcode::EnterScope => self.callstack.enter_scope(),
-                Opcode::ExitScope => self.callstack.exit_scope(),
-                Opcode::Jump => {
-                    self.instruction_ptr = instruction.operand;
-                    continue;
+                Instruction::EnterScope => self.callstack.enter_scope(),
+                Instruction::ExitScope => self.callstack.exit_scope(),
+                Instruction::Jump(offset) => {
+                    self.instruction_ptr = (self.instruction_ptr as i16 + offset - 1) as usize
                 }
-                Opcode::JumpIfFalse => {
+
+                Instruction::JumpIfFalse(offset) => {
                     let value = value_stack.pop();
 
+                    let jump = offset - 1;
+
                     if !value.as_bool() {
-                        self.instruction_ptr = instruction.operand;
-                        continue;
+                        self.instruction_ptr = (self.instruction_ptr as i16 + jump) as usize;
                     }
                 }
                 _ => (),

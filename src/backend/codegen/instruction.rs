@@ -1,12 +1,6 @@
 #[derive(Debug, Clone)]
-pub struct Instruction {
-    pub opcode: Opcode,
-    pub operand: i16,
-}
 
-#[derive(Debug, Clone)]
-#[repr(u8)]
-pub enum Opcode {
+pub enum Instruction {
     Plus,
     Minus,
     Multiply,
@@ -24,29 +18,19 @@ pub enum Opcode {
     Negate,
 
     Declare,
-    LoadLocal,
-    LoadGlobal,
-    StoreLocal,
-    StoreGlobal,
-    LoadConst,
+    LoadLocal(i16),
+    LoadGlobal(i16),
+    StoreLocal(i16),
+    StoreGlobal(i16),
+    LoadConst(i16),
 
     EnterScope,
     ExitScope,
 
-    Jump,
-    JumpIfFalse,
+    Jump(i16),
+    JumpIfFalse(i16),
 
     Print,
 
     Nothing,
-}
-
-impl Instruction {
-    pub fn nullary(opcode: Opcode) -> Instruction {
-        Instruction { opcode, operand: 0 }
-    }
-
-    pub fn unary(opcode: Opcode, operand: i16) -> Instruction {
-        Instruction { opcode, operand }
-    }
 }
