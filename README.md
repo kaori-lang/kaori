@@ -42,7 +42,7 @@
 program                  -> declaration* EOF
 
 type                     -> function_type | primitive_type
-primitive_type           -> bool | f64 | str
+primitive_type           -> bool | num | str
 function_type            -> ( [type [, type]*] ) -> type
 
 declaration              -> variable_declaration
