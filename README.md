@@ -136,34 +136,6 @@ Build an optimized release binary:
 cargo build --release
 ```
 
-## Contributing
-
-Contributions are warmly welcome!
-
-### Ways to Contribute:
-
--   🚨 Report bugs
--   ✨ Propose new features or syntax ideas
--   🧪 Add new test cases
--   📚 Improve the documentation
-
-### Steps:
-
-1. Fork the repo
-2. Create a new branch:
-
-    ```bash
-    git checkout -b feature/my-feature
-    ```
-
-3. Make your changes and commit:
-
-    ```bash
-    git commit -m 'feat: add my feature'
-    ```
-
-4. Push and open a PR
-
 ## 💖 Name Inspiration
 
 The name Kaori is inspired by the character Kaori Miyazono from the anime "Your Lie in April". She represents inspiration, motivation, and the desire to create something different from the standard — the same spirit behind creating this language

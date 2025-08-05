@@ -360,7 +360,7 @@ impl Parser {
     }
 
     fn parse_factor(&mut self) -> Result<Expr, KaoriError> {
-        let mut left = self.parse_unary()?;
+        let mut left = self.parse_prefix_unary()?;
 
         while !self.token_stream.at_end() {
             let kind = self.token_stream.token_kind();
@@ -374,7 +374,7 @@ impl Parser {
             };
 
             self.token_stream.advance();
-            let right = self.parse_unary()?;
+            let right = self.parse_prefix_unary()?;
 
             left = Expr::binary(operator, left, right, span);
         }
@@ -382,14 +382,14 @@ impl Parser {
         Ok(left)
     }
 
-    fn parse_unary(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_prefix_unary(&mut self) -> Result<Expr, KaoriError> {
         let kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
 
         let operator = match kind {
             TokenKind::Plus => {
                 self.token_stream.advance();
-                return self.parse_unary();
+                return self.parse_prefix_unary();
             }
             TokenKind::Minus => UnaryOp::Negate,
             TokenKind::Not => UnaryOp::Not,
@@ -398,7 +398,7 @@ impl Parser {
 
         self.token_stream.advance();
 
-        let right = self.parse_unary()?;
+        let right = self.parse_prefix_unary()?;
 
         Ok(Expr::unary(operator, right, span))
     }
@@ -452,6 +452,21 @@ impl Parser {
         self.token_stream.consume(TokenKind::Identifier)?;
 
         Ok(identifier)
+    }
+
+    fn parse_postfix_unary(&self, left: Expr) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        match self.token_stream.token_kind() {
+            TokenKind::Increment => {
+                let bin = Expr::binary(
+                    BinaryOp::Plus,
+                    identifier,
+                    Expr::number_literal(1.0, span),
+                    span,
+                );
+            }
+        }
     }
 
     /* Types */
