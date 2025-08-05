@@ -28,6 +28,10 @@ pub enum ExprKind {
         resolution: Resolution,
         span: Span,
     },
+    FunctionCall {
+        callee: Box<Expr>,
+        arguments: Vec<Expr>,
+    },
     StringLiteral(String),
     NumberLiteral(f64),
     BooleanLiteral(bool),
@@ -72,6 +76,16 @@ impl Expr {
                 name,
                 resolution: Resolution::default(),
                 span,
+            },
+        }
+    }
+
+    pub fn function_call(callee: Expr, arguments: Vec<Expr>, span: Span) -> Expr {
+        Expr {
+            span,
+            kind: ExprKind::FunctionCall {
+                callee: Box::new(callee),
+                arguments,
             },
         }
     }
