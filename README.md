@@ -5,7 +5,7 @@
 ## Features
 
 -   **Statically Typed**  
-    Enforces type safety for predictable, and faster runtimes
+    Enforces type safety for predictable, and faster runtime
 
 -   **Detailed Error Messages**  
     Developer-friendly diagnostics for syntax and runtime issues
@@ -31,10 +31,6 @@
     -   [ ] Native data structures (e.g., lists, maps)
     -   [ ] Constant folding
     -   [ ] Classes and inheritance
-
-## 🛠️ Technologies Used 🛠️
-
--   **Rust 🦀** — Core engine for speed and safety
 
 ## Grammar
 
@@ -102,12 +98,12 @@ function_call             -> callee [(expression [, expression]*)]*
 
 ## Getting Started
 
-### 📋 Prerequisites
+### Prerequisites
 
 -   [Rust](https://www.rust-lang.org/) (>= 1.70)
 -   Cargo (comes bundled with Rust)
 
-### ⬇️ Installation
+### Installation
 
 1. Clone the repository:
 
