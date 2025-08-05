@@ -24,17 +24,12 @@ pub enum DeclKind {
 }
 
 impl Decl {
-    pub fn variable(
-        name: String,
-        right: impl Into<Box<Expr>>,
-        type_annotation: Type,
-        span: Span,
-    ) -> Decl {
+    pub fn variable(name: String, right: Expr, type_annotation: Type, span: Span) -> Decl {
         Decl {
             span,
             kind: DeclKind::Variable {
                 name,
-                right: right.into(),
+                right: Box::new(right),
                 type_annotation,
             },
         }

@@ -31,22 +31,3 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     Ok(())
 }
-
-pub fn if_(
-    condition: Box<Expr>,
-    then_branch: impl Into<Box<Stmt>>,
-    else_branch: Option<Stmt>,
-    span: Span,
-) -> Stmt {
-    Stmt {
-        span,
-        kind: StmtKind::If {
-            condition,
-            then_branch: then_branch.into(),
-            else_branch: match else_branch {
-                Some(branch) => Box::new(branch),
-                None => None,
-            },
-        },
-    }
-}
