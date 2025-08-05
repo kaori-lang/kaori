@@ -255,15 +255,16 @@ impl Parser {
             let kind = self.token_stream.token_kind();
             let span = self.token_stream.span();
 
-            if kind != TokenKind::Or {
-                break;
-            }
+            let operator = match kind {
+                TokenKind::Or => BinaryOp::Or,
+                _ => break,
+            };
 
             self.token_stream.advance();
 
             let right = self.parse_and()?;
 
-            left = Expr::binary(BinaryOp::Or, left, right, span);
+            left = Expr::binary(operator, left, right, span);
         }
 
         Ok(left)
@@ -276,14 +277,15 @@ impl Parser {
             let kind = self.token_stream.token_kind();
             let span = self.token_stream.span();
 
-            if kind != TokenKind::And {
-                break;
-            }
+            let operator = match kind {
+                TokenKind::And => BinaryOp::And,
+                _ => break,
+            };
 
             self.token_stream.advance();
             let right = self.parse_equality()?;
 
-            left = Expr::binary(BinaryOp::And, left, right, span);
+            left = Expr::binary(operator, left, right, span);
         }
 
         Ok(left)
@@ -396,7 +398,9 @@ impl Parser {
 
         self.token_stream.advance();
 
-        Ok(Expr::unary(operator, self.parse_unary()?, span))
+        let right = self.parse_unary()?;
+
+        Ok(Expr::unary(operator, right, span))
     }
 
     fn parse_primary(&mut self) -> Result<Expr, KaoriError> {
@@ -425,14 +429,15 @@ impl Parser {
                 Expr::boolean_literal(value, span)
             }
             TokenKind::StringLiteral => {
-                let lexeme = self.token_stream.lexeme();
+                let value = self.token_stream.lexeme();
 
                 self.token_stream.advance();
-                Expr::string_literal(lexeme, span)
+                Expr::string_literal(value, span)
             }
             TokenKind::Identifier => self.parse_identifier()?,
             _ => {
                 let span = self.token_stream.span();
+
                 return Err(kaori_error!(span, "{:?} is a invalid operand", kind));
             }
         })
