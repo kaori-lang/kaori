@@ -34,28 +34,34 @@ pub enum ExprKind {
 }
 
 impl Expr {
-    pub fn binary(operator: BinaryOp, left: Box<Expr>, right: Box<Expr>, span: Span) -> Expr {
+    pub fn binary(operator: BinaryOp, left: Expr, right: Expr, span: Span) -> Expr {
         Expr {
             span,
             kind: ExprKind::Binary {
                 operator,
-                left,
-                right,
+                left: Box::new(left),
+                right: Box::new(right),
             },
         }
     }
 
-    pub fn unary(operator: UnaryOp, right: Box<Expr>, span: Span) -> Expr {
+    pub fn unary(operator: UnaryOp, right: Expr, span: Span) -> Expr {
         Expr {
             span,
-            kind: ExprKind::Unary { operator, right },
+            kind: ExprKind::Unary {
+                operator,
+                right: Box::new(right),
+            },
         }
     }
 
-    pub fn assign(identifier: Box<Expr>, right: Box<Expr>, span: Span) -> Expr {
+    pub fn assign(identifier: Expr, right: Expr, span: Span) -> Expr {
         Expr {
             span,
-            kind: ExprKind::Assign { identifier, right },
+            kind: ExprKind::Assign {
+                identifier: Box::new(identifier),
+                right: Box::new(right),
+            },
         }
     }
 
@@ -64,10 +70,7 @@ impl Expr {
             span,
             kind: ExprKind::Identifier {
                 name,
-                resolution: Resolution {
-                    global: false,
-                    offset: 0,
-                },
+                resolution: Resolution::default(),
                 span,
             },
         }

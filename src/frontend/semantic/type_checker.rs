@@ -87,13 +87,11 @@ impl Visitor<Type> for TypeChecker {
                     self.visit_declaration(parameter)?;
                 }
 
-                let StmtKind::Block(declarations) = &mut block.kind else {
-                    unreachable!()
+                if let StmtKind::Block(declarations) = &mut block.kind {
+                    for declaration in declarations {
+                        self.visit_ast_node(declaration)?;
+                    }
                 };
-
-                for declaration in declarations {
-                    self.visit_ast_node(declaration)?;
-                }
 
                 self.environment.exit_function();
             }

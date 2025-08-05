@@ -24,12 +24,17 @@ pub enum DeclKind {
 }
 
 impl Decl {
-    pub fn variable(name: String, right: Box<Expr>, type_annotation: Type, span: Span) -> Decl {
+    pub fn variable(
+        name: String,
+        right: impl Into<Box<Expr>>,
+        type_annotation: Type,
+        span: Span,
+    ) -> Decl {
         Decl {
             span,
             kind: DeclKind::Variable {
                 name,
-                right,
+                right: right.into(),
                 type_annotation,
             },
         }
@@ -39,9 +44,26 @@ impl Decl {
         name: String,
         parameters: Vec<Decl>,
         block: Stmt,
-        type_annotation: Type,
+        return_type: Type,
         span: Span,
     ) -> Decl {
+        let type_annotation = Type::function(
+            parameters
+                .iter()
+                .map(|p| {
+                    if let DeclKind::Variable {
+                        type_annotation, ..
+                    } = &p.kind
+                    {
+                        type_annotation.clone()
+                    } else {
+                        unreachable!()
+                    }
+                })
+                .collect(),
+            Box::new(return_type),
+        );
+
         Decl {
             span,
             kind: DeclKind::Function {

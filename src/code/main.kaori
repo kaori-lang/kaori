@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-
 iterations: num = 100000;
 
 for i: num = 0; i < iterations; i = i + 1 {
@@ -46,6 +37,3 @@ for i: num = 0; i < iterations; i = i + 1 {
 
 }
 
-f: bool = 5;
-g: str = 7;
-h: num = 11;
