@@ -34,7 +34,7 @@
 
 ## 🛠️ Technologies Used 🛠️
 
--   **Rust 🦀** — Core engine for speed and safety.
+-   **Rust 🦀** — Core engine for speed and safety
 
 ## Grammar
 
