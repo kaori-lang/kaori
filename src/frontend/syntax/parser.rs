@@ -6,7 +6,7 @@ use crate::{
 
 use super::{
     ast_node::ASTNode,
-    declaration::{Decl, DeclKind},
+    declaration::Decl,
     expression::Expr,
     operator::{BinaryOp, UnaryOp},
     statement::{Stmt, StmtKind},

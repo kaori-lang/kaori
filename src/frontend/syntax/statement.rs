@@ -40,10 +40,7 @@ impl Stmt {
             kind: StmtKind::If {
                 condition: Box::new(condition),
                 then_branch: Box::new(then_branch),
-                else_branch: match else_branch {
-                    Some(branch) => Some(Box::new(branch)),
-                    None => None,
-                },
+                else_branch: else_branch.map(Box::new),
             },
         }
     }
