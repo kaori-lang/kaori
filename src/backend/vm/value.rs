@@ -69,6 +69,16 @@ impl Drop for Value {
     }
 }
 
+impl Clone for Value {
+    fn clone(&self) -> Self {
+        match self.tag {
+            ValueTag::Number => Value::number(self.as_number()),
+            ValueTag::Boolean => Value::boolean(self.as_bool()),
+            ValueTag::String => Value::str(self.as_str().to_owned()),
+        }
+    }
+}
+
 pub enum ValueTag {
     Number,
     Boolean,

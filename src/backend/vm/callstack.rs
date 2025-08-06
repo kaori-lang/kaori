@@ -7,14 +7,14 @@ pub struct Callstack {
 }
 
 impl Callstack {
-    pub fn declare(&mut self, value: &Value) {
+    pub fn declare(&mut self, value: Value) {
         self.declarations[self.index] = value;
 
         self.index += 1;
     }
 
-    pub fn load_global(&self, offset: usize) -> Value {
-        unsafe { *self.declarations.get_unchecked(offset) }
+    pub fn load_global(&self, offset: usize) -> &Value {
+        unsafe { self.declarations.get_unchecked(offset) }
     }
 
     pub fn store_global(&mut self, value: Value, offset: usize) {

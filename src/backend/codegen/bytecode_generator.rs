@@ -16,12 +16,12 @@ use crate::{
 use super::instruction::Instruction;
 
 pub struct BytecodeGenerator<'a> {
-    instructions: &'a mut [Instruction],
-    constant_pool: &'a mut [Value],
+    instructions: &'a mut Vec<Instruction>,
+    constant_pool: &'a mut Vec<Value>,
 }
 
 impl<'a> BytecodeGenerator<'a> {
-    pub fn new(instructions: &'a mut [Instruction], constant_pool: &'a mut [Value]) -> Self {
+    pub fn new(instructions: &'a mut Vec<Instruction>, constant_pool: &'a mut Vec<Value>) -> Self {
         Self {
             instructions,
             constant_pool,
@@ -83,7 +83,7 @@ impl<'a> BytecodeGenerator<'a> {
     }
 }
 
-impl Visitor<()> for BytecodeGenerator {
+impl<'a> Visitor<()> for BytecodeGenerator<'a> {
     fn visit_ast_node(&mut self, node: &mut ASTNode) -> Result<(), KaoriError> {
         match node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),
