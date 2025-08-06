@@ -17,7 +17,7 @@
     -   [x] Logical operators (`&&`, `||`, `!`)
     -   [x] Arithmetic operators (`+`, `-`, `*`, `/`)
     -   [x] Comparison operators (`==`, `!=`, `<`, `>`, `<=`, `>=`)
-    -   [ ] Postfix operators (`++`, `--`)
+    -   [x] Postfix operators (`++`, `--`)
     -   [x] `if / else` statements
     -   [x] `for` loops
     -   [x] `while` loops

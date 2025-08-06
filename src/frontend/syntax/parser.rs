@@ -434,7 +434,7 @@ impl Parser {
                 self.token_stream.advance();
                 Expr::string_literal(value, span)
             }
-            TokenKind::Identifier => self.parse_identifier()?,
+            TokenKind::Identifier => self.parse_postfix_unary()?,
             _ => {
                 let span = self.token_stream.span();
 
@@ -459,7 +459,7 @@ impl Parser {
         let span = self.token_stream.span();
         let identifier = Expr::identifier(name.clone(), span);
 
-        self.token_stream.consume(TokenKind::Identifier);
+        self.token_stream.consume(TokenKind::Identifier)?;
 
         let kind = self.token_stream.token_kind();
 
@@ -472,6 +472,7 @@ impl Parser {
                     span,
                 );
 
+                self.token_stream.advance();
                 Expr::assign(identifier, right, span)
             }
             TokenKind::Decrement => {
@@ -482,6 +483,7 @@ impl Parser {
                     span,
                 );
 
+                self.token_stream.advance();
                 Expr::assign(identifier, right, span)
             }
             _ => identifier,

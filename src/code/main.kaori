@@ -1,4 +1,4 @@
-iterations: num = 1000000;
+/* iterations: num = 1000000;
 max_fib: num = 100;
 
 for i: num = 0; i < iterations; i = i + 1 {
@@ -10,3 +10,13 @@ for i: num = 0; i < iterations; i = i + 1 {
         a = b;
     }
 }
+ */
+
+
+ for i: num = 0; i < 5; i++ {
+    print(i);
+
+    for j: num = 0; j < 4; j++ {
+        print(j);
+    }
+ }
