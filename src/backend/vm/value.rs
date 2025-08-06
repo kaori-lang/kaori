@@ -37,11 +37,16 @@ impl Value {
         unsafe { self.value.boolean }
     }
 
+    pub fn as_str(&self) -> &str {
+        unsafe { &self.value.str }
+    }
+
     pub fn equal(&self, other: &Value) -> bool {
         match (&self.tag, &other.tag) {
             (ValueTag::Number, ValueTag::Number) => self.as_number() == other.as_number(),
             (ValueTag::Boolean, ValueTag::Boolean) => self.as_bool() == other.as_bool(),
-            _ => true,
+            (ValueTag::String, ValueTag::String) => self.as_str() == other.as_str(),
+            _ => false,
         }
     }
 }

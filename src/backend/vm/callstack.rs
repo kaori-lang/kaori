@@ -7,7 +7,7 @@ pub struct Callstack {
 }
 
 impl Callstack {
-    pub fn declare(&mut self, value: Value) {
+    pub fn declare(&mut self, value: &Value) {
         self.declarations[self.index] = value;
 
         self.index += 1;

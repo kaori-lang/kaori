@@ -14,9 +14,9 @@ impl ValueStack {
         self.index += 1;
     }
 
-    pub fn pop(&mut self) -> Value {
+    pub fn pop(&mut self) -> &Value {
         self.index -= 1;
-        unsafe { *self.values.get_unchecked(self.index) }
+        unsafe { self.values.get_unchecked(self.index) }
     }
 }
 

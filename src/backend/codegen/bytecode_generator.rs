@@ -13,22 +13,22 @@ use crate::{
     utils::visitor::Visitor,
 };
 
-use super::{bytecode::Bytecode, instruction::Instruction};
+use super::instruction::Instruction;
 
-pub struct BytecodeGenerator {
-    instructions: Vec<Instruction>,
-    constant_pool: Vec<Value>,
+pub struct BytecodeGenerator<'a> {
+    instructions: &'a mut [Instruction],
+    constant_pool: &'a mut [Value],
 }
 
-impl BytecodeGenerator {
-    pub fn new() -> Self {
+impl<'a> BytecodeGenerator<'a> {
+    pub fn new(instructions: &'a mut [Instruction], constant_pool: &'a mut [Value]) -> Self {
         Self {
-            instructions: Vec::new(),
-            constant_pool: Vec::new(),
+            instructions,
+            constant_pool,
         }
     }
 
-    pub fn generate(&mut self, nodes: &mut [ASTNode]) -> Result<Bytecode, KaoriError> {
+    pub fn generate(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
         self.emit(Instruction::EnterScope);
 
         for i in 0..nodes.len() {
@@ -47,9 +47,7 @@ impl BytecodeGenerator {
 
         self.emit(Instruction::ExitScope);
 
-        let bytecode = Bytecode::new(self.instructions.clone(), self.constant_pool.clone());
-
-        Ok(bytecode)
+        Ok(())
     }
 
     pub fn emit(&mut self, instruction: Instruction) -> usize {
