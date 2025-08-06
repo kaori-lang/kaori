@@ -1,4 +1,4 @@
-/* iterations: num = 1000000;
+iterations: num = 1000000;
 max_fib: num = 100;
 
 for i: num = 0; i < iterations; i = i + 1 {
@@ -10,12 +10,4 @@ for i: num = 0; i < iterations; i = i + 1 {
         a = b;
     }
 }
- */
-
-
-
-def foo(a: num = 5) -> bool {
-
-}
-
-foo(1)();
+ 

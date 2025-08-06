@@ -1,4 +1,5 @@
-#[derive(Clone, Copy)]
+use std::mem::ManuallyDrop;
+
 pub struct Value {
     tag: ValueTag,
     value: ValueUnion,
@@ -19,6 +20,15 @@ impl Value {
         }
     }
 
+    pub fn str(value: String) -> Value {
+        Value {
+            tag: ValueTag::String,
+            value: ValueUnion {
+                str: ManuallyDrop::new(value),
+            },
+        }
+    }
+
     pub fn as_number(&self) -> f64 {
         unsafe { self.value.number }
     }
@@ -28,7 +38,7 @@ impl Value {
     }
 
     pub fn equal(&self, other: &Value) -> bool {
-        match (self.tag, other.tag) {
+        match (&self.tag, &other.tag) {
             (ValueTag::Number, ValueTag::Number) => self.as_number() == other.as_number(),
             (ValueTag::Boolean, ValueTag::Boolean) => self.as_bool() == other.as_bool(),
             _ => true,
@@ -45,16 +55,23 @@ impl Default for Value {
     }
 }
 
-#[derive(Clone, Copy)]
+impl Drop for Value {
+    fn drop(&mut self) {
+        match self.tag {
+            ValueTag::String => unsafe { ManuallyDrop::drop(&mut self.value.str) },
+            _ => (),
+        }
+    }
+}
+
 pub enum ValueTag {
     Number,
     Boolean,
     String,
 }
 
-#[derive(Clone, Copy)]
 pub union ValueUnion {
     number: f64,
     boolean: bool,
-    str: [char; 10],
+    str: ManuallyDrop<String>,
 }
