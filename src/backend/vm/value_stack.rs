@@ -24,7 +24,7 @@ impl Default for ValueStack {
     fn default() -> Self {
         Self {
             index: 0,
-            values: [Value::default(); 1024],
+            values: [(); 1024].map(|_| Value::default()),
         }
     }
 }

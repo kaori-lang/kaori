@@ -36,7 +36,7 @@ impl Default for Callstack {
     fn default() -> Self {
         Self {
             index: 0,
-            declarations: [Value::default(); 1024],
+            declarations: [(); 1024].map(|_| Value::default()),
             scopes_pointer: Vec::new(),
         }
     }

@@ -138,7 +138,7 @@ impl KaoriVM {
                     self.callstack.store_global(value, offset as usize);
                 }
                 Instruction::LoadGlobal(offset) => {
-                    let value = self.callstack.load_global(offset as usize);
+                    let value = self.callstack.load_global(offset as usize).to_owned();
 
                     value_stack.push(value);
                 }

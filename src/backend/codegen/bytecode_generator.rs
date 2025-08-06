@@ -64,7 +64,7 @@ impl<'a> BytecodeGenerator<'a> {
         while index < self.constant_pool.len() {
             let current = &self.constant_pool[index];
 
-            if current.equal(&other) {
+            if *current == other {
                 break;
             }
 
