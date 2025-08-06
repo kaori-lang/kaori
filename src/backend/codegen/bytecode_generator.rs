@@ -1,6 +1,7 @@
 #![allow(clippy::new_without_default)]
 
 use crate::{
+    backend::vm::value::Value,
     error::kaori_error::KaoriError,
     frontend::syntax::{
         ast_node::ASTNode,
@@ -12,11 +13,11 @@ use crate::{
     utils::visitor::Visitor,
 };
 
-use super::{bytecode::Bytecode, const_value::ConstValue, instruction::Instruction};
+use super::{bytecode::Bytecode, instruction::Instruction};
 
 pub struct BytecodeGenerator {
     instructions: Vec<Instruction>,
-    constant_pool: Vec<ConstValue>,
+    constant_pool: Vec<Value>,
 }
 
 impl BytecodeGenerator {
@@ -46,7 +47,7 @@ impl BytecodeGenerator {
 
         self.emit(Instruction::ExitScope);
 
-        let bytecode = Bytecode::new(self.instructions.clone(), &self.constant_pool);
+        let bytecode = Bytecode::new(self.instructions.clone(), self.constant_pool.clone());
 
         Ok(bytecode)
     }
@@ -59,13 +60,13 @@ impl BytecodeGenerator {
         index
     }
 
-    pub fn emit_constant(&mut self, other: ConstValue) {
+    pub fn emit_constant(&mut self, other: Value) {
         let mut index = 0;
 
         while index < self.constant_pool.len() {
             let current = &self.constant_pool[index];
 
-            if current == &other {
+            if current.equal(&other) {
                 break;
             }
 
@@ -236,8 +237,8 @@ impl Visitor<()> for BytecodeGenerator {
                     self.emit(Instruction::LoadLocal(resolution.offset as i16));
                 }
             }
-            ExprKind::NumberLiteral(value) => self.emit_constant(ConstValue::Number(*value)),
-            ExprKind::BooleanLiteral(value) => self.emit_constant(ConstValue::Bool(*value)),
+            ExprKind::NumberLiteral(value) => self.emit_constant(Value::number(*value)),
+            ExprKind::BooleanLiteral(value) => self.emit_constant(Value::boolean(*value)),
             /* ExprKind::StringLiteral(value) => {
                 self.emit_constant(Value::Str(value.to_string()))
             } */

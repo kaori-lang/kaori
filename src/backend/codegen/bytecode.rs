@@ -1,6 +1,6 @@
 use crate::backend::vm::value::Value;
 
-use super::{const_value::ConstValue, instruction::Instruction};
+use super::instruction::Instruction;
 
 pub struct Bytecode {
     pub instructions: Vec<Instruction>,
@@ -8,10 +8,10 @@ pub struct Bytecode {
 }
 
 impl Bytecode {
-    pub fn new(instructions: Vec<Instruction>, constant_pool: &[ConstValue]) -> Self {
+    pub fn new(instructions: Vec<Instruction>, constant_pool: Vec<Value>) -> Self {
         Self {
             instructions,
-            constant_pool: constant_pool.iter().map(|v| v.to_union()).collect(),
+            constant_pool,
         }
     }
 }

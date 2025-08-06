@@ -14,8 +14,8 @@ for i: num = 0; i < iterations; i = i + 1 {
 
 
 
-def foo() -> bool {
+def foo(a: num = 5) -> bool {
 
 }
 
-a: num = foo()();
+foo(1)();
