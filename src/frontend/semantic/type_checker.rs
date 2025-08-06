@@ -73,8 +73,9 @@ impl Visitor<Type> for TypeChecker {
                 if right_type != *type_annotation {
                     return Err(kaori_error!(
                         right.span,
-                        "expected value of type {:?} in variable declaration",
+                        "expected value of type {:?}, but found {:?}",
                         type_annotation,
+                        right_type
                     ));
                 }
 

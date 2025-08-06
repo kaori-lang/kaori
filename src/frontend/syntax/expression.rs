@@ -2,13 +2,13 @@ use crate::frontend::{scanner::span::Span, semantic::resolution::Resolution};
 
 use super::operator::{BinaryOp, UnaryOp};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expr {
     pub span: Span,
     pub kind: ExprKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ExprKind {
     Binary {
         operator: BinaryOp,
@@ -56,6 +56,28 @@ impl Expr {
                 right: Box::new(right),
             },
         }
+    }
+
+    pub fn increment(identifier: Expr, span: Span) -> Expr {
+        let right = Expr::binary(
+            BinaryOp::Plus,
+            identifier.clone(),
+            Expr::number_literal(1.0, span),
+            span,
+        );
+
+        Expr::assign(identifier, right, span)
+    }
+
+    pub fn decrement(identifier: Expr, span: Span) -> Expr {
+        let right = Expr::binary(
+            BinaryOp::Minus,
+            identifier.clone(),
+            Expr::number_literal(1.0, span),
+            span,
+        );
+
+        Expr::assign(identifier, right, span)
     }
 
     pub fn assign(identifier: Expr, right: Expr, span: Span) -> Expr {

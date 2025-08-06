@@ -45,7 +45,7 @@ impl TokenStream {
     }
 
     pub fn look_ahead(&mut self, expected: &[TokenKind]) -> bool {
-        for i in 0..expected.len() {
+        for (i, _) in expected.iter().enumerate() {
             let j = self.index + i;
 
             if j >= self.tokens.len() {

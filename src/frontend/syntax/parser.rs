@@ -455,37 +455,14 @@ impl Parser {
     }
 
     fn parse_postfix_unary(&mut self) -> Result<Expr, KaoriError> {
-        let name = self.token_stream.lexeme().to_owned();
-        let span = self.token_stream.span();
-        let identifier = Expr::identifier(name.clone(), span);
-
-        self.token_stream.consume(TokenKind::Identifier)?;
+        let identifier = self.parse_identifier()?;
 
         let kind = self.token_stream.token_kind();
+        let span = self.token_stream.span();
 
         Ok(match kind {
-            TokenKind::Increment => {
-                let right: Expr = Expr::binary(
-                    BinaryOp::Plus,
-                    Expr::identifier(name.clone(), span),
-                    Expr::number_literal(1.0, span),
-                    span,
-                );
-
-                self.token_stream.advance();
-                Expr::assign(identifier, right, span)
-            }
-            TokenKind::Decrement => {
-                let right: Expr = Expr::binary(
-                    BinaryOp::Minus,
-                    Expr::identifier(name.clone(), span),
-                    Expr::number_literal(1.0, span),
-                    span,
-                );
-
-                self.token_stream.advance();
-                Expr::assign(identifier, right, span)
-            }
+            TokenKind::Increment => Expr::increment(identifier, span),
+            TokenKind::Decrement => Expr::decrement(identifier, span),
             _ => identifier,
         })
     }
