@@ -56,7 +56,7 @@ impl Parser {
 
     fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
         let span = self.token_stream.span();
-        let name = self.token_stream.lexeme();
+        let name = self.token_stream.lexeme().to_owned();
 
         self.token_stream.consume(TokenKind::Identifier)?;
         self.token_stream.consume(TokenKind::Colon)?;
@@ -75,7 +75,7 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::Function)?;
 
-        let name = self.token_stream.lexeme();
+        let name = self.token_stream.lexeme().to_owned();
 
         self.token_stream.consume(TokenKind::Identifier)?;
 
@@ -429,7 +429,7 @@ impl Parser {
                 Expr::boolean_literal(value, span)
             }
             TokenKind::StringLiteral => {
-                let value = self.token_stream.lexeme();
+                let value = self.token_stream.lexeme().to_owned();
 
                 self.token_stream.advance();
                 Expr::string_literal(value, span)
@@ -444,7 +444,7 @@ impl Parser {
     }
 
     fn parse_identifier(&mut self) -> Result<Expr, KaoriError> {
-        let name = self.token_stream.lexeme();
+        let name = self.token_stream.lexeme().to_owned();
         let span = self.token_stream.span();
 
         let identifier = Expr::identifier(name, span);
@@ -454,19 +454,38 @@ impl Parser {
         Ok(identifier)
     }
 
-    fn parse_postfix_unary(&self, left: Expr) -> Result<Expr, KaoriError> {
+    fn parse_postfix_unary(&mut self) -> Result<Expr, KaoriError> {
+        let name = self.token_stream.lexeme().to_owned();
         let span = self.token_stream.span();
+        let identifier = Expr::identifier(name.clone(), span);
 
-        match self.token_stream.token_kind() {
+        self.token_stream.consume(TokenKind::Identifier);
+
+        let kind = self.token_stream.token_kind();
+
+        Ok(match kind {
             TokenKind::Increment => {
-                let bin = Expr::binary(
+                let right: Expr = Expr::binary(
                     BinaryOp::Plus,
-                    identifier,
+                    Expr::identifier(name.clone(), span),
                     Expr::number_literal(1.0, span),
                     span,
                 );
+
+                Expr::assign(identifier, right, span)
             }
-        }
+            TokenKind::Decrement => {
+                let right: Expr = Expr::binary(
+                    BinaryOp::Minus,
+                    Expr::identifier(name.clone(), span),
+                    Expr::number_literal(1.0, span),
+                    span,
+                );
+
+                Expr::assign(identifier, right, span)
+            }
+            _ => identifier,
+        })
     }
 
     /* Types */
@@ -484,7 +503,7 @@ impl Parser {
     fn parse_primitive_type(&mut self) -> Result<Type, KaoriError> {
         let sub = self.token_stream.lexeme();
 
-        let primitive = match sub.as_str() {
+        let primitive = match sub {
             "bool" => Type::Boolean,
             "str" => Type::String,
             "num" => Type::Number,

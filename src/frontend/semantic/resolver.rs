@@ -187,18 +187,21 @@ impl Visitor<()> for Resolver {
                 self.visit_expression(right)?;
             }
             ExprKind::Unary { right, .. } => self.visit_expression(right)?,
-            ExprKind::Identifier {
-                name,
-                span,
-                resolution,
-            } => {
+            ExprKind::Identifier { name, resolution } => {
                 let Some(res) = self.search(name) else {
-                    return Err(kaori_error!(*span, "{} is not declared", name));
+                    return Err(kaori_error!(expression.span, "{} is not declared", name));
                 };
 
                 *resolution = res;
             }
-            _ => {}
+            ExprKind::FunctionCall { callee, arguments } => {
+                self.visit_expression(callee)?;
+
+                for argument in arguments {
+                    self.visit_expression(argument)?;
+                }
+            }
+            _ => (),
         };
 
         Ok(())

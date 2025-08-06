@@ -1,4 +1,6 @@
 #![allow(clippy::new_without_default)]
+use std::cmp::min;
+
 use crate::{
     error::kaori_error::KaoriError,
     frontend::syntax::{
@@ -231,6 +233,33 @@ impl Visitor<Type> for TypeChecker {
                 }
             }
             ExprKind::Identifier { resolution, .. } => self.environment.get(*resolution).clone(),
+            ExprKind::FunctionCall { callee, arguments } => {
+                let Ok(Type::Function {
+                    parameters,
+                    return_type,
+                }) = self.visit_expression(callee)
+                else {
+                    return Err(kaori_error!(callee.span, "this is not a callable function"));
+                };
+
+                let comparisons = min(parameters.len(), arguments.len());
+
+                for i in 0..comparisons {
+                    let argument_type = self.visit_expression(arguments.get_mut(i).unwrap())?;
+                    let parameter_type = parameters.get(i).unwrap();
+
+                    if !argument_type.eq(parameter_type) {
+                        return Err(kaori_error!(
+                            callee.span,
+                            "expected {:?}, but found argument of type {:?}",
+                            parameter_type,
+                            argument_type
+                        ));
+                    }
+                }
+
+                *return_type
+            }
             ExprKind::NumberLiteral(..) => Type::Number,
             ExprKind::BooleanLiteral(..) => Type::Boolean,
             ExprKind::StringLiteral(..) => Type::String,

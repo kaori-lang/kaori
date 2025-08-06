@@ -26,7 +26,6 @@ pub enum ExprKind {
     Identifier {
         name: String,
         resolution: Resolution,
-        span: Span,
     },
     FunctionCall {
         callee: Box<Expr>,
@@ -75,7 +74,6 @@ impl Expr {
             kind: ExprKind::Identifier {
                 name,
                 resolution: Resolution::default(),
-                span,
             },
         }
     }

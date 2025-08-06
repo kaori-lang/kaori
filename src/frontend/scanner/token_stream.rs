@@ -62,19 +62,19 @@ impl TokenStream {
         true
     }
 
-    pub fn token_kind(&mut self) -> TokenKind {
+    pub fn token_kind(&self) -> TokenKind {
         let token = self.tokens.get(self.index).unwrap();
 
-        token.kind.clone()
+        token.kind
     }
 
-    pub fn span(&mut self) -> Span {
+    pub fn span(&self) -> Span {
         self.tokens[self.index].span
     }
 
-    pub fn lexeme(&mut self) -> String {
+    pub fn lexeme(&self) -> &str {
         let span = self.span();
 
-        self.source[span.start..span.end].to_string()
+        &self.source[span.start..span.end]
     }
 }
