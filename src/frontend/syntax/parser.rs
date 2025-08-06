@@ -461,8 +461,14 @@ impl Parser {
         let span = self.token_stream.span();
 
         Ok(match kind {
-            TokenKind::Increment => Expr::increment(identifier, span),
-            TokenKind::Decrement => Expr::decrement(identifier, span),
+            TokenKind::Increment => {
+                self.token_stream.advance();
+                Expr::increment(identifier, span)
+            }
+            TokenKind::Decrement => {
+                self.token_stream.advance();
+                Expr::decrement(identifier, span)
+            }
             _ => identifier,
         })
     }
