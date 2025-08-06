@@ -1,12 +1,21 @@
-iterations: num = 1000000;
+/* iterations: num = 1000000;
 max_fib: num = 100;
 
-for i: num = 0; i < iterations; i++ {
+for i: num = 0; i < iterations; i = i + 1 {
     a: num = 0;
     b: num = 1;
 
-    for j: num = 0; j < max_fib; j++ {
+    for j: num = 0; j < max_fib; j = j + 1 {
         temp: num = a + b;
         a = b;
     }
 }
+ */
+
+
+
+def foo() -> bool {
+
+}
+
+a: num = foo()();

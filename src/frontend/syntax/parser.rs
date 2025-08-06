@@ -469,11 +469,16 @@ impl Parser {
                 self.token_stream.advance();
                 Expr::decrement(identifier, span)
             }
+            TokenKind::LeftParen => self.parse_function_call(identifier)?,
             _ => identifier,
         })
     }
 
     fn parse_function_call(&mut self, callee: Expr) -> Result<Expr, KaoriError> {
+        if self.token_stream.token_kind() != TokenKind::LeftParen {
+            return Ok(callee);
+        }
+
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::LeftParen)?;
@@ -495,9 +500,7 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::RightParen)?;
 
-        let call = Expr::function_call(callee, arguments, span);
-
-        self.parse_function_call(call)
+        self.parse_function_call(Expr::function_call(callee, arguments, span))
     }
 
     /* Types */
