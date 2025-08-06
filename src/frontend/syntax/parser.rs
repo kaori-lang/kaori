@@ -473,6 +473,33 @@ impl Parser {
         })
     }
 
+    fn parse_function_call(&mut self, callee: Expr) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::LeftParen)?;
+
+        let mut arguments: Vec<Expr> = Vec::new();
+
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightParen
+        {
+            let argument = self.parse_expression()?;
+
+            arguments.push(argument);
+
+            if self.token_stream.token_kind() == TokenKind::RightParen {
+                break;
+            }
+
+            self.token_stream.consume(TokenKind::Comma)?;
+        }
+
+        self.token_stream.consume(TokenKind::RightParen)?;
+
+        let call = Expr::function_call(callee, arguments, span);
+
+        self.parse_function_call(call)
+    }
+
     /* Types */
     pub fn parse_type(&mut self) -> Result<Type, KaoriError> {
         match self.token_stream.token_kind() {
