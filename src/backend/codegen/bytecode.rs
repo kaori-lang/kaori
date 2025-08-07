@@ -1,14 +1,12 @@
-use crate::backend::vm::value::Value;
-
-use super::instruction::Instruction;
+use super::{constant_pool::ConstantPool, instruction::Instruction};
 
 pub struct Bytecode {
     pub instructions: Vec<Instruction>,
-    pub constant_pool: Vec<Value>,
+    pub constant_pool: ConstantPool,
 }
 
 impl Bytecode {
-    pub fn new(instructions: Vec<Instruction>, constant_pool: Vec<Value>) -> Self {
+    pub fn new(instructions: Vec<Instruction>, constant_pool: ConstantPool) -> Self {
         Self {
             instructions,
             constant_pool,

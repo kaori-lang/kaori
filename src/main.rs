@@ -2,7 +2,9 @@ use std::{fs, time::Instant};
 
 use kaori::{
     backend::{
-        codegen::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
+        codegen::{
+            bytecode::Bytecode, bytecode_generator::BytecodeGenerator, constant_pool::ConstantPool,
+        },
         vm::kaori_vm::KaoriVM,
     },
     error::kaori_error::KaoriError,
@@ -21,7 +23,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     let mut nodes = generate_ast(source)?;
 
     let mut instructions = Vec::new();
-    let mut constant_pool = Vec::new();
+    let mut constant_pool = ConstantPool::default();
 
     let mut bytecode_generator = BytecodeGenerator::new(&mut instructions, &mut constant_pool);
 

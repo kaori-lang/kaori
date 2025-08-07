@@ -24,7 +24,7 @@ impl KaoriVM {
         while self.instruction_ptr < size {
             match self.bytecode.instructions[self.instruction_ptr] {
                 Instruction::LoadConst(offset) => {
-                    let value = self.bytecode.constant_pool[offset as usize].to_owned();
+                    let value = self.bytecode.constant_pool.get_constant(offset);
 
                     value_stack.push(value);
                 }

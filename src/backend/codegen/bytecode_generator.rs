@@ -13,15 +13,18 @@ use crate::{
     utils::visitor::Visitor,
 };
 
-use super::instruction::Instruction;
+use super::{constant_pool::ConstantPool, instruction::Instruction};
 
 pub struct BytecodeGenerator<'a> {
     instructions: &'a mut Vec<Instruction>,
-    constant_pool: &'a mut Vec<Value>,
+    constant_pool: &'a mut ConstantPool,
 }
 
 impl<'a> BytecodeGenerator<'a> {
-    pub fn new(instructions: &'a mut Vec<Instruction>, constant_pool: &'a mut Vec<Value>) -> Self {
+    pub fn new(
+        instructions: &'a mut Vec<Instruction>,
+        constant_pool: &'a mut ConstantPool,
+    ) -> Self {
         Self {
             instructions,
             constant_pool,
@@ -58,28 +61,14 @@ impl<'a> BytecodeGenerator<'a> {
         index
     }
 
-    pub fn emit_constant(&mut self, other: Value) {
-        let mut index = 0;
+    pub fn emit_constant(&mut self, constant: Value) {
+        let index = self.constant_pool.add_constant(constant);
 
-        while index < self.constant_pool.len() {
-            let current = &self.constant_pool[index];
-
-            if *current == other {
-                break;
-            }
-
-            index += 1;
-        }
-
-        if index == self.constant_pool.len() {
-            self.constant_pool.push(other);
-        }
-
-        self.emit(Instruction::LoadConst(index as i16));
+        self.emit(Instruction::LoadConst(index as u16));
     }
 
-    pub fn instruction_ptr(&self) -> i16 {
-        self.instructions.len() as i16
+    pub fn instruction_ptr(&self) -> u16 {
+        self.instructions.len() as u16
     }
 }
 
@@ -150,14 +139,14 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
                 let jump_end = self.emit(Instruction::Nothing);
 
                 self.instructions[jump_if_false] =
-                    Instruction::JumpIfFalse(self.instruction_ptr() - jump_if_false as i16);
+                    Instruction::JumpIfFalse(self.instruction_ptr() as i16 - jump_if_false as i16);
 
                 if let Some(branch) = else_branch {
                     self.visit_statement(branch)?;
                 }
 
                 self.instructions[jump_end] =
-                    Instruction::Jump(self.instruction_ptr() - jump_end as i16);
+                    Instruction::Jump(self.instruction_ptr() as i16 - jump_end as i16);
             }
             StmtKind::WhileLoop { condition, block } => {
                 let start = self.instruction_ptr();
@@ -168,10 +157,12 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
 
                 self.visit_statement(block)?;
 
-                self.emit(Instruction::Jump(start - self.instruction_ptr()));
+                self.emit(Instruction::Jump(
+                    start as i16 - self.instruction_ptr() as i16,
+                ));
 
                 self.instructions[jump_if_false] =
-                    Instruction::JumpIfFalse(self.instruction_ptr() - jump_if_false as i16);
+                    Instruction::JumpIfFalse(self.instruction_ptr() as i16 - jump_if_false as i16);
             }
             _ => (),
         };
@@ -188,9 +179,9 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
                 };
 
                 if resolution.global {
-                    self.emit(Instruction::StoreGlobal(resolution.offset as i16));
+                    self.emit(Instruction::StoreGlobal(resolution.offset as u16));
                 } else {
-                    self.emit(Instruction::StoreLocal(resolution.offset as i16));
+                    self.emit(Instruction::StoreLocal(resolution.offset as u16));
                 }
             }
             ExprKind::Binary {
@@ -230,9 +221,9 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
             }
             ExprKind::Identifier { resolution, .. } => {
                 if resolution.global {
-                    self.emit(Instruction::LoadGlobal(resolution.offset as i16));
+                    self.emit(Instruction::LoadGlobal(resolution.offset as u16));
                 } else {
-                    self.emit(Instruction::LoadLocal(resolution.offset as i16));
+                    self.emit(Instruction::LoadLocal(resolution.offset as u16));
                 }
             }
             ExprKind::NumberLiteral(value) => self.emit_constant(Value::number(*value)),
