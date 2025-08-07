@@ -21,6 +21,8 @@ pub fn generate_ast(source: String) -> Result<Vec<ASTNode>, KaoriError> {
 
     resolver.resolve(&mut nodes)?;
 
+    println!("{:#?}", nodes);
+
     let mut type_checker = TypeChecker::new();
 
     type_checker.check(&mut nodes)?;

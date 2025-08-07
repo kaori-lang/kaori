@@ -37,7 +37,7 @@ impl Resolver {
                 let mut offset = start;
 
                 if !global {
-                    offset += self.environment.frame_pointer;
+                    offset = start - self.environment.frame_pointer;
                 }
 
                 return Some(Resolution { offset, global });
@@ -60,7 +60,7 @@ impl Resolver {
                 let mut offset = start;
 
                 if !global {
-                    offset += self.environment.frame_pointer;
+                    offset = start - self.environment.frame_pointer;
                 }
 
                 return Some(Resolution { offset, global });

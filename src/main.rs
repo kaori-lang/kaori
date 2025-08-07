@@ -2,10 +2,8 @@ use std::{fs, time::Instant};
 
 use kaori::{
     backend::{
-        codegen::{
-            bytecode::Bytecode, bytecode_generator::BytecodeGenerator, constant_pool::ConstantPool,
-        },
-        vm::kaori_vm::KaoriVM,
+        codegen::{bytecode_generator::BytecodeGenerator, constant_pool::ConstantPool},
+        vm::interpreter::Interpreter,
     },
     error::kaori_error::KaoriError,
     frontend::generate_ast::generate_ast,
@@ -29,15 +27,15 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     bytecode_generator.generate(&mut nodes)?;
 
-    let bytecode = Bytecode::new(instructions, constant_pool);
-
-    let mut vm = KaoriVM::new(bytecode);
+    let mut interpreter = Interpreter::new(instructions, constant_pool);
 
     let start = Instant::now();
 
-    vm.execute_instructions();
+    interpreter.execute_instructions();
 
     println!("Vm executed in: {:#?}", start.elapsed());
+
+    let v: Vec<usize> = Vec::new();
 
     Ok(())
 }

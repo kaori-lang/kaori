@@ -1,5 +1,5 @@
 pub mod callstack;
 
-pub mod kaori_vm;
+pub mod interpreter;
 pub mod value;
 pub mod value_stack;

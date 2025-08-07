@@ -1,8 +1,8 @@
-use std::hint::unreachable_unchecked;
+use std::{hint::unreachable_unchecked, rc::Rc};
 
-#[derive(PartialEq, Clone)]
+#[derive(Clone, PartialEq)]
+
 pub enum Value {
-    Str(String),
     Number(f64),
     Bool(bool),
 }
@@ -16,16 +16,14 @@ impl Value {
         Value::Bool(value)
     }
 
-    pub fn str(value: String) -> Value {
-        Value::Str(value)
-    }
-
+    /*  */
     /// # Safety
     /// Caller must ensure that `self` is `Value::Number`.
     /// Calling this on any other variant results in **undefined behavior**.
-    pub unsafe fn as_number(&self) -> f64 {
-        match &self {
-            Value::Number(value) => *value,
+
+    pub unsafe fn as_number(self) -> f64 {
+        match self {
+            Value::Number(value) => value,
             _ => unsafe { unreachable_unchecked() },
         }
     }
@@ -33,20 +31,10 @@ impl Value {
     /// # Safety
     /// Caller must ensure that `self` is `Value::Bool`.
     /// Calling this on any other variant results in **undefined behavior**.
-    pub unsafe fn as_bool(&self) -> bool {
-        match &self {
-            Value::Bool(value) => *value,
-            _ => unsafe { unreachable_unchecked() },
-        }
-    }
 
-    /// # Safety
-    /// Caller must ensure that `self` is `Value::Str`.
-    /// Calling this on any other variant results in **undefined behavior**.
-
-    pub unsafe fn as_str(&self) -> &str {
+    pub unsafe fn as_bool(self) -> bool {
         match self {
-            Value::Str(value) => value,
+            Value::Bool(value) => value,
             _ => unsafe { unreachable_unchecked() },
         }
     }

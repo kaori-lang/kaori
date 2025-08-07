@@ -46,7 +46,7 @@ declaration              -> variable_declaration
 
 variable_declaration     -> identifier : type (= expression)? ;
 
-function_declaration     -> def identifier ( [variable_declaration*] ) -> type block_statement
+function_declaration     -> def identifier ( [variable_declaration [, variable_declaration]*]? ) -> type block_statement
 
 statement                -> expression_statement
                          | print_statement

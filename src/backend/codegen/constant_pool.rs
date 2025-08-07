@@ -21,6 +21,6 @@ impl ConstantPool {
     }
 
     pub fn get_constant(&self, offset: u16) -> Value {
-        self.constants[offset as usize].to_owned()
+        unsafe { self.constants.get_unchecked(offset as usize).to_owned() }
     }
 }

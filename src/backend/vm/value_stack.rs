@@ -1,3 +1,5 @@
+use std::ptr;
+
 use super::value::Value;
 
 pub struct ValueStack {
@@ -16,7 +18,7 @@ impl ValueStack {
 
     pub fn pop(&mut self) -> Value {
         self.index -= 1;
-        unsafe { self.values.get_unchecked(self.index).to_owned() }
+        unsafe { self.values.get_unchecked(self.index).clone() }
     }
 }
 

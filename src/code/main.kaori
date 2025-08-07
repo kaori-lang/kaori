@@ -1,5 +1,5 @@
-/* iterations: num = 1000000;
-max_fib: num = 100;
+/* iterations: num = 3;
+max_fib: num = 30;
 
 for i: num = 0; i < iterations; i = i + 1 {
     a: num = 0;
@@ -14,6 +14,12 @@ for i: num = 0; i < iterations; i = i + 1 {
   */
 
 
-for i: num = 0; i < 10; i++ {
-    print(i);
+
+def foo() -> bool {
+    c: num = 0;
+    d: num = 5;
+
+    print(c);
+    print(d);
 }
+
