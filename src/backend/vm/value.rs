@@ -1,6 +1,6 @@
 use std::hint::unreachable_unchecked;
 
-#[derive(Clone, PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Value {
     Str(String),
     Number(f64),
@@ -20,21 +20,31 @@ impl Value {
         Value::Str(value)
     }
 
-    pub fn as_number(self) -> f64 {
-        match self {
-            Value::Number(value) => value,
+    /// # Safety
+    /// Caller must ensure that `self` is `Value::Number`.
+    /// Calling this on any other variant results in **undefined behavior**.
+    pub unsafe fn as_number(&self) -> f64 {
+        match &self {
+            Value::Number(value) => *value,
             _ => unsafe { unreachable_unchecked() },
         }
     }
 
-    pub fn as_bool(self) -> bool {
-        match self {
-            Value::Bool(value) => value,
+    /// # Safety
+    /// Caller must ensure that `self` is `Value::Bool`.
+    /// Calling this on any other variant results in **undefined behavior**.
+    pub unsafe fn as_bool(&self) -> bool {
+        match &self {
+            Value::Bool(value) => *value,
             _ => unsafe { unreachable_unchecked() },
         }
     }
 
-    pub fn as_str(&self) -> &str {
+    /// # Safety
+    /// Caller must ensure that `self` is `Value::Str`.
+    /// Calling this on any other variant results in **undefined behavior**.
+
+    pub unsafe fn as_str(&self) -> &str {
         match self {
             Value::Str(value) => value,
             _ => unsafe { unreachable_unchecked() },

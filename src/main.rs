@@ -20,8 +20,8 @@ fn main() {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let mut nodes = generate_ast(source)?;
 
-    let instructions = Vec::new();
-    let constant_pool = Vec::new();
+    let mut instructions = Vec::new();
+    let mut constant_pool = Vec::new();
 
     let mut bytecode_generator = BytecodeGenerator::new(&mut instructions, &mut constant_pool);
 

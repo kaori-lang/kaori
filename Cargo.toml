@@ -6,3 +6,6 @@ edition = "2024"
 [dependencies]
 ariadne = "0.5.1"
 regex = "1.11.1"
+
+[profile.release]
+debug = true

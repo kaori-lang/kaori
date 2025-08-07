@@ -237,9 +237,7 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
             }
             ExprKind::NumberLiteral(value) => self.emit_constant(Value::number(*value)),
             ExprKind::BooleanLiteral(value) => self.emit_constant(Value::boolean(*value)),
-            /* ExprKind::StringLiteral(value) => {
-                self.emit_constant(Value::Str(value.to_string()))
-            } */
+            ExprKind::StringLiteral(value) => self.emit_constant(Value::Str(value.to_owned())),
             _ => (),
         };
 

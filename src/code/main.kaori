@@ -8,6 +8,7 @@ for i: num = 0; i < iterations; i = i + 1 {
     for j: num = 0; j < max_fib; j = j + 1 {
         temp: num = a + b;
         a = b;
+        b = temp;
     }
 }
  
