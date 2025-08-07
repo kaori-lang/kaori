@@ -1,19 +1,6 @@
-/* iterations: num = 3;
-max_fib: num = 30;
+bar: num = 5;
 
-for i: num = 0; i < iterations; i = i + 1 {
-    a: num = 0;
-    b: num = 1;
-
-    for j: num = 0; j < max_fib; j = j + 1 {
-        temp: num = a + b;
-        a = b;
-        b = temp;
-    }
-}
-  */
-
-
+bar()();
 
 def foo() -> bool {
     c: num = 0;

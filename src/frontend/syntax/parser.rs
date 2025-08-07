@@ -1,6 +1,6 @@
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::scanner::{token_kind::TokenKind, token_stream::TokenStream},
+    frontend::scanner::{span::Span, token_kind::TokenKind, token_stream::TokenStream},
     kaori_error,
 };
 
@@ -479,8 +479,6 @@ impl Parser {
             return Ok(callee);
         }
 
-        let span = self.token_stream.span();
-
         self.token_stream.consume(TokenKind::LeftParen)?;
 
         let mut arguments: Vec<Expr> = Vec::new();
@@ -497,6 +495,11 @@ impl Parser {
 
             self.token_stream.consume(TokenKind::Comma)?;
         }
+
+        let span = Span {
+            start: callee.span.start,
+            end: self.token_stream.span().end,
+        };
 
         self.token_stream.consume(TokenKind::RightParen)?;
 

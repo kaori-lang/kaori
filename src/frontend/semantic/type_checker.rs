@@ -235,10 +235,10 @@ impl Visitor<Type> for TypeChecker {
             }
             ExprKind::Identifier { resolution, .. } => self.environment.get(*resolution).clone(),
             ExprKind::FunctionCall { callee, arguments } => {
-                let Ok(Type::Function {
+                let Type::Function {
                     parameters,
                     return_type,
-                }) = self.visit_expression(callee)
+                } = self.visit_expression(callee)?
                 else {
                     return Err(kaori_error!(callee.span, "this is not a callable function"));
                 };
