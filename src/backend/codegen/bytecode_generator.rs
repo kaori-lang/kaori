@@ -36,11 +36,9 @@ impl<'a> BytecodeGenerator<'a> {
 
         for i in 0..nodes.len() {
             if let Some(ASTNode::Declaration(decl)) = nodes.get(i)
-                && let DeclKind::Function {
-                    parameters, block, ..
-                } = &decl.kind
+                && let DeclKind::Function { block, .. } = &decl.kind
             {
-                let start = self.instructions.len();
+                let function_instructions_ptr = self.instructions.len();
             }
         }
 
@@ -84,21 +82,6 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
                 self.visit_expression(right)?;
                 self.emit(Instruction::Declare);
             }
-            DeclKind::Function {
-                parameters, block, ..
-            } => {
-                for parameter in parameters {
-                    self.visit_declaration(parameter)?;
-                }
-
-                let StmtKind::Block(declarations) = &mut block.kind else {
-                    unreachable!()
-                };
-
-                for declaration in declarations {
-                    self.visit_ast_node(declaration)?;
-                }
-            }
             _ => (),
         }
 
@@ -115,11 +98,11 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
 
                 self.emit(Instruction::Print);
             }
-            StmtKind::Block(declarations) => {
+            StmtKind::Block(nodes) => {
                 self.emit(Instruction::EnterScope);
 
-                for declaration in declarations {
-                    self.visit_ast_node(declaration)?;
+                for node in nodes {
+                    self.visit_ast_node(node)?;
                 }
 
                 self.emit(Instruction::ExitScope);
@@ -228,6 +211,18 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
             ExprKind::NumberLiteral(value) => self.emit_constant(Value::number(*value)),
             ExprKind::BooleanLiteral(value) => self.emit_constant(Value::boolean(*value)),
             //ExprKind::StringLiteral(value) => self.emit_constant(Value::str(value.to_owned())),
+            ExprKind::FunctionCall { callee, arguments } => {
+                self.visit_expression(callee)?;
+
+                self.emit(Instruction::EnterFunction);
+
+                for argument in arguments {
+                    self.visit_expression(argument)?;
+                    self.emit(Instruction::Declare);
+                }
+
+                self.emit(Instruction::ExitFunction);
+            }
             _ => (),
         };
 

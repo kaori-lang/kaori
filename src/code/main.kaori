@@ -16,4 +16,4 @@ def foo(a: num, b: bool) -> bool {
 
 }
 
-foo(5, 7);
+foo(5, true, 11);

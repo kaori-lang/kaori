@@ -15,10 +15,6 @@ pub enum DeclKind {
         right: Box<Expr>,
         type_annotation: Type,
     },
-    Parameter {
-        name: String,
-        type_annotation: Type,
-    },
     Function {
         name: String,
         parameters: Vec<Parameter>,
@@ -35,16 +31,6 @@ pub struct Parameter {
 }
 
 impl Decl {
-    pub fn parameter(name: String, type_annotation: Type, span: Span) -> Decl {
-        Decl {
-            span,
-            kind: DeclKind::Parameter {
-                name,
-                type_annotation,
-            },
-        }
-    }
-
     pub fn variable(name: String, right: Expr, type_annotation: Type, span: Span) -> Decl {
         Decl {
             span,
@@ -58,7 +44,7 @@ impl Decl {
 
     pub fn function(
         name: String,
-        parameters: Vec<Decl>,
+        parameters: Vec<Parameter>,
         block: Stmt,
         return_type: Type,
         span: Span,
@@ -66,16 +52,7 @@ impl Decl {
         let type_annotation = Type::function(
             parameters
                 .iter()
-                .map(|p| {
-                    if let DeclKind::Parameter {
-                        type_annotation, ..
-                    } = &p.kind
-                    {
-                        type_annotation.clone()
-                    } else {
-                        unreachable!()
-                    }
-                })
+                .map(|parameter| parameter.type_annotation.to_owned())
                 .collect(),
             Box::new(return_type),
         );

@@ -6,7 +6,7 @@ use crate::{
 
 use super::{
     ast_node::ASTNode,
-    declaration::Decl,
+    declaration::{Decl, Parameter},
     expression::Expr,
     operator::{BinaryOp, UnaryOp},
     statement::{Stmt, StmtKind},
@@ -81,7 +81,7 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::LeftParen)?;
 
-        let mut parameters: Vec<Decl> = Vec::new();
+        let mut parameters: Vec<Parameter> = Vec::new();
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightParen
         {
@@ -92,7 +92,11 @@ impl Parser {
 
             let type_annotation = self.parse_type()?;
 
-            let parameter = Decl::parameter(name, type_annotation, span);
+            let parameter = Parameter {
+                name,
+                type_annotation,
+                span,
+            };
 
             parameters.push(parameter);
 

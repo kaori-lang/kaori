@@ -81,7 +81,7 @@ impl Resolver {
                     return Err(kaori_error!(decl.span, "{} is already declared", name));
                 }
 
-                self.environment.declare(name.clone());
+                self.environment.declare(name.to_owned());
             }
         }
 
@@ -120,24 +120,31 @@ impl Visitor<()> for Resolver {
 
                 self.environment.declare(name.to_owned());
             }
-            DeclKind::Parameter { name, .. } => {
-                if self.search_current_scope(name).is_some() {
-                    return Err(kaori_error!(
-                        declaration.span,
-                        "{} is already declared",
-                        name
-                    ));
-                };
 
-                self.environment.declare(name.to_owned());
-            }
             DeclKind::Function {
-                parameters, block, ..
+                parameters,
+                block,
+                name,
+                ..
             } => {
                 self.environment.enter_function();
 
                 for parameter in parameters {
-                    self.visit_declaration(parameter)?;
+                    if self.search_current_scope(&parameter.name).is_some() {
+                        return Err(kaori_error!(
+                            declaration.span,
+                            "function {} can't have parameters with the same name",
+                            name,
+                        ));
+                    };
+
+                    self.environment.declare(parameter.name.to_owned());
+                }
+
+                if let StmtKind::Block(nodes) = &mut block.kind {
+                    for node in nodes {
+                        self.visit_ast_node(node)?;
+                    }
                 }
 
                 self.visit_statement(block)?;
@@ -153,11 +160,11 @@ impl Visitor<()> for Resolver {
         match &mut statement.kind {
             StmtKind::Expression(expression) => self.visit_expression(expression)?,
             StmtKind::Print(expression) => self.visit_expression(expression)?,
-            StmtKind::Block(declarations) => {
+            StmtKind::Block(nodes) => {
                 self.environment.enter_scope();
 
-                for declaration in declarations {
-                    self.visit_ast_node(declaration)?;
+                for node in nodes {
+                    self.visit_ast_node(node)?;
                 }
 
                 self.environment.exit_scope();

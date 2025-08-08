@@ -1,5 +1,4 @@
 #![allow(clippy::new_without_default)]
-use std::cmp::min;
 
 use crate::{
     error::kaori_error::KaoriError,
@@ -37,7 +36,7 @@ impl TypeChecker {
                     type_annotation, ..
                 } = &decl.kind
             {
-                self.environment.declare(type_annotation.clone());
+                self.environment.declare(type_annotation.to_owned());
             }
         }
 
@@ -81,23 +80,19 @@ impl Visitor<Type> for TypeChecker {
 
                 self.environment.declare(right_type);
             }
-            DeclKind::Parameter {
-                type_annotation, ..
-            } => {
-                self.environment.declare(type_annotation.to_owned());
-            }
             DeclKind::Function {
                 parameters, block, ..
             } => {
                 self.environment.enter_function();
 
                 for parameter in parameters {
-                    self.visit_declaration(parameter)?;
+                    self.environment
+                        .declare(parameter.type_annotation.to_owned());
                 }
 
-                if let StmtKind::Block(declarations) = &mut block.kind {
-                    for declaration in declarations {
-                        self.visit_ast_node(declaration)?;
+                if let StmtKind::Block(nodes) = &mut block.kind {
+                    for node in nodes {
+                        self.visit_ast_node(node)?;
                     }
                 };
 
@@ -116,11 +111,11 @@ impl Visitor<Type> for TypeChecker {
             StmtKind::Print(expression) => {
                 self.visit_expression(expression)?;
             }
-            StmtKind::Block(declarations) => {
+            StmtKind::Block(nodes) => {
                 self.environment.enter_scope();
 
-                for declaration in declarations {
-                    self.visit_ast_node(declaration)?;
+                for node in nodes {
+                    self.visit_ast_node(node)?;
                 }
 
                 self.environment.exit_scope();
