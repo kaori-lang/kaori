@@ -68,6 +68,11 @@ impl Visitor<Type> for TypeChecker {
                 type_annotation,
                 ..
             } => {
+                let Some(right) = right else {
+                    self.environment.declare(type_annotation.to_owned());
+                    return Ok(());
+                };
+
                 let right_type = self.visit_expression(right)?;
 
                 if right_type != *type_annotation {

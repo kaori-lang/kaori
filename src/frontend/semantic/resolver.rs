@@ -108,7 +108,9 @@ impl Visitor<()> for Resolver {
     fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError> {
         match &mut declaration.kind {
             DeclKind::Variable { name, right, .. } => {
-                self.visit_expression(right)?;
+                if let Some(right) = right {
+                    self.visit_expression(right)?;
+                }
 
                 if self.search_current_scope(name).is_some() {
                     return Err(kaori_error!(

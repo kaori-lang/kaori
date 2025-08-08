@@ -1,13 +1,12 @@
 use std::{hint::unreachable_unchecked, rc::Rc};
 
-#[derive(Clone, PartialEq)]
-
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Number(f64),
     Bool(bool),
     Str(String),
     Null,
-    Function { instruction_ptr: usize },
+    Function(usize),
 }
 
 impl Value {

@@ -12,7 +12,11 @@ pub struct Decl {
 pub enum DeclKind {
     Variable {
         name: String,
-        right: Option<Box<Expr>>,
+        right: Box<Expr>,
+        type_annotation: Type,
+    },
+    Parameter {
+        name: String,
         type_annotation: Type,
     },
     Function {
@@ -24,12 +28,22 @@ pub enum DeclKind {
 }
 
 impl Decl {
-    pub fn variable(name: String, right: Option<Expr>, type_annotation: Type, span: Span) -> Decl {
+    pub fn parameter(name: String, type_annotation: Type, span: Span) -> Decl {
+        Decl {
+            span,
+            kind: DeclKind::Parameter {
+                name,
+                type_annotation,
+            },
+        }
+    }
+
+    pub fn variable(name: String, right: Expr, type_annotation: Type, span: Span) -> Decl {
         Decl {
             span,
             kind: DeclKind::Variable {
                 name,
-                right: right.map(Box::new),
+                right: Box::new(right),
                 type_annotation,
             },
         }

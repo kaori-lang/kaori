@@ -1,4 +1,9 @@
-use crate::backend::codegen::{constant_pool::ConstantPool, instruction::Instruction};
+use crate::{
+    backend::codegen::{constant_pool::ConstantPool, instruction::Instruction},
+    error::kaori_error::KaoriError,
+    frontend::scanner::span::Span,
+    kaori_error,
+};
 
 use super::{callstack::Callstack, value::Value, value_stack::ValueStack};
 
@@ -19,7 +24,7 @@ impl Interpreter {
         }
     }
 
-    pub fn execute_instructions(&mut self) {
+    pub fn execute_instructions(&mut self) -> Result<(), KaoriError> {
         let mut value_stack: ValueStack = ValueStack::default();
         let size = self.instructions.len();
 
@@ -140,11 +145,15 @@ impl Interpreter {
                 Instruction::Print => {
                     let value = value_stack.pop();
 
-                    println!("{:?}", unsafe { value.as_number() });
+                    println!("{value:?}");
                 }
 
                 Instruction::LoadConst(offset) => {
                     let value = self.constant_pool.get_constant(offset);
+
+                    if let Value::Null = value {
+                        return Err(kaori_error!(Span { start: 0, end: 0 }, "error null"));
+                    }
 
                     value_stack.push(value);
                 }
@@ -179,9 +188,11 @@ impl Interpreter {
                     }
                 }
                 _ => (),
-            }
+            };
 
             self.instruction_ptr += 1;
         }
+
+        Ok(())
     }
 }

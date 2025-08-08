@@ -36,9 +36,9 @@ impl<'a> BytecodeGenerator<'a> {
 
         for i in 0..nodes.len() {
             if let Some(ASTNode::Declaration(decl)) = nodes.get(i)
-                && let DeclKind::Function { .. } = &decl.kind
+                && let DeclKind::Function { parameters, block } = &decl.kind
             {
-                //self.environment.declare(type_annotation.clone());
+                let start = self.instructions.len();
             }
         }
 
@@ -66,10 +66,6 @@ impl<'a> BytecodeGenerator<'a> {
 
         self.emit(Instruction::LoadConst(index as u16));
     }
-
-    pub fn instruction_ptr(&self) -> u16 {
-        self.instructions.len() as u16
-    }
 }
 
 impl<'a> Visitor<()> for BytecodeGenerator<'a> {
@@ -83,7 +79,12 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
     fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError> {
         match &mut declaration.kind {
             DeclKind::Variable { right, .. } => {
-                self.visit_expression(right)?;
+                if let Some(right) = right {
+                    self.visit_expression(right)?;
+                } else {
+                    self.emit_constant(Value::Null);
+                }
+
                 self.emit(Instruction::Declare);
             }
             DeclKind::Function {
@@ -139,17 +140,17 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
                 let jump_end = self.emit(Instruction::Nothing);
 
                 self.instructions[jump_if_false] =
-                    Instruction::JumpIfFalse(self.instruction_ptr() as i16 - jump_if_false as i16);
+                    Instruction::JumpIfFalse(self.instructions.len() as i16 - jump_if_false as i16);
 
                 if let Some(branch) = else_branch {
                     self.visit_statement(branch)?;
                 }
 
                 self.instructions[jump_end] =
-                    Instruction::Jump(self.instruction_ptr() as i16 - jump_end as i16);
+                    Instruction::Jump(self.instructions.len() as i16 - jump_end as i16);
             }
             StmtKind::WhileLoop { condition, block } => {
-                let start = self.instruction_ptr();
+                let start = self.instructions.len();
 
                 self.visit_expression(condition)?;
 
@@ -158,11 +159,11 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
                 self.visit_statement(block)?;
 
                 self.emit(Instruction::Jump(
-                    start as i16 - self.instruction_ptr() as i16,
+                    start as i16 - self.instructions.len() as i16,
                 ));
 
                 self.instructions[jump_if_false] =
-                    Instruction::JumpIfFalse(self.instruction_ptr() as i16 - jump_if_false as i16);
+                    Instruction::JumpIfFalse(self.instructions.len() as i16 - jump_if_false as i16);
             }
             _ => (),
         };

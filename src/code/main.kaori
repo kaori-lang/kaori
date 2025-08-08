@@ -1,5 +1,5 @@
-bar: num = 5;
-
+bar: num = 11;
+/* 
 bar()();
 
 def foo() -> bool {
@@ -10,3 +10,6 @@ def foo() -> bool {
     print(d);
 }
 
+ */
+
+print(bar + 2);
