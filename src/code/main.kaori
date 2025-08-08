@@ -12,4 +12,8 @@ def foo() -> bool {
 
  */
 
-print(bar + 2);
+def foo(a: num, b: bool) -> bool {
+
+}
+
+foo(5, 7);

@@ -258,14 +258,14 @@ impl Visitor<Type> for TypeChecker {
                     ));
                 }
 
-                for (argument, parameter) in arguments.iter_mut().zip(parameters) {
-                    let argument = self.visit_expression(argument)?;
-                    if !argument.eq(&parameter) {
+                for (argument, parameter_type) in arguments.iter_mut().zip(parameters) {
+                    let argument_type = self.visit_expression(argument)?;
+                    if !argument_type.eq(&parameter_type) {
                         return Err(kaori_error!(
-                            callee.span,
+                            argument.span,
                             "expected {:?}, but found argument of type {:?}",
-                            parameter,
-                            argument
+                            parameter_type,
+                            argument_type
                         ));
                     }
                 }

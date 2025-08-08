@@ -99,6 +99,7 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
                     self.visit_ast_node(declaration)?;
                 }
             }
+            _ => (),
         }
 
         Ok(())

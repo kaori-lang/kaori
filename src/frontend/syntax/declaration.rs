@@ -21,10 +21,17 @@ pub enum DeclKind {
     },
     Function {
         name: String,
-        parameters: Vec<Decl>,
+        parameters: Vec<Parameter>,
         block: Stmt,
         type_annotation: Type,
     },
+}
+
+#[derive(Debug)]
+pub struct Parameter {
+    pub name: String,
+    pub type_annotation: Type,
+    pub span: Span,
 }
 
 impl Decl {
@@ -60,7 +67,7 @@ impl Decl {
             parameters
                 .iter()
                 .map(|p| {
-                    if let DeclKind::Variable {
+                    if let DeclKind::Parameter {
                         type_annotation, ..
                     } = &p.kind
                     {

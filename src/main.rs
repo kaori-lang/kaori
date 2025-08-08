@@ -27,12 +27,12 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     bytecode_generator.generate(&mut nodes)?;
 
-    print!("{:#?}", instructions.to_owned());
-    let mut interpreter = Interpreter::new(instructions, constant_pool);
+    //print!("{:#?}", instructions.to_owned());
+    //let mut interpreter = Interpreter::new(instructions, constant_pool);
 
     let start = Instant::now();
 
-    interpreter.execute_instructions()?;
+    //interpreter.execute_instructions()?;
 
     println!("Vm executed in: {:#?}", start.elapsed());
 
