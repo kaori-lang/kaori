@@ -92,7 +92,8 @@ impl Parser {
 
             let type_annotation = self.parse_type()?;
 
-            let parameter = Decl::variable(name, None, type_annotation, span);
+            let parameter = Decl::parameter(name, type_annotation, span);
+
             parameters.push(parameter);
 
             if self.token_stream.token_kind() == TokenKind::RightParen {

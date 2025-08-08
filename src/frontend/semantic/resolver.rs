@@ -108,9 +108,7 @@ impl Visitor<()> for Resolver {
     fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError> {
         match &mut declaration.kind {
             DeclKind::Variable { name, right, .. } => {
-                if let Some(right) = right {
-                    self.visit_expression(right)?;
-                }
+                self.visit_expression(right)?;
 
                 if self.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
@@ -120,7 +118,18 @@ impl Visitor<()> for Resolver {
                     ));
                 };
 
-                self.environment.declare(name.clone());
+                self.environment.declare(name.to_owned());
+            }
+            DeclKind::Parameter { name, .. } => {
+                if self.search_current_scope(name).is_some() {
+                    return Err(kaori_error!(
+                        declaration.span,
+                        "{} is already declared",
+                        name
+                    ));
+                };
+
+                self.environment.declare(name.to_owned());
             }
             DeclKind::Function {
                 parameters, block, ..

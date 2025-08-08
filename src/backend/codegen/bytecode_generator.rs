@@ -36,7 +36,9 @@ impl<'a> BytecodeGenerator<'a> {
 
         for i in 0..nodes.len() {
             if let Some(ASTNode::Declaration(decl)) = nodes.get(i)
-                && let DeclKind::Function { parameters, block } = &decl.kind
+                && let DeclKind::Function {
+                    parameters, block, ..
+                } = &decl.kind
             {
                 let start = self.instructions.len();
             }
@@ -79,12 +81,7 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
     fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError> {
         match &mut declaration.kind {
             DeclKind::Variable { right, .. } => {
-                if let Some(right) = right {
-                    self.visit_expression(right)?;
-                } else {
-                    self.emit_constant(Value::Null);
-                }
-
+                self.visit_expression(right)?;
                 self.emit(Instruction::Declare);
             }
             DeclKind::Function {

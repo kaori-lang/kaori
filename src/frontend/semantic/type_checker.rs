@@ -68,11 +68,6 @@ impl Visitor<Type> for TypeChecker {
                 type_annotation,
                 ..
             } => {
-                let Some(right) = right else {
-                    self.environment.declare(type_annotation.to_owned());
-                    return Ok(());
-                };
-
                 let right_type = self.visit_expression(right)?;
 
                 if right_type != *type_annotation {
@@ -85,6 +80,11 @@ impl Visitor<Type> for TypeChecker {
                 }
 
                 self.environment.declare(right_type);
+            }
+            DeclKind::Parameter {
+                type_annotation, ..
+            } => {
+                self.environment.declare(type_annotation.to_owned());
             }
             DeclKind::Function {
                 parameters, block, ..
@@ -251,18 +251,21 @@ impl Visitor<Type> for TypeChecker {
                     ));
                 };
 
-                let comparisons = min(parameters.len(), arguments.len());
+                if parameters.len() != arguments.len() {
+                    return Err(kaori_error!(
+                        callee.span,
+                        "invalid number of arguments, it must match number of parameters"
+                    ));
+                }
 
-                for i in 0..comparisons {
-                    let argument_type = self.visit_expression(arguments.get_mut(i).unwrap())?;
-                    let parameter_type = parameters.get(i).unwrap();
-
-                    if !argument_type.eq(parameter_type) {
+                for (argument, parameter) in arguments.iter_mut().zip(parameters) {
+                    let argument = self.visit_expression(argument)?;
+                    if !argument.eq(&parameter) {
                         return Err(kaori_error!(
                             callee.span,
                             "expected {:?}, but found argument of type {:?}",
-                            parameter_type,
-                            argument_type
+                            parameter,
+                            argument
                         ));
                     }
                 }
