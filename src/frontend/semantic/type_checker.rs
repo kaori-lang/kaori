@@ -240,7 +240,10 @@ impl Visitor<Type> for TypeChecker {
                     return_type,
                 } = self.visit_expression(callee)?
                 else {
-                    return Err(kaori_error!(callee.span, "this is not a callable function"));
+                    return Err(kaori_error!(
+                        callee.span,
+                        "invalid function call to a non callable"
+                    ));
                 };
 
                 let comparisons = min(parameters.len(), arguments.len());

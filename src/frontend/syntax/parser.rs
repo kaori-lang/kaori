@@ -63,11 +63,15 @@ impl Parser {
 
         let type_annotation = self.parse_type()?;
 
+        if self.token_stream.token_kind() != TokenKind::Assign {
+            return Ok(Decl::variable(name, None, type_annotation, span));
+        }
+
         self.token_stream.consume(TokenKind::Assign)?;
 
         let right = self.parse_expression()?;
 
-        Ok(Decl::variable(name, right, type_annotation, span))
+        Ok(Decl::variable(name, Some(right), type_annotation, span))
     }
 
     fn parse_function_declaration(&mut self) -> Result<Decl, KaoriError> {

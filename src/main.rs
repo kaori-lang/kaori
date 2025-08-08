@@ -35,7 +35,5 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     println!("Vm executed in: {:#?}", start.elapsed());
 
-    let v: Vec<usize> = Vec::new();
-
     Ok(())
 }

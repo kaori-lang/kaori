@@ -5,6 +5,9 @@ use std::{hint::unreachable_unchecked, rc::Rc};
 pub enum Value {
     Number(f64),
     Bool(bool),
+    Str(String),
+    Null,
+    Function { instruction_ptr: usize },
 }
 
 impl Value {
@@ -20,7 +23,6 @@ impl Value {
     /// # Safety
     /// Caller must ensure that `self` is `Value::Number`.
     /// Calling this on any other variant results in **undefined behavior**.
-
     pub unsafe fn as_number(self) -> f64 {
         match self {
             Value::Number(value) => value,
@@ -31,7 +33,6 @@ impl Value {
     /// # Safety
     /// Caller must ensure that `self` is `Value::Bool`.
     /// Calling this on any other variant results in **undefined behavior**.
-
     pub unsafe fn as_bool(self) -> bool {
         match self {
             Value::Bool(value) => value,
