@@ -70,28 +70,24 @@ impl Resolver {
         None
     }
 
-    pub fn resolve(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
-        self.environment.enter_function();
-
-        for i in 0..nodes.len() {
-            if let Some(ASTNode::Declaration(decl)) = nodes.get(i)
-                && let DeclKind::Function { name, .. } = &decl.kind
-            {
-                if self.search(name).is_some() {
-                    return Err(kaori_error!(decl.span, "{} is already declared", name));
+    pub fn resolve(&mut self, declarations: &mut [Decl]) -> Result<(), KaoriError> {
+        for declaration in declarations.iter().as_slice() {
+            if let DeclKind::Function { name, .. } = &declaration.kind {
+                if self.search_current_scope(name).is_some() {
+                    return Err(kaori_error!(
+                        declaration.span,
+                        "{} is already declared",
+                        name
+                    ));
                 }
 
                 self.environment.declare(name.to_owned());
             }
         }
 
-        for i in 0..nodes.len() {
-            if let Some(node) = nodes.get_mut(i) {
-                self.visit_ast_node(node)?;
-            }
+        for declaration in declarations {
+            self.visit_declaration(declaration)?;
         }
-
-        self.environment.exit_function();
 
         Ok(())
     }

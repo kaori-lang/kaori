@@ -1,4 +1,4 @@
-bar: num = 11;
+
 /* 
 bar()();
 
@@ -12,8 +12,12 @@ def foo() -> bool {
 
  */
 
+bar: num = 11;
+
 def foo(a: num, b: bool) -> bool {
 
 }
 
-foo(5, true, 11);
+def main() -> bool {
+
+}

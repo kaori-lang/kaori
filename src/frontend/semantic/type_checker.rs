@@ -4,7 +4,7 @@ use crate::{
     error::kaori_error::KaoriError,
     frontend::syntax::{
         ast_node::ASTNode,
-        declaration::{Decl, DeclKind},
+        declaration::{self, Decl, DeclKind},
         expression::{Expr, ExprKind},
         operator::{BinaryOp, UnaryOp},
         statement::{Stmt, StmtKind},
@@ -27,25 +27,20 @@ impl TypeChecker {
         }
     }
 
-    pub fn check(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
+    pub fn check(&mut self, declarations: &mut [Decl]) -> Result<(), KaoriError> {
         self.environment.enter_function();
-
-        for i in 0..nodes.len() {
-            if let Some(ASTNode::Declaration(decl)) = nodes.get(i)
-                && let DeclKind::Function {
-                    type_annotation, ..
-                } = &decl.kind
+        for declaration in declarations.iter().as_slice() {
+            if let DeclKind::Function {
+                type_annotation, ..
+            } = &declaration.kind
             {
                 self.environment.declare(type_annotation.to_owned());
             }
         }
 
-        for i in 0..nodes.len() {
-            if let Some(node) = nodes.get_mut(i) {
-                self.visit_ast_node(node)?;
-            }
+        for declaration in declarations {
+            self.visit_declaration(declaration)?;
         }
-
         self.environment.exit_function();
 
         Ok(())

@@ -10,7 +10,7 @@ impl<T> Default for Environment<T> {
     fn default() -> Self {
         Self {
             declarations: Vec::new(),
-            scopes_pointer: Vec::new(),
+            scopes_pointer: vec![0],
             frame_pointer: 0,
         }
     }

@@ -20,13 +20,13 @@ fn main() {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let mut nodes = generate_ast(source)?;
 
-    let mut instructions = Vec::new();
-    let mut constant_pool = ConstantPool::default();
+    /*   let mut instructions = Vec::new();
+       let mut constant_pool = ConstantPool::default();
 
-    let mut bytecode_generator = BytecodeGenerator::new(&mut instructions, &mut constant_pool);
+       let mut bytecode_generator = BytecodeGenerator::new(&mut instructions, &mut constant_pool);
 
-    bytecode_generator.generate(&mut nodes)?;
-
+       bytecode_generator.generate(&mut nodes)?;
+    */
     //print!("{:#?}", instructions.to_owned());
     //let mut interpreter = Interpreter::new(instructions, constant_pool);
 

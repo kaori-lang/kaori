@@ -35,6 +35,15 @@ impl Parser {
         Ok(declarations)
     }
 
+    fn parse_declaration(&mut self) -> Result<Decl, KaoriError> {
+        let declaration = match self.token_stream.token_kind() {
+            TokenKind::Function => self.parse_function_declaration(),
+            _ => self.parse_variable_declaration(),
+        }?;
+
+        Ok(declaration)
+    }
+
     fn parse_ast_node(&mut self) -> Result<ASTNode, KaoriError> {
         let stmt = match self.token_stream.token_kind() {
             TokenKind::Print => self.parse_print_statement(),
@@ -49,15 +58,6 @@ impl Parser {
     }
 
     /* Declarations */
-    fn parse_declaration(&mut self) -> Result<Decl, KaoriError> {
-        let declaration = match self.token_stream.token_kind() {
-            TokenKind::Function => self.parse_function_declaration()?,
-            _ => self.parse_variable_declaration()?,
-        };
-
-        Ok(declaration)
-    }
-
     fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
         let span = self.token_stream.span();
         let name = self.token_stream.lexeme().to_owned();
