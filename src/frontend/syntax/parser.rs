@@ -1,6 +1,8 @@
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::scanner::{span::Span, token_kind::TokenKind, token_stream::TokenStream},
+    frontend::scanner::{
+        span::Span, token::Token, token_kind::TokenKind, token_stream::TokenStream,
+    },
     kaori_error,
 };
 
@@ -33,15 +35,24 @@ impl Parser {
         Ok(declarations)
     }
 
+    fn parse_ast_node(&mut self) -> Result<ASTNode, KaoriError> {
+        let stmt = match self.token_stream.token_kind() {
+            TokenKind::Print => self.parse_print_statement(),
+            TokenKind::LeftBrace => self.parse_block_statement(),
+            TokenKind::If => self.parse_if_statement(),
+            TokenKind::While => self.parse_while_loop_statement(),
+            TokenKind::For => self.parse_for_loop_statement(),
+            _ => self.parse_expression_statement(),
+        }?;
+
+        Ok(ASTNode::Statement(stmt))
+    }
+
     /* Declarations */
     fn parse_declaration(&mut self) -> Result<Decl, KaoriError> {
         let declaration = match self.token_stream.token_kind() {
             TokenKind::Function => self.parse_function_declaration()?,
-            _ => {
-                let variable_declaration = self.parse_variable_declaration()?;
-                self.token_stream.consume(TokenKind::Semicolon)?;
-                variable_declaration
-            }
+            _ => self.parse_variable_declaration()?,
         };
 
         Ok(declaration)
@@ -59,6 +70,8 @@ impl Parser {
         self.token_stream.consume(TokenKind::Assign)?;
 
         let right = self.parse_expression()?;
+
+        self.token_stream.consume(TokenKind::Semicolon)?;
 
         Ok(Decl::variable(name, right, type_annotation, span))
     }
@@ -111,29 +124,11 @@ impl Parser {
     }
 
     /* Statements */
-    fn parse_statement(&mut self) -> Result<Stmt, KaoriError> {
-        let statement = match self.token_stream.token_kind() {
-            TokenKind::Print => self.parse_print_statement(),
-            TokenKind::LeftBrace => self.parse_block_statement(),
-            TokenKind::If => self.parse_if_statement(),
-            TokenKind::While => self.parse_while_loop_statement(),
-            TokenKind::For => self.parse_for_loop_statement(),
-            _ => self.parse_expression_statement(),
-        }?;
-
-        match statement.kind {
-            StmtKind::Print(..) | StmtKind::Expression(..) => {
-                self.token_stream.consume(TokenKind::Semicolon)?;
-            }
-            _ => (),
-        };
-
-        Ok(statement)
-    }
-
     fn parse_expression_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
         let expression = self.parse_expression()?;
+
+        self.token_stream.consume(TokenKind::Semicolon)?;
 
         Ok(Stmt::expression(expression, span))
     }
@@ -145,6 +140,8 @@ impl Parser {
         self.token_stream.consume(TokenKind::LeftParen)?;
         let expression = self.parse_expression()?;
         self.token_stream.consume(TokenKind::RightParen)?;
+
+        self.token_stream.consume(TokenKind::Semicolon)?;
 
         Ok(Stmt::print(expression, span))
     }
@@ -158,28 +155,13 @@ impl Parser {
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
         {
-            let node = match self.token_stream.token_kind() {
-                TokenKind::Print => self.parse_print_statement(),
-                TokenKind::LeftBrace => self.parse_block_statement(),
-                TokenKind::If => self.parse_if_statement(),
-                TokenKind::While => self.parse_while_loop_statement(),
-                TokenKind::For => self.parse_for_loop_statement(),
-                _ => {
-                    if self
-                        .token_stream
-                        .look_ahead(&[TokenKind::Identifier, TokenKind::Colon])
-                    {
-                        self.parse_variable_declaration()
-                    } else {
-                        self.parse_expression_statement()
-                    }
-                }
-            }?;
+            let node = self.parse_ast_node()?;
+            nodes.push(node);
         }
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Stmt::block(declarations, span))
+        Ok(Stmt::block(nodes, span))
     }
 
     fn parse_if_statement(&mut self) -> Result<Stmt, KaoriError> {
