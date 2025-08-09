@@ -6,7 +6,7 @@ use kaori::{
         vm::interpreter::Interpreter,
     },
     error::kaori_error::KaoriError,
-    frontend::generate_ast::generate_ast,
+    frontend::parse_and_analyze::parse_and_analyze,
 };
 
 fn main() {
@@ -18,7 +18,7 @@ fn main() {
 }
 
 pub fn run_program(source: String) -> Result<(), KaoriError> {
-    let mut nodes = generate_ast(source)?;
+    let mut declarations = parse_and_analyze(source)?;
 
     /*   let mut instructions = Vec::new();
        let mut constant_pool = ConstantPool::default();

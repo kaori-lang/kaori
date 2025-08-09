@@ -42,11 +42,11 @@ primitive_type           -> bool | num | str
 function_type            -> ( [type [, type]*] ) -> type
 
 declaration              -> variable_declaration
-                         | function_declaration | statement
+                         | function_declaration
 
-variable_declaration     -> identifier : type (= expression)? ;
+variable_declaration     -> identifier : type = expression ;
 
-function_declaration     -> def identifier ( [variable_declaration [, variable_declaration]*]? ) -> type block_statement
+function_declaration     -> def identifier ( [parameter [, parameter]*]? ) -> type block_statement
 
 statement                -> expression_statement
                          | print_statement

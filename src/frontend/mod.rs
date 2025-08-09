@@ -1,4 +1,4 @@
-pub mod generate_ast;
+pub mod parse_and_analyze;
 pub mod scanner;
 pub mod semantic;
 pub mod syntax;

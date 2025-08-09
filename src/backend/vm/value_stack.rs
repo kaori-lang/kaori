@@ -1,5 +1,3 @@
-use std::ptr;
-
 use super::value::Value;
 
 pub struct ValueStack {

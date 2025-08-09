@@ -4,7 +4,7 @@ use crate::{
     error::kaori_error::KaoriError,
     frontend::syntax::{
         ast_node::ASTNode,
-        declaration::{self, Decl, DeclKind},
+        declaration::{Decl, DeclKind},
         expression::{Expr, ExprKind},
         operator::{BinaryOp, UnaryOp},
         statement::{Stmt, StmtKind},
@@ -65,7 +65,7 @@ impl Visitor<Type> for TypeChecker {
             } => {
                 let right_type = self.visit_expression(right)?;
 
-                if right_type != *type_annotation {
+                if !right_type.eq(type_annotation) {
                     return Err(kaori_error!(
                         right.span,
                         "expected value of type {:?}, but found {:?}",

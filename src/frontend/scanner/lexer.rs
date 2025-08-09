@@ -3,18 +3,18 @@ use crate::{error::kaori_error::KaoriError, kaori_error};
 use super::{span::Span, token::Token, token_kind::TokenKind};
 
 #[derive(Debug)]
-pub struct Lexer {
+pub struct Lexer<'a> {
     source: Vec<char>,
     position: usize,
-    tokens: Vec<Token>,
+    tokens: &'a mut Vec<Token>,
 }
 
-impl Lexer {
-    pub fn new(source: String) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(source: &str, tokens: &'a mut Vec<Token>) -> Self {
         Self {
             source: source.chars().collect(),
             position: 0,
-            tokens: Vec::new(),
+            tokens,
         }
     }
 
@@ -269,7 +269,7 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, KaoriError> {
+    pub fn tokenize(&mut self) -> Result<(), KaoriError> {
         while !self.at_end() {
             self.get_next_token()?;
         }
@@ -286,6 +286,6 @@ impl Lexer {
 
         self.tokens.push(token);
 
-        Ok(self.tokens.clone())
+        Ok(())
     }
 }

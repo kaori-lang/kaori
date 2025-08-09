@@ -1,8 +1,6 @@
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::scanner::{
-        span::Span, token::Token, token_kind::TokenKind, token_stream::TokenStream,
-    },
+    frontend::scanner::{span::Span, token_kind::TokenKind, token_stream::TokenStream},
     kaori_error,
 };
 
@@ -11,7 +9,7 @@ use super::{
     declaration::{Decl, Parameter},
     expression::Expr,
     operator::{BinaryOp, UnaryOp},
-    statement::{Stmt, StmtKind},
+    statement::Stmt,
     r#type::Type,
 };
 

@@ -15,10 +15,12 @@ def foo() -> bool {
 bar: num = 11;
 
 def foo(a: num, b: bool) -> bool {
-
+    return true;
 }
 
-def main() -> bool {
+def main() {
     a: num = 7;
 }
+
+
 

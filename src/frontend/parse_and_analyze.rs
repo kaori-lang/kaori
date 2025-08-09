@@ -6,10 +6,11 @@ use super::{
     syntax::{declaration::Decl, parser::Parser},
 };
 
-pub fn generate_ast(source: String) -> Result<Vec<Decl>, KaoriError> {
-    let mut lexer = Lexer::new(source.clone());
+pub fn parse_and_analyze(source: String) -> Result<Vec<Decl>, KaoriError> {
+    let mut tokens = Vec::new();
+    let mut lexer = Lexer::new(&source, &mut tokens);
 
-    let tokens = lexer.tokenize()?;
+    lexer.tokenize()?;
 
     let token_stream = TokenStream::new(source.clone(), tokens);
 

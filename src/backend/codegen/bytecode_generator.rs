@@ -31,20 +31,17 @@ impl<'a> BytecodeGenerator<'a> {
         }
     }
 
-    pub fn generate(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
+    pub fn generate(&mut self, declarations: &mut [Decl]) -> Result<(), KaoriError> {
         self.emit(Instruction::EnterScope);
 
-        for i in 0..nodes.len() {
-            if let Some(ASTNode::Declaration(decl)) = nodes.get(i)
-                && let DeclKind::Function { block, .. } = &decl.kind
-            {
-                let function_instructions_ptr = self.instructions.len();
-            }
-        }
+        for declaration in declarations {
+            if let DeclKind::Function { block, .. } = &mut declaration.kind {
+                let instruction_ptr = self.instructions.len();
 
-        for i in 0..nodes.len() {
-            if let Some(node) = nodes.get_mut(i) {
-                self.visit_ast_node(node)?;
+                self.visit_statement(block)?;
+
+                self.emit_constant(Value::Function(instruction_ptr));
+                self.emit(Instruction::Declare);
             }
         }
 
@@ -82,7 +79,8 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
                 self.visit_expression(right)?;
                 self.emit(Instruction::Declare);
             }
-            _ => (),
+            DeclKind::Function { .. } => {}
+            _ => {}
         }
 
         Ok(())
@@ -91,10 +89,10 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
     fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), KaoriError> {
         match &mut statement.kind {
             StmtKind::Expression(expression) => {
-                self.visit_expression(expression.as_mut())?;
+                self.visit_expression(expression)?;
             }
             StmtKind::Print(expression) => {
-                self.visit_expression(expression.as_mut())?;
+                self.visit_expression(expression)?;
 
                 self.emit(Instruction::Print);
             }
