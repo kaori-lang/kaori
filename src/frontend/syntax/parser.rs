@@ -51,7 +51,16 @@ impl Parser {
             TokenKind::If => self.parse_if_statement(),
             TokenKind::While => self.parse_while_loop_statement(),
             TokenKind::For => self.parse_for_loop_statement(),
-            _ => self.parse_expression_statement(),
+            _ => {
+                if self
+                    .token_stream
+                    .look_ahead(&[TokenKind::Identifier, TokenKind::Colon])
+                {
+                    return Ok(ASTNode::Declaration(self.parse_variable_declaration()?));
+                } else {
+                    self.parse_expression_statement()
+                }
+            }
         }?;
 
         Ok(ASTNode::Statement(stmt))

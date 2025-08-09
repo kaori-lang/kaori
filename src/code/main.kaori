@@ -19,5 +19,6 @@ def foo(a: num, b: bool) -> bool {
 }
 
 def main() -> bool {
-
+    a: num = 7;
 }
+

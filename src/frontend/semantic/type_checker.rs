@@ -29,6 +29,7 @@ impl TypeChecker {
 
     pub fn check(&mut self, declarations: &mut [Decl]) -> Result<(), KaoriError> {
         self.environment.enter_function();
+
         for declaration in declarations.iter().as_slice() {
             if let DeclKind::Function {
                 type_annotation, ..
