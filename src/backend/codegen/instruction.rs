@@ -27,7 +27,7 @@ pub enum Instruction {
     ExitScope,
     EnterFunction,
     ExitFunction,
-
+    Return,
     Jump(i16),
     JumpIfFalse(i16),
 

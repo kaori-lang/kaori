@@ -22,36 +22,29 @@ impl Parser {
         Self { token_stream }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<ASTNode>, KaoriError> {
-        let mut nodes: Vec<ASTNode> = Vec::new();
+    pub fn parse(&mut self) -> Result<Vec<Decl>, KaoriError> {
+        let mut declarations: Vec<Decl> = Vec::new();
 
         while !self.token_stream.at_end() {
-            let node = self.parse_declaration()?;
-            nodes.push(node);
+            let declaration = self.parse_declaration()?;
+            declarations.push(declaration);
         }
 
-        Ok(nodes)
+        Ok(declarations)
     }
 
     /* Declarations */
-    fn parse_declaration(&mut self) -> Result<ASTNode, KaoriError> {
+    fn parse_declaration(&mut self) -> Result<Decl, KaoriError> {
         let declaration = match self.token_stream.token_kind() {
             TokenKind::Function => self.parse_function_declaration()?,
             _ => {
-                if !self
-                    .token_stream
-                    .look_ahead(&[TokenKind::Identifier, TokenKind::Colon])
-                {
-                    return Ok(ASTNode::Statement(self.parse_statement()?));
-                }
-
                 let variable_declaration = self.parse_variable_declaration()?;
                 self.token_stream.consume(TokenKind::Semicolon)?;
                 variable_declaration
             }
         };
 
-        Ok(ASTNode::Declaration(declaration))
+        Ok(declaration)
     }
 
     fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
@@ -159,14 +152,29 @@ impl Parser {
     fn parse_block_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
 
-        let mut declarations: Vec<ASTNode> = Vec::new();
+        let mut nodes: Vec<ASTNode> = Vec::new();
 
         self.token_stream.consume(TokenKind::LeftBrace)?;
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
         {
-            let declaration = self.parse_declaration()?;
-            declarations.push(declaration);
+            let node = match self.token_stream.token_kind() {
+                TokenKind::Print => self.parse_print_statement(),
+                TokenKind::LeftBrace => self.parse_block_statement(),
+                TokenKind::If => self.parse_if_statement(),
+                TokenKind::While => self.parse_while_loop_statement(),
+                TokenKind::For => self.parse_for_loop_statement(),
+                _ => {
+                    if self
+                        .token_stream
+                        .look_ahead(&[TokenKind::Identifier, TokenKind::Colon])
+                    {
+                        self.parse_variable_declaration()
+                    } else {
+                        self.parse_expression_statement()
+                    }
+                }
+            }?;
         }
 
         self.token_stream.consume(TokenKind::RightBrace)?;
