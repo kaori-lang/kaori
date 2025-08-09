@@ -1,5 +1,7 @@
 #![allow(clippy::new_without_default)]
 
+use std::collections::HashMap;
+
 use crate::{
     backend::vm::value::Value,
     error::kaori_error::KaoriError,

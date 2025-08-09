@@ -28,9 +28,9 @@
     -   [x] Virtual machine to interpret bytecode
     -   [ ] Functions
     -   [ ] Function and loop control flow (`break`, `continue`, `return`)
+    -   [ ] Structs and implementation block
     -   [ ] Native data structures (e.g., lists, maps)
     -   [ ] Constant folding
-    -   [ ] Classes and inheritance
 
 ## Grammar
 

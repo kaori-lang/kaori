@@ -12,7 +12,7 @@ pub fn parse_and_analyze(source: String) -> Result<Vec<Decl>, KaoriError> {
 
     lexer.tokenize()?;
 
-    let token_stream = TokenStream::new(source.clone(), tokens);
+    let token_stream = TokenStream::new(source, tokens);
 
     let mut parser = Parser::new(token_stream);
 

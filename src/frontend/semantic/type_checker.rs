@@ -229,7 +229,7 @@ impl Visitor<Type> for TypeChecker {
                     }
                 }
             }
-            ExprKind::Identifier { resolution, .. } => self.environment.get(*resolution).clone(),
+            ExprKind::Identifier { resolution, .. } => self.environment.get(*resolution).to_owned(),
             ExprKind::FunctionCall { callee, arguments } => {
                 let Type::Function {
                     parameters,
