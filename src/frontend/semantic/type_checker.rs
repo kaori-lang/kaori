@@ -27,28 +27,33 @@ impl TypeChecker {
         }
     }
 
-    pub fn check(&mut self, declarations: &mut [Decl]) -> Result<(), KaoriError> {
-        self.environment.enter_function();
-
-        for declaration in declarations.iter().as_slice() {
-            if let DeclKind::Function {
-                type_annotation, ..
-            } = &declaration.kind
-            {
-                self.environment.declare(type_annotation.to_owned());
-            }
-        }
-
-        for declaration in declarations {
-            self.visit_declaration(declaration)?;
-        }
-        self.environment.exit_function();
-
-        Ok(())
+    pub fn check(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
+        self.visit_nodes(nodes)
     }
 }
 
 impl Visitor<Type> for TypeChecker {
+    fn visit_nodes(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
+        for node in nodes.iter().as_slice() {
+            if let ASTNode::Declaration(declaration) = node
+                && let DeclKind::Function { name, .. } = &declaration.kind
+            {
+                if let DeclKind::Function {
+                    type_annotation, ..
+                } = &declaration.kind
+                {
+                    self.environment.declare(type_annotation.to_owned());
+                }
+            }
+        }
+
+        for node in nodes {
+            self.visit_ast_node(node);
+        }
+
+        Ok(())
+    }
+
     fn visit_ast_node(&mut self, node: &mut ASTNode) -> Result<(), KaoriError> {
         match node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),
@@ -79,8 +84,6 @@ impl Visitor<Type> for TypeChecker {
             DeclKind::Function {
                 parameters, block, ..
             } => {
-                self.environment.enter_function();
-
                 for parameter in parameters {
                     self.environment
                         .declare(parameter.type_annotation.to_owned());
@@ -91,8 +94,6 @@ impl Visitor<Type> for TypeChecker {
                         self.visit_ast_node(node)?;
                     }
                 };
-
-                self.environment.exit_function();
             }
         }
 
@@ -121,14 +122,14 @@ impl Visitor<Type> for TypeChecker {
                 then_branch,
                 else_branch,
             } => {
-                let expr = self.visit_expression(condition)?;
+                let condition_type = self.visit_expression(condition)?;
 
-                if !expr.eq(&Type::Boolean) {
+                if !condition_type.eq(&Type::Boolean) {
                     return Err(kaori_error!(
                         condition.span,
                         "expected {:?} for if statement condition, but found {:?}",
                         Type::Boolean,
-                        expr
+                        condition_type
                     ));
                 }
 
@@ -139,14 +140,14 @@ impl Visitor<Type> for TypeChecker {
                 }
             }
             StmtKind::WhileLoop { condition, block } => {
-                let expr = self.visit_expression(condition)?;
+                let condition_type = self.visit_expression(condition)?;
 
-                if !expr.eq(&Type::Boolean) {
+                if !condition_type.eq(&Type::Boolean) {
                     return Err(kaori_error!(
                         condition.span,
                         "expected {:?} for while loop statement condition, but found {:?}",
                         Type::Boolean,
-                        expr
+                        condition_type
                     ));
                 }
 
@@ -158,7 +159,7 @@ impl Visitor<Type> for TypeChecker {
         Ok(())
     }
     fn visit_expression(&mut self, expression: &mut Expr) -> Result<Type, KaoriError> {
-        let expr_type = match &mut expression.kind {
+        let type_ = match &mut expression.kind {
             ExprKind::Assign { identifier, right } => {
                 let right = self.visit_expression(right)?;
                 let identifier = self.visit_expression(identifier)?;
@@ -268,6 +269,6 @@ impl Visitor<Type> for TypeChecker {
             ExprKind::StringLiteral(..) => Type::String,
         };
 
-        Ok(expr_type)
+        Ok(type_)
     }
 }

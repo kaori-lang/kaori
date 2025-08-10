@@ -41,16 +41,6 @@ impl<T> Environment<T> {
         }
     }
 
-    pub fn enter_function(&mut self) {
-        self.frame_pointer = self.declarations.len();
-        self.enter_scope();
-    }
-
-    pub fn exit_function(&mut self) {
-        self.frame_pointer = 0;
-        self.exit_scope();
-    }
-
     pub fn declare(&mut self, value: T) {
         self.declarations.push(value);
     }

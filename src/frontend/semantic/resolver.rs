@@ -70,9 +70,19 @@ impl Resolver {
         None
     }
 
-    pub fn resolve(&mut self, declarations: &mut [Decl]) -> Result<(), KaoriError> {
-        for declaration in declarations.iter().as_slice() {
-            if let DeclKind::Function { name, .. } = &declaration.kind {
+    pub fn resolve(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
+        self.visit_nodes(nodes)?;
+
+        Ok(())
+    }
+}
+
+impl Visitor<()> for Resolver {
+    fn visit_nodes(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
+        for node in nodes.iter().as_slice() {
+            if let ASTNode::Declaration(declaration) = node
+                && let DeclKind::Function { name, .. } = &declaration.kind
+            {
                 if self.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
@@ -85,15 +95,13 @@ impl Resolver {
             }
         }
 
-        for declaration in declarations {
-            self.visit_declaration(declaration)?;
+        for node in nodes {
+            self.visit_ast_node(node);
         }
 
         Ok(())
     }
-}
 
-impl Visitor<()> for Resolver {
     fn visit_ast_node(&mut self, node: &mut ASTNode) -> Result<(), KaoriError> {
         match node {
             ASTNode::Declaration(declaration) => self.visit_declaration(declaration),
@@ -123,7 +131,7 @@ impl Visitor<()> for Resolver {
                 name,
                 ..
             } => {
-                self.environment.enter_function();
+                self.environment.enter_scope();
 
                 for parameter in parameters {
                     if self.search_current_scope(&parameter.name).is_some() {
@@ -145,7 +153,7 @@ impl Visitor<()> for Resolver {
 
                 self.visit_statement(block)?;
 
-                self.environment.exit_function();
+                self.environment.exit_scope();
             }
         }
 
@@ -159,9 +167,7 @@ impl Visitor<()> for Resolver {
             StmtKind::Block(nodes) => {
                 self.environment.enter_scope();
 
-                for node in nodes {
-                    self.visit_ast_node(node)?;
-                }
+                self.visit_nodes(nodes)?;
 
                 self.environment.exit_scope();
             }

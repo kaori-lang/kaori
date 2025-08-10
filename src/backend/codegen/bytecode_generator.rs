@@ -1,7 +1,5 @@
 #![allow(clippy::new_without_default)]
 
-use std::collections::HashMap;
-
 use crate::{
     backend::vm::value::Value,
     error::kaori_error::KaoriError,
@@ -15,11 +13,15 @@ use crate::{
     utils::visitor::Visitor,
 };
 
-use super::{constant_pool::ConstantPool, instruction::Instruction};
+use super::{
+    constant_pool::ConstantPool,
+    instruction::{self, Instruction},
+};
 
 pub struct BytecodeGenerator<'a> {
     instructions: &'a mut Vec<Instruction>,
     constant_pool: &'a mut ConstantPool,
+    functions: Vec<String>,
 }
 
 impl<'a> BytecodeGenerator<'a> {
@@ -30,6 +32,7 @@ impl<'a> BytecodeGenerator<'a> {
         Self {
             instructions,
             constant_pool,
+            functions: Vec::new(),
         }
     }
 
@@ -40,10 +43,19 @@ impl<'a> BytecodeGenerator<'a> {
             if let DeclKind::Function { block, .. } = &mut declaration.kind {
                 let instruction_ptr = self.instructions.len();
 
-                self.visit_statement(block)?;
-
                 self.emit_constant(Value::Function(instruction_ptr));
                 self.emit(Instruction::Declare);
+
+                let jump_end = self.emit(Instruction::Nothing);
+
+                if let StmtKind::Block(nodes) = &mut block.kind {
+                    for node in nodes {
+                        self.visit_ast_node(node)?;
+                    }
+                }
+
+                self.instructions[jump_end] =
+                    Instruction::Jump(self.instructions.len() as i16 - jump_end as i16);
             }
         }
 
@@ -81,7 +93,7 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
                 self.visit_expression(right)?;
                 self.emit(Instruction::Declare);
             }
-            DeclKind::Function { .. } => {}
+            DeclKind::Function { block, name, .. } => {}
             _ => {}
         }
 
