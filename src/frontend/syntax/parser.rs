@@ -1,6 +1,8 @@
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::scanner::{span::Span, token_kind::TokenKind, token_stream::TokenStream},
+    frontend::scanner::{
+        span::Span, token::Token, token_kind::TokenKind, token_stream::TokenStream,
+    },
     kaori_error,
 };
 
@@ -128,9 +130,17 @@ impl Parser {
 
         let return_type = self.parse_type()?;
 
-        let block = self.parse_block_statement()?;
+        let mut body = Vec::new();
 
-        Ok(Decl::function(name, parameters, block, return_type, span))
+        self.token_stream.consume(TokenKind::LeftBrace)?;
+
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
+        {
+            let node = self.parse_ast_node()?;
+            body.push(node);
+        }
+
+        Ok(Decl::function(name, parameters, body, return_type, span))
     }
 
     /* Statements */

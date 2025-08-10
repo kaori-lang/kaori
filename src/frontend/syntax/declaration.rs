@@ -1,6 +1,6 @@
 use crate::frontend::scanner::span::Span;
 
-use super::{expression::Expr, statement::Stmt, r#type::Type};
+use super::{ast_node::ASTNode, expression::Expr, statement::Stmt, r#type::Type};
 
 #[derive(Debug)]
 pub struct Decl {
@@ -18,7 +18,7 @@ pub enum DeclKind {
     Function {
         name: String,
         parameters: Vec<Parameter>,
-        block: Stmt,
+        body: Vec<ASTNode>,
         type_annotation: Type,
     },
 }
@@ -45,7 +45,7 @@ impl Decl {
     pub fn function(
         name: String,
         parameters: Vec<Parameter>,
-        block: Stmt,
+        body: Vec<ASTNode>,
         return_type: Type,
         span: Span,
     ) -> Decl {
@@ -62,7 +62,7 @@ impl Decl {
             kind: DeclKind::Function {
                 name,
                 parameters,
-                block,
+                body,
                 type_annotation,
             },
         }
