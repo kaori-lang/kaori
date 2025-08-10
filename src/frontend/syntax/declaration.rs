@@ -1,6 +1,9 @@
 use crate::frontend::scanner::span::Span;
 
-use super::{ast_node::ASTNode, expression::Expr, statement::Stmt, r#type::Type};
+use super::{ast_node::ASTNode, expression::Expr, r#type::Type};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static GLOBAL_ID_COUNTER: AtomicUsize = AtomicUsize::new(1);
 
 #[derive(Debug)]
 pub struct Decl {
@@ -16,6 +19,7 @@ pub enum DeclKind {
         type_annotation: Type,
     },
     Function {
+        id: usize,
         name: String,
         parameters: Vec<Parameter>,
         body: Vec<ASTNode>,
@@ -60,6 +64,7 @@ impl Decl {
         Decl {
             span,
             kind: DeclKind::Function {
+                id: GLOBAL_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
                 name,
                 parameters,
                 body,

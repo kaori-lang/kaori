@@ -140,6 +140,8 @@ impl Parser {
             body.push(node);
         }
 
+        self.token_stream.consume(TokenKind::RightBrace)?;
+
         Ok(Decl::function(name, parameters, body, return_type, span))
     }
 
