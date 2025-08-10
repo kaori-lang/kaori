@@ -36,7 +36,10 @@ impl Parser {
     fn parse_declaration(&mut self) -> Result<Decl, KaoriError> {
         let declaration = match self.token_stream.token_kind() {
             TokenKind::Function => self.parse_function_declaration(),
-            _ => self.parse_variable_declaration(),
+            _ => Err(kaori_error!(
+                self.token_stream.span(),
+                "invalid declaration at this scope"
+            )),
         }?;
 
         Ok(declaration)

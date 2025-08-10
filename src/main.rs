@@ -1,10 +1,7 @@
 use std::{fs, time::Instant};
 
 use kaori::{
-    backend::{
-        codegen::{bytecode_generator::BytecodeGenerator, constant_pool::ConstantPool},
-        vm::interpreter::Interpreter,
-    },
+    backend::{codegen::constant_pool::ConstantPool, vm::interpreter::Interpreter},
     error::kaori_error::KaoriError,
     frontend::parse_and_analyze::parse_and_analyze,
 };
@@ -18,7 +15,7 @@ fn main() {
 }
 
 pub fn run_program(source: String) -> Result<(), KaoriError> {
-    let mut declarations = parse_and_analyze(source)?;
+    let mut nodes = parse_and_analyze(source)?;
 
     /*   let mut instructions = Vec::new();
        let mut constant_pool = ConstantPool::default();

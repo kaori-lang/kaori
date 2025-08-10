@@ -71,9 +71,7 @@ impl Resolver {
     }
 
     pub fn resolve(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
-        self.visit_nodes(nodes)?;
-
-        Ok(())
+        self.visit_nodes(nodes)
     }
 }
 
@@ -96,7 +94,7 @@ impl Visitor<()> for Resolver {
         }
 
         for node in nodes {
-            self.visit_ast_node(node);
+            self.visit_ast_node(node)?;
         }
 
         Ok(())
@@ -124,7 +122,6 @@ impl Visitor<()> for Resolver {
 
                 self.environment.declare(name.to_owned());
             }
-
             DeclKind::Function {
                 parameters,
                 block,
@@ -136,7 +133,7 @@ impl Visitor<()> for Resolver {
                 for parameter in parameters {
                     if self.search_current_scope(&parameter.name).is_some() {
                         return Err(kaori_error!(
-                            declaration.span,
+                            parameter.span,
                             "function {} can't have parameters with the same name",
                             name,
                         ));
@@ -146,12 +143,8 @@ impl Visitor<()> for Resolver {
                 }
 
                 if let StmtKind::Block(nodes) = &mut block.kind {
-                    for node in nodes {
-                        self.visit_ast_node(node)?;
-                    }
+                    self.visit_nodes(nodes)?;
                 }
-
-                self.visit_statement(block)?;
 
                 self.environment.exit_scope();
             }

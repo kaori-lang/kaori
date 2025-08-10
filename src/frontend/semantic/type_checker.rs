@@ -36,19 +36,16 @@ impl Visitor<Type> for TypeChecker {
     fn visit_nodes(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
         for node in nodes.iter().as_slice() {
             if let ASTNode::Declaration(declaration) = node
-                && let DeclKind::Function { name, .. } = &declaration.kind
-            {
-                if let DeclKind::Function {
+                && let DeclKind::Function {
                     type_annotation, ..
                 } = &declaration.kind
-                {
-                    self.environment.declare(type_annotation.to_owned());
-                }
+            {
+                self.environment.declare(type_annotation.to_owned());
             }
         }
 
         for node in nodes {
-            self.visit_ast_node(node);
+            self.visit_ast_node(node)?;
         }
 
         Ok(())
@@ -84,16 +81,18 @@ impl Visitor<Type> for TypeChecker {
             DeclKind::Function {
                 parameters, block, ..
             } => {
+                self.environment.enter_scope();
+
                 for parameter in parameters {
                     self.environment
                         .declare(parameter.type_annotation.to_owned());
                 }
 
                 if let StmtKind::Block(nodes) = &mut block.kind {
-                    for node in nodes {
-                        self.visit_ast_node(node)?;
-                    }
+                    self.visit_nodes(nodes)?;
                 };
+
+                self.environment.exit_scope();
             }
         }
 
