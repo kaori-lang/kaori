@@ -124,7 +124,7 @@ impl Visitor<()> for Resolver {
             }
             DeclKind::Function {
                 parameters,
-                block,
+                body,
                 name,
                 ..
             } => {
@@ -142,9 +142,7 @@ impl Visitor<()> for Resolver {
                     self.environment.declare(parameter.name.to_owned());
                 }
 
-                if let StmtKind::Block(nodes) = &mut block.kind {
-                    self.visit_nodes(nodes)?;
-                }
+                self.visit_nodes(body)?;
 
                 self.environment.exit_scope();
             }

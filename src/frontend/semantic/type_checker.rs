@@ -79,7 +79,7 @@ impl Visitor<Type> for TypeChecker {
                 self.environment.declare(right_type);
             }
             DeclKind::Function {
-                parameters, block, ..
+                parameters, body, ..
             } => {
                 self.environment.enter_scope();
 
@@ -88,9 +88,7 @@ impl Visitor<Type> for TypeChecker {
                         .declare(parameter.type_annotation.to_owned());
                 }
 
-                if let StmtKind::Block(nodes) = &mut block.kind {
-                    self.visit_nodes(nodes)?;
-                };
+                self.visit_nodes(body)?;
 
                 self.environment.exit_scope();
             }
