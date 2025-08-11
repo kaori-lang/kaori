@@ -1,6 +1,5 @@
 use crate::frontend::{
     scanner::span::Span,
-    semantic::resolution::Resolution,
     syntax::operator::{BinaryOp, UnaryOp},
 };
 
@@ -63,28 +62,6 @@ impl ResolvedExpr {
         }
     }
 
-    pub fn increment(identifier: ResolvedExpr, span: Span) -> ResolvedExpr {
-        let right = ResolvedExpr::binary(
-            BinaryOp::Plus,
-            identifier.to_owned(),
-            ResolvedExpr::number_literal(1.0, span),
-            span,
-        );
-
-        ResolvedExpr::assign(identifier, right, span)
-    }
-
-    pub fn decrement(identifier: ResolvedExpr, span: Span) -> ResolvedExpr {
-        let right = ResolvedExpr::binary(
-            BinaryOp::Minus,
-            identifier.to_owned(),
-            ResolvedExpr::number_literal(1.0, span),
-            span,
-        );
-
-        ResolvedExpr::assign(identifier, right, span)
-    }
-
     pub fn assign(identifier: ResolvedExpr, right: ResolvedExpr, span: Span) -> ResolvedExpr {
         ResolvedExpr {
             span,
@@ -95,13 +72,17 @@ impl ResolvedExpr {
         }
     }
 
-    pub fn identifier(name: String, span: Span) -> ResolvedExpr {
+    pub fn variable(offset: usize, span: Span) -> ResolvedExpr {
         ResolvedExpr {
             span,
-            kind: ResolvedExprKind::Identifier {
-                name,
-                resolution: Resolution::default(),
-            },
+            kind: ResolvedExprKind::Variable(offset),
+        }
+    }
+
+    pub fn function(function_id: usize, span: Span) -> ResolvedExpr {
+        ResolvedExpr {
+            span,
+            kind: ResolvedExprKind::Function(function_id),
         }
     }
 

@@ -11,7 +11,7 @@ use crate::{
     utils::visitor::Visitor,
 };
 
-use super::{environment::Environment, resolution::Resolution, resolved_expr::ResolvedExpr};
+use super::{environment::Environment, resolved_expr::ResolvedExpr};
 
 pub struct Resolver {
     environment: Environment<String>,
@@ -156,11 +156,7 @@ impl Visitor<ResolvedExpr> for Resolver {
             StmtKind::Expression(expression) => self.visit_expression(expression)?,
             StmtKind::Print(expression) => self.visit_expression(expression)?,
             StmtKind::Block(nodes) => {
-                self.environment.enter_scope();
-
                 self.visit_nodes(nodes)?;
-
-                self.environment.exit_scope();
             }
             StmtKind::If {
                 condition,
@@ -187,8 +183,8 @@ impl Visitor<ResolvedExpr> for Resolver {
         Ok(())
     }
 
-    fn visit_expression(&mut self, expression: &mut Expr) -> Result<ResolvedExpr, KaoriError> {
-        match &mut expression.kind {
+    fn visit_expression(&mut self, expression: &Expr) -> Result<ResolvedExpr, KaoriError> {
+        let resolved_expr = match &expression.kind {
             ExprKind::Assign { identifier, right } => {
                 let right = self.visit_expression(right)?;
                 let identifier = self.visit_expression(identifier)?;
@@ -206,17 +202,17 @@ impl Visitor<ResolvedExpr> for Resolver {
                 ResolvedExpr::binary(operator.to_owned(), left, right, expression.span)
             }
             ExprKind::Unary { right, .. } => self.visit_expression(right)?,
-            ExprKind::Identifier { name } => {
-                let Some(res) = self.search(name) else {
-                    return Err(kaori_error!(expression.span, "{} is not declared", name));
-                };
-            }
+            ExprKind::Identifier { name } => ResolvedExpr::variable(0, expression.span),
             ExprKind::FunctionCall { callee, arguments } => {
-                self.visit_expression(callee)?;
+                let callee = self.visit_expression(callee)?;
+                let mut resolved_args = Vec::new();
 
                 for argument in arguments {
-                    self.visit_expression(argument)?;
+                    let argument = self.visit_expression(argument)?;
+                    resolved_args.push(argument);
                 }
+
+                ResolvedExpr::function_call(callee, resolved_args, expression.span)
             }
             ExprKind::NumberLiteral(value) => {
                 ResolvedExpr::number_literal(value.to_owned(), expression.span)
@@ -229,6 +225,6 @@ impl Visitor<ResolvedExpr> for Resolver {
             }
         };
 
-        Ok(())
+        Ok(resolved_expr)
     }
 }

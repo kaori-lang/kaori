@@ -2,7 +2,7 @@ use crate::error::kaori_error::KaoriError;
 
 use super::{
     scanner::{lexer::Lexer, token_stream::TokenStream},
-    semantic::{resolver::Resolver, type_checker::TypeChecker},
+    semantic::resolver::Resolver,
     syntax::{ast_node::ASTNode, parser::Parser},
 };
 

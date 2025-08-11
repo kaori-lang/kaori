@@ -4,11 +4,11 @@ use crate::{
 };
 
 pub trait Visitor<T> {
-    fn visit_nodes(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError>;
-    fn visit_ast_node(&mut self, node: &mut ASTNode) -> Result<(), KaoriError>;
+    fn visit_nodes(&mut self, nodes: &[ASTNode]) -> Result<T, KaoriError>;
+    fn visit_ast_node(&mut self, node: &ASTNode) -> Result<T, KaoriError>;
 
-    fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError>;
+    fn visit_declaration(&mut self, declaration: &Decl) -> Result<T, KaoriError>;
 
-    fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), KaoriError>;
+    fn visit_statement(&mut self, statement: &Stmt) -> Result<T, KaoriError>;
     fn visit_expression(&mut self, expression: &Expr) -> Result<T, KaoriError>;
 }
