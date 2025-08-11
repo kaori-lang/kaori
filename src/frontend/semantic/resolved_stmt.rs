@@ -1,4 +1,4 @@
-use crate::frontend::{scanner::span::Span, syntax::ast_node::ASTNode};
+use crate::frontend::scanner::span::Span;
 
 use super::resolved_expr::ResolvedExpr;
 
@@ -20,7 +20,7 @@ pub enum ResolvedStmtKind {
         condition: Box<ResolvedExpr>,
         block: Box<ResolvedStmt>,
     },
-    Block(Vec<ASTNode>),
+    Block(Vec<ResolvedAstNode>),
     Expression(Box<ResolvedExpr>),
     Break,
     Continue,
@@ -60,7 +60,7 @@ impl ResolvedStmt {
         }
     }
 
-    pub fn block(declarations: Vec<ASTNode>, span: Span) -> ResolvedStmt {
+    pub fn block(declarations: Vec<ResolvedAstNode>, span: Span) -> ResolvedStmt {
         ResolvedStmt {
             span,
             kind: ResolvedStmtKind::Block(declarations),

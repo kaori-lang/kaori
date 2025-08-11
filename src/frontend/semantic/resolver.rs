@@ -11,7 +11,7 @@ use crate::{
     utils::visitor::Visitor,
 };
 
-use super::{environment::Environment, resolved_expr::ResolvedExpr};
+use super::{environment::Environment, resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt};
 
 pub struct Resolver {
     environment: Environment<String>,
@@ -75,7 +75,7 @@ impl Resolver {
     }
 }
 
-impl Visitor<ResolvedExpr> for Resolver {
+impl Visitor<ResolvedExpr, ASTNode> for Resolver {
     fn visit_nodes(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
         for node in nodes.iter().as_slice() {
             if let ASTNode::Declaration(declaration) = node
@@ -151,10 +151,16 @@ impl Visitor<ResolvedExpr> for Resolver {
         Ok(())
     }
 
-    fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), KaoriError> {
-        match &mut statement.kind {
-            StmtKind::Expression(expression) => self.visit_expression(expression)?,
-            StmtKind::Print(expression) => self.visit_expression(expression)?,
+    fn visit_statement(&mut self, statement: &Stmt) -> Result<ASTNode, KaoriError> {
+        let resolved_stmt = match &statement.kind {
+            StmtKind::Expression(expression) => {
+                let expr = self.visit_expression(expression)?;
+                ResolvedStmt::expression(expr, statement.span)
+            }
+            StmtKind::Print(expression) => {
+                let expr = self.visit_expression(expression)?;
+                ResolvedStmt::print(expr, statement.span)
+            }
             StmtKind::Block(nodes) => {
                 self.visit_nodes(nodes)?;
             }
@@ -162,14 +168,15 @@ impl Visitor<ResolvedExpr> for Resolver {
                 condition,
                 then_branch,
                 else_branch,
-                ..
             } => {
-                self.visit_expression(condition)?;
-                self.visit_statement(then_branch)?;
+                let condition = self.visit_expression(condition)?;
+                let then_branch = self.visit_statement(then_branch)?;
 
-                if let Some(branch) = else_branch {
-                    self.visit_statement(branch)?;
-                }
+                let else_branch = if let Some(branch) = else_branch {
+                    self.visit_statement(branch)
+                } else {
+                    None
+                }?;
             }
             StmtKind::WhileLoop {
                 condition, block, ..

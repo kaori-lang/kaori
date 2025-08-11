@@ -1,7 +1,7 @@
 use super::{declaration::Decl, statement::Stmt};
 
 #[derive(Debug)]
-pub enum ASTNode {
+pub enum AstNode {
     Declaration(Decl),
     Statement(Stmt),
 }

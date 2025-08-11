@@ -3,10 +3,10 @@ use crate::error::kaori_error::KaoriError;
 use super::{
     scanner::{lexer::Lexer, token_stream::TokenStream},
     semantic::resolver::Resolver,
-    syntax::{ast_node::ASTNode, parser::Parser},
+    syntax::{ast_node::AstNode, parser::Parser},
 };
 
-pub fn parse_and_analyze(source: String) -> Result<Vec<ASTNode>, KaoriError> {
+pub fn parse_and_analyze(source: String) -> Result<Vec<AstNode>, KaoriError> {
     let mut tokens = Vec::new();
     let mut lexer = Lexer::new(&source, &mut tokens);
 

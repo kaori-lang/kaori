@@ -7,7 +7,7 @@ use crate::{
 };
 
 use super::{
-    ast_node::ASTNode,
+    ast_node::AstNode,
     declaration::{Decl, Parameter},
     expression::Expr,
     operator::{BinaryOp, UnaryOp},
@@ -24,12 +24,12 @@ impl Parser {
         Self { token_stream }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<ASTNode>, KaoriError> {
-        let mut nodes: Vec<ASTNode> = Vec::new();
+    pub fn parse(&mut self) -> Result<Vec<AstNode>, KaoriError> {
+        let mut nodes: Vec<AstNode> = Vec::new();
 
         while !self.token_stream.at_end() {
             let declaration = self.parse_declaration()?;
-            nodes.push(ASTNode::Declaration(declaration));
+            nodes.push(AstNode::Declaration(declaration));
         }
 
         Ok(nodes)
@@ -47,7 +47,7 @@ impl Parser {
         Ok(declaration)
     }
 
-    fn parse_ast_node(&mut self) -> Result<ASTNode, KaoriError> {
+    fn parse_ast_node(&mut self) -> Result<AstNode, KaoriError> {
         let stmt = match self.token_stream.token_kind() {
             TokenKind::Print => self.parse_print_statement(),
             TokenKind::LeftBrace => self.parse_block_statement(),
@@ -59,14 +59,14 @@ impl Parser {
                     .token_stream
                     .look_ahead(&[TokenKind::Identifier, TokenKind::Colon])
                 {
-                    return Ok(ASTNode::Declaration(self.parse_variable_declaration()?));
+                    return Ok(AstNode::Declaration(self.parse_variable_declaration()?));
                 } else {
                     self.parse_expression_statement()
                 }
             }
         }?;
 
-        Ok(ASTNode::Statement(stmt))
+        Ok(AstNode::Statement(stmt))
     }
 
     /* Declarations */
@@ -171,7 +171,7 @@ impl Parser {
     fn parse_block_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
 
-        let mut nodes: Vec<ASTNode> = Vec::new();
+        let mut nodes: Vec<AstNode> = Vec::new();
 
         self.token_stream.consume(TokenKind::LeftBrace)?;
 

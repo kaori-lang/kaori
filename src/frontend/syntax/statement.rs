@@ -1,6 +1,6 @@
 use crate::frontend::scanner::span::Span;
 
-use super::{ast_node::ASTNode, declaration::Decl, expression::Expr};
+use super::{ast_node::AstNode, declaration::Decl, expression::Expr};
 
 #[derive(Debug)]
 pub struct Stmt {
@@ -20,7 +20,7 @@ pub enum StmtKind {
         condition: Box<Expr>,
         block: Box<Stmt>,
     },
-    Block(Vec<ASTNode>),
+    Block(Vec<AstNode>),
     Expression(Box<Expr>),
     Break,
     Continue,
@@ -63,14 +63,14 @@ impl Stmt {
         span: Span,
     ) -> Stmt {
         if let StmtKind::Block(nodes) = &mut block.kind {
-            nodes.push(ASTNode::Statement(increment));
+            nodes.push(AstNode::Statement(increment));
         }
 
         let while_loop_ = Stmt::while_loop(condition, block, span);
 
-        let nodes: Vec<ASTNode> = vec![
-            ASTNode::Declaration(declaration),
-            ASTNode::Statement(while_loop_),
+        let nodes: Vec<AstNode> = vec![
+            AstNode::Declaration(declaration),
+            AstNode::Statement(while_loop_),
         ];
 
         Stmt {
@@ -79,7 +79,7 @@ impl Stmt {
         }
     }
 
-    pub fn block(declarations: Vec<ASTNode>, span: Span) -> Stmt {
+    pub fn block(declarations: Vec<AstNode>, span: Span) -> Stmt {
         Stmt {
             span,
             kind: StmtKind::Block(declarations),
