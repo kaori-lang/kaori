@@ -8,15 +8,12 @@ use crate::{
         statement::{Stmt, StmtKind},
     },
     kaori_error,
-    utils::visitor::{AstNodeVisitor, DeclVisitor, ExprVisitor, StmtVisitor},
+    utils::visitors::{AstNodeVisitor, DeclVisitor, ExprVisitor, StmtVisitor},
 };
 
 use super::{
-    environment::Environment,
-    resolved_ast_node::ResolvedAstNode,
-    resolved_decl::{ResolvedDecl, ResolvedParameter},
-    resolved_expr::ResolvedExpr,
-    resolved_stmt::ResolvedStmt,
+    environment::Environment, resolved_ast_node::ResolvedAstNode, resolved_decl::ResolvedDecl,
+    resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt,
 };
 
 pub struct Resolver {
@@ -73,7 +70,7 @@ impl Resolver {
     }
 }
 
-impl AstNodeVisitor<ResolvedAstNode> for Resolver {
+impl AstNodeVisitor<AstNode, ResolvedAstNode> for Resolver {
     fn visit_nodes(&self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
         for node in nodes.iter().as_slice() {
             if let AstNode::Declaration(declaration) = node
@@ -120,7 +117,7 @@ impl AstNodeVisitor<ResolvedAstNode> for Resolver {
     }
 }
 
-impl DeclVisitor<ResolvedDecl> for Resolver {
+impl DeclVisitor<Decl, ResolvedDecl> for Resolver {
     fn visit_declaration(&self, declaration: &Decl) -> Result<ResolvedDecl, KaoriError> {
         let resolved_decl = match &declaration.kind {
             DeclKind::Variable {
@@ -179,7 +176,7 @@ impl DeclVisitor<ResolvedDecl> for Resolver {
     }
 }
 
-impl StmtVisitor<ResolvedStmt> for Resolver {
+impl StmtVisitor<Stmt, ResolvedStmt> for Resolver {
     fn visit_statement(&self, statement: &Stmt) -> Result<ResolvedStmt, KaoriError> {
         let resolved_stmt = match &statement.kind {
             StmtKind::Expression(expression) => {
@@ -228,7 +225,7 @@ impl StmtVisitor<ResolvedStmt> for Resolver {
     }
 }
 
-impl ExprVisitor<ResolvedExpr> for Resolver {
+impl ExprVisitor<Expr, ResolvedExpr> for Resolver {
     fn visit_expression(&self, expression: &Expr) -> Result<ResolvedExpr, KaoriError> {
         let resolved_expr = match &expression.kind {
             ExprKind::Assign { identifier, right } => {
