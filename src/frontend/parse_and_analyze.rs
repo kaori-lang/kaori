@@ -22,9 +22,9 @@ pub fn parse_and_analyze(source: String) -> Result<Vec<ASTNode>, KaoriError> {
 
     resolver.resolve(&mut nodes)?;
 
-    let mut type_checker = TypeChecker::new();
+    /*     let mut type_checker = TypeChecker::new();
 
-    type_checker.check(&mut nodes)?;
+    type_checker.check(&mut nodes)?; */
 
     Ok(nodes)
 }

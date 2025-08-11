@@ -10,5 +10,5 @@ pub trait Visitor<T> {
     fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError>;
 
     fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), KaoriError>;
-    fn visit_expression(&mut self, expression: &mut Expr) -> Result<T, KaoriError>;
+    fn visit_expression(&mut self, expression: &Expr) -> Result<T, KaoriError>;
 }

@@ -11,7 +11,7 @@ use crate::{
     utils::visitor::Visitor,
 };
 
-use super::{environment::Environment, resolution::Resolution};
+use super::{environment::Environment, resolution::Resolution, resolved_expr::ResolvedExpr};
 
 pub struct Resolver {
     environment: Environment<String>,
@@ -75,7 +75,7 @@ impl Resolver {
     }
 }
 
-impl Visitor<()> for Resolver {
+impl Visitor<ResolvedExpr> for Resolver {
     fn visit_nodes(&mut self, nodes: &mut [ASTNode]) -> Result<(), KaoriError> {
         for node in nodes.iter().as_slice() {
             if let ASTNode::Declaration(declaration) = node
@@ -187,23 +187,29 @@ impl Visitor<()> for Resolver {
         Ok(())
     }
 
-    fn visit_expression(&mut self, expression: &mut Expr) -> Result<(), KaoriError> {
+    fn visit_expression(&mut self, expression: &mut Expr) -> Result<ResolvedExpr, KaoriError> {
         match &mut expression.kind {
             ExprKind::Assign { identifier, right } => {
-                self.visit_expression(right)?;
-                self.visit_expression(identifier)?;
+                let right = self.visit_expression(right)?;
+                let identifier = self.visit_expression(identifier)?;
+
+                ResolvedExpr::assign(identifier, right, expression.span)
             }
-            ExprKind::Binary { left, right, .. } => {
-                self.visit_expression(left)?;
-                self.visit_expression(right)?;
+            ExprKind::Binary {
+                left,
+                right,
+                operator,
+            } => {
+                let left = self.visit_expression(left)?;
+                let right = self.visit_expression(right)?;
+
+                ResolvedExpr::binary(operator.to_owned(), left, right, expression.span)
             }
             ExprKind::Unary { right, .. } => self.visit_expression(right)?,
             ExprKind::Identifier { name, resolution } => {
                 let Some(res) = self.search(name) else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));
                 };
-
-                *resolution = res;
             }
             ExprKind::FunctionCall { callee, arguments } => {
                 self.visit_expression(callee)?;
@@ -212,7 +218,15 @@ impl Visitor<()> for Resolver {
                     self.visit_expression(argument)?;
                 }
             }
-            _ => (),
+            ExprKind::NumberLiteral(value) => {
+                ResolvedExpr::number_literal(value.to_owned(), expression.span)
+            }
+            ExprKind::BooleanLiteral(value) => {
+                ResolvedExpr::boolean_literal(value.to_owned(), expression.span)
+            }
+            ExprKind::StringLiteral(value) => {
+                ResolvedExpr::string_literal(value.to_owned(), expression.span)
+            }
         };
 
         Ok(())
