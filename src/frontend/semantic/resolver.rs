@@ -206,7 +206,7 @@ impl Visitor<ResolvedExpr> for Resolver {
                 ResolvedExpr::binary(operator.to_owned(), left, right, expression.span)
             }
             ExprKind::Unary { right, .. } => self.visit_expression(right)?,
-            ExprKind::Identifier { name, resolution } => {
+            ExprKind::Identifier { name } => {
                 let Some(res) = self.search(name) else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));
                 };

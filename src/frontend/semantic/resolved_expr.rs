@@ -25,10 +25,8 @@ pub enum ResolvedExprKind {
         identifier: Box<ResolvedExpr>,
         right: Box<ResolvedExpr>,
     },
-    Identifier {
-        name: String,
-        resolution: Resolution,
-    },
+    Variable(usize),
+    Function(usize),
     FunctionCall {
         callee: Box<ResolvedExpr>,
         arguments: Vec<ResolvedExpr>,

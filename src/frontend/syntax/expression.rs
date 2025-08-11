@@ -1,4 +1,4 @@
-use crate::frontend::{scanner::span::Span, semantic::resolution::Resolution};
+use crate::frontend::scanner::span::Span;
 
 use super::operator::{BinaryOp, UnaryOp};
 
@@ -25,7 +25,6 @@ pub enum ExprKind {
     },
     Identifier {
         name: String,
-        resolution: Resolution,
     },
     FunctionCall {
         callee: Box<Expr>,
@@ -93,10 +92,7 @@ impl Expr {
     pub fn identifier(name: String, span: Span) -> Expr {
         Expr {
             span,
-            kind: ExprKind::Identifier {
-                name,
-                resolution: Resolution::default(),
-            },
+            kind: ExprKind::Identifier { name },
         }
     }
 
