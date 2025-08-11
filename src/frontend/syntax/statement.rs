@@ -79,10 +79,10 @@ impl Stmt {
         }
     }
 
-    pub fn block(declarations: Vec<AstNode>, span: Span) -> Stmt {
+    pub fn block(nodes: Vec<AstNode>, span: Span) -> Stmt {
         Stmt {
             span,
-            kind: StmtKind::Block(declarations),
+            kind: StmtKind::Block(nodes),
         }
     }
 

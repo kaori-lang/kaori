@@ -1,6 +1,6 @@
 use crate::frontend::scanner::span::Span;
 
-use super::resolved_expr::ResolvedExpr;
+use super::{resolved_ast_node::ResolvedAstNode, resolved_expr::ResolvedExpr};
 
 #[derive(Debug)]
 pub struct ResolvedStmt {
@@ -60,10 +60,10 @@ impl ResolvedStmt {
         }
     }
 
-    pub fn block(declarations: Vec<ResolvedAstNode>, span: Span) -> ResolvedStmt {
+    pub fn block(nodes: Vec<ResolvedAstNode>, span: Span) -> ResolvedStmt {
         ResolvedStmt {
             span,
-            kind: ResolvedStmtKind::Block(declarations),
+            kind: ResolvedStmtKind::Block(nodes),
         }
     }
 

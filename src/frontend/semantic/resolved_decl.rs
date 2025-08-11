@@ -1,4 +1,7 @@
-use crate::frontend::{scanner::span::Span, syntax::r#type::Type};
+use crate::frontend::{
+    scanner::span::Span,
+    syntax::{declaration::Parameter, r#type::Type},
+};
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -15,37 +18,28 @@ pub struct ResolvedDecl {
 #[derive(Debug)]
 pub enum ResolvedDeclKind {
     Variable {
-        name: String,
         right: Box<ResolvedExpr>,
         type_annotation: Type,
     },
     Function {
         id: usize,
-        name: String,
-        parameters: Vec<Parameter>,
+        parameters: Vec<ResolvedParameter>,
         body: Vec<ResolvedAstNode>,
         type_annotation: Type,
     },
 }
 
 #[derive(Debug)]
-pub struct Parameter {
-    pub name: String,
+pub struct ResolvedParameter {
     pub type_annotation: Type,
     pub span: Span,
 }
 
 impl ResolvedDecl {
-    pub fn variable(
-        name: String,
-        right: ResolvedExpr,
-        type_annotation: Type,
-        span: Span,
-    ) -> ResolvedDecl {
+    pub fn variable(right: ResolvedExpr, type_annotation: Type, span: Span) -> ResolvedDecl {
         ResolvedDecl {
             span,
             kind: ResolvedDeclKind::Variable {
-                name,
                 right: Box::new(right),
                 type_annotation,
             },
@@ -53,18 +47,23 @@ impl ResolvedDecl {
     }
 
     pub fn function(
-        id: usize,
-        name: String,
-        parameters: Vec<Parameter>,
+        parameters: &[Parameter],
         body: Vec<ResolvedAstNode>,
         type_annotation: Type,
         span: Span,
     ) -> ResolvedDecl {
+        let parameters = parameters
+            .iter()
+            .map(|parameter| ResolvedParameter {
+                type_annotation: parameter.type_annotation.to_owned(),
+                span: parameter.span,
+            })
+            .collect();
+
         ResolvedDecl {
             span,
             kind: ResolvedDeclKind::Function {
-                id,
-                name,
+                id: GLOBAL_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
                 parameters,
                 body,
                 type_annotation,
