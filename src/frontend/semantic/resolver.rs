@@ -8,7 +8,7 @@ use crate::{
         statement::{Stmt, StmtKind},
     },
     kaori_error,
-    utils::visitor::ExprVisitor,
+    utils::visitor::{AstNodeVisitor, DeclVisitor, ExprVisitor, StmtVisitor},
 };
 
 use super::{
@@ -30,7 +30,7 @@ impl Resolver {
         }
     }
 
-    fn search_current_scope(&mut self, name: &str) -> Option<Resolution> {
+    fn search_current_scope(&mut self, name: &str) {
         let mut start = self.environment.declarations.len();
         let end = *self.environment.scopes_pointer.last().unwrap();
 
@@ -45,12 +45,8 @@ impl Resolver {
                 if !global {
                     offset = start - self.environment.frame_pointer;
                 }
-
-                return Some(Resolution { offset, global });
             }
         }
-
-        None
     }
 
     fn search(&mut self, name: &str) {
@@ -72,11 +68,13 @@ impl Resolver {
         }
     }
 
-    pub fn resolve(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
+    pub fn resolve(&self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
         self.visit_nodes(nodes)
     }
+}
 
-    fn visit_nodes(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
+impl AstNodeVisitor<ResolvedAstNode> for Resolver {
+    fn visit_nodes(&self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
         for node in nodes.iter().as_slice() {
             if let AstNode::Declaration(declaration) = node
                 && let DeclKind::Function { name, .. } = &declaration.kind
@@ -104,7 +102,7 @@ impl Resolver {
         Ok(resolved_ast_nodes)
     }
 
-    fn visit_ast_node(&mut self, node: &AstNode) -> Result<ResolvedAstNode, KaoriError> {
+    fn visit_ast_node(&self, node: &AstNode) -> Result<ResolvedAstNode, KaoriError> {
         let resolved_ast_node = match node {
             AstNode::Declaration(declaration) => {
                 let declaration = self.visit_declaration(declaration)?;
@@ -120,8 +118,10 @@ impl Resolver {
 
         Ok(resolved_ast_node)
     }
+}
 
-    fn visit_declaration(&mut self, declaration: &Decl) -> Result<ResolvedDecl, KaoriError> {
+impl DeclVisitor<ResolvedDecl> for Resolver {
+    fn visit_declaration(&self, declaration: &Decl) -> Result<ResolvedDecl, KaoriError> {
         let resolved_decl = match &declaration.kind {
             DeclKind::Variable {
                 name,
@@ -177,8 +177,10 @@ impl Resolver {
 
         Ok(resolved_decl)
     }
+}
 
-    fn visit_statement(&mut self, statement: &Stmt) -> Result<ResolvedStmt, KaoriError> {
+impl StmtVisitor<ResolvedStmt> for Resolver {
+    fn visit_statement(&self, statement: &Stmt) -> Result<ResolvedStmt, KaoriError> {
         let resolved_stmt = match &statement.kind {
             StmtKind::Expression(expression) => {
                 let expr = self.visit_expression(expression)?;
