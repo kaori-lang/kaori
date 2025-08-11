@@ -16,7 +16,7 @@ use super::{
 };
 
 pub struct Resolver {
-    environment: Environment<String>,
+    environment: Environment,
 }
 
 impl Resolver {
@@ -26,16 +26,35 @@ impl Resolver {
         }
     }
 
-    pub fn resolve(&self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
+    fn search_variable(&mut self, name: &str) -> Option<usize> {
+        let mut i = self.environment.runtime_symbols.len();
+        let j: usize = 0;
+
+        while i > j {
+            i -= 1;
+
+            if name == self.environment.runtime_symbols[i] {
+                return Some(i);
+            }
+        }
+
+        None
+    }
+
+    fn is_declared(&self, name: &String) -> bool {
+        self.environment.is_function_declared(name) || self.environment.is_variable_declared(name)
+    }
+
+    pub fn resolve(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
         self.resolve_nodes(nodes)
     }
 
-    fn resolve_nodes(&self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
+    fn resolve_nodes(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
         for node in nodes.iter().as_slice() {
             if let AstNode::Declaration(declaration) = node
                 && let DeclKind::Function { name, .. } = &declaration.kind
             {
-                if self.search_current_scope(name).is_some() {
+                if self.is_declared(name) {
                     return Err(kaori_error!(
                         declaration.span,
                         "{} is already declared",
@@ -43,11 +62,11 @@ impl Resolver {
                     ));
                 }
 
-                self.environment.declare(name.to_owned());
+                self.environment.declare_function(name.to_owned());
             }
         }
 
-        let resolved_ast_nodes = Vec::new();
+        let mut resolved_ast_nodes = Vec::new();
 
         for node in nodes {
             let node = self.resolve_ast_node(node)?;
@@ -58,7 +77,7 @@ impl Resolver {
         Ok(resolved_ast_nodes)
     }
 
-    fn resolve_ast_node(&self, node: &AstNode) -> Result<ResolvedAstNode, KaoriError> {
+    fn resolve_ast_node(&mut self, node: &AstNode) -> Result<ResolvedAstNode, KaoriError> {
         let resolved_ast_node = match node {
             AstNode::Declaration(declaration) => {
                 let declaration = self.resolve_declaration(declaration)?;
@@ -75,7 +94,7 @@ impl Resolver {
         Ok(resolved_ast_node)
     }
 
-    fn resolve_declaration(&self, declaration: &Decl) -> Result<ResolvedDecl, KaoriError> {
+    fn resolve_declaration(&mut self, declaration: &Decl) -> Result<ResolvedDecl, KaoriError> {
         let resolved_decl = match &declaration.kind {
             DeclKind::Variable {
                 name,
@@ -84,7 +103,7 @@ impl Resolver {
             } => {
                 let right = self.resolve_expression(right)?;
 
-                if self.search_current_scope(name).is_some() {
+                if self.is_declared(name) {
                     return Err(kaori_error!(
                         declaration.span,
                         "{} is already declared",
@@ -92,7 +111,7 @@ impl Resolver {
                     ));
                 };
 
-                self.environment.declare(name.to_owned());
+                self.environment.declare_variable(name.to_owned());
 
                 ResolvedDecl::variable(right, type_annotation.to_owned(), declaration.span)
             }
@@ -105,7 +124,7 @@ impl Resolver {
                 self.environment.enter_scope();
 
                 for parameter in parameters {
-                    if self.search_current_scope(&parameter.name).is_some() {
+                    if self.is_declared(&parameter.name) {
                         return Err(kaori_error!(
                             parameter.span,
                             "function {} can't have parameters with the same name",
@@ -113,7 +132,7 @@ impl Resolver {
                         ));
                     };
 
-                    self.environment.declare(parameter.name.to_owned());
+                    self.declare(parameter.name.to_owned());
                 }
 
                 let body = self.resolve_nodes(body)?;
@@ -132,7 +151,7 @@ impl Resolver {
         Ok(resolved_decl)
     }
 
-    fn resolve_statement(&self, statement: &Stmt) -> Result<ResolvedStmt, KaoriError> {
+    fn resolve_statement(&mut self, statement: &Stmt) -> Result<ResolvedStmt, KaoriError> {
         let resolved_stmt = match &statement.kind {
             StmtKind::Expression(expression) => {
                 let expr = self.resolve_expression(expression)?;

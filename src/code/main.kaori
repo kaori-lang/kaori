@@ -14,13 +14,21 @@ def foo() -> bool {
 
 
 def foo(a: num, b: bool) -> bool {
-  
+
 }
 
 def main() -> bool {
-    a: num = 5;
-    print(foo);
-
-
+    foo()
 }
 
+
+struct Foo {
+    a: num,
+    b: num
+}
+
+impl Foo {
+    def foo(self) {
+        return a + b;
+    }
+}
