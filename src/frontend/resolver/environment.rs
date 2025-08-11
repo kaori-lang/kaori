@@ -38,4 +38,42 @@ impl<T> Environment<T> {
     pub fn declare(&mut self, value: T) {
         self.declarations.push(value);
     }
+
+    fn search_current_scope(&mut self, name: &str) {
+        let mut start = self.environment.declarations.len();
+        let end = *self.environment.scopes_pointer.last().unwrap();
+
+        while start > end {
+            start -= 1;
+
+            if name == self.environment.declarations[start] {
+                let global =
+                    self.environment.frame_pointer == 0 || start < self.environment.frame_pointer;
+                let mut offset = start;
+
+                if !global {
+                    offset = start - self.environment.frame_pointer;
+                }
+            }
+        }
+    }
+
+    fn search(&mut self, name: &str) {
+        let mut start = self.environment.declarations.len();
+        let end: usize = 0;
+
+        while start > end {
+            start -= 1;
+
+            if name == self.environment.declarations[start] {
+                let global =
+                    self.environment.frame_pointer == 0 || start < self.environment.frame_pointer;
+                let mut offset = start;
+
+                if !global {
+                    offset = start - self.environment.frame_pointer;
+                }
+            }
+        }
+    }
 }

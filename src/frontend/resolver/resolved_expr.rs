@@ -3,13 +3,13 @@ use crate::frontend::{
     syntax::operator::{BinaryOp, UnaryOp},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ResolvedExpr {
     pub span: Span,
     pub kind: ResolvedExprKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ResolvedExprKind {
     Binary {
         operator: BinaryOp,

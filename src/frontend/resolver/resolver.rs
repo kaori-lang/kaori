@@ -8,7 +8,6 @@ use crate::{
         statement::{Stmt, StmtKind},
     },
     kaori_error,
-    utils::visitors::{AstNodeVisitor, DeclVisitor, ExprVisitor, StmtVisitor},
 };
 
 use super::{
@@ -27,51 +26,11 @@ impl Resolver {
         }
     }
 
-    fn search_current_scope(&mut self, name: &str) {
-        let mut start = self.environment.declarations.len();
-        let end = *self.environment.scopes_pointer.last().unwrap();
-
-        while start > end {
-            start -= 1;
-
-            if name == self.environment.declarations[start] {
-                let global =
-                    self.environment.frame_pointer == 0 || start < self.environment.frame_pointer;
-                let mut offset = start;
-
-                if !global {
-                    offset = start - self.environment.frame_pointer;
-                }
-            }
-        }
-    }
-
-    fn search(&mut self, name: &str) {
-        let mut start = self.environment.declarations.len();
-        let end: usize = 0;
-
-        while start > end {
-            start -= 1;
-
-            if name == self.environment.declarations[start] {
-                let global =
-                    self.environment.frame_pointer == 0 || start < self.environment.frame_pointer;
-                let mut offset = start;
-
-                if !global {
-                    offset = start - self.environment.frame_pointer;
-                }
-            }
-        }
-    }
-
     pub fn resolve(&self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
-        self.visit_nodes(nodes)
+        self.resolve_nodes(nodes)
     }
-}
 
-impl AstNodeVisitor<AstNode, ResolvedAstNode> for Resolver {
-    fn visit_nodes(&self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
+    fn resolve_nodes(&self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
         for node in nodes.iter().as_slice() {
             if let AstNode::Declaration(declaration) = node
                 && let DeclKind::Function { name, .. } = &declaration.kind
@@ -91,7 +50,7 @@ impl AstNodeVisitor<AstNode, ResolvedAstNode> for Resolver {
         let resolved_ast_nodes = Vec::new();
 
         for node in nodes {
-            let node = self.visit_ast_node(node)?;
+            let node = self.resolve_ast_node(node)?;
 
             resolved_ast_nodes.push(node);
         }
@@ -99,15 +58,15 @@ impl AstNodeVisitor<AstNode, ResolvedAstNode> for Resolver {
         Ok(resolved_ast_nodes)
     }
 
-    fn visit_ast_node(&self, node: &AstNode) -> Result<ResolvedAstNode, KaoriError> {
+    fn resolve_ast_node(&self, node: &AstNode) -> Result<ResolvedAstNode, KaoriError> {
         let resolved_ast_node = match node {
             AstNode::Declaration(declaration) => {
-                let declaration = self.visit_declaration(declaration)?;
+                let declaration = self.resolve_declaration(declaration)?;
 
                 ResolvedAstNode::Declaration(declaration)
             }
             AstNode::Statement(statement) => {
-                let statement = self.visit_statement(statement)?;
+                let statement = self.resolve_statement(statement)?;
 
                 ResolvedAstNode::Statement(statement)
             }
@@ -115,17 +74,15 @@ impl AstNodeVisitor<AstNode, ResolvedAstNode> for Resolver {
 
         Ok(resolved_ast_node)
     }
-}
 
-impl DeclVisitor<Decl, ResolvedDecl> for Resolver {
-    fn visit_declaration(&self, declaration: &Decl) -> Result<ResolvedDecl, KaoriError> {
+    fn resolve_declaration(&self, declaration: &Decl) -> Result<ResolvedDecl, KaoriError> {
         let resolved_decl = match &declaration.kind {
             DeclKind::Variable {
                 name,
                 right,
                 type_annotation,
             } => {
-                let right = self.visit_expression(right)?;
+                let right = self.resolve_expression(right)?;
 
                 if self.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
@@ -159,7 +116,7 @@ impl DeclVisitor<Decl, ResolvedDecl> for Resolver {
                     self.environment.declare(parameter.name.to_owned());
                 }
 
-                let body = self.visit_nodes(body)?;
+                let body = self.resolve_nodes(body)?;
 
                 self.environment.exit_scope();
 
@@ -174,23 +131,21 @@ impl DeclVisitor<Decl, ResolvedDecl> for Resolver {
 
         Ok(resolved_decl)
     }
-}
 
-impl StmtVisitor<Stmt, ResolvedStmt> for Resolver {
-    fn visit_statement(&self, statement: &Stmt) -> Result<ResolvedStmt, KaoriError> {
+    fn resolve_statement(&self, statement: &Stmt) -> Result<ResolvedStmt, KaoriError> {
         let resolved_stmt = match &statement.kind {
             StmtKind::Expression(expression) => {
-                let expr = self.visit_expression(expression)?;
+                let expr = self.resolve_expression(expression)?;
 
                 ResolvedStmt::expression(expr, statement.span)
             }
             StmtKind::Print(expression) => {
-                let expr = self.visit_expression(expression)?;
+                let expr = self.resolve_expression(expression)?;
 
                 ResolvedStmt::print(expr, statement.span)
             }
             StmtKind::Block(nodes) => {
-                let nodes = self.visit_nodes(nodes)?;
+                let nodes = self.resolve_nodes(nodes)?;
 
                 ResolvedStmt::block(nodes, statement.span)
             }
@@ -199,10 +154,10 @@ impl StmtVisitor<Stmt, ResolvedStmt> for Resolver {
                 then_branch,
                 else_branch,
             } => {
-                let condition = self.visit_expression(condition)?;
-                let then_branch = self.visit_statement(then_branch)?;
+                let condition = self.resolve_expression(condition)?;
+                let then_branch = self.resolve_statement(then_branch)?;
                 let else_branch = if let Some(branch) = else_branch {
-                    Some(self.visit_statement(branch)?)
+                    Some(self.resolve_statement(branch)?)
                 } else {
                     None
                 };
@@ -212,8 +167,8 @@ impl StmtVisitor<Stmt, ResolvedStmt> for Resolver {
             StmtKind::WhileLoop {
                 condition, block, ..
             } => {
-                let condition = self.visit_expression(condition)?;
-                let block = self.visit_statement(block)?;
+                let condition = self.resolve_expression(condition)?;
+                let block = self.resolve_statement(block)?;
 
                 ResolvedStmt::while_loop(condition, block, statement.span)
             }
@@ -223,14 +178,12 @@ impl StmtVisitor<Stmt, ResolvedStmt> for Resolver {
 
         Ok(resolved_stmt)
     }
-}
 
-impl ExprVisitor<Expr, ResolvedExpr> for Resolver {
-    fn visit_expression(&self, expression: &Expr) -> Result<ResolvedExpr, KaoriError> {
+    fn resolve_expression(&self, expression: &Expr) -> Result<ResolvedExpr, KaoriError> {
         let resolved_expr = match &expression.kind {
             ExprKind::Assign { identifier, right } => {
-                let right = self.visit_expression(right)?;
-                let identifier = self.visit_expression(identifier)?;
+                let right = self.resolve_expression(right)?;
+                let identifier = self.resolve_expression(identifier)?;
 
                 ResolvedExpr::assign(identifier, right, expression.span)
             }
@@ -239,19 +192,19 @@ impl ExprVisitor<Expr, ResolvedExpr> for Resolver {
                 right,
                 operator,
             } => {
-                let left = self.visit_expression(left)?;
-                let right = self.visit_expression(right)?;
+                let left = self.resolve_expression(left)?;
+                let right = self.resolve_expression(right)?;
 
                 ResolvedExpr::binary(operator.to_owned(), left, right, expression.span)
             }
-            ExprKind::Unary { right, .. } => self.visit_expression(right)?,
+            ExprKind::Unary { right, .. } => self.resolve_expression(right)?,
             ExprKind::Identifier { name } => ResolvedExpr::variable(0, expression.span),
             ExprKind::FunctionCall { callee, arguments } => {
-                let callee = self.visit_expression(callee)?;
+                let callee = self.resolve_expression(callee)?;
                 let mut resolved_args = Vec::new();
 
                 for argument in arguments {
-                    let argument = self.visit_expression(argument)?;
+                    let argument = self.resolve_expression(argument)?;
                     resolved_args.push(argument);
                 }
 
