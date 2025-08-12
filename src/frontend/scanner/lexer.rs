@@ -40,12 +40,6 @@ impl<'a> Lexer<'a> {
         true
     }
 
-    fn create_token(&mut self, kind: TokenKind, start: usize, end: usize) -> Token {
-        let span = Span { start, end };
-
-        Token { kind, span }
-    }
-
     fn white_space(&mut self) {
         while !self.at_end() && self.source[self.position].is_whitespace() {
             self.position += 1;
@@ -91,7 +85,7 @@ impl<'a> Lexer<'a> {
         };
 
         let end = self.position;
-        let token = self.create_token(kind, start, end);
+        let token = Token::new(kind, start, end);
         self.tokens.push(token);
     }
 
@@ -111,7 +105,7 @@ impl<'a> Lexer<'a> {
         }
 
         let end = self.position;
-        let token = self.create_token(TokenKind::NumberLiteral, start, end);
+        let token = Token::new(TokenKind::NumberLiteral, start, end);
 
         self.tokens.push(token);
     }
@@ -135,7 +129,7 @@ impl<'a> Lexer<'a> {
         self.position += 1;
 
         let end = self.position;
-        let token = self.create_token(TokenKind::StringLiteral, start, end);
+        let token = Token::new(TokenKind::StringLiteral, start, end);
 
         self.tokens.push(token);
 
@@ -243,7 +237,7 @@ impl<'a> Lexer<'a> {
         self.position += size;
 
         let end = self.position;
-        let token = self.create_token(kind, start, end);
+        let token = Token::new(kind, start, end);
 
         self.tokens.push(token);
         Ok(())

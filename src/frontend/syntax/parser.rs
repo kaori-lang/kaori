@@ -75,7 +75,7 @@ impl Parser {
         self.token_stream.consume(TokenKind::Identifier)?;
         self.token_stream.consume(TokenKind::Colon)?;
 
-        let type_annotation = self.parse_type()?;
+        let ty = self.parse_type()?;
 
         self.token_stream.consume(TokenKind::Assign)?;
 
@@ -83,7 +83,7 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::Semicolon)?;
 
-        Ok(Decl::variable(name, right, type_annotation, span))
+        Ok(Decl::variable(name, right, ty, span))
     }
 
     fn parse_function_declaration(&mut self) -> Result<Decl, KaoriError> {
