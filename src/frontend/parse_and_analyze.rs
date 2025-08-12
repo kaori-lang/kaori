@@ -18,7 +18,7 @@ pub fn parse_and_analyze(source: String) -> Result<Vec<AstNode>, KaoriError> {
 
     let nodes = parser.parse()?;
 
-    let resolver = Resolver::new();
+    let mut resolver = Resolver::new();
 
     let resolved_nodes = resolver.resolve(&nodes)?;
 

@@ -13,22 +13,16 @@ def foo() -> bool {
  */
 
 
-def foo(a: num, b: bool) -> bool {
+def foo(a: num, a: bool) -> bool {
 
+    print(a + b + c);
 }
 
-def main() -> bool {
-    foo()
+/* def main() -> bool {
+
+    foo();
+
+  
 }
 
-
-struct Foo {
-    a: num,
-    b: num
-}
-
-impl Foo {
-    def foo(self) {
-        return a + b;
-    }
-}
+ */

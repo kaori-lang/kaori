@@ -14,7 +14,7 @@ impl Default for Environment {
     fn default() -> Self {
         Self {
             symbols: Vec::new(),
-            scopes_ptr: Vec::new(),
+            scopes_ptr: vec![0],
             variable_offset: 0,
             next_id: AtomicUsize::new(1),
         }

@@ -28,6 +28,7 @@ pub enum Instruction {
     EnterFunction,
     ExitFunction,
     Return,
+
     Jump(i16),
     JumpIfFalse(i16),
 
