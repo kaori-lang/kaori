@@ -1,14 +1,16 @@
+use crate::frontend::syntax::declaration::Decl;
+
+use super::declaration::Declaration;
+
 pub struct Environment {
-    pub variables: Vec<String>,
-    pub functions: Vec<String>,
-    pub scopes_ptr: Vec<(usize, usize)>,
+    pub declarations: Vec<Declaration>,
+    pub scopes_ptr: Vec<usize>,
 }
 
 impl Default for Environment {
     fn default() -> Self {
         Self {
-            variables: Vec::new(),
-            functions: Vec::new(),
+            declarations: Vec::new(),
             scopes_ptr: Vec::new(),
         }
     }
@@ -16,40 +18,46 @@ impl Default for Environment {
 
 impl Environment {
     pub fn enter_scope(&mut self) {
-        let i = self.variables.len();
-        let j = self.functions.len();
+        let ptr = self.declarations.len();
 
-        self.scopes_ptr.push((i, j));
+        self.scopes_ptr.push(ptr);
     }
 
     pub fn exit_scope(&mut self) {
-        let (i, j) = self.scopes_ptr.pop().unwrap();
+        let ptr = self.scopes_ptr.pop().unwrap();
 
-        while self.variables.len() > i {
-            self.variables.pop();
-        }
-
-        while self.functions.len() > j {
-            self.functions.pop();
+        while self.declarations.len() > ptr {
+            self.declarations.pop();
         }
     }
 
-    pub fn declare_variable(&mut self, value: String) {
-        self.variables.push(value);
+    pub fn declare(&mut self, declaration: Declaration) {
+        self.declarations.push(declaration);
     }
 
-    pub fn declare_function(&mut self, value: String) {
-        self.functions.push(value);
+    pub fn search_current_scope(&self, name_: &str) -> Option<&Declaration> {
+        let ptr = *self.scopes_ptr.last().unwrap();
+
+        let declaration = self.declarations[ptr..]
+            .iter()
+            .find(|declaration| match declaration {
+                Declaration::Function { name, .. } => name == name_,
+                Declaration::Variable { name, .. } => name == name_,
+            });
+
+        declaration
     }
 
-    pub fn is_variable_declared(&self, value: &String) -> bool {
-        let (i, _) = *self.scopes_ptr.last().unwrap();
-        self.variables[i..].contains(value)
-    }
+    pub fn search(&self, name_: &str) -> Option<&Declaration> {
+        let declaration = self
+            .declarations
+            .iter()
+            .rev()
+            .find(|declaration| match declaration {
+                Declaration::Function { name, .. } => name == name_,
+                Declaration::Variable { name, .. } => name == name_,
+            });
 
-    pub fn is_function_declared(&self, value: &String) -> bool {
-        let (_, j) = *self.scopes_ptr.last().unwrap();
-
-        self.functions[j..].contains(value)
+        declaration
     }
 }

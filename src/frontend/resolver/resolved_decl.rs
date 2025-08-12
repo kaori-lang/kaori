@@ -47,6 +47,7 @@ impl ResolvedDecl {
     }
 
     pub fn function(
+        id: usize,
         parameters: &[Parameter],
         body: Vec<ResolvedAstNode>,
         type_annotation: Type,
@@ -63,7 +64,7 @@ impl ResolvedDecl {
         ResolvedDecl {
             span,
             kind: ResolvedDeclKind::Function {
-                id: GLOBAL_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
+                id,
                 parameters,
                 body,
                 type_annotation,

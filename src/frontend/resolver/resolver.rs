@@ -11,10 +11,13 @@ use crate::{
 };
 
 use super::{
-    environment::Environment, resolved_ast_node::ResolvedAstNode, resolved_decl::ResolvedDecl,
-    resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt,
+    declaration::Declaration, environment::Environment, resolved_ast_node::ResolvedAstNode,
+    resolved_decl::ResolvedDecl, resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt,
 };
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static NEXT_ID: AtomicUsize = AtomicUsize::new(1);
 pub struct Resolver {
     environment: Environment,
 }
@@ -26,23 +29,8 @@ impl Resolver {
         }
     }
 
-    fn search_variable(&mut self, name: &str) -> Option<usize> {
-        let mut i = self.environment.runtime_symbols.len();
-        let j: usize = 0;
-
-        while i > j {
-            i -= 1;
-
-            if name == self.environment.runtime_symbols[i] {
-                return Some(i);
-            }
-        }
-
-        None
-    }
-
-    fn is_declared(&self, name: &String) -> bool {
-        self.environment.is_function_declared(name) || self.environment.is_variable_declared(name)
+    fn generate_id() -> usize {
+        NEXT_ID.fetch_add(1, Ordering::Relaxed)
     }
 
     pub fn resolve(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
@@ -52,9 +40,13 @@ impl Resolver {
     fn resolve_nodes(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
         for node in nodes.iter().as_slice() {
             if let AstNode::Declaration(declaration) = node
-                && let DeclKind::Function { name, .. } = &declaration.kind
+                && let DeclKind::Function {
+                    name,
+                    type_annotation,
+                    ..
+                } = &declaration.kind
             {
-                if self.is_declared(name) {
+                if self.environment.is_declared(name) {
                     return Err(kaori_error!(
                         declaration.span,
                         "{} is already declared",
@@ -62,7 +54,10 @@ impl Resolver {
                     ));
                 }
 
-                self.environment.declare_function(name.to_owned());
+                self.environment.declare(Declaration::function(
+                    name.to_owned(),
+                    type_annotation.to_owned(),
+                ));
             }
         }
 
@@ -103,7 +98,7 @@ impl Resolver {
             } => {
                 let right = self.resolve_expression(right)?;
 
-                if self.is_declared(name) {
+                if self.environment.is_declared(name) {
                     return Err(kaori_error!(
                         declaration.span,
                         "{} is already declared",
@@ -111,7 +106,10 @@ impl Resolver {
                     ));
                 };
 
-                self.environment.declare_variable(name.to_owned());
+                self.environment.declare(Declaration::variable(
+                    name.to_owned(),
+                    type_annotation.to_owned(),
+                ));
 
                 ResolvedDecl::variable(right, type_annotation.to_owned(), declaration.span)
             }
@@ -124,7 +122,7 @@ impl Resolver {
                 self.environment.enter_scope();
 
                 for parameter in parameters {
-                    if self.is_declared(&parameter.name) {
+                    if self.environment.is_declared(&parameter.name) {
                         return Err(kaori_error!(
                             parameter.span,
                             "function {} can't have parameters with the same name",
@@ -132,7 +130,10 @@ impl Resolver {
                         ));
                     };
 
-                    self.declare(parameter.name.to_owned());
+                    self.environment.declare(Declaration::Variable {
+                        name: parameter.name.to_owned(),
+                        type_annotation: parameter.type_annotation.to_owned(),
+                    });
                 }
 
                 let body = self.resolve_nodes(body)?;
@@ -183,9 +184,7 @@ impl Resolver {
 
                 ResolvedStmt::if_(condition, then_branch, else_branch, statement.span)
             }
-            StmtKind::WhileLoop {
-                condition, block, ..
-            } => {
+            StmtKind::WhileLoop { condition, block } => {
                 let condition = self.resolve_expression(condition)?;
                 let block = self.resolve_statement(block)?;
 
@@ -216,7 +215,11 @@ impl Resolver {
 
                 ResolvedExpr::binary(operator.to_owned(), left, right, expression.span)
             }
-            ExprKind::Unary { right, .. } => self.resolve_expression(right)?,
+            ExprKind::Unary { right, operator } => {
+                let right = self.resolve_expression(right)?;
+
+                ResolvedExpr::unary(operator.to_owned(), right, expression.span)
+            }
             ExprKind::Identifier { name } => ResolvedExpr::variable(0, expression.span),
             ExprKind::FunctionCall { callee, arguments } => {
                 let callee = self.resolve_expression(callee)?;
