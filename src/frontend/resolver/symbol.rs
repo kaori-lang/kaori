@@ -1,32 +1,16 @@
-use crate::frontend::syntax::r#type::Type;
+use crate::frontend::syntax::ty::Ty;
 
 pub enum Symbol {
-    Function {
-        id: usize,
-        name: String,
-        type_annotation: Type,
-    },
-    Variable {
-        offset: usize,
-        name: String,
-        type_annotation: Type,
-    },
+    Function { id: usize, name: String, ty: Ty },
+    Variable { offset: usize, name: String, ty: Ty },
 }
 
 impl Symbol {
-    pub fn function(id: usize, name: String, type_annotation: Type) -> Symbol {
-        Symbol::Function {
-            id,
-            name,
-            type_annotation,
-        }
+    pub fn function(id: usize, name: String, ty: Ty) -> Symbol {
+        Symbol::Function { id, name, ty }
     }
 
-    pub fn variable(offset: usize, name: String, type_annotation: Type) -> Symbol {
-        Symbol::Variable {
-            offset,
-            name,
-            type_annotation,
-        }
+    pub fn variable(offset: usize, name: String, ty: Ty) -> Symbol {
+        Symbol::Variable { offset, name, ty }
     }
 }

@@ -1,6 +1,6 @@
 use crate::frontend::scanner::span::Span;
 
-use super::{ast_node::AstNode, expression::Expr, r#type::Type};
+use super::{ast_node::AstNode, expression::Expr, ty::Ty};
 
 #[derive(Debug)]
 pub struct Decl {
@@ -13,31 +13,31 @@ pub enum DeclKind {
     Variable {
         name: String,
         right: Box<Expr>,
-        type_annotation: Type,
+        ty: Ty,
     },
     Function {
         name: String,
         parameters: Vec<Parameter>,
         body: Vec<AstNode>,
-        type_annotation: Type,
+        ty: Ty,
     },
 }
 
 #[derive(Debug)]
 pub struct Parameter {
     pub name: String,
-    pub type_annotation: Type,
+    pub ty: Ty,
     pub span: Span,
 }
 
 impl Decl {
-    pub fn variable(name: String, right: Expr, type_annotation: Type, span: Span) -> Decl {
+    pub fn variable(name: String, right: Expr, ty: Ty, span: Span) -> Decl {
         Decl {
             span,
             kind: DeclKind::Variable {
                 name,
                 right: Box::new(right),
-                type_annotation,
+                ty,
             },
         }
     }
@@ -46,13 +46,13 @@ impl Decl {
         name: String,
         parameters: Vec<Parameter>,
         body: Vec<AstNode>,
-        return_type: Type,
+        return_type: Ty,
         span: Span,
     ) -> Decl {
-        let type_annotation = Type::function(
+        let ty = Ty::function(
             parameters
                 .iter()
-                .map(|parameter| parameter.type_annotation.to_owned())
+                .map(|parameter| parameter.ty.to_owned())
                 .collect(),
             Box::new(return_type),
         );
@@ -63,7 +63,7 @@ impl Decl {
                 name,
                 parameters,
                 body,
-                type_annotation,
+                ty,
             },
         }
     }

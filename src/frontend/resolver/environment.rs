@@ -1,4 +1,4 @@
-use crate::frontend::syntax::r#type::Type;
+use crate::frontend::syntax::ty::Ty;
 
 use super::symbol::Symbol;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -44,18 +44,18 @@ impl Environment {
         }
     }
 
-    pub fn declare_variable(&mut self, name: String, type_annotation: Type) {
+    pub fn declare_variable(&mut self, name: String, ty: Ty) {
         let offset = self.variable_offset;
-        let declaration = Symbol::variable(offset, name, type_annotation);
+        let declaration = Symbol::variable(offset, name, ty);
 
         self.variable_offset += 1;
 
         self.symbols.push(declaration);
     }
 
-    pub fn declare_function(&mut self, name: String, type_annotation: Type) {
+    pub fn declare_function(&mut self, name: String, ty: Ty) {
         let id = self.generate_id();
-        let declaration = Symbol::function(id, name, type_annotation);
+        let declaration = Symbol::function(id, name, ty);
 
         self.symbols.push(declaration);
     }
@@ -63,26 +63,21 @@ impl Environment {
     pub fn search_current_scope(&self, name_: &str) -> Option<&Symbol> {
         let ptr = *self.scopes_ptr.last().unwrap();
 
-        let declaration = self.symbols[ptr..]
+        self.symbols[ptr..]
             .iter()
             .find(|declaration| match declaration {
                 Symbol::Function { name, .. } => name == name_,
                 Symbol::Variable { name, .. } => name == name_,
-            });
-
-        declaration
+            })
     }
 
     pub fn search(&self, name_: &str) -> Option<&Symbol> {
-        let declaration = self
-            .symbols
+        self.symbols
             .iter()
             .rev()
             .find(|declaration| match declaration {
                 Symbol::Function { name, .. } => name == name_,
                 Symbol::Variable { name, .. } => name == name_,
-            });
-
-        declaration
+            })
     }
 }

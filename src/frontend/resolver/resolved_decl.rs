@@ -1,9 +1,9 @@
 use crate::frontend::{
     scanner::span::Span,
-    syntax::{declaration::Parameter, r#type::Type},
+    syntax::{declaration::Parameter, ty::Ty},
 };
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::AtomicUsize;
 
 use super::{resolved_ast_node::ResolvedAstNode, resolved_expr::ResolvedExpr};
 
@@ -19,29 +19,29 @@ pub struct ResolvedDecl {
 pub enum ResolvedDeclKind {
     Variable {
         right: Box<ResolvedExpr>,
-        type_annotation: Type,
+        ty: Ty,
     },
     Function {
         id: usize,
         parameters: Vec<ResolvedParameter>,
         body: Vec<ResolvedAstNode>,
-        type_annotation: Type,
+        ty: Ty,
     },
 }
 
 #[derive(Debug)]
 pub struct ResolvedParameter {
-    pub type_annotation: Type,
+    pub ty: Ty,
     pub span: Span,
 }
 
 impl ResolvedDecl {
-    pub fn variable(right: ResolvedExpr, type_annotation: Type, span: Span) -> ResolvedDecl {
+    pub fn variable(right: ResolvedExpr, ty: Ty, span: Span) -> ResolvedDecl {
         ResolvedDecl {
             span,
             kind: ResolvedDeclKind::Variable {
                 right: Box::new(right),
-                type_annotation,
+                ty,
             },
         }
     }
@@ -50,13 +50,13 @@ impl ResolvedDecl {
         id: usize,
         parameters: &[Parameter],
         body: Vec<ResolvedAstNode>,
-        type_annotation: Type,
+        ty: Ty,
         span: Span,
     ) -> ResolvedDecl {
         let parameters = parameters
             .iter()
             .map(|parameter| ResolvedParameter {
-                type_annotation: parameter.type_annotation.to_owned(),
+                ty: parameter.ty.to_owned(),
                 span: parameter.span,
             })
             .collect();
@@ -67,7 +67,7 @@ impl ResolvedDecl {
                 id,
                 parameters,
                 body,
-                type_annotation,
+                ty,
             },
         }
     }

@@ -33,11 +33,7 @@ impl Resolver {
     fn resolve_nodes(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
         for node in nodes.iter().as_slice() {
             if let AstNode::Declaration(declaration) = node
-                && let DeclKind::Function {
-                    name,
-                    type_annotation,
-                    ..
-                } = &declaration.kind
+                && let DeclKind::Function { name, ty, .. } = &declaration.kind
             {
                 if self.environment.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
@@ -48,7 +44,7 @@ impl Resolver {
                 }
 
                 self.environment
-                    .declare_function(name.to_owned(), type_annotation.to_owned());
+                    .declare_function(name.to_owned(), ty.to_owned());
             }
         }
 
@@ -82,11 +78,7 @@ impl Resolver {
 
     fn resolve_declaration(&mut self, declaration: &Decl) -> Result<ResolvedDecl, KaoriError> {
         let resolved_decl = match &declaration.kind {
-            DeclKind::Variable {
-                name,
-                right,
-                type_annotation,
-            } => {
+            DeclKind::Variable { name, right, ty } => {
                 let right = self.resolve_expression(right)?;
 
                 if self.environment.search_current_scope(name).is_some() {
@@ -98,15 +90,15 @@ impl Resolver {
                 };
 
                 self.environment
-                    .declare_variable(name.to_owned(), type_annotation.to_owned());
+                    .declare_variable(name.to_owned(), ty.to_owned());
 
-                ResolvedDecl::variable(right, type_annotation.to_owned(), declaration.span)
+                ResolvedDecl::variable(right, ty.to_owned(), declaration.span)
             }
             DeclKind::Function {
                 parameters,
                 body,
                 name,
-                type_annotation,
+                ty,
             } => {
                 self.environment.enter_scope();
 
@@ -123,10 +115,8 @@ impl Resolver {
                         ));
                     };
 
-                    self.environment.declare_variable(
-                        parameter.name.to_owned(),
-                        parameter.type_annotation.to_owned(),
-                    );
+                    self.environment
+                        .declare_variable(parameter.name.to_owned(), parameter.ty.to_owned());
                 }
 
                 let body = self.resolve_nodes(body)?;
@@ -139,13 +129,7 @@ impl Resolver {
                     0
                 };
 
-                ResolvedDecl::function(
-                    id,
-                    parameters,
-                    body,
-                    type_annotation.to_owned(),
-                    declaration.span,
-                )
+                ResolvedDecl::function(id, parameters, body, ty.to_owned(), declaration.span)
             }
         };
 
@@ -221,16 +205,12 @@ impl Resolver {
                 ResolvedExpr::unary(operator.to_owned(), right, expression.span)
             }
             ExprKind::Identifier { name } => match self.environment.search(name) {
-                Some(Symbol::Variable {
-                    offset,
-                    type_annotation,
-                    ..
-                }) => ResolvedExpr::variable(*offset, expression.span),
-                Some(Symbol::Function {
-                    id,
-                    name,
-                    type_annotation,
-                }) => ResolvedExpr::function(*id, expression.span),
+                Some(Symbol::Variable { offset, ty, .. }) => {
+                    ResolvedExpr::variable_ref(*offset, ty.to_owned(), expression.span)
+                }
+                Some(Symbol::Function { id, ty, .. }) => {
+                    ResolvedExpr::function_ref(*id, ty.to_owned(), expression.span)
+                }
                 None => return Err(kaori_error!(expression.span, "{} is not declared", name)),
             },
             ExprKind::FunctionCall { callee, arguments } => {

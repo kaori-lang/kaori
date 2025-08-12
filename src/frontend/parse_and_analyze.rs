@@ -4,6 +4,7 @@ use super::{
     resolver::resolver::Resolver,
     scanner::{lexer::Lexer, token_stream::TokenStream},
     syntax::{ast_node::AstNode, parser::Parser},
+    type_checker::type_checker::TypeChecker,
 };
 
 pub fn parse_and_analyze(source: String) -> Result<Vec<AstNode>, KaoriError> {
@@ -22,9 +23,9 @@ pub fn parse_and_analyze(source: String) -> Result<Vec<AstNode>, KaoriError> {
 
     let resolved_nodes = resolver.resolve(&nodes)?;
 
-    /*     let mut type_checker = TypeChecker::new();
+    let mut type_checker = TypeChecker::new();
 
-    type_checker.check(&mut nodes)?; */
+    type_checker.check(&resolved_nodes)?;
 
     Ok(nodes)
 }

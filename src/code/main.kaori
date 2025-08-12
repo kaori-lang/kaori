@@ -12,10 +12,13 @@ def foo() -> bool {
 
  */
 
+def bar() -> bool {
 
-def foo(a: num, a: bool) -> bool {
+}
 
-    print(a + b + c);
+def foo(a: num, b: num) -> bool {
+
+    print(a + b + 3 + bar());
 }
 
 /* def main() -> bool {

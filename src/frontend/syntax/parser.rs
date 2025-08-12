@@ -1,8 +1,6 @@
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::scanner::{
-        span::Span, token::Token, token_kind::TokenKind, token_stream::TokenStream,
-    },
+    frontend::scanner::{span::Span, token_kind::TokenKind, token_stream::TokenStream},
     kaori_error,
 };
 
@@ -12,7 +10,7 @@ use super::{
     expression::Expr,
     operator::{BinaryOp, UnaryOp},
     statement::Stmt,
-    r#type::Type,
+    ty::Ty,
 };
 
 pub struct Parser {
@@ -40,7 +38,7 @@ impl Parser {
             TokenKind::Function => self.parse_function_declaration(),
             _ => Err(kaori_error!(
                 self.token_stream.span(),
-                "invalid declaration at this scope"
+                "invalid declaration at global scope"
             )),
         }?;
 
@@ -108,13 +106,9 @@ impl Parser {
             self.token_stream.consume(TokenKind::Identifier)?;
             self.token_stream.consume(TokenKind::Colon)?;
 
-            let type_annotation = self.parse_type()?;
+            let ty = self.parse_type()?;
 
-            let parameter = Parameter {
-                name,
-                type_annotation,
-                span,
-            };
+            let parameter = Parameter { name, ty, span };
 
             parameters.push(parameter);
 
@@ -531,7 +525,7 @@ impl Parser {
     }
 
     /* Types */
-    pub fn parse_type(&mut self) -> Result<Type, KaoriError> {
+    pub fn parse_type(&mut self) -> Result<Ty, KaoriError> {
         match self.token_stream.token_kind() {
             TokenKind::Identifier => self.parse_primitive_type(),
             _ => Err(kaori_error!(
@@ -542,13 +536,13 @@ impl Parser {
         }
     }
 
-    fn parse_primitive_type(&mut self) -> Result<Type, KaoriError> {
+    fn parse_primitive_type(&mut self) -> Result<Ty, KaoriError> {
         let sub = self.token_stream.lexeme();
 
         let primitive = match sub {
-            "bool" => Type::Boolean,
-            "str" => Type::String,
-            "num" => Type::Number,
+            "bool" => Ty::boolean(),
+            "str" => Ty::string(),
+            "num" => Ty::number(),
             _ => {
                 return Err(kaori_error!(
                     self.token_stream.span(),

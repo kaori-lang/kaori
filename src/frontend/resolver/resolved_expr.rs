@@ -2,7 +2,7 @@ use crate::frontend::{
     scanner::span::Span,
     syntax::{
         operator::{BinaryOp, UnaryOp},
-        r#type::Type,
+        ty::Ty,
     },
 };
 
@@ -29,11 +29,11 @@ pub enum ResolvedExprKind {
     },
     VariableRef {
         offset: usize,
-        type_annotation: Type,
+        ty: Ty,
     },
     FunctionRef {
         function_id: usize,
-        type_annotation: Type,
+        ty: Ty,
     },
     FunctionCall {
         callee: Box<ResolvedExpr>,
@@ -81,23 +81,17 @@ impl ResolvedExpr {
         }
     }
 
-    pub fn variable_ref(offset: usize, type_annotation: Type, span: Span) -> ResolvedExpr {
+    pub fn variable_ref(offset: usize, ty: Ty, span: Span) -> ResolvedExpr {
         ResolvedExpr {
             span,
-            kind: ResolvedExprKind::VariableRef {
-                offset,
-                type_annotation,
-            },
+            kind: ResolvedExprKind::VariableRef { offset, ty },
         }
     }
 
-    pub fn function_ref(function_id: usize, type_annotation: Type, span: Span) -> ResolvedExpr {
+    pub fn function_ref(function_id: usize, ty: Ty, span: Span) -> ResolvedExpr {
         ResolvedExpr {
             span,
-            kind: ResolvedExprKind::FunctionRef {
-                function_id,
-                type_annotation,
-            },
+            kind: ResolvedExprKind::FunctionRef { function_id, ty },
         }
     }
 
