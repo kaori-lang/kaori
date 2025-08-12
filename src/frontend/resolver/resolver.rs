@@ -46,7 +46,7 @@ impl Resolver {
                     ..
                 } = &declaration.kind
             {
-                if self.environment.is_declared(name) {
+                if self.environment.search(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
                         "{} is already declared",

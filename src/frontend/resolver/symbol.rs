@@ -1,28 +1,30 @@
 use crate::frontend::syntax::r#type::Type;
 
-pub enum Declaration {
+pub enum Symbol {
     Function {
         id: usize,
         name: String,
         type_annotation: Type,
     },
     Variable {
+        offset: usize,
         name: String,
         type_annotation: Type,
     },
 }
 
-impl Declaration {
-    pub fn function(id: usize, name: String, type_annotation: Type) -> Declaration {
-        Declaration::Function {
+impl Symbol {
+    pub fn function(id: usize, name: String, type_annotation: Type) -> Symbol {
+        Symbol::Function {
             id,
             name,
             type_annotation,
         }
     }
 
-    pub fn variable(name: String, type_annotation: Type) -> Declaration {
-        Declaration::Variable {
+    pub fn variable(offset: usize, name: String, type_annotation: Type) -> Symbol {
+        Symbol::Variable {
+            offset,
             name,
             type_annotation,
         }
