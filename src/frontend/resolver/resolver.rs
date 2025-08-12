@@ -11,13 +11,10 @@ use crate::{
 };
 
 use super::{
-    declaration::Declaration, environment::Environment, resolved_ast_node::ResolvedAstNode,
-    resolved_decl::ResolvedDecl, resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt,
+    environment::Environment, resolved_ast_node::ResolvedAstNode, resolved_decl::ResolvedDecl,
+    resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt,
 };
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-static NEXT_ID: AtomicUsize = AtomicUsize::new(1);
 pub struct Resolver {
     environment: Environment,
 }
@@ -27,10 +24,6 @@ impl Resolver {
         Self {
             environment: Environment::default(),
         }
-    }
-
-    fn generate_id() -> usize {
-        NEXT_ID.fetch_add(1, Ordering::Relaxed)
     }
 
     pub fn resolve(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
@@ -54,10 +47,8 @@ impl Resolver {
                     ));
                 }
 
-                self.environment.declare(Declaration::function(
-                    name.to_owned(),
-                    type_annotation.to_owned(),
-                ));
+                self.environment
+                    .declare_function(name.to_owned(), type_annotation.to_owned());
             }
         }
 
@@ -98,7 +89,7 @@ impl Resolver {
             } => {
                 let right = self.resolve_expression(right)?;
 
-                if self.environment.is_declared(name) {
+                if self.environment.search(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
                         "{} is already declared",
@@ -106,7 +97,7 @@ impl Resolver {
                     ));
                 };
 
-                self.environment.declare(Declaration::variable(
+                self.environment.declare_variable(Declaration::variable(
                     name.to_owned(),
                     type_annotation.to_owned(),
                 ));
