@@ -3,13 +3,14 @@
 use crate::{
     error::kaori_error::KaoriError,
     frontend::{
-        resolver::{
+        semantic::{
             resolved_ast_node::ResolvedAstNode,
             resolved_decl::{ResolvedDecl, ResolvedDeclKind},
             resolved_expr::{ResolvedExpr, ResolvedExprKind},
             resolved_stmt::{ResolvedStmt, ResolvedStmtKind},
         },
         syntax::{
+            declaration,
             operator::{BinaryOp, UnaryOp},
             ty::Ty,
         },
@@ -24,29 +25,33 @@ impl TypeChecker {
         Self {}
     }
 
-    pub fn check(&mut self, nodes: &[ResolvedAstNode]) -> Result<(), KaoriError> {
-        self.visit_nodes(nodes)
-    }
-
-    fn visit_nodes(&mut self, nodes: &[ResolvedAstNode]) -> Result<(), KaoriError> {
-        for node in nodes {
-            self.visit_ast_node(node)?;
+    pub fn check(&self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
+        for declaration in declarations {
+            self.check_declaration(declaration)?;
         }
 
         Ok(())
     }
 
-    fn visit_ast_node(&mut self, node: &ResolvedAstNode) -> Result<(), KaoriError> {
+    fn check_nodes(&self, nodes: &[ResolvedAstNode]) -> Result<(), KaoriError> {
+        for node in nodes {
+            self.check_ast_node(node)?;
+        }
+
+        Ok(())
+    }
+
+    fn check_ast_node(&self, node: &ResolvedAstNode) -> Result<(), KaoriError> {
         match node {
-            ResolvedAstNode::Declaration(declaration) => self.visit_declaration(declaration),
-            ResolvedAstNode::Statement(statement) => self.visit_statement(statement),
+            ResolvedAstNode::Declaration(declaration) => self.check_declaration(declaration),
+            ResolvedAstNode::Statement(statement) => self.check_statement(statement),
         }
     }
 
-    fn visit_declaration(&mut self, declaration: &ResolvedDecl) -> Result<(), KaoriError> {
+    fn check_declaration(&self, declaration: &ResolvedDecl) -> Result<(), KaoriError> {
         match &declaration.kind {
             ResolvedDeclKind::Variable { right, ty, .. } => {
-                let right_type = self.visit_expression(right)?;
+                let right_type = self.check_expression(right)?;
 
                 if !right_type.eq(ty) {
                     return Err(kaori_error!(
@@ -58,24 +63,24 @@ impl TypeChecker {
                 }
             }
             ResolvedDeclKind::Function { body, .. } => {
-                self.visit_nodes(body)?;
+                self.check_nodes(body)?;
             }
         }
 
         Ok(())
     }
 
-    fn visit_statement(&mut self, statement: &ResolvedStmt) -> Result<(), KaoriError> {
+    fn check_statement(&self, statement: &ResolvedStmt) -> Result<(), KaoriError> {
         match &statement.kind {
             ResolvedStmtKind::Expression(expression) => {
-                self.visit_expression(expression)?;
+                self.check_expression(expression)?;
             }
             ResolvedStmtKind::Print(expression) => {
-                self.visit_expression(expression)?;
+                self.check_expression(expression)?;
             }
             ResolvedStmtKind::Block(nodes) => {
                 for node in nodes {
-                    self.visit_ast_node(node)?;
+                    self.check_ast_node(node)?;
                 }
             }
             ResolvedStmtKind::If {
@@ -83,7 +88,7 @@ impl TypeChecker {
                 then_branch,
                 else_branch,
             } => {
-                let condition_type = self.visit_expression(condition)?;
+                let condition_type = self.check_expression(condition)?;
 
                 if !condition_type.eq(&Ty::Boolean) {
                     return Err(kaori_error!(
@@ -94,14 +99,14 @@ impl TypeChecker {
                     ));
                 }
 
-                self.visit_statement(then_branch)?;
+                self.check_statement(then_branch)?;
 
                 if let Some(branch) = else_branch {
-                    self.visit_statement(branch)?;
+                    self.check_statement(branch)?;
                 }
             }
             ResolvedStmtKind::WhileLoop { condition, block } => {
-                let condition_type = self.visit_expression(condition)?;
+                let condition_type = self.check_expression(condition)?;
 
                 if !condition_type.eq(&Ty::Boolean) {
                     return Err(kaori_error!(
@@ -112,18 +117,19 @@ impl TypeChecker {
                     ));
                 }
 
-                self.visit_statement(block)?;
+                self.check_statement(block)?;
             }
             _ => (),
         };
 
         Ok(())
     }
-    fn visit_expression(&mut self, expression: &ResolvedExpr) -> Result<Ty, KaoriError> {
+
+    fn check_expression(&self, expression: &ResolvedExpr) -> Result<Ty, KaoriError> {
         let type_ = match &expression.kind {
             ResolvedExprKind::Assign { identifier, right } => {
-                let right = self.visit_expression(right)?;
-                let identifier = self.visit_expression(identifier)?;
+                let right = self.check_expression(right)?;
+                let identifier = self.check_expression(identifier)?;
 
                 if !right.eq(&identifier) {
                     return Err(kaori_error!(
@@ -141,8 +147,8 @@ impl TypeChecker {
                 right,
                 operator,
             } => {
-                let left = self.visit_expression(left)?;
-                let right = self.visit_expression(right)?;
+                let left = self.check_expression(left)?;
+                let right = self.check_expression(right)?;
 
                 match (&left, &operator, &right) {
                     (Ty::Number, BinaryOp::Plus, Ty::Number) => Ty::Number,
@@ -176,7 +182,7 @@ impl TypeChecker {
                 }
             }
             ResolvedExprKind::Unary { right, operator } => {
-                let right = self.visit_expression(right)?;
+                let right = self.check_expression(right)?;
 
                 match (&operator, &right) {
                     (UnaryOp::Negate, Ty::Number) => Ty::Number,
@@ -191,13 +197,11 @@ impl TypeChecker {
                     }
                 }
             }
-            ResolvedExprKind::VariableRef { ty, .. } => ty.to_owned(),
-            ResolvedExprKind::FunctionRef { ty, .. } => ty.to_owned(),
             ResolvedExprKind::FunctionCall { callee, arguments } => {
                 let Ty::Function {
                     parameters,
                     return_type,
-                } = self.visit_expression(callee)?
+                } = self.check_expression(callee)?
                 else {
                     return Err(kaori_error!(
                         callee.span,
@@ -213,7 +217,7 @@ impl TypeChecker {
                 }
 
                 for (argument, parameter_type) in arguments.iter().zip(parameters) {
-                    let argument_type = self.visit_expression(argument)?;
+                    let argument_type = self.check_expression(argument)?;
                     if !argument_type.eq(&parameter_type) {
                         return Err(kaori_error!(
                             argument.span,
@@ -226,6 +230,8 @@ impl TypeChecker {
 
                 *return_type
             }
+            ResolvedExprKind::VariableRef { ty, .. } => ty.to_owned(),
+            ResolvedExprKind::FunctionRef { ty, .. } => ty.to_owned(),
             ResolvedExprKind::NumberLiteral(..) => Ty::Number,
             ResolvedExprKind::BooleanLiteral(..) => Ty::Boolean,
             ResolvedExprKind::StringLiteral(..) => Ty::String,

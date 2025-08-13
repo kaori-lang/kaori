@@ -17,7 +17,7 @@ def bar() -> bool {
 }
 
 def foo(a: num, b: num) -> bool {
-
+    f: str = "hell world";
     print(a + b + 3 + bar());
 }
 

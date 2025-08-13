@@ -3,11 +3,7 @@ use crate::frontend::{
     syntax::{declaration::Parameter, ty::Ty},
 };
 
-use std::sync::atomic::AtomicUsize;
-
 use super::{resolved_ast_node::ResolvedAstNode, resolved_expr::ResolvedExpr};
-
-static GLOBAL_ID_COUNTER: AtomicUsize = AtomicUsize::new(1);
 
 #[derive(Debug)]
 pub struct ResolvedDecl {

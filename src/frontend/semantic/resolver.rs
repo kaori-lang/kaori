@@ -26,15 +26,9 @@ impl Resolver {
         }
     }
 
-    pub fn resolve(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
-        self.resolve_nodes(nodes)
-    }
-
-    fn resolve_nodes(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
-        for node in nodes.iter().as_slice() {
-            if let AstNode::Declaration(declaration) = node
-                && let DeclKind::Function { name, ty, .. } = &declaration.kind
-            {
+    pub fn resolve(&mut self, declarations: &[Decl]) -> Result<Vec<ResolvedDecl>, KaoriError> {
+        for declaration in declarations.iter().as_slice() {
+            if let DeclKind::Function { name, ty, .. } = &declaration.kind {
                 if self.environment.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
@@ -48,19 +42,31 @@ impl Resolver {
             }
         }
 
-        let mut resolved_ast_nodes = Vec::new();
+        let mut resolved_declarations = Vec::new();
 
-        for node in nodes {
-            let node = self.resolve_ast_node(node)?;
+        for declaration in declarations {
+            let resolved_decl = self.resolve_declaration(declaration)?;
 
-            resolved_ast_nodes.push(node);
+            resolved_declarations.push(resolved_decl);
         }
 
-        Ok(resolved_ast_nodes)
+        Ok(resolved_declarations)
+    }
+
+    fn resolve_nodes(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
+        let mut resolved_nodes = Vec::new();
+
+        for node in nodes {
+            let resolved_node = self.resolve_ast_node(node)?;
+
+            resolved_nodes.push(resolved_node);
+        }
+
+        Ok(resolved_nodes)
     }
 
     fn resolve_ast_node(&mut self, node: &AstNode) -> Result<ResolvedAstNode, KaoriError> {
-        let resolved_ast_node = match node {
+        let resolved_node = match node {
             AstNode::Declaration(declaration) => {
                 let declaration = self.resolve_declaration(declaration)?;
 
@@ -73,7 +79,7 @@ impl Resolver {
             }
         };
 
-        Ok(resolved_ast_node)
+        Ok(resolved_node)
     }
 
     fn resolve_declaration(&mut self, declaration: &Decl) -> Result<ResolvedDecl, KaoriError> {
@@ -204,15 +210,6 @@ impl Resolver {
 
                 ResolvedExpr::unary(operator.to_owned(), right, expression.span)
             }
-            ExprKind::Identifier { name } => match self.environment.search(name) {
-                Some(Symbol::Variable { offset, ty, .. }) => {
-                    ResolvedExpr::variable_ref(*offset, ty.to_owned(), expression.span)
-                }
-                Some(Symbol::Function { id, ty, .. }) => {
-                    ResolvedExpr::function_ref(*id, ty.to_owned(), expression.span)
-                }
-                None => return Err(kaori_error!(expression.span, "{} is not declared", name)),
-            },
             ExprKind::FunctionCall { callee, arguments } => {
                 let callee = self.resolve_expression(callee)?;
                 let mut resolved_args = Vec::new();
@@ -233,6 +230,15 @@ impl Resolver {
             ExprKind::StringLiteral(value) => {
                 ResolvedExpr::string_literal(value.to_owned(), expression.span)
             }
+            ExprKind::Identifier { name } => match self.environment.search(name) {
+                Some(Symbol::Variable { offset, ty, .. }) => {
+                    ResolvedExpr::variable_ref(*offset, ty.to_owned(), expression.span)
+                }
+                Some(Symbol::Function { id, ty, .. }) => {
+                    ResolvedExpr::function_ref(*id, ty.to_owned(), expression.span)
+                }
+                _ => return Err(kaori_error!(expression.span, "{} is not declared", name)),
+            },
         };
 
         Ok(resolved_expr)

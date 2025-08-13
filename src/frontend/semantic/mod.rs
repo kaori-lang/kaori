@@ -6,3 +6,4 @@ pub mod resolved_expr;
 pub mod resolved_stmt;
 pub mod resolver;
 pub mod symbol;
+pub mod type_checker;
