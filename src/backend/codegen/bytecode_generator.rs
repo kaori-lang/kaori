@@ -3,20 +3,13 @@
 use crate::{
     backend::vm::value::Value,
     error::kaori_error::KaoriError,
-    frontend::syntax::{
-        ast_node::ASTNode,
-        declaration::{Decl, DeclKind},
-        expression::{Expr, ExprKind},
-        operator::{BinaryOp, UnaryOp},
-        statement::{Stmt, StmtKind},
+    frontend::{
+        semantic::resolved_expr::{ResolvedExpr, ResolvedExprKind},
+        syntax::operator::BinaryOp,
     },
-    utils::visitor::Visitor,
 };
 
-use super::{
-    constant_pool::ConstantPool,
-    instruction::{self, Instruction},
-};
+use super::{constant_pool::ConstantPool, instruction::Instruction};
 
 pub struct BytecodeGenerator<'a> {
     instructions: &'a mut Vec<Instruction>,
@@ -77,13 +70,11 @@ impl<'a> BytecodeGenerator<'a> {
 
         self.emit(Instruction::LoadConst(index as u16));
     }
-}
 
-impl<'a> Visitor<()> for BytecodeGenerator<'a> {
-    fn visit_ast_node(&mut self, node: &mut ASTNode) -> Result<(), KaoriError> {
+    fn visit_ast_node(&mut self, node: &mut ResolvedAstNode) -> Result<(), KaoriError> {
         match node {
-            ASTNode::Declaration(declaration) => self.visit_declaration(declaration),
-            ASTNode::Statement(statement) => self.visit_statement(statement),
+            ResolvedAstNode::Declaration(declaration) => self.visit_declaration(declaration),
+            ResolvedAstNode::Statement(statement) => self.visit_statement(statement),
         }
     }
 
@@ -163,12 +154,12 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
 
         Ok(())
     }
-    fn visit_expression(&mut self, expression: &mut Expr) -> Result<(), KaoriError> {
+    fn visit_expression(&mut self, expression: &ResolvedExpr) -> Result<(), KaoriError> {
         match &mut expression.kind {
-            ExprKind::Assign { identifier, right } => {
+            ResolvedExprKind::Assign { identifier, right } => {
                 self.visit_expression(right)?;
 
-                let ExprKind::Identifier { resolution, .. } = &identifier.kind else {
+                let ResolvedExprKind::Identifier { resolution, .. } = &identifier.kind else {
                     unreachable!();
                 };
 
@@ -178,7 +169,7 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
                     self.emit(Instruction::StoreLocal(resolution.offset as u16));
                 }
             }
-            ExprKind::Binary {
+            ResolvedExprKind::Binary {
                 left,
                 right,
                 operator,
@@ -205,7 +196,7 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
                     BinaryOp::LessEqual => self.emit(Instruction::LessEqual),
                 };
             }
-            ExprKind::Unary { right, operator } => {
+            ResolvedExprKind::Unary { right, operator } => {
                 self.visit_expression(right)?;
 
                 match operator {
@@ -213,17 +204,14 @@ impl<'a> Visitor<()> for BytecodeGenerator<'a> {
                     UnaryOp::Not => self.emit(Instruction::Not),
                 };
             }
-            ExprKind::Identifier { resolution, .. } => {
-                if resolution.global {
-                    self.emit(Instruction::LoadGlobal(resolution.offset as u16));
-                } else {
-                    self.emit(Instruction::LoadLocal(resolution.offset as u16));
-                }
+            ResolvedExprKind::VariableRef { offset, ty } => {
+                self.emit(Instruction::LoadLocal(offset as u16))
             }
-            ExprKind::NumberLiteral(value) => self.emit_constant(Value::number(*value)),
-            ExprKind::BooleanLiteral(value) => self.emit_constant(Value::boolean(*value)),
-            //ExprKind::StringLiteral(value) => self.emit_constant(Value::str(value.to_owned())),
-            ExprKind::FunctionCall { callee, arguments } => {
+
+            ResolvedExprKind::NumberLiteral(value) => self.emit_constant(Value::number(*value)),
+            ResolvedExprKind::BooleanLiteral(value) => self.emit_constant(Value::boolean(*value)),
+            //ResolvedExprKind::StringLiteral(value) => self.emit_constant(Value::str(value.to_owned())),
+            ResolvedExprKind::FunctionCall { callee, arguments } => {
                 self.visit_expression(callee)?;
 
                 self.emit(Instruction::EnterFunction);

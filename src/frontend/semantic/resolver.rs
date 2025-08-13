@@ -183,11 +183,11 @@ impl Resolver {
 
     fn resolve_expression(&self, expression: &Expr) -> Result<ResolvedExpr, KaoriError> {
         let resolved_expr = match &expression.kind {
-            ExprKind::Assign { identifier, right } => {
+            ExprKind::Assign { left, right } => {
                 let right = self.resolve_expression(right)?;
-                let identifier = self.resolve_expression(identifier)?;
+                let left = self.resolve_expression(left)?;
 
-                ResolvedExpr::assign(identifier, right, expression.span)
+                ResolvedExpr::assign(left, right, expression.span)
             }
             ExprKind::Binary {
                 left,

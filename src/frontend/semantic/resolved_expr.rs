@@ -24,7 +24,7 @@ pub enum ResolvedExprKind {
         right: Box<ResolvedExpr>,
     },
     Assign {
-        identifier: Box<ResolvedExpr>,
+        left: Box<ResolvedExpr>,
         right: Box<ResolvedExpr>,
     },
     VariableRef {
@@ -71,11 +71,11 @@ impl ResolvedExpr {
         }
     }
 
-    pub fn assign(identifier: ResolvedExpr, right: ResolvedExpr, span: Span) -> ResolvedExpr {
+    pub fn assign(left: ResolvedExpr, right: ResolvedExpr, span: Span) -> ResolvedExpr {
         ResolvedExpr {
             span,
             kind: ResolvedExprKind::Assign {
-                identifier: Box::new(identifier),
+                left: Box::new(left),
                 right: Box::new(right),
             },
         }

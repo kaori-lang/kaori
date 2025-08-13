@@ -20,7 +20,7 @@ pub enum ExprKind {
         right: Box<Expr>,
     },
     Assign {
-        identifier: Box<Expr>,
+        left: Box<Expr>,
         right: Box<Expr>,
     },
     Identifier {
@@ -79,11 +79,11 @@ impl Expr {
         Expr::assign(identifier, right, span)
     }
 
-    pub fn assign(identifier: Expr, right: Expr, span: Span) -> Expr {
+    pub fn assign(left: Expr, right: Expr, span: Span) -> Expr {
         Expr {
             span,
             kind: ExprKind::Assign {
-                identifier: Box::new(identifier),
+                left: Box::new(left),
                 right: Box::new(right),
             },
         }

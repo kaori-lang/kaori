@@ -256,14 +256,14 @@ impl Parser {
     }
 
     fn parse_assign(&mut self) -> Result<Expr, KaoriError> {
-        let identifier = self.parse_identifier()?;
+        let left = self.parse_identifier()?;
 
         let span = self.token_stream.span();
         self.token_stream.consume(TokenKind::Assign)?;
 
         let right = self.parse_expression()?;
 
-        Ok(Expr::assign(identifier, right, span))
+        Ok(Expr::assign(left, right, span))
     }
 
     fn parse_or(&mut self) -> Result<Expr, KaoriError> {

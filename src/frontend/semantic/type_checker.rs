@@ -126,15 +126,23 @@ impl TypeChecker {
 
     fn check_expression(&self, expression: &ResolvedExpr) -> Result<Ty, KaoriError> {
         let type_ = match &expression.kind {
-            ResolvedExprKind::Assign { identifier, right } => {
-                let right = self.check_expression(right)?;
-                let identifier = self.check_expression(identifier)?;
+            ResolvedExprKind::Assign { left, right } => {
+                let ResolvedExprKind::VariableRef { .. } = left.kind else {
+                    return Err(kaori_error!(
+                        expression.span,
+                        "invalid assign to a non variable {:?}",
+                        left.span,
+                    ));
+                };
 
-                if !right.eq(&identifier) {
+                let right = self.check_expression(right)?;
+                let left = self.check_expression(left)?;
+
+                if !right.eq(&left) {
                     return Err(kaori_error!(
                         expression.span,
                         "expected {:?} for assign, but found {:?}",
-                        identifier,
+                        left,
                         right
                     ));
                 }
