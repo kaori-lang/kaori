@@ -10,7 +10,6 @@ use crate::{
             resolved_stmt::{ResolvedStmt, ResolvedStmtKind},
         },
         syntax::{
-            declaration,
             operator::{BinaryOp, UnaryOp},
             ty::Ty,
         },

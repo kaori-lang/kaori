@@ -42,27 +42,21 @@ impl Resolver {
             }
         }
 
-        let mut resolved_declarations = Vec::new();
-
-        for declaration in declarations {
-            let resolved_decl = self.resolve_declaration(declaration)?;
-
-            resolved_declarations.push(resolved_decl);
-        }
+        let resolved_declarations = declarations
+            .iter()
+            .map(|declaration| self.resolve_declaration(declaration))
+            .collect::<Result<Vec<ResolvedDecl>, KaoriError>>()?;
 
         Ok(resolved_declarations)
     }
 
     fn resolve_nodes(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
-        let mut resolved_nodes = Vec::new();
+        let nodes = nodes
+            .iter()
+            .map(|node| self.resolve_ast_node(node))
+            .collect::<Result<Vec<ResolvedAstNode>, KaoriError>>()?;
 
-        for node in nodes {
-            let resolved_node = self.resolve_ast_node(node)?;
-
-            resolved_nodes.push(resolved_node);
-        }
-
-        Ok(resolved_nodes)
+        Ok(nodes)
     }
 
     fn resolve_ast_node(&mut self, node: &AstNode) -> Result<ResolvedAstNode, KaoriError> {
