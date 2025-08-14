@@ -1,11 +1,18 @@
 #![allow(clippy::new_without_default)]
 
+use std::collections::HashMap;
+
 use crate::{
     backend::vm::value::Value,
     error::kaori_error::KaoriError,
     frontend::{
-        semantic::resolved_expr::{ResolvedExpr, ResolvedExprKind},
-        syntax::operator::BinaryOp,
+        semantic::{
+            resolved_ast_node::ResolvedAstNode,
+            resolved_decl::{ResolvedDecl, ResolvedDeclKind},
+            resolved_expr::{ResolvedExpr, ResolvedExprKind},
+            resolved_stmt::{ResolvedStmt, ResolvedStmtKind},
+        },
+        syntax::operator::{BinaryOp, UnaryOp},
     },
 };
 
@@ -14,7 +21,7 @@ use super::{constant_pool::ConstantPool, instruction::Instruction};
 pub struct BytecodeGenerator<'a> {
     instructions: &'a mut Vec<Instruction>,
     constant_pool: &'a mut ConstantPool,
-    functions: Vec<String>,
+    functions: HashMap<usize, usize>,
 }
 
 impl<'a> BytecodeGenerator<'a> {
@@ -25,34 +32,14 @@ impl<'a> BytecodeGenerator<'a> {
         Self {
             instructions,
             constant_pool,
-            functions: Vec::new(),
+            functions: HashMap::new(),
         }
     }
 
-    pub fn generate(&mut self, declarations: &mut [Decl]) -> Result<(), KaoriError> {
-        self.emit(Instruction::EnterScope);
-
+    pub fn generate(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
         for declaration in declarations {
-            if let DeclKind::Function { block, .. } = &mut declaration.kind {
-                let instruction_ptr = self.instructions.len();
-
-                self.emit_constant(Value::Function(instruction_ptr));
-                self.emit(Instruction::Declare);
-
-                let jump_end = self.emit(Instruction::Nothing);
-
-                if let StmtKind::Block(nodes) = &mut block.kind {
-                    for node in nodes {
-                        self.visit_ast_node(node)?;
-                    }
-                }
-
-                self.instructions[jump_end] =
-                    Instruction::Jump(self.instructions.len() as i16 - jump_end as i16);
-            }
+            self.visit_declaration(declaration)?;
         }
-
-        self.emit(Instruction::ExitScope);
 
         Ok(())
     }
@@ -65,43 +52,49 @@ impl<'a> BytecodeGenerator<'a> {
         index
     }
 
-    pub fn emit_constant(&mut self, constant: Value) {
-        let index = self.constant_pool.add_constant(constant);
+    fn visit_nodes(&mut self, nodes: &[ResolvedAstNode]) -> Result<(), KaoriError> {
+        for node in nodes {
+            self.visit_ast_node(node)?;
+        }
 
-        self.emit(Instruction::LoadConst(index as u16));
+        Ok(())
     }
 
-    fn visit_ast_node(&mut self, node: &mut ResolvedAstNode) -> Result<(), KaoriError> {
+    fn visit_ast_node(&mut self, node: &ResolvedAstNode) -> Result<(), KaoriError> {
         match node {
             ResolvedAstNode::Declaration(declaration) => self.visit_declaration(declaration),
             ResolvedAstNode::Statement(statement) => self.visit_statement(statement),
         }
     }
 
-    fn visit_declaration(&mut self, declaration: &mut Decl) -> Result<(), KaoriError> {
-        match &mut declaration.kind {
-            DeclKind::Variable { right, .. } => {
+    fn visit_declaration(&mut self, declaration: &ResolvedDecl) -> Result<(), KaoriError> {
+        match &declaration.kind {
+            ResolvedDeclKind::Variable { right, .. } => {
                 self.visit_expression(right)?;
                 self.emit(Instruction::Declare);
             }
-            DeclKind::Function { block, name, .. } => {}
-            _ => {}
-        }
+            ResolvedDeclKind::Function { body, id, .. } => {
+                let instruction_ptr = self.instructions.len();
+                self.functions.insert(*id, instruction_ptr);
+
+                self.visit_nodes(body)?;
+            }
+        };
 
         Ok(())
     }
 
-    fn visit_statement(&mut self, statement: &mut Stmt) -> Result<(), KaoriError> {
-        match &mut statement.kind {
-            StmtKind::Expression(expression) => {
+    fn visit_statement(&mut self, statement: &ResolvedStmt) -> Result<(), KaoriError> {
+        match &statement.kind {
+            ResolvedStmtKind::Expression(expression) => {
                 self.visit_expression(expression)?;
             }
-            StmtKind::Print(expression) => {
+            ResolvedStmtKind::Print(expression) => {
                 self.visit_expression(expression)?;
 
                 self.emit(Instruction::Print);
             }
-            StmtKind::Block(nodes) => {
+            ResolvedStmtKind::Block(nodes) => {
                 self.emit(Instruction::EnterScope);
 
                 for node in nodes {
@@ -110,7 +103,7 @@ impl<'a> BytecodeGenerator<'a> {
 
                 self.emit(Instruction::ExitScope);
             }
-            StmtKind::If {
+            ResolvedStmtKind::If {
                 condition,
                 then_branch,
                 else_branch,
@@ -133,7 +126,7 @@ impl<'a> BytecodeGenerator<'a> {
                 self.instructions[jump_end] =
                     Instruction::Jump(self.instructions.len() as i16 - jump_end as i16);
             }
-            StmtKind::WhileLoop { condition, block } => {
+            ResolvedStmtKind::WhileLoop { condition, block } => {
                 let start = self.instructions.len();
 
                 self.visit_expression(condition)?;
@@ -155,19 +148,13 @@ impl<'a> BytecodeGenerator<'a> {
         Ok(())
     }
     fn visit_expression(&mut self, expression: &ResolvedExpr) -> Result<(), KaoriError> {
-        match &mut expression.kind {
-            ResolvedExprKind::Assign { identifier, right } => {
+        match &expression.kind {
+            ResolvedExprKind::Assign { left, right } => {
                 self.visit_expression(right)?;
 
-                let ResolvedExprKind::Identifier { resolution, .. } = &identifier.kind else {
-                    unreachable!();
+                if let ResolvedExprKind::VariableRef { offset, .. } = left.kind {
+                    self.emit(Instruction::StoreLocal(offset as u16));
                 };
-
-                if resolution.global {
-                    self.emit(Instruction::StoreGlobal(resolution.offset as u16));
-                } else {
-                    self.emit(Instruction::StoreLocal(resolution.offset as u16));
-                }
             }
             ResolvedExprKind::Binary {
                 left,
@@ -204,12 +191,16 @@ impl<'a> BytecodeGenerator<'a> {
                     UnaryOp::Not => self.emit(Instruction::Not),
                 };
             }
-            ResolvedExprKind::VariableRef { offset, ty } => {
-                self.emit(Instruction::LoadLocal(offset as u16))
-            }
+            ResolvedExprKind::NumberLiteral(value) => {
+                let index = self.constant_pool.load_constant(Value::number(*value));
 
-            ResolvedExprKind::NumberLiteral(value) => self.emit_constant(Value::number(*value)),
-            ResolvedExprKind::BooleanLiteral(value) => self.emit_constant(Value::boolean(*value)),
+                self.emit(Instruction::LoadConst(index as u16));
+            }
+            ResolvedExprKind::BooleanLiteral(value) => {
+                let index = self.constant_pool.load_constant(Value::boolean(*value));
+
+                self.emit(Instruction::LoadConst(index as u16));
+            }
             //ResolvedExprKind::StringLiteral(value) => self.emit_constant(Value::str(value.to_owned())),
             ResolvedExprKind::FunctionCall { callee, arguments } => {
                 self.visit_expression(callee)?;
@@ -223,7 +214,15 @@ impl<'a> BytecodeGenerator<'a> {
 
                 self.emit(Instruction::ExitFunction);
             }
-            _ => (),
+            ResolvedExprKind::VariableRef { offset, .. } => {
+                self.emit(Instruction::LoadLocal(*offset as u16));
+            }
+            ResolvedExprKind::FunctionRef { function_id, .. } => {
+                let index = self.constant_pool.load_function_constant(*function_id);
+
+                self.emit(Instruction::LoadConst(index as u16));
+            }
+            _ => {}
         };
 
         Ok(())

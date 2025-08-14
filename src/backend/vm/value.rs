@@ -6,7 +6,7 @@ pub enum Value {
     Bool(bool),
     Str(String),
     Null,
-    Function(usize),
+    FunctionRef(usize),
 }
 
 impl Value {
