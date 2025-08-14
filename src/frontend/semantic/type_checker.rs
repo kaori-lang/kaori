@@ -1,4 +1,5 @@
 #![allow(clippy::new_without_default)]
+#![allow(clippy::only_used_in_recursion)]
 
 use crate::{
     error::kaori_error::KaoriError,

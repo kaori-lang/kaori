@@ -13,7 +13,7 @@ def foo() -> bool {
  */
 
 def bar() -> bool {
-
+    print(1 + 2);
 }
 
 def foo(a: num, b: num) -> bool {

@@ -1,13 +1,11 @@
 use crate::frontend::syntax::ty::Ty;
 
 use super::symbol::Symbol;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct Environment {
     pub symbols: Vec<Symbol>,
     pub scopes_ptr: Vec<usize>,
     pub variable_offset: usize,
-    pub next_id: AtomicUsize,
 }
 
 impl Default for Environment {
@@ -16,16 +14,11 @@ impl Default for Environment {
             symbols: Vec::new(),
             scopes_ptr: vec![0],
             variable_offset: 0,
-            next_id: AtomicUsize::new(1),
         }
     }
 }
 
 impl Environment {
-    pub fn generate_id(&self) -> usize {
-        self.next_id.fetch_add(1, Ordering::Relaxed)
-    }
-
     pub fn enter_scope(&mut self) {
         let ptr = self.symbols.len();
 
@@ -53,8 +46,7 @@ impl Environment {
         self.symbols.push(declaration);
     }
 
-    pub fn declare_function(&mut self, name: String, ty: Ty) {
-        let id = self.generate_id();
+    pub fn declare_function(&mut self, id: usize, name: String, ty: Ty) {
         let declaration = Symbol::function(id, name, ty);
 
         self.symbols.push(declaration);

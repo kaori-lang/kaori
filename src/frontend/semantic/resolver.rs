@@ -28,7 +28,7 @@ impl Resolver {
 
     pub fn resolve(&mut self, declarations: &[Decl]) -> Result<Vec<ResolvedDecl>, KaoriError> {
         for declaration in declarations.iter().as_slice() {
-            if let DeclKind::Function { name, ty, .. } = &declaration.kind {
+            if let DeclKind::Function { name, ty, id, .. } = &declaration.kind {
                 if self.environment.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
@@ -38,7 +38,7 @@ impl Resolver {
                 }
 
                 self.environment
-                    .declare_function(name.to_owned(), ty.to_owned());
+                    .declare_function(*id, name.to_owned(), ty.to_owned());
             }
         }
 
@@ -95,6 +95,7 @@ impl Resolver {
                 ResolvedDecl::variable(right, ty.to_owned(), declaration.span)
             }
             DeclKind::Function {
+                id,
                 parameters,
                 body,
                 name,
@@ -123,13 +124,7 @@ impl Resolver {
 
                 self.environment.exit_scope();
 
-                let id = if let Some(Symbol::Function { id, .. }) = self.environment.search(name) {
-                    *id
-                } else {
-                    0
-                };
-
-                ResolvedDecl::function(id, parameters, body, ty.to_owned(), declaration.span)
+                ResolvedDecl::function(*id, parameters, body, ty.to_owned(), declaration.span)
             }
         };
 

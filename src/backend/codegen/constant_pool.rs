@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::backend::vm::value::Value;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ConstantPool {
     constants: Vec<Value>,
     functions: HashMap<usize, usize>,
@@ -48,6 +48,6 @@ impl ConstantPool {
     }
 
     pub fn get_constant(&self, index: usize) -> Value {
-        unsafe { self.constants.get_unchecked(index as usize).to_owned() }
+        unsafe { self.constants.get_unchecked(index).to_owned() }
     }
 }
