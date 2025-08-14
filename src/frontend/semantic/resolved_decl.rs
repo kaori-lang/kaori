@@ -1,6 +1,6 @@
 use crate::frontend::{
     scanner::span::Span,
-    syntax::{declaration::Parameter, ty::Ty},
+    syntax::{decl::Parameter, ty::Ty},
 };
 
 use super::{resolved_ast_node::ResolvedAstNode, resolved_expr::ResolvedExpr};

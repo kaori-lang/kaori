@@ -5,6 +5,7 @@ use crate::{
     error::kaori_error::KaoriError,
     frontend::{
         semantic::{
+            resolved_ast::ResolvedAst,
             resolved_ast_node::ResolvedAstNode,
             resolved_decl::{ResolvedDecl, ResolvedDeclKind},
             resolved_expr::{ResolvedExpr, ResolvedExprKind},
@@ -25,8 +26,8 @@ impl<'a> BytecodeGenerator<'a> {
         Self { bytecode }
     }
 
-    pub fn generate(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
-        for declaration in declarations {
+    pub fn generate(&mut self, resolved_ast: &ResolvedAst) -> Result<(), KaoriError> {
+        for declaration in &resolved_ast.declarations {
             self.visit_declaration(declaration)?;
         }
 

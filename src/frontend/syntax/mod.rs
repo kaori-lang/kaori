@@ -1,8 +1,9 @@
 pub mod ast_node;
-pub mod declaration;
-pub mod expression;
+
+pub mod expr;
 pub mod parser;
 
+pub mod decl;
 pub mod operator;
-pub mod statement;
+pub mod stmt;
 pub mod ty;

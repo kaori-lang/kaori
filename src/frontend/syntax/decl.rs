@@ -1,6 +1,6 @@
 use crate::frontend::scanner::span::Span;
 
-use super::{ast_node::AstNode, expression::Expr, ty::Ty};
+use super::{ast_node::AstNode, expr::Expr, ty::Ty};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static NEXT_FUNCTION_ID: AtomicUsize = AtomicUsize::new(1);

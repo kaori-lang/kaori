@@ -5,9 +5,9 @@ use crate::{
         scanner::span::Span,
         syntax::{
             ast_node::AstNode,
-            declaration::{Decl, DeclKind},
-            expression::{Expr, ExprKind},
-            statement::{Stmt, StmtKind},
+            decl::{Decl, DeclKind},
+            expr::{Expr, ExprKind},
+            stmt::{Stmt, StmtKind},
         },
     },
     kaori_error,
@@ -54,7 +54,7 @@ impl Resolver {
         if let Some(Symbol::Function { id, .. }) = self.environment.search("main") {
             Ok(ResolvedAst::new(*id, resolved_declarations))
         } else {
-            return Err(kaori_error!(Span::default(), "main function is undefined"));
+            Err(kaori_error!(Span::default(), "main function is undefined"))
         }
     }
 

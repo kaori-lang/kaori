@@ -6,10 +6,10 @@ use crate::{
 
 use super::{
     ast_node::AstNode,
-    declaration::{Decl, Parameter},
-    expression::Expr,
+    decl::{Decl, Parameter},
+    expr::Expr,
     operator::{BinaryOp, UnaryOp},
-    statement::Stmt,
+    stmt::Stmt,
     ty::Ty,
 };
 
