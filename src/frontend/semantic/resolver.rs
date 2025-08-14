@@ -1,18 +1,22 @@
 #![allow(clippy::new_without_default)]
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::syntax::{
-        ast_node::AstNode,
-        declaration::{Decl, DeclKind},
-        expression::{Expr, ExprKind},
-        statement::{Stmt, StmtKind},
+    frontend::{
+        scanner::span::Span,
+        syntax::{
+            ast_node::AstNode,
+            declaration::{Decl, DeclKind},
+            expression::{Expr, ExprKind},
+            statement::{Stmt, StmtKind},
+        },
     },
     kaori_error,
 };
 
 use super::{
-    environment::Environment, resolved_ast_node::ResolvedAstNode, resolved_decl::ResolvedDecl,
-    resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt, symbol::Symbol,
+    environment::Environment, resolved_ast::ResolvedAst, resolved_ast_node::ResolvedAstNode,
+    resolved_decl::ResolvedDecl, resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt,
+    symbol::Symbol,
 };
 
 pub struct Resolver {
@@ -26,7 +30,7 @@ impl Resolver {
         }
     }
 
-    pub fn resolve(&mut self, declarations: &[Decl]) -> Result<Vec<ResolvedDecl>, KaoriError> {
+    pub fn resolve(&mut self, declarations: &[Decl]) -> Result<ResolvedAst, KaoriError> {
         for declaration in declarations.iter().as_slice() {
             if let DeclKind::Function { name, ty, id, .. } = &declaration.kind {
                 if self.environment.search_current_scope(name).is_some() {
@@ -47,7 +51,11 @@ impl Resolver {
             .map(|declaration| self.resolve_declaration(declaration))
             .collect::<Result<Vec<ResolvedDecl>, KaoriError>>()?;
 
-        Ok(resolved_declarations)
+        if let Some(Symbol::Function { id, .. }) = self.environment.search("main") {
+            Ok(ResolvedAst::new(*id, resolved_declarations))
+        } else {
+            return Err(kaori_error!(Span::default(), "main function is undefined"));
+        }
     }
 
     fn resolve_nodes(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {

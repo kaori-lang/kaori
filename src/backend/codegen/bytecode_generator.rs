@@ -14,22 +14,15 @@ use crate::{
     },
 };
 
-use super::{constant_pool::ConstantPool, instruction::Instruction};
+use super::{bytecode::Bytecode, instruction::Instruction};
 
 pub struct BytecodeGenerator<'a> {
-    instructions: &'a mut Vec<Instruction>,
-    constant_pool: &'a mut ConstantPool,
+    bytecode: &'a mut Bytecode,
 }
 
 impl<'a> BytecodeGenerator<'a> {
-    pub fn new(
-        instructions: &'a mut Vec<Instruction>,
-        constant_pool: &'a mut ConstantPool,
-    ) -> Self {
-        Self {
-            instructions,
-            constant_pool,
-        }
+    pub fn new(bytecode: &'a mut Bytecode) -> Self {
+        Self { bytecode }
     }
 
     pub fn generate(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
@@ -41,9 +34,9 @@ impl<'a> BytecodeGenerator<'a> {
     }
 
     pub fn emit(&mut self, instruction: Instruction) -> usize {
-        let index = self.instructions.len();
+        let index = self.bytecode.instructions.len();
 
-        self.instructions.push(instruction);
+        self.bytecode.instructions.push(instruction);
 
         index
     }
@@ -70,12 +63,14 @@ impl<'a> BytecodeGenerator<'a> {
                 self.emit(Instruction::Declare);
             }
             ResolvedDeclKind::Function { body, id, .. } => {
-                let instruction_ptr = self.instructions.len();
+                let instruction_ptr = self.bytecode.instructions.len();
 
                 self.visit_nodes(body)?;
 
                 let value = Value::function_ref(instruction_ptr);
-                self.constant_pool.define_function_constant(*id, value);
+                self.bytecode
+                    .constant_pool
+                    .define_function_constant(*id, value);
             }
         };
 
@@ -114,18 +109,19 @@ impl<'a> BytecodeGenerator<'a> {
 
                 let jump_end = self.emit(Instruction::Nothing);
 
-                self.instructions[jump_if_false] =
-                    Instruction::JumpIfFalse(self.instructions.len() as i16 - jump_if_false as i16);
+                self.bytecode.instructions[jump_if_false] = Instruction::JumpIfFalse(
+                    self.bytecode.instructions.len() as i16 - jump_if_false as i16,
+                );
 
                 if let Some(branch) = else_branch {
                     self.visit_statement(branch)?;
                 }
 
-                self.instructions[jump_end] =
-                    Instruction::Jump(self.instructions.len() as i16 - jump_end as i16);
+                self.bytecode.instructions[jump_end] =
+                    Instruction::Jump(self.bytecode.instructions.len() as i16 - jump_end as i16);
             }
             ResolvedStmtKind::WhileLoop { condition, block } => {
-                let start = self.instructions.len();
+                let start = self.bytecode.instructions.len();
 
                 self.visit_expression(condition)?;
 
@@ -134,11 +130,12 @@ impl<'a> BytecodeGenerator<'a> {
                 self.visit_statement(block)?;
 
                 self.emit(Instruction::Jump(
-                    start as i16 - self.instructions.len() as i16,
+                    start as i16 - self.bytecode.instructions.len() as i16,
                 ));
 
-                self.instructions[jump_if_false] =
-                    Instruction::JumpIfFalse(self.instructions.len() as i16 - jump_if_false as i16);
+                self.bytecode.instructions[jump_if_false] = Instruction::JumpIfFalse(
+                    self.bytecode.instructions.len() as i16 - jump_if_false as i16,
+                );
             }
             _ => (),
         };
@@ -190,12 +187,18 @@ impl<'a> BytecodeGenerator<'a> {
                 };
             }
             ResolvedExprKind::NumberLiteral(value) => {
-                let index = self.constant_pool.load_constant(Value::number(*value));
+                let index = self
+                    .bytecode
+                    .constant_pool
+                    .load_constant(Value::number(*value));
 
                 self.emit(Instruction::LoadConst(index as u16));
             }
             ResolvedExprKind::BooleanLiteral(value) => {
-                let index = self.constant_pool.load_constant(Value::boolean(*value));
+                let index = self
+                    .bytecode
+                    .constant_pool
+                    .load_constant(Value::boolean(*value));
 
                 self.emit(Instruction::LoadConst(index as u16));
             }
@@ -216,7 +219,10 @@ impl<'a> BytecodeGenerator<'a> {
                 self.emit(Instruction::LoadLocal(*offset as u16));
             }
             ResolvedExprKind::FunctionRef { function_id, .. } => {
-                let index = self.constant_pool.load_function_constant(*function_id);
+                let index = self
+                    .bytecode
+                    .constant_pool
+                    .load_function_constant(*function_id);
 
                 self.emit(Instruction::LoadConst(index as u16));
             }

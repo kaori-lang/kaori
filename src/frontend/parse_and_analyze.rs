@@ -2,11 +2,11 @@ use crate::error::kaori_error::KaoriError;
 
 use super::{
     scanner::{lexer::Lexer, token_stream::TokenStream},
-    semantic::{resolved_decl::ResolvedDecl, resolver::Resolver, type_checker::TypeChecker},
+    semantic::{resolved_ast::ResolvedAst, resolver::Resolver, type_checker::TypeChecker},
     syntax::parser::Parser,
 };
 
-pub fn parse_and_analyze(source: String) -> Result<Vec<ResolvedDecl>, KaoriError> {
+pub fn parse_and_analyze(source: String) -> Result<ResolvedAst, KaoriError> {
     let mut tokens = Vec::new();
     let mut lexer = Lexer::new(&source, &mut tokens);
 
@@ -20,11 +20,11 @@ pub fn parse_and_analyze(source: String) -> Result<Vec<ResolvedDecl>, KaoriError
 
     let mut resolver = Resolver::new();
 
-    let resolved_declarations = resolver.resolve(&declarations)?;
+    let resolved_ast = resolver.resolve(&declarations)?;
 
     let type_checker = TypeChecker::new();
 
-    type_checker.check(&resolved_declarations)?;
+    type_checker.check(&resolved_ast.declarations)?;
 
-    Ok(resolved_declarations)
+    Ok(resolved_ast)
 }

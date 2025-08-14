@@ -1,5 +1,6 @@
 pub mod environment;
 
+pub mod resolved_ast;
 pub mod resolved_ast_node;
 pub mod resolved_decl;
 pub mod resolved_expr;
