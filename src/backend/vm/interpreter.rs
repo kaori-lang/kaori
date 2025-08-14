@@ -148,8 +148,8 @@ impl Interpreter {
                     println!("{value:?}");
                 }
 
-                Instruction::LoadConst(offset) => {
-                    let value = self.constant_pool.get_constant(offset);
+                Instruction::LoadConst(index) => {
+                    let value = self.constant_pool.get_constant(index as usize);
 
                     if let Value::Null = value {
                         return Err(kaori_error!(Span { start: 0, end: 0 }, "error null"));

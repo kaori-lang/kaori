@@ -21,7 +21,6 @@ use super::{constant_pool::ConstantPool, instruction::Instruction};
 pub struct BytecodeGenerator<'a> {
     instructions: &'a mut Vec<Instruction>,
     constant_pool: &'a mut ConstantPool,
-    functions: HashMap<usize, usize>,
 }
 
 impl<'a> BytecodeGenerator<'a> {
@@ -32,7 +31,6 @@ impl<'a> BytecodeGenerator<'a> {
         Self {
             instructions,
             constant_pool,
-            functions: HashMap::new(),
         }
     }
 
@@ -75,9 +73,11 @@ impl<'a> BytecodeGenerator<'a> {
             }
             ResolvedDeclKind::Function { body, id, .. } => {
                 let instruction_ptr = self.instructions.len();
-                self.functions.insert(*id, instruction_ptr);
 
                 self.visit_nodes(body)?;
+
+                let value = Value::function_ref(instruction_ptr);
+                self.constant_pool.define_function_constant(*id, value);
             }
         };
 

@@ -18,6 +18,10 @@ impl Value {
         Value::Bool(value)
     }
 
+    pub fn function_ref(instruction_ptr: usize) -> Value {
+        Value::FunctionRef(instruction_ptr)
+    }
+
     /*  */
     /// # Safety
     /// Caller must ensure that `self` is `Value::Number`.
