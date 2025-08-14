@@ -17,13 +17,13 @@ fn main() {
 }
 
 pub fn run_program(source: String) -> Result<(), KaoriError> {
-    let resolved_ast = parse_and_analyze(source)?;
+    let resolved_declarations = parse_and_analyze(source)?;
 
     let mut bytecode = Bytecode::default();
 
     let mut bytecode_generator = BytecodeGenerator::new(&mut bytecode);
 
-    bytecode_generator.generate(&resolved_ast)?;
+    bytecode_generator.generate(&resolved_declarations)?;
 
     //print!("{:#?}", instructions.to_owned());
     //let mut interpreter = Interpreter::new(instructions, constant_pool);
@@ -31,7 +31,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     let start = Instant::now();
 
     //interpreter.execute_instructions()?;
-    println!("{:#?}", bytecode);
+    println!("{:#?}", bytecode.instructions);
     println!("Vm executed in: {:#?}", start.elapsed());
 
     Ok(())

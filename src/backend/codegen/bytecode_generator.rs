@@ -5,7 +5,6 @@ use crate::{
     error::kaori_error::KaoriError,
     frontend::{
         semantic::{
-            resolved_ast::ResolvedAst,
             resolved_ast_node::ResolvedAstNode,
             resolved_decl::{ResolvedDecl, ResolvedDeclKind},
             resolved_expr::{ResolvedExpr, ResolvedExprKind},
@@ -26,8 +25,8 @@ impl<'a> BytecodeGenerator<'a> {
         Self { bytecode }
     }
 
-    pub fn generate(&mut self, resolved_ast: &ResolvedAst) -> Result<(), KaoriError> {
-        for declaration in &resolved_ast.declarations {
+    pub fn generate(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
+        for declaration in declarations {
             self.visit_declaration(declaration)?;
         }
 
@@ -69,6 +68,7 @@ impl<'a> BytecodeGenerator<'a> {
                 self.visit_nodes(body)?;
 
                 let value = Value::function_ref(instruction_ptr);
+
                 self.bytecode
                     .constant_pool
                     .define_function_constant(*id, value);
