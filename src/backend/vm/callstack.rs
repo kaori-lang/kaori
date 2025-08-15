@@ -1,6 +1,5 @@
 use super::value::Value;
 
-#[derive(Default)]
 pub struct Callstack {
     declarations: Vec<Value>,
     scopes_pointer: Vec<usize>,
@@ -27,5 +26,14 @@ impl Callstack {
         let top = self.scopes_pointer.pop().unwrap();
 
         self.declarations.resize(top, Value::default());
+    }
+}
+
+impl Default for Callstack {
+    fn default() -> Self {
+        Self {
+            declarations: Vec::with_capacity(1024),
+            scopes_pointer: Vec::with_capacity(64),
+        }
     }
 }

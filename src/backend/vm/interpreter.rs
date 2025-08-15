@@ -22,7 +22,7 @@ impl Interpreter {
             instruction_ptr: 0,
             instructions,
             constant_pool,
-            values: Vec::new(),
+            values: Vec::with_capacity(64),
         }
     }
 

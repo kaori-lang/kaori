@@ -24,9 +24,16 @@ pub enum StmtKind {
     Expression(Box<Expr>),
     Break,
     Continue,
+    Return(Box<Expr>),
 }
 
 impl Stmt {
+    pub fn return_(expression: Expr, span: Span) -> Stmt {
+        Stmt {
+            span,
+            kind: StmtKind::Return(Box::new(expression)),
+        }
+    }
     pub fn print(expression: Expr, span: Span) -> Stmt {
         Stmt {
             span,

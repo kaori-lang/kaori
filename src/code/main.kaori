@@ -26,9 +26,6 @@ def main() -> bool {
             b = temp;
         }
     }
-    
-
-
 }
 
 
