@@ -1,45 +1,31 @@
 use super::value::Value;
 
+#[derive(Default)]
 pub struct Callstack {
-    index: usize,
-    declarations: [Value; 1024],
+    declarations: Vec<Value>,
     scopes_pointer: Vec<usize>,
 }
 
 impl Callstack {
     pub fn declare(&mut self, value: Value) {
-        self.declarations[self.index] = value;
-
-        self.index += 1;
+        self.declarations.push(value);
     }
 
-    #[inline(always)]
-    pub fn load_local(&self, offset: usize) -> Value {
-        unsafe { self.declarations.get_unchecked(offset).clone() }
+    pub fn load_local(&self, offset: usize) -> &Value {
+        unsafe { self.declarations.get_unchecked(offset) }
     }
 
-    #[inline(always)]
     pub fn store_local(&mut self, value: Value, offset: usize) {
         unsafe { *self.declarations.get_unchecked_mut(offset) = value }
     }
 
     pub fn enter_scope(&mut self) {
-        self.scopes_pointer.push(self.index);
+        self.scopes_pointer.push(self.declarations.len());
     }
 
     pub fn exit_scope(&mut self) {
         let top = self.scopes_pointer.pop().unwrap();
 
-        self.index = top;
-    }
-}
-
-impl Default for Callstack {
-    fn default() -> Self {
-        Self {
-            index: 0,
-            declarations: [(); 1024].map(|_| Value::default()),
-            scopes_pointer: Vec::new(),
-        }
+        self.declarations.resize(top, Value::default());
     }
 }

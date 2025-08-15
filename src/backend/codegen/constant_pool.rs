@@ -47,7 +47,7 @@ impl ConstantPool {
         }
     }
 
-    pub fn get_constant(&self, index: usize) -> Value {
-        unsafe { self.constants.get_unchecked(index).to_owned() }
+    pub fn get_constant(&self, index: usize) -> &Value {
+        unsafe { self.constants.get_unchecked(index) }
     }
 }

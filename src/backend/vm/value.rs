@@ -1,10 +1,10 @@
 use std::hint::unreachable_unchecked;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Value {
     Number(f64),
     Bool(bool),
-    Str(String),
+
     Null,
     FunctionRef(usize),
 }
