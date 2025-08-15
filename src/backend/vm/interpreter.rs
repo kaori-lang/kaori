@@ -162,13 +162,13 @@ impl Interpreter {
 
                     self.callstack.declare(value);
                 }
-                Instruction::StoreGlobal(offset) => {
-                    let value = value_stack.pop();
+                Instruction::StoreLocal(offset) => {
+                    let value = value_stack.top();
 
-                    self.callstack.store_global(value, offset as usize);
+                    self.callstack.store_local(value, offset as usize);
                 }
-                Instruction::LoadGlobal(offset) => {
-                    let value = self.callstack.load_global(offset as usize);
+                Instruction::LoadLocal(offset) => {
+                    let value = self.callstack.load_local(offset as usize);
 
                     value_stack.push(value);
                 }

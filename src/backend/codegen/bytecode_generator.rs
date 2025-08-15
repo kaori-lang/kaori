@@ -89,6 +89,8 @@ impl<'a> BytecodeGenerator<'a> {
         match &statement.kind {
             ResolvedStmtKind::Expression(expression) => {
                 self.visit_expression(expression)?;
+
+                self.emit(Instruction::Pop);
             }
             ResolvedStmtKind::Print(expression) => {
                 self.visit_expression(expression)?;

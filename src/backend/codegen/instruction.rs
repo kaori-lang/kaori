@@ -20,9 +20,8 @@ pub enum Instruction {
     Declare,
     LoadConst(u16),
     LoadLocal(u16),
-    LoadGlobal(u16),
     StoreLocal(u16),
-    StoreGlobal(u16),
+
     EnterScope,
     ExitScope,
     Call,

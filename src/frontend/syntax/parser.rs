@@ -57,9 +57,14 @@ impl Parser {
                     .token_stream
                     .look_ahead(&[TokenKind::Identifier, TokenKind::Colon])
                 {
-                    return Ok(AstNode::Declaration(self.parse_variable_declaration()?));
+                    let declaration = self.parse_variable_declaration()?;
+                    self.token_stream.consume(TokenKind::Semicolon)?;
+                    return Ok(AstNode::Declaration(declaration));
                 } else {
-                    self.parse_expression_statement()
+                    let statement = self.parse_expression_statement();
+                    self.token_stream.consume(TokenKind::Semicolon)?;
+
+                    statement
                 }
             }
         }?;
@@ -80,8 +85,6 @@ impl Parser {
         self.token_stream.consume(TokenKind::Assign)?;
 
         let right = self.parse_expression()?;
-
-        self.token_stream.consume(TokenKind::Semicolon)?;
 
         Ok(Decl::variable(name, right, ty, span))
     }
@@ -154,6 +157,7 @@ impl Parser {
         self.token_stream.consume(TokenKind::LeftParen)?;
         let expression = self.parse_expression()?;
         self.token_stream.consume(TokenKind::RightParen)?;
+        self.token_stream.consume(TokenKind::Semicolon)?;
 
         Ok(Stmt::print(expression, span))
     }

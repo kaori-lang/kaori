@@ -18,6 +18,10 @@ impl ValueStack {
         self.index -= 1;
         unsafe { self.values.get_unchecked(self.index).clone() }
     }
+
+    pub fn top(&self) -> Value {
+        unsafe { self.values.get_unchecked(self.index - 1).clone() }
+    }
 }
 
 impl Default for ValueStack {

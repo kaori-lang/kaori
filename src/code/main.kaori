@@ -13,8 +13,7 @@ def foo() -> bool {
  */
 
 def main() -> bool {
-    print(3 * 12 + 5);
-
+   
     for i: num = 0; i < 5; i++ {
         print(i);
     }
