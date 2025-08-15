@@ -1,8 +1,9 @@
 use std::{fs, time::Instant};
 
 use kaori::{
-    backend::codegen::{
-        bytecode::Bytecode, bytecode_generator::BytecodeGenerator, constant_pool::ConstantPool,
+    backend::{
+        codegen::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
+        vm::interpreter::Interpreter,
     },
     error::kaori_error::KaoriError,
     frontend::parse_and_analyze::parse_and_analyze,
@@ -25,13 +26,12 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     bytecode_generator.generate(&resolved_declarations)?;
 
-    //print!("{:#?}", instructions.to_owned());
-    //let mut interpreter = Interpreter::new(instructions, constant_pool);
+    let mut interpreter = Interpreter::new(bytecode.instructions, bytecode.constant_pool);
 
     let start = Instant::now();
 
-    //interpreter.execute_instructions()?;
-    println!("{:#?}", bytecode.instructions);
+    interpreter.execute_instructions()?;
+
     println!("Vm executed in: {:#?}", start.elapsed());
 
     Ok(())

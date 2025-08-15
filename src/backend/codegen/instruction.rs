@@ -30,7 +30,7 @@ pub enum Instruction {
 
     Jump(i16),
     JumpIfFalse(i16),
-
+    Pop,
     Print,
 
     Nothing,

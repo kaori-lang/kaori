@@ -12,15 +12,20 @@ def foo() -> bool {
 
  */
 
+def main() -> bool {
+    print(3 * 12 + 5);
+
+    for i: num = 0; i < 5; i++ {
+        print(i);
+    }
+}
+
+
 def bar() -> bool {
     print(1 + 2);
 }
 
 def foo(a: num, b: num) -> bool {
     print(a + b);
-}
-
-def main() -> bool {
-    print("hello world");
 }
 

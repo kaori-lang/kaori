@@ -144,8 +144,6 @@ impl Parser {
         let span = self.token_stream.span();
         let expression = self.parse_expression()?;
 
-        self.token_stream.consume(TokenKind::Semicolon)?;
-
         Ok(Stmt::expression(expression, span))
     }
 
@@ -156,8 +154,6 @@ impl Parser {
         self.token_stream.consume(TokenKind::LeftParen)?;
         let expression = self.parse_expression()?;
         self.token_stream.consume(TokenKind::RightParen)?;
-
-        self.token_stream.consume(TokenKind::Semicolon)?;
 
         Ok(Stmt::print(expression, span))
     }
