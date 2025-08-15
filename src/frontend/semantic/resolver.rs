@@ -60,7 +60,7 @@ impl Resolver {
             if let DeclKind::Function { name, .. } = &declaration.kind
                 && name == "main"
             {
-                declarations.swap(0, index);
+                declarations.swap(index, declarations.len() - 1);
                 return Ok(());
             }
         }

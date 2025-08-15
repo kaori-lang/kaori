@@ -26,7 +26,14 @@ impl<'a> BytecodeGenerator<'a> {
     }
 
     pub fn generate(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
-        for declaration in declarations {
+        let jump_main = self.emit(Instruction::Nothing);
+
+        for (index, declaration) in declarations.iter().enumerate() {
+            if index == declarations.len() - 1 {
+                let offset = self.bytecode.instructions.len();
+                self.bytecode.instructions[jump_main] = Instruction::Jump(offset as i16);
+            }
+
             self.visit_declaration(declaration)?;
         }
 
@@ -207,14 +214,12 @@ impl<'a> BytecodeGenerator<'a> {
             ResolvedExprKind::FunctionCall { callee, arguments } => {
                 self.visit_expression(callee)?;
 
-                self.emit(Instruction::EnterFunction);
+                self.emit(Instruction::Call);
 
                 for argument in arguments {
                     self.visit_expression(argument)?;
                     self.emit(Instruction::Declare);
                 }
-
-                self.emit(Instruction::ExitFunction);
             }
             ResolvedExprKind::VariableRef { offset, .. } => {
                 self.emit(Instruction::LoadLocal(*offset as u16));

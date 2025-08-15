@@ -25,8 +25,7 @@ pub enum Instruction {
     StoreGlobal(u16),
     EnterScope,
     ExitScope,
-    EnterFunction,
-    ExitFunction,
+    Call,
     Return,
 
     Jump(i16),

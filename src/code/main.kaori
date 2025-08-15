@@ -21,6 +21,6 @@ def foo(a: num, b: num) -> bool {
 }
 
 def main() -> bool {
-    foo(1, 5);
+    print("hello world");
 }
 

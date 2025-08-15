@@ -181,10 +181,8 @@ impl Interpreter {
                 Instruction::JumpIfFalse(offset) => {
                     let value = value_stack.pop();
 
-                    let jump = offset - 1;
-
                     if unsafe { !value.as_bool() } {
-                        self.instruction_ptr = (self.instruction_ptr as i16 + jump) as usize;
+                        self.instruction_ptr = (self.instruction_ptr as i16 + offset - 1) as usize;
                     }
                 }
                 _ => (),
