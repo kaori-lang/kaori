@@ -52,6 +52,9 @@ impl Parser {
             TokenKind::If => self.parse_if_statement(),
             TokenKind::While => self.parse_while_loop_statement(),
             TokenKind::For => self.parse_for_loop_statement(),
+            TokenKind::Break => self.parse_break_statement(),
+            TokenKind::Continue => self.parse_continue_statement(),
+            TokenKind::Return => self.parse_return_statement(),
             _ => {
                 if self
                     .token_stream
@@ -143,6 +146,36 @@ impl Parser {
     }
 
     /* Statements */
+    fn parse_return_statement(&mut self) -> Result<Stmt, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Return)?;
+
+        let expression = self.parse_expression()?;
+
+        self.token_stream.consume(TokenKind::Semicolon)?;
+
+        Ok(Stmt::return_(expression, span))
+    }
+
+    fn parse_continue_statement(&mut self) -> Result<Stmt, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Continue)?;
+        self.token_stream.consume(TokenKind::Semicolon)?;
+
+        Ok(Stmt::continue_(span))
+    }
+
+    fn parse_break_statement(&mut self) -> Result<Stmt, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Break)?;
+        self.token_stream.consume(TokenKind::Semicolon)?;
+
+        Ok(Stmt::break_(span))
+    }
+
     fn parse_expression_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
         let expression = self.parse_expression()?;

@@ -28,12 +28,6 @@ pub enum StmtKind {
 }
 
 impl Stmt {
-    pub fn return_(expression: Expr, span: Span) -> Stmt {
-        Stmt {
-            span,
-            kind: StmtKind::Return(Box::new(expression)),
-        }
-    }
     pub fn print(expression: Expr, span: Span) -> Stmt {
         Stmt {
             span,
@@ -111,6 +105,13 @@ impl Stmt {
         Stmt {
             span,
             kind: StmtKind::Continue,
+        }
+    }
+
+    pub fn return_(expression: Expr, span: Span) -> Stmt {
+        Stmt {
+            span,
+            kind: StmtKind::Return(Box::new(expression)),
         }
     }
 }
