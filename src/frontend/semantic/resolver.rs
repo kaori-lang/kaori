@@ -20,12 +20,14 @@ use super::{
 
 pub struct Resolver {
     environment: Environment,
+    active_loops: u8,
 }
 
 impl Resolver {
     pub fn new() -> Self {
         Self {
             environment: Environment::default(),
+            active_loops: 0,
         }
     }
 
@@ -186,12 +188,34 @@ impl Resolver {
             }
             StmtKind::WhileLoop { condition, block } => {
                 let condition = self.resolve_expression(condition)?;
+
+                self.active_loops += 1;
                 let block = self.resolve_statement(block)?;
+                self.active_loops -= 1;
 
                 ResolvedStmt::while_loop(condition, block, statement.span)
             }
-            StmtKind::Break => ResolvedStmt::break_(statement.span),
-            StmtKind::Continue => ResolvedStmt::continue_(statement.span),
+            StmtKind::Break => {
+                if self.active_loops == 0 {
+                    return Err(kaori_error!(
+                        statement.span,
+                        "break statement can't appear outside of loops"
+                    ));
+                }
+
+                ResolvedStmt::break_(statement.span)
+            }
+            StmtKind::Continue => {
+                if self.active_loops == 0 {
+                    return Err(kaori_error!(
+                        statement.span,
+                        "continue statement can't appear outside of loops"
+                    ));
+                }
+
+                ResolvedStmt::continue_(statement.span)
+            }
+            _ => todo!(),
         };
 
         Ok(resolved_stmt)
