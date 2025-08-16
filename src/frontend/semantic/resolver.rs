@@ -20,14 +20,14 @@ use super::{
 
 pub struct Resolver {
     environment: Environment,
-    active_loops: u8,
+    active_loops: Vec<usize>,
 }
 
 impl Resolver {
     pub fn new() -> Self {
         Self {
             environment: Environment::default(),
-            active_loops: 0,
+            active_loops: Vec::new(),
         }
     }
 
@@ -193,31 +193,35 @@ impl Resolver {
             } => {
                 let condition = self.resolve_expression(condition)?;
 
-                self.active_loops += 1;
+                self.active_loops.push(*id);
                 let block = self.resolve_statement(block)?;
-                self.active_loops -= 1;
+                self.active_loops.pop();
 
                 ResolvedStmt::while_loop(*id, condition, block, statement.span)
             }
             StmtKind::Break => {
-                if self.active_loops == 0 {
+                if self.active_loops.is_empty() {
                     return Err(kaori_error!(
                         statement.span,
                         "break statement can't appear outside of loops"
                     ));
                 }
 
-                ResolvedStmt::break_(statement.span)
+                let loop_id = self.active_loops.last().unwrap();
+
+                ResolvedStmt::break_(*loop_id, statement.span)
             }
             StmtKind::Continue => {
-                if self.active_loops == 0 {
+                if self.active_loops.is_empty() {
                     return Err(kaori_error!(
                         statement.span,
                         "continue statement can't appear outside of loops"
                     ));
                 }
 
-                ResolvedStmt::continue_(statement.span)
+                let loop_id = self.active_loops.last().unwrap();
+
+                ResolvedStmt::continue_(*loop_id, statement.span)
             }
             _ => todo!(),
         };

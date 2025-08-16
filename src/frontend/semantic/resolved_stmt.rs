@@ -23,8 +23,12 @@ pub enum ResolvedStmtKind {
     },
     Block(Vec<ResolvedAstNode>),
     Expression(Box<ResolvedExpr>),
-    Break,
-    Continue,
+    Break {
+        loop_id: usize,
+    },
+    Continue {
+        loop_id: usize,
+    },
 }
 
 impl ResolvedStmt {
@@ -81,17 +85,17 @@ impl ResolvedStmt {
         }
     }
 
-    pub fn break_(span: Span) -> ResolvedStmt {
+    pub fn break_(loop_id: usize, span: Span) -> ResolvedStmt {
         ResolvedStmt {
             span,
-            kind: ResolvedStmtKind::Break,
+            kind: ResolvedStmtKind::Break { loop_id },
         }
     }
 
-    pub fn continue_(span: Span) -> ResolvedStmt {
+    pub fn continue_(loop_id: usize, span: Span) -> ResolvedStmt {
         ResolvedStmt {
             span,
-            kind: ResolvedStmtKind::Continue,
+            kind: ResolvedStmtKind::Continue { loop_id },
         }
     }
 }
