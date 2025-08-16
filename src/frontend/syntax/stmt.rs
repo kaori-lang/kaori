@@ -1,6 +1,6 @@
 use crate::frontend::scanner::span::Span;
 
-use super::{ast_node::AstNode, decl::Decl, expr::Expr};
+use super::{ast_node::AstNode, decl::Decl, expr::Expr, node_id::generate_id};
 
 #[derive(Debug)]
 pub struct Stmt {
@@ -17,6 +17,7 @@ pub enum StmtKind {
         else_branch: Option<Box<Stmt>>,
     },
     WhileLoop {
+        id: usize,
         condition: Box<Expr>,
         block: Box<Stmt>,
     },
@@ -50,6 +51,7 @@ impl Stmt {
         Stmt {
             span,
             kind: StmtKind::WhileLoop {
+                id: generate_id(),
                 condition: Box::new(condition),
                 block: Box::new(block),
             },

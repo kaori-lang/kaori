@@ -17,6 +17,7 @@ pub enum ResolvedStmtKind {
         else_branch: Option<Box<ResolvedStmt>>,
     },
     WhileLoop {
+        id: usize,
         condition: Box<ResolvedExpr>,
         block: Box<ResolvedStmt>,
     },
@@ -50,10 +51,16 @@ impl ResolvedStmt {
         }
     }
 
-    pub fn while_loop(condition: ResolvedExpr, block: ResolvedStmt, span: Span) -> ResolvedStmt {
+    pub fn while_loop(
+        id: usize,
+        condition: ResolvedExpr,
+        block: ResolvedStmt,
+        span: Span,
+    ) -> ResolvedStmt {
         ResolvedStmt {
             span,
             kind: ResolvedStmtKind::WhileLoop {
+                id,
                 condition: Box::new(condition),
                 block: Box::new(block),
             },

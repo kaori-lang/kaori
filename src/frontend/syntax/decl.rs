@@ -1,7 +1,6 @@
 use crate::frontend::scanner::span::Span;
 
-use super::{ast_node::AstNode, expr::Expr, ty::Ty};
-
+use super::{ast_node::AstNode, expr::Expr, node_id::generate_id, ty::Ty};
 
 #[derive(Debug)]
 pub struct Decl {
@@ -62,7 +61,7 @@ impl Decl {
         Decl {
             span,
             kind: DeclKind::Function {
-                id
+                id: generate_id(),
                 name,
                 parameters,
                 body,

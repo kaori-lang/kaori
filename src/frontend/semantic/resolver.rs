@@ -186,7 +186,11 @@ impl Resolver {
 
                 ResolvedStmt::if_(condition, then_branch, else_branch, statement.span)
             }
-            StmtKind::WhileLoop { condition, block } => {
+            StmtKind::WhileLoop {
+                id,
+                condition,
+                block,
+            } => {
                 let condition = self.resolve_expression(condition)?;
 
                 self.active_loops += 1;
