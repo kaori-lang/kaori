@@ -1,9 +1,7 @@
 use crate::frontend::scanner::span::Span;
 
 use super::{ast_node::AstNode, expr::Expr, ty::Ty};
-use std::sync::atomic::{AtomicUsize, Ordering};
 
-static NEXT_FUNCTION_ID: AtomicUsize = AtomicUsize::new(1);
 
 #[derive(Debug)]
 pub struct Decl {
@@ -64,7 +62,7 @@ impl Decl {
         Decl {
             span,
             kind: DeclKind::Function {
-                id: NEXT_FUNCTION_ID.fetch_add(1, Ordering::Relaxed),
+                id
                 name,
                 parameters,
                 body,
