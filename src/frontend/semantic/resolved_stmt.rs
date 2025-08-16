@@ -17,18 +17,13 @@ pub enum ResolvedStmtKind {
         else_branch: Option<Box<ResolvedStmt>>,
     },
     WhileLoop {
-        id: usize,
         condition: Box<ResolvedExpr>,
         block: Box<ResolvedStmt>,
     },
     Block(Vec<ResolvedAstNode>),
     Expression(Box<ResolvedExpr>),
-    Break {
-        loop_id: usize,
-    },
-    Continue {
-        loop_id: usize,
-    },
+    Break,
+    Continue,
 }
 
 impl ResolvedStmt {
@@ -55,16 +50,10 @@ impl ResolvedStmt {
         }
     }
 
-    pub fn while_loop(
-        id: usize,
-        condition: ResolvedExpr,
-        block: ResolvedStmt,
-        span: Span,
-    ) -> ResolvedStmt {
+    pub fn while_loop(condition: ResolvedExpr, block: ResolvedStmt, span: Span) -> ResolvedStmt {
         ResolvedStmt {
             span,
             kind: ResolvedStmtKind::WhileLoop {
-                id,
                 condition: Box::new(condition),
                 block: Box::new(block),
             },
@@ -85,17 +74,17 @@ impl ResolvedStmt {
         }
     }
 
-    pub fn break_(loop_id: usize, span: Span) -> ResolvedStmt {
+    pub fn break_(span: Span) -> ResolvedStmt {
         ResolvedStmt {
             span,
-            kind: ResolvedStmtKind::Break { loop_id },
+            kind: ResolvedStmtKind::Break,
         }
     }
 
-    pub fn continue_(loop_id: usize, span: Span) -> ResolvedStmt {
+    pub fn continue_(span: Span) -> ResolvedStmt {
         ResolvedStmt {
             span,
-            kind: ResolvedStmtKind::Continue { loop_id },
+            kind: ResolvedStmtKind::Continue,
         }
     }
 }

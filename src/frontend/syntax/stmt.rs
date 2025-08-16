@@ -17,7 +17,6 @@ pub enum StmtKind {
         else_branch: Option<Box<Stmt>>,
     },
     WhileLoop {
-        id: usize,
         condition: Box<Expr>,
         block: Box<Stmt>,
     },
@@ -51,7 +50,6 @@ impl Stmt {
         Stmt {
             span,
             kind: StmtKind::WhileLoop {
-                id: generate_id(),
                 condition: Box::new(condition),
                 block: Box::new(block),
             },

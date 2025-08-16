@@ -20,14 +20,14 @@ use super::{
 
 pub struct Resolver {
     environment: Environment,
-    active_loops: Vec<usize>,
+    active_loops: u8,
 }
 
 impl Resolver {
     pub fn new() -> Self {
         Self {
             environment: Environment::default(),
-            active_loops: Vec::new(),
+            active_loops: 0,
         }
     }
 
@@ -186,42 +186,34 @@ impl Resolver {
 
                 ResolvedStmt::if_(condition, then_branch, else_branch, statement.span)
             }
-            StmtKind::WhileLoop {
-                id,
-                condition,
-                block,
-            } => {
+            StmtKind::WhileLoop { condition, block } => {
                 let condition = self.resolve_expression(condition)?;
 
-                self.active_loops.push(*id);
+                self.active_loops += 1;
                 let block = self.resolve_statement(block)?;
-                self.active_loops.pop();
+                self.active_loops -= 1;
 
-                ResolvedStmt::while_loop(*id, condition, block, statement.span)
+                ResolvedStmt::while_loop(condition, block, statement.span)
             }
             StmtKind::Break => {
-                if self.active_loops.is_empty() {
+                if self.active_loops == 0 {
                     return Err(kaori_error!(
                         statement.span,
                         "break statement can't appear outside of loops"
                     ));
                 }
 
-                let loop_id = self.active_loops.last().unwrap();
-
-                ResolvedStmt::break_(*loop_id, statement.span)
+                ResolvedStmt::break_(statement.span)
             }
             StmtKind::Continue => {
-                if self.active_loops.is_empty() {
+                if self.active_loops == 0 {
                     return Err(kaori_error!(
                         statement.span,
                         "continue statement can't appear outside of loops"
                     ));
                 }
 
-                let loop_id = self.active_loops.last().unwrap();
-
-                ResolvedStmt::continue_(*loop_id, statement.span)
+                ResolvedStmt::continue_(statement.span)
             }
             _ => todo!(),
         };
