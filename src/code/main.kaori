@@ -15,11 +15,11 @@ def foo() -> bool {
 def main() -> bool {
     n: num = 30;
     iterations: num = 1000000;
-
+   
     for i: num = 0; i < iterations; i++ {
         a: num = 0;
         b: num = 1;
-
+    
         for j: num = 0; j < n; j++ {
             temp: num = a + b;
             a = b;

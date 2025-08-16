@@ -31,7 +31,7 @@ impl<'a> BytecodeGenerator<'a> {
         for (index, declaration) in declarations.iter().enumerate() {
             if index == declarations.len() - 1 {
                 let offset = self.bytecode.instructions.len();
-                self.bytecode.instructions[jump_main] = Instruction::Jump(offset as i16);
+                self.bytecode.instructions[jump_main] = Instruction::Jump(offset as u16);
             }
 
             self.visit_declaration(declaration)?;
@@ -119,18 +119,19 @@ impl<'a> BytecodeGenerator<'a> {
 
                 let jump_end = self.emit(Instruction::Nothing);
 
-                self.bytecode.instructions[jump_if_false] = Instruction::JumpIfFalse(
-                    self.bytecode.instructions.len() as i16 - jump_if_false as i16,
-                );
+                self.bytecode.instructions[jump_if_false] =
+                    Instruction::JumpIfFalse(self.bytecode.instructions.len() as u16);
 
                 if let Some(branch) = else_branch {
                     self.visit_statement(branch)?;
                 }
 
                 self.bytecode.instructions[jump_end] =
-                    Instruction::Jump(self.bytecode.instructions.len() as i16 - jump_end as i16);
+                    Instruction::Jump(self.bytecode.instructions.len() as u16);
             }
-            ResolvedStmtKind::WhileLoop { condition, block } => {
+            ResolvedStmtKind::WhileLoop {
+                condition, block, ..
+            } => {
                 let start = self.bytecode.instructions.len();
 
                 self.visit_expression(condition)?;
@@ -139,13 +140,10 @@ impl<'a> BytecodeGenerator<'a> {
 
                 self.visit_statement(block)?;
 
-                self.emit(Instruction::Jump(
-                    start as i16 - self.bytecode.instructions.len() as i16,
-                ));
+                self.emit(Instruction::Jump(start as u16));
 
-                self.bytecode.instructions[jump_if_false] = Instruction::JumpIfFalse(
-                    self.bytecode.instructions.len() as i16 - jump_if_false as i16,
-                );
+                self.bytecode.instructions[jump_if_false] =
+                    Instruction::JumpIfFalse(self.bytecode.instructions.len() as u16);
             }
             _ => (),
         };

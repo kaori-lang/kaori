@@ -172,14 +172,12 @@ impl Interpreter {
                 }
                 Instruction::EnterScope => self.callstack.enter_scope(),
                 Instruction::ExitScope => self.callstack.exit_scope(),
-                Instruction::Jump(offset) => {
-                    self.instruction_ptr = (self.instruction_ptr as i16 + offset - 1) as usize
-                }
-                Instruction::JumpIfFalse(offset) => {
+                Instruction::Jump(index) => self.instruction_ptr = index as usize - 1,
+                Instruction::JumpIfFalse(index) => {
                     let value = unsafe { self.values.pop().unwrap_unchecked() };
 
                     if unsafe { !value.as_bool() } {
-                        self.instruction_ptr = (self.instruction_ptr as i16 + offset - 1) as usize;
+                        self.instruction_ptr = index as usize - 1;
                     }
                 }
                 Instruction::Print => {

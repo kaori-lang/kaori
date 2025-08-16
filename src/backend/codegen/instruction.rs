@@ -1,5 +1,4 @@
 #[derive(Debug, Clone)]
-
 pub enum Instruction {
     Plus,
     Minus,
@@ -27,8 +26,8 @@ pub enum Instruction {
     Call,
     Return,
 
-    Jump(i16),
-    JumpIfFalse(i16),
+    Jump(u16),
+    JumpIfFalse(u16),
     Pop,
     Print,
 

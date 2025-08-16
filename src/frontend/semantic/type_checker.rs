@@ -105,7 +105,9 @@ impl TypeChecker {
                     self.check_statement(branch)?;
                 }
             }
-            ResolvedStmtKind::WhileLoop { condition, block } => {
+            ResolvedStmtKind::WhileLoop {
+                condition, block, ..
+            } => {
                 let condition_type = self.check_expression(condition)?;
 
                 if !condition_type.eq(&Ty::Boolean) {

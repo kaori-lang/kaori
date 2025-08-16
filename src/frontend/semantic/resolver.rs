@@ -197,7 +197,7 @@ impl Resolver {
                 let block = self.resolve_statement(block)?;
                 self.active_loops -= 1;
 
-                ResolvedStmt::while_loop(condition, block, statement.span)
+                ResolvedStmt::while_loop(*id, condition, block, statement.span)
             }
             StmtKind::Break => {
                 if self.active_loops == 0 {
