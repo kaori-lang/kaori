@@ -112,10 +112,11 @@ impl Resolver {
                     ));
                 };
 
-                self.environment
+                let offset = self
+                    .environment
                     .declare_variable(name.to_owned(), ty.to_owned());
 
-                ResolvedDecl::variable(right, ty.to_owned(), declaration.span)
+                ResolvedDecl::variable(offset, right, ty.to_owned(), declaration.span)
             }
             DeclKind::Function {
                 id,

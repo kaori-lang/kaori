@@ -14,6 +14,7 @@ pub struct ResolvedDecl {
 #[derive(Debug)]
 pub enum ResolvedDeclKind {
     Variable {
+        offset: usize,
         right: Box<ResolvedExpr>,
         ty: Ty,
     },
@@ -32,10 +33,11 @@ pub struct ResolvedParameter {
 }
 
 impl ResolvedDecl {
-    pub fn variable(right: ResolvedExpr, ty: Ty, span: Span) -> ResolvedDecl {
+    pub fn variable(offset: usize, right: ResolvedExpr, ty: Ty, span: Span) -> ResolvedDecl {
         ResolvedDecl {
             span,
             kind: ResolvedDeclKind::Variable {
+                offset,
                 right: Box::new(right),
                 ty,
             },

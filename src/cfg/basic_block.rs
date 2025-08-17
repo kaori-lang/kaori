@@ -1,5 +1,5 @@
 pub struct BasicBlock {
-    instructions: Vec<Instruction>,
+    instructions: Vec<CfgInstruction>,
     terminator: Terminator,
 }
 
@@ -12,7 +12,7 @@ pub enum Terminator {
 }
 
 #[derive(Debug, Clone)]
-pub enum Instruction {
+pub enum CfgInstruction {
     Plus,
     Minus,
     Multiply,
@@ -30,19 +30,16 @@ pub enum Instruction {
     Negate,
 
     Declare,
-    LoadConst(u16),
-    LoadLocal(u16),
-    StoreLocal(u16),
-
+    StringConst(String),
+    NumberConst(f64),
+    BooleanConst(bool),
+    FunctionConst { function_id: usize },
+    LoadLocal(usize),
+    StoreLocal(usize),
     EnterScope,
     ExitScope,
     Call,
     Return,
-
-    Jump(u16),
-    JumpIfFalse(u16),
     Pop,
     Print,
-
-    Nothing,
 }

@@ -37,13 +37,15 @@ impl Environment {
         }
     }
 
-    pub fn declare_variable(&mut self, name: String, ty: Ty) {
+    pub fn declare_variable(&mut self, name: String, ty: Ty) -> usize {
         let offset = self.variable_offset;
         let declaration = Symbol::variable(offset, name, ty);
 
         self.variable_offset += 1;
 
         self.symbols.push(declaration);
+
+        offset
     }
 
     pub fn declare_function(&mut self, id: usize, name: String, ty: Ty) {
