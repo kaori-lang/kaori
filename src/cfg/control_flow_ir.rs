@@ -118,8 +118,8 @@ impl<'a> CfgIr {
                 self.visit_expression(right)?;
 
                 match operator {
-                    BinaryOp::Plus => self.emit(CfgInstruction::Plus),
-                    BinaryOp::Minus => self.emit(CfgInstruction::Minus),
+                    BinaryOp::Add => self.emit(CfgInstruction::Plus),
+                    BinaryOp::Subtract => self.emit(CfgInstruction::Minus),
                     BinaryOp::Multiply => self.emit(CfgInstruction::Multiply),
                     BinaryOp::Divide => self.emit(CfgInstruction::Divide),
                     BinaryOp::Modulo => self.emit(CfgInstruction::Modulo),

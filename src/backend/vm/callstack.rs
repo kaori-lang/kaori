@@ -1,14 +1,10 @@
 use super::value::Value;
 
 pub struct Callstack {
-    declarations: Vec<Value>,
+    declarations: [Value; 1024],
 }
 
 impl Callstack {
-    pub fn declare(&mut self, value: Value) {
-        self.declarations.push(value);
-    }
-
     pub fn load_local(&self, offset: usize) -> &Value {
         unsafe { self.declarations.get_unchecked(offset) }
     }
@@ -21,7 +17,7 @@ impl Callstack {
 impl Default for Callstack {
     fn default() -> Self {
         Self {
-            declarations: Vec::with_capacity(100),
+            declarations: [Value::default(); 1024],
         }
     }
 }

@@ -2,7 +2,7 @@ use std::{fs, time::Instant};
 
 use kaori::{
     backend::{
-        codegen::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
+        codegen::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator, constant_pool},
         vm::interpreter::Interpreter,
     },
     error::kaori_error::KaoriError,
@@ -26,7 +26,10 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     bytecode_generator.generate(&resolved_declarations)?;
 
-    let mut interpreter = Interpreter::new(bytecode.instructions, bytecode.constant_pool);
+    let instructions = bytecode.instructions;
+    let constant_pool = bytecode.constant_pool.constants;
+
+    let mut interpreter = Interpreter::new(instructions, constant_pool);
 
     let start = Instant::now();
 

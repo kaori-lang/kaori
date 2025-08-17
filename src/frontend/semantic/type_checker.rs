@@ -161,8 +161,8 @@ impl TypeChecker {
                 let right = self.check_expression(right)?;
 
                 match (&left, &operator, &right) {
-                    (Ty::Number, BinaryOp::Plus, Ty::Number) => Ty::Number,
-                    (Ty::Number, BinaryOp::Minus, Ty::Number) => Ty::Number,
+                    (Ty::Number, BinaryOp::Add, Ty::Number) => Ty::Number,
+                    (Ty::Number, BinaryOp::Subtract, Ty::Number) => Ty::Number,
                     (Ty::Number, BinaryOp::Multiply, Ty::Number) => Ty::Number,
                     (Ty::Number, BinaryOp::Divide, Ty::Number) => Ty::Number,
                     (Ty::Number, BinaryOp::Modulo, Ty::Number) => Ty::Number,

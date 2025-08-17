@@ -1,9 +1,6 @@
-use std::hint::unreachable_unchecked;
+#![allow(clippy::missing_safety_doc)]
 
-use crate::{
-    backend::codegen::{constant_pool::ConstantPool, instruction::Instruction},
-    error::kaori_error::KaoriError,
-};
+use crate::{backend::codegen::instruction::Instruction, error::kaori_error::KaoriError};
 
 use super::{callstack::Callstack, value::Value};
 
@@ -11,12 +8,12 @@ pub struct Interpreter {
     callstack: Callstack,
     instruction_ptr: usize,
     instructions: Vec<Instruction>,
-    constant_pool: ConstantPool,
+    constant_pool: Vec<Value>,
     values: Vec<Value>,
 }
 
 impl Interpreter {
-    pub fn new(instructions: Vec<Instruction>, constant_pool: ConstantPool) -> Self {
+    pub fn new(instructions: Vec<Instruction>, constant_pool: Vec<Value>) -> Self {
         Self {
             callstack: Callstack::default(),
             instruction_ptr: 0,
@@ -26,6 +23,180 @@ impl Interpreter {
         }
     }
 
+    pub unsafe fn op_add(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::number(left.as_number() + right.as_number()));
+        }
+    }
+
+    pub unsafe fn op_subtract(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::number(left.as_number() - right.as_number()));
+        }
+    }
+
+    pub unsafe fn op_multiply(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::number(left.as_number() * right.as_number()));
+        }
+    }
+
+    pub unsafe fn op_divide(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::number(left.as_number() / right.as_number()));
+        }
+    }
+
+    pub unsafe fn op_modulo(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::number(left.as_number() % right.as_number()));
+        }
+    }
+
+    pub unsafe fn op_and(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::boolean(left.as_bool() && right.as_bool()));
+        }
+    }
+
+    pub unsafe fn op_or(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::boolean(left.as_bool() || right.as_bool()));
+        }
+    }
+
+    pub unsafe fn op_not_equal(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::boolean(left.as_number() != right.as_number()));
+        }
+    }
+
+    pub unsafe fn op_equal(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::boolean(left.as_number() == right.as_number()));
+        }
+    }
+
+    pub unsafe fn op_greater(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::boolean(left.as_number() > right.as_number()));
+        }
+    }
+
+    pub unsafe fn op_greater_equal(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::boolean(left.as_number() >= right.as_number()));
+        }
+    }
+
+    pub unsafe fn op_less(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::boolean(left.as_number() < right.as_number()));
+        }
+    }
+
+    pub unsafe fn op_less_equal(&mut self) {
+        unsafe {
+            let right = self.values.pop().unwrap_unchecked();
+            let left = self.values.pop().unwrap_unchecked();
+
+            self.values
+                .push(Value::boolean(left.as_number() <= right.as_number()));
+        }
+    }
+
+    pub unsafe fn op_negate(&mut self) {
+        unsafe {
+            let value = self.values.pop().unwrap_unchecked();
+
+            self.values.push(Value::number(-value.as_number()));
+        }
+    }
+
+    pub unsafe fn op_not(&mut self) {
+        unsafe {
+            let value = self.values.pop().unwrap_unchecked();
+
+            self.values.push(Value::boolean(!value.as_bool()));
+        }
+    }
+
+    pub unsafe fn op_load_const(&mut self, index: usize) {
+        let value = unsafe { self.constant_pool.get_unchecked(index) };
+
+        self.values.push(*value);
+    }
+
+    pub unsafe fn op_store_local(&mut self, offset: usize) {
+        let value = unsafe { self.values.last().unwrap_unchecked() };
+
+        self.callstack.store_local(*value, offset);
+    }
+
+    pub unsafe fn op_load_local(&mut self, offset: usize) {
+        let value = self.callstack.load_local(offset);
+
+        self.values.push(*value);
+    }
+
+    pub unsafe fn op_pop(&mut self) {
+        unsafe { self.values.pop().unwrap_unchecked() };
+    }
+
+    pub unsafe fn op_print(&mut self) {
+        let value = unsafe { self.values.pop().unwrap_unchecked() };
+
+        println!("{value:?}");
+    }
+
     pub fn execute_instructions(&mut self) -> Result<(), KaoriError> {
         let size = self.instructions.len();
 
@@ -33,138 +204,27 @@ impl Interpreter {
             let instruction = unsafe { self.instructions.get_unchecked(self.instruction_ptr) };
 
             match *instruction {
-                Instruction::LoadConst(index) => {
-                    let value = self.constant_pool.get_constant(index as usize);
+                Instruction::LoadConst(index) => unsafe { self.op_load_const(index as usize) },
+                Instruction::StoreLocal(offset) => unsafe { self.op_store_local(offset as usize) },
+                Instruction::LoadLocal(offset) => unsafe { self.op_load_local(offset as usize) },
 
-                    self.values.push(*value);
-                }
-                Instruction::StoreLocal(offset) => {
-                    let value = unsafe { self.values.last().unwrap_unchecked() };
+                Instruction::Pop => unsafe { self.op_pop() },
 
-                    self.callstack.store_local(*value, offset as usize);
-                }
-                Instruction::LoadLocal(offset) => {
-                    let value = self.callstack.load_local(offset as usize);
-
-                    self.values.push(*value);
-                }
-                Instruction::Pop => {
-                    unsafe { self.values.pop().unwrap_unchecked() };
-                }
-                Instruction::Plus => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values.push(Value::number(unsafe {
-                        left.as_number() + right.as_number()
-                    }));
-                }
-                Instruction::Minus => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values.push(Value::number(unsafe {
-                        left.as_number() - right.as_number()
-                    }));
-                }
-                Instruction::Multiply => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values.push(Value::number(unsafe {
-                        left.as_number() * right.as_number()
-                    }));
-                }
-                Instruction::Divide => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values.push(Value::number(unsafe {
-                        left.as_number() / right.as_number()
-                    }));
-                }
-                Instruction::Modulo => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values.push(Value::number(unsafe {
-                        left.as_number() % right.as_number()
-                    }));
-                }
-                Instruction::And => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values
-                        .push(Value::boolean(unsafe { left.as_bool() && right.as_bool() }));
-                }
-                Instruction::Or => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values
-                        .push(Value::boolean(unsafe { left.as_bool() || right.as_bool() }));
-                }
-                Instruction::NotEqual => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values.push(Value::boolean(unsafe {
-                        left.as_number() != right.as_number()
-                    }));
-                }
-                Instruction::Equal => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values.push(Value::boolean(unsafe {
-                        left.as_number() == right.as_number()
-                    }));
-                }
-                Instruction::Greater => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values.push(Value::boolean(unsafe {
-                        left.as_number() > right.as_number()
-                    }));
-                }
-                Instruction::GreaterEqual => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values.push(Value::boolean(unsafe {
-                        left.as_number() >= right.as_number()
-                    }));
-                }
-                Instruction::Less => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values.push(Value::boolean(unsafe {
-                        left.as_number() < right.as_number()
-                    }));
-                }
-                Instruction::LessEqual => {
-                    let right = unsafe { self.values.pop().unwrap_unchecked() };
-                    let left = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values.push(Value::boolean(unsafe {
-                        left.as_number() <= right.as_number()
-                    }));
-                }
-                Instruction::Not => {
-                    let value = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values
-                        .push(Value::boolean(unsafe { !value.as_bool() }));
-                }
-                Instruction::Negate => {
-                    let value = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.values
-                        .push(Value::number(unsafe { -value.as_number() }));
-                }
+                Instruction::Add => unsafe { self.op_add() },
+                Instruction::Subtract => unsafe { self.op_subtract() },
+                Instruction::Multiply => unsafe { self.op_multiply() },
+                Instruction::Divide => unsafe { self.op_divide() },
+                Instruction::Modulo => unsafe { self.op_modulo() },
+                Instruction::And => unsafe { self.op_and() },
+                Instruction::Or => unsafe { self.op_or() },
+                Instruction::NotEqual => unsafe { self.op_not_equal() },
+                Instruction::Equal => unsafe { self.op_equal() },
+                Instruction::Greater => unsafe { self.op_greater() },
+                Instruction::GreaterEqual => unsafe { self.op_greater_equal() },
+                Instruction::Less => unsafe { self.op_less() },
+                Instruction::LessEqual => unsafe { self.op_less_equal() },
+                Instruction::Not => unsafe { self.op_not() },
+                Instruction::Negate => unsafe { self.op_negate() },
                 Instruction::Jump(index) => self.instruction_ptr = index as usize - 1,
                 Instruction::JumpIfFalse(index) => {
                     let value = unsafe { self.values.pop().unwrap_unchecked() };
@@ -173,13 +233,11 @@ impl Interpreter {
                         self.instruction_ptr = index as usize - 1;
                     }
                 }
-                Instruction::Print => {
-                    let value = unsafe { self.values.pop().unwrap_unchecked() };
+                Instruction::Print => unsafe { self.op_print() },
 
-                    println!("{value:?}");
+                _ => {
+                    todo!()
                 }
-
-                _ => {}
             };
 
             self.instruction_ptr += 1;

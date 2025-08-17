@@ -1,7 +1,7 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum BinaryOp {
-    Plus,
-    Minus,
+    Add,
+    Subtract,
     Multiply,
     Divide,
     Modulo,

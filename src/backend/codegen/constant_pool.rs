@@ -4,7 +4,7 @@ use crate::backend::vm::value::Value;
 
 #[derive(Default, Debug)]
 pub struct ConstantPool {
-    constants: Vec<Value>,
+    pub constants: Vec<Value>,
     functions: HashMap<usize, usize>,
 }
 
@@ -45,9 +45,5 @@ impl ConstantPool {
             self.functions.insert(function_id, index);
             self.constants.push(value);
         }
-    }
-
-    pub fn get_constant(&self, index: usize) -> &Value {
-        unsafe { self.constants.get_unchecked(index) }
     }
 }

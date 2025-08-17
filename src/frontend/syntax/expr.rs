@@ -59,7 +59,7 @@ impl Expr {
 
     pub fn increment(identifier: Expr, span: Span) -> Expr {
         let right = Expr::binary(
-            BinaryOp::Plus,
+            BinaryOp::Add,
             identifier.to_owned(),
             Expr::number_literal(1.0, span),
             span,
@@ -70,7 +70,7 @@ impl Expr {
 
     pub fn decrement(identifier: Expr, span: Span) -> Expr {
         let right = Expr::binary(
-            BinaryOp::Minus,
+            BinaryOp::Subtract,
             identifier.to_owned(),
             Expr::number_literal(1.0, span),
             span,

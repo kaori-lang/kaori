@@ -396,8 +396,8 @@ impl Parser {
             let span = self.token_stream.span();
 
             let operator = match kind {
-                TokenKind::Plus => BinaryOp::Plus,
-                TokenKind::Minus => BinaryOp::Minus,
+                TokenKind::Plus => BinaryOp::Add,
+                TokenKind::Minus => BinaryOp::Subtract,
                 _ => break,
             };
 

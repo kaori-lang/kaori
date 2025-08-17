@@ -164,8 +164,8 @@ impl<'a> BytecodeGenerator<'a> {
                 self.visit_expression(right)?;
 
                 match operator {
-                    BinaryOp::Plus => self.emit(Instruction::Plus),
-                    BinaryOp::Minus => self.emit(Instruction::Minus),
+                    BinaryOp::Add => self.emit(Instruction::Add),
+                    BinaryOp::Subtract => self.emit(Instruction::Subtract),
                     BinaryOp::Multiply => self.emit(Instruction::Multiply),
                     BinaryOp::Divide => self.emit(Instruction::Divide),
                     BinaryOp::Modulo => self.emit(Instruction::Modulo),

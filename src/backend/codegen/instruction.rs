@@ -1,7 +1,7 @@
 #[derive(Debug, Clone)]
 pub enum Instruction {
-    Plus,
-    Minus,
+    Add,
+    Subtract,
     Multiply,
     Divide,
     Modulo,
