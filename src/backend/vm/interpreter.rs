@@ -51,11 +51,6 @@ impl Interpreter {
                 Instruction::Pop => {
                     unsafe { self.values.pop().unwrap_unchecked() };
                 }
-                Instruction::Declare => {
-                    let value = unsafe { self.values.pop().unwrap_unchecked() };
-
-                    self.callstack.declare(value);
-                }
                 Instruction::Plus => {
                     let right = unsafe { self.values.pop().unwrap_unchecked() };
                     let left = unsafe { self.values.pop().unwrap_unchecked() };
@@ -170,8 +165,6 @@ impl Interpreter {
                     self.values
                         .push(Value::number(unsafe { -value.as_number() }));
                 }
-                Instruction::EnterScope => self.callstack.enter_scope(),
-                Instruction::ExitScope => self.callstack.exit_scope(),
                 Instruction::Jump(index) => self.instruction_ptr = index as usize - 1,
                 Instruction::JumpIfFalse(index) => {
                     let value = unsafe { self.values.pop().unwrap_unchecked() };
@@ -186,7 +179,7 @@ impl Interpreter {
                     println!("{value:?}");
                 }
 
-                _ => unsafe { unreachable_unchecked() },
+                _ => {}
             };
 
             self.instruction_ptr += 1;

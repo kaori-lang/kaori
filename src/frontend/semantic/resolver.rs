@@ -168,8 +168,10 @@ impl Resolver {
                 ResolvedStmt::print(expr, statement.span)
             }
             StmtKind::Block(nodes) => {
+                self.environment.enter_scope();
                 let nodes = self.resolve_nodes(nodes)?;
 
+                self.environment.exit_scope();
                 ResolvedStmt::block(nodes, statement.span)
             }
             StmtKind::If {

@@ -16,13 +16,10 @@ pub enum Instruction {
     Not,
     Negate,
 
-    Declare,
     LoadConst(u16),
     LoadLocal(u16),
     StoreLocal(u16),
 
-    EnterScope,
-    ExitScope,
     Call,
     Return,
 

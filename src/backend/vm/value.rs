@@ -7,7 +7,6 @@ pub enum Value {
 
     Null,
     FunctionRef(usize),
-    Loop { start: u32, end: u32 },
 }
 
 impl Value {

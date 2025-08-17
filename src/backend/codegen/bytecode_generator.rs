@@ -65,20 +65,20 @@ impl<'a> BytecodeGenerator<'a> {
 
     fn visit_declaration(&mut self, declaration: &ResolvedDecl) -> Result<(), KaoriError> {
         match &declaration.kind {
-            ResolvedDeclKind::Variable { right, .. } => {
+            ResolvedDeclKind::Variable { right, offset, .. } => {
                 self.visit_expression(right)?;
-                self.emit(Instruction::Declare);
+                self.emit(Instruction::StoreLocal(*offset as u16));
             }
             ResolvedDeclKind::Function { body, id, .. } => {
                 let instruction_ptr = self.bytecode.instructions.len();
-
-                self.visit_nodes(body)?;
 
                 let value = Value::function_ref(instruction_ptr);
 
                 self.bytecode
                     .constant_pool
                     .define_function_constant(*id, value);
+
+                self.visit_nodes(body)?;
             }
         };
 
@@ -98,13 +98,9 @@ impl<'a> BytecodeGenerator<'a> {
                 self.emit(Instruction::Print);
             }
             ResolvedStmtKind::Block(nodes) => {
-                self.emit(Instruction::EnterScope);
-
                 for node in nodes {
                     self.visit_ast_node(node)?;
                 }
-
-                self.emit(Instruction::ExitScope);
             }
             ResolvedStmtKind::If {
                 condition,
@@ -218,7 +214,6 @@ impl<'a> BytecodeGenerator<'a> {
 
                 for argument in arguments {
                     self.visit_expression(argument)?;
-                    self.emit(Instruction::Declare);
                 }
             }
             ResolvedExprKind::VariableRef { offset, .. } => {
