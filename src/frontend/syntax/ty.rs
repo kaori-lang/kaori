@@ -3,29 +3,18 @@ pub enum Ty {
     Boolean,
     String,
     Number,
+    Void,
     Function {
         parameters: Vec<Ty>,
-        return_type: Option<Box<Ty>>,
+        return_type: Box<Ty>,
     },
 }
 
 impl Ty {
-    pub fn function(parameters: Vec<Ty>, return_type: Option<Ty>) -> Ty {
+    pub fn function(parameters: Vec<Ty>, return_type: Ty) -> Ty {
         Ty::Function {
             parameters,
-            return_type: return_type.map(Box::new),
+            return_type: Box::new(return_type),
         }
-    }
-
-    pub fn number() -> Ty {
-        Ty::Number
-    }
-
-    pub fn string() -> Ty {
-        Ty::String
-    }
-
-    pub fn boolean() -> Ty {
-        Ty::Boolean
     }
 }

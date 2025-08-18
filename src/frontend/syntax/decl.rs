@@ -55,7 +55,7 @@ impl Decl {
                 .iter()
                 .map(|parameter| parameter.ty.to_owned())
                 .collect(),
-            Box::new(return_type),
+            return_type,
         );
 
         Decl {

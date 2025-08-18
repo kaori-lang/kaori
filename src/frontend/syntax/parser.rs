@@ -127,11 +127,11 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::RightParen)?;
 
-        let mut return_type: Option<Ty> = None;
+        let mut return_type = Ty::Void;
 
         if self.token_stream.token_kind() == TokenKind::ThinArrow {
             self.token_stream.consume(TokenKind::ThinArrow)?;
-            return_type = Some(self.parse_type()?);
+            return_type = self.parse_type()?;
         }
 
         let mut body = Vec::new();
@@ -583,9 +583,9 @@ impl Parser {
         let sub = self.token_stream.lexeme();
 
         let primitive = match sub {
-            "bool" => Ty::boolean(),
-            "str" => Ty::string(),
-            "num" => Ty::number(),
+            "bool" => Ty::Boolean,
+            "str" => Ty::String,
+            "num" => Ty::Number,
             _ => {
                 return Err(kaori_error!(
                     self.token_stream.span(),

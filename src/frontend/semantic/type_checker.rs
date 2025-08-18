@@ -131,7 +131,7 @@ impl TypeChecker {
             ResolvedStmtKind::Return(expr) => {
                 let return_type = match expr {
                     Some(expr) => self.check_expression(expr)?,
-                    None => Ty::Nothing,
+                    None => Ty::Void,
                 };
 
                 if let Some(current_return_type) = &self.return_type

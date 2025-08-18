@@ -26,7 +26,7 @@
     -   [x] Code comments (`/* this is a comment */`)
     -   [x] Bytecode generation
     -   [x] Virtual machine to interpret bytecode
-    -   [ ] Functions
+    -   [x] Functions
     -   [ ] Function and loop control flow (`break`, `continue`, `return`)
     -   [ ] Structs and implementation block
     -   [ ] Native data structures (e.g., lists, maps)
@@ -35,25 +35,25 @@
 ## Grammar
 
 ```text
-program                  -> declaration* EOF
+program                  -> function_declaration* EOF
 
 type                     -> function_type | primitive_type
 primitive_type           -> bool | num | str
 function_type            -> ( [type [, type]*] ) -> type
 
-declaration              -> variable_declaration
-                         | function_declaration
-
 variable_declaration     -> identifier : type = expression ;
 
-function_declaration     -> def identifier ( [parameter [, parameter]*]? ) -> type block_statement
+parameter                -> identifer: type
+function_declaration     -> def identifier ( [parameter [, parameter]*]? ) (-> type)? block_statement
 
-statement                -> expression_statement
+block_statement          -> {
+                           expression_statement
                          | print_statement
                          | if_statement
                          | while_statement
                          | for_statement
                          | block_statement
+                         | variable_declaration }
 
 expression_statement     -> expression ;
 
@@ -64,8 +64,6 @@ if_statement             -> if expression block_statement [else [if_statement | 
 while_statement          -> while expression block_statement
 
 for_statement            -> for variable_declaration ; expression ; expression block_statement
-
-block_statement          -> { declaration* }
 
 expression               -> assignment | logic_or
 
@@ -93,7 +91,7 @@ primary                  -> number_literal
 
 postfix_unary            -> [identifier [++ | --]? | function_call]
 
-function_call             -> callee [(expression [, expression]*)]*
+function_call            -> callee [(expression [, expression]*)]*
 ```
 
 ## Getting Started

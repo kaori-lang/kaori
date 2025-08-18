@@ -1,6 +1,8 @@
 
 def main() {
     print(fib(40));
+
+    return 1;
 } 
 
 def fib(n: num) -> num {
