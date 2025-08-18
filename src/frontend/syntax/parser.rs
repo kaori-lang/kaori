@@ -151,7 +151,13 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::Return)?;
 
-        let expression = self.parse_expression()?;
+        if self.token_stream.token_kind() == TokenKind::Semicolon {
+            let expression = None;
+            self.token_stream.consume(TokenKind::Semicolon)?;
+            return Ok(Stmt::return_(expression, span));
+        }
+
+        let expression = Some(self.parse_expression()?);
 
         self.token_stream.consume(TokenKind::Semicolon)?;
 

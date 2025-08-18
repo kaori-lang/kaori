@@ -44,9 +44,9 @@ impl<'a> CfgIr {
 
     fn visit_declaration(&mut self, declaration: &ResolvedDecl) -> Result<(), KaoriError> {
         match &declaration.kind {
-            ResolvedDeclKind::Variable { right, .. } => {
+            ResolvedDeclKind::Variable { offset, right, .. } => {
                 self.visit_expression(right)?;
-                self.emit(CfgInstruction::Declare);
+                self.emit(CfgInstruction::StoreLocal(*offset));
             }
             ResolvedDeclKind::Function { body, id, .. } => {
                 self.visit_nodes(body)?;
@@ -69,13 +69,9 @@ impl<'a> CfgIr {
                 self.emit(CfgInstruction::Print);
             }
             ResolvedStmtKind::Block(nodes) => {
-                self.emit(CfgInstruction::EnterScope);
-
                 for node in nodes {
                     self.visit_ast_node(node)?;
                 }
-
-                self.emit(CfgInstruction::ExitScope);
             }
             ResolvedStmtKind::If {
                 condition,
@@ -158,9 +154,9 @@ impl<'a> CfgIr {
 
                 self.emit(CfgInstruction::Call);
 
-                for argument in arguments {
+                for (offset, argument) in arguments.iter().enumerate() {
                     self.visit_expression(argument)?;
-                    self.emit(CfgInstruction::Declare);
+                    self.emit(CfgInstruction::StoreLocal(offset));
                 }
             }
             ResolvedExprKind::VariableRef { offset, .. } => {

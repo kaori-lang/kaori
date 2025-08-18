@@ -1,17 +1,4 @@
 
-/* 
-bar()();
-
-def foo() -> bool {
-    c: num = 0;
-    d: num = 5;
-
-    print(c);
-    print(d);
-}
-
- */
-
 def main() -> bool {
     iterations: num = 1000000;
     n: num = 30;
@@ -32,8 +19,4 @@ def main() -> bool {
 
     }
 
-}
-
-
-
-
+} 

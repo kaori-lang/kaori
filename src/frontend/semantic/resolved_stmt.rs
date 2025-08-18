@@ -24,6 +24,7 @@ pub enum ResolvedStmtKind {
     Expression(Box<ResolvedExpr>),
     Break,
     Continue,
+    Return(Box<ResolvedExpr>),
 }
 
 impl ResolvedStmt {

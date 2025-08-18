@@ -8,6 +8,7 @@ use crate::{
             decl::{Decl, DeclKind},
             expr::{Expr, ExprKind},
             stmt::{Stmt, StmtKind},
+            ty::Ty,
         },
     },
     kaori_error,

@@ -1,3 +1,4 @@
+#![allow(clippy::missing_safety_doc)]
 use super::value::Value;
 
 pub struct Register {
@@ -5,11 +6,11 @@ pub struct Register {
 }
 
 impl Register {
-    pub fn load_local(&self, offset: usize) -> &Value {
+    pub unsafe fn load_local(&self, offset: usize) -> &Value {
         unsafe { self.registers.get_unchecked(offset) }
     }
 
-    pub fn store_local(&mut self, value: Value, offset: usize) {
+    pub unsafe fn store_local(&mut self, value: Value, offset: usize) {
         unsafe { *self.registers.get_unchecked_mut(offset) = value }
     }
 }

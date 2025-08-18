@@ -212,8 +212,9 @@ impl<'a> BytecodeGenerator<'a> {
 
                 self.emit(Instruction::Call);
 
-                for argument in arguments {
+                for (offset, argument) in arguments.iter().enumerate() {
                     self.visit_expression(argument)?;
+                    self.emit(Instruction::StoreLocal(offset as u16));
                 }
             }
             ResolvedExprKind::VariableRef { offset, .. } => {

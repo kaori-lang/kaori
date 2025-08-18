@@ -24,7 +24,7 @@ pub enum StmtKind {
     Expression(Box<Expr>),
     Break,
     Continue,
-    Return(Box<Expr>),
+    Return(Option<Box<Expr>>),
 }
 
 impl Stmt {
@@ -108,10 +108,10 @@ impl Stmt {
         }
     }
 
-    pub fn return_(expression: Expr, span: Span) -> Stmt {
+    pub fn return_(expression: Option<Expr>, span: Span) -> Stmt {
         Stmt {
             span,
-            kind: StmtKind::Return(Box::new(expression)),
+            kind: StmtKind::Return(expression.map(Box::new)),
         }
     }
 }

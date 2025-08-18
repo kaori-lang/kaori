@@ -1,20 +1,13 @@
 
 
 import time
-
-n = 30
-iterations = 1_000_000
-
-# Benchmark start
 start_time = time.perf_counter()
+n = 100_000_007
 
-for _ in range(iterations):
-    a, b = 0, 1
-    for i in range(n):
-        temp = a + b
-        a = b
-        b = temp
-
+for i in range(2, n):
+    if n % i == 0:
+        print("no")
+        break
 
 end_time = time.perf_counter()
 

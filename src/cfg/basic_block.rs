@@ -6,7 +6,7 @@ pub struct BasicBlock {
 pub enum Terminator {
     Conditional {
         then_branch: usize,
-        else_branch: usize,
+        else_branch: Option<usize>,
     },
     Jump(usize),
 }
@@ -29,15 +29,13 @@ pub enum CfgInstruction {
     Not,
     Negate,
 
-    Declare,
     StringConst(String),
     NumberConst(f64),
     BooleanConst(bool),
     FunctionConst { function_id: usize },
     LoadLocal(usize),
     StoreLocal(usize),
-    EnterScope,
-    ExitScope,
+
     Call,
     Return,
     Pop,
