@@ -2,13 +2,16 @@
 
 import time
 start_time = time.perf_counter()
-n = 100_000_007
 
-for i in range(2, n):
-    if n % i == 0:
-        print("no")
-        break
+def fib(n):
+    if n == 0:
+        return 0
+    if n == 1:
+        return 1 
+    
+    return fib(n - 1) + fib(n - 2)
 
+print(fib(30))
 end_time = time.perf_counter()
 
 execution_time = (end_time - start_time)

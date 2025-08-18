@@ -20,7 +20,7 @@ pub enum Instruction {
     LoadLocal(u16),
     StoreLocal(u16),
 
-    Call,
+    Call(u16),
     Return,
 
     Jump(u16),

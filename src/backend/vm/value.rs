@@ -36,6 +36,13 @@ impl Value {
             _ => unsafe { unreachable_unchecked() },
         }
     }
+
+    pub unsafe fn as_function_ref(self) -> usize {
+        match self {
+            Value::FunctionRef(value) => value,
+            _ => unsafe { unreachable_unchecked() },
+        }
+    }
 }
 
 impl Default for Value {

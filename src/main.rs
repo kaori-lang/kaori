@@ -25,7 +25,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     let mut bytecode_generator = BytecodeGenerator::new(&mut bytecode);
 
     bytecode_generator.generate(&resolved_declarations)?;
-
+    println!("{bytecode:#?}");
     let instructions = bytecode.instructions;
     let constant_pool = bytecode.constant_pool.constants;
 

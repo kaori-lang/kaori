@@ -1,25 +1,50 @@
 #![allow(clippy::missing_safety_doc)]
 
+use std::hint::unreachable_unchecked;
+
 use crate::{backend::codegen::instruction::Instruction, error::kaori_error::KaoriError};
 
 use super::{register::Register, value::Value};
 
 pub struct Interpreter {
-    register: Register,
     instruction_ptr: usize,
     instructions: Vec<Instruction>,
     constant_pool: Vec<Value>,
     values: Vec<Value>,
+    function_frames: Vec<FunctionFrame>,
+}
+
+pub struct FunctionFrame {
+    pub return_address: usize,
+    pub locals: Register,
+}
+
+impl Default for FunctionFrame {
+    fn default() -> Self {
+        Self {
+            return_address: usize::MAX,
+            locals: Register::default(),
+        }
+    }
+}
+
+impl FunctionFrame {
+    fn new(return_address: usize) -> Self {
+        Self {
+            return_address,
+            locals: Register::default(),
+        }
+    }
 }
 
 impl Interpreter {
     pub fn new(instructions: Vec<Instruction>, constant_pool: Vec<Value>) -> Self {
         Self {
-            register: Register::default(),
             instruction_ptr: 0,
             instructions,
             constant_pool,
             values: Vec::with_capacity(64),
+            function_frames: vec![FunctionFrame::default()],
         }
     }
 
@@ -52,6 +77,8 @@ impl Interpreter {
                 Instruction::Not => unsafe { self.op_not() },
                 Instruction::Negate => unsafe { self.op_negate() },
                 Instruction::Print => unsafe { self.op_print() },
+                Instruction::Call(arguments) => unsafe { self.op_call(arguments as usize) },
+                Instruction::Return => unsafe { self.op_return() },
                 _ => todo!(),
             };
 
@@ -201,14 +228,19 @@ impl Interpreter {
 
     pub unsafe fn op_store_local(&mut self, offset: usize) {
         unsafe {
+            let current_frame = self.function_frames.last_mut().unwrap_unchecked();
+
             let value = self.values.last().unwrap_unchecked();
-            self.register.store_local(*value, offset);
+
+            current_frame.locals.store_local(*value, offset);
         }
     }
 
     pub unsafe fn op_load_local(&mut self, offset: usize) {
         unsafe {
-            let value = self.register.load_local(offset);
+            let current_frame = self.function_frames.last().unwrap_unchecked();
+
+            let value = current_frame.locals.load_local(offset);
             self.values.push(*value);
         }
     }
@@ -230,6 +262,40 @@ impl Interpreter {
             if !value.as_bool() {
                 self.instruction_ptr = index - 1;
             }
+        }
+    }
+
+    pub unsafe fn op_call(&mut self, arguments: usize) {
+        unsafe {
+            let value = self.values.pop().unwrap_unchecked();
+
+            let function_ref = value.as_function_ref();
+            let return_address = self.instruction_ptr;
+
+            let mut frame = FunctionFrame::new(return_address);
+
+            for offset in (0..arguments).rev() {
+                let value = self.values.pop().unwrap_unchecked();
+                frame.locals.store_local(value, offset);
+            }
+
+            self.function_frames.push(frame);
+
+            self.instruction_ptr = function_ref - 1;
+        }
+    }
+
+    pub unsafe fn op_return(&mut self) {
+        unsafe {
+            let return_address = self
+                .function_frames
+                .last()
+                .unwrap_unchecked()
+                .return_address;
+
+            self.instruction_ptr = return_address;
+
+            self.function_frames.pop();
         }
     }
 }

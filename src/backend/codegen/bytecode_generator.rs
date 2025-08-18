@@ -215,14 +215,13 @@ impl<'a> BytecodeGenerator<'a> {
             }
             //ResolvedExprKind::StringLiteral(value) => self.emit_constant(Value::str(value.to_owned())),
             ResolvedExprKind::FunctionCall { callee, arguments } => {
+                for argument in arguments {
+                    self.visit_expression(argument)?;
+                }
+
                 self.visit_expression(callee)?;
 
-                self.emit(Instruction::Call);
-
-                for (offset, argument) in arguments.iter().enumerate() {
-                    self.visit_expression(argument)?;
-                    self.emit(Instruction::StoreLocal(offset as u16));
-                }
+                self.emit(Instruction::Call(arguments.len() as u16));
             }
             ResolvedExprKind::VariableRef { offset, .. } => {
                 self.emit(Instruction::LoadLocal(*offset as u16));

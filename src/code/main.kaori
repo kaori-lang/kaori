@@ -14,5 +14,20 @@ def main() -> bool {
         }
 
     } */
-    return true;
+
+
+    print(fib(30));
 } 
+
+def fib(n: num) -> num {
+
+    if n == 0 {
+        return 0;
+    }
+
+    if n == 1 {
+        return 1;
+    }
+
+    return fib(n - 1) + fib(n - 2);
+}
