@@ -24,11 +24,12 @@
     -   [x] block statements for scope (`{ ... }`)
     -   [x] Output with `print` statements
     -   [x] Code comments (`/* this is a comment */`)
-    -   [x] Bytecode generation
-    -   [x] Virtual machine to interpret bytecode
+    -   [x] Stack based bytecode generation
+    -   [x] Virtual machine interpreter
     -   [x] Functions
-    -   [ ] Function and loop control flow (`break`, `continue`, `return`)
+    -   [ ] Loop control flow (`break`, `continue`)
     -   [ ] Structs and implementation block
+    -   [ ] Register based bytecode
     -   [ ] Native data structures (e.g., lists, maps)
     -   [ ] Constant folding
 
