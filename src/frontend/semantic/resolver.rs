@@ -219,7 +219,14 @@ impl Resolver {
 
                 ResolvedStmt::continue_(statement.span)
             }
-            _ => todo!(),
+            StmtKind::Return(expr) => {
+                let resolved_expr = match expr {
+                    Some(expr) => Some(self.resolve_expression(expr)?),
+                    None => None,
+                };
+
+                ResolvedStmt::return_(resolved_expr, statement.span)
+            }
         };
 
         Ok(resolved_stmt)

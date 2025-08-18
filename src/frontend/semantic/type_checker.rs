@@ -18,14 +18,16 @@ use crate::{
     kaori_error,
 };
 
-pub struct TypeChecker {}
+pub struct TypeChecker {
+    return_type: Option<Ty>,
+}
 
 impl TypeChecker {
     pub fn new() -> Self {
-        Self {}
+        Self { return_type: None }
     }
 
-    pub fn check(&self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
+    pub fn check(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
         for declaration in declarations {
             self.check_declaration(declaration)?;
         }
@@ -33,7 +35,7 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn check_nodes(&self, nodes: &[ResolvedAstNode]) -> Result<(), KaoriError> {
+    fn check_nodes(&mut self, nodes: &[ResolvedAstNode]) -> Result<(), KaoriError> {
         for node in nodes {
             self.check_ast_node(node)?;
         }
@@ -41,14 +43,14 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn check_ast_node(&self, node: &ResolvedAstNode) -> Result<(), KaoriError> {
+    fn check_ast_node(&mut self, node: &ResolvedAstNode) -> Result<(), KaoriError> {
         match node {
             ResolvedAstNode::Declaration(declaration) => self.check_declaration(declaration),
             ResolvedAstNode::Statement(statement) => self.check_statement(statement),
         }
     }
 
-    fn check_declaration(&self, declaration: &ResolvedDecl) -> Result<(), KaoriError> {
+    fn check_declaration(&mut self, declaration: &ResolvedDecl) -> Result<(), KaoriError> {
         match &declaration.kind {
             ResolvedDeclKind::Variable { right, ty, .. } => {
                 let right_type = self.check_expression(right)?;
@@ -62,15 +64,20 @@ impl TypeChecker {
                     ));
                 }
             }
-            ResolvedDeclKind::Function { body, .. } => {
+            ResolvedDeclKind::Function { body, ty, .. } => {
+                if let Ty::Function { return_type, .. } = &ty {
+                    self.return_type = Some(*return_type.to_owned());
+                }
+
                 self.check_nodes(body)?;
+                self.return_type = None;
             }
         }
 
         Ok(())
     }
 
-    fn check_statement(&self, statement: &ResolvedStmt) -> Result<(), KaoriError> {
+    fn check_statement(&mut self, statement: &ResolvedStmt) -> Result<(), KaoriError> {
         match &statement.kind {
             ResolvedStmtKind::Expression(expression) => {
                 self.check_expression(expression)?;
@@ -120,6 +127,23 @@ impl TypeChecker {
                 }
 
                 self.check_statement(block)?;
+            }
+            ResolvedStmtKind::Return(expr) => {
+                let return_type = match expr {
+                    Some(expr) => self.check_expression(expr)?,
+                    None => Ty::Nothing,
+                };
+
+                if let Some(current_return_type) = &self.return_type
+                    && !return_type.eq(current_return_type)
+                {
+                    return Err(kaori_error!(
+                        statement.span,
+                        "expected {:?} for function return type, but found return with type of {:?}",
+                        current_return_type,
+                        return_type
+                    ));
+                }
             }
             _ => (),
         };

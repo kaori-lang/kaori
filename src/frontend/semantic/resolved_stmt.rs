@@ -24,7 +24,7 @@ pub enum ResolvedStmtKind {
     Expression(Box<ResolvedExpr>),
     Break,
     Continue,
-    Return(Box<ResolvedExpr>),
+    Return(Option<Box<ResolvedExpr>>),
 }
 
 impl ResolvedStmt {
@@ -86,6 +86,13 @@ impl ResolvedStmt {
         ResolvedStmt {
             span,
             kind: ResolvedStmtKind::Continue,
+        }
+    }
+
+    pub fn return_(expression: Option<ResolvedExpr>, span: Span) -> ResolvedStmt {
+        ResolvedStmt {
+            span,
+            kind: ResolvedStmtKind::Return(expression.map(Box::new)),
         }
     }
 }

@@ -141,6 +141,13 @@ impl<'a> BytecodeGenerator<'a> {
                 self.bytecode.instructions[jump_if_false] =
                     Instruction::JumpIfFalse(self.bytecode.instructions.len() as u16);
             }
+            ResolvedStmtKind::Return(expr) => {
+                if let Some(expr) = expr {
+                    self.visit_expression(expr)?;
+                };
+
+                self.emit(Instruction::Return);
+            }
             _ => (),
         };
 

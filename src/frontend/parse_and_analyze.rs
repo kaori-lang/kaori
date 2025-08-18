@@ -22,7 +22,7 @@ pub fn parse_and_analyze(source: String) -> Result<Vec<ResolvedDecl>, KaoriError
 
     let resolved_declarations = resolver.resolve(&mut declarations)?;
 
-    let type_checker = TypeChecker::new();
+    let mut type_checker = TypeChecker::new();
 
     type_checker.check(&resolved_declarations)?;
 

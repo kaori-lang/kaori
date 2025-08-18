@@ -3,6 +3,7 @@ pub enum Ty {
     Boolean,
     String,
     Number,
+    Nothing,
     Function {
         parameters: Vec<Ty>,
         return_type: Box<Ty>,
