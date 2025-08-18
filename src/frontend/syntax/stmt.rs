@@ -1,6 +1,6 @@
 use crate::frontend::scanner::span::Span;
 
-use super::{ast_node::AstNode, decl::Decl, expr::Expr, node_id::generate_id};
+use super::{ast_node::AstNode, decl::Decl, expr::Expr};
 
 #[derive(Debug)]
 pub struct Stmt {

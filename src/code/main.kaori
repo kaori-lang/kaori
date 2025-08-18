@@ -1,22 +1,6 @@
 
-def main() -> bool {
-    /* iterations: num = 1000000;
-    n: num = 30;
-
-    for i: num = 0; i < iterations; i++ {
-        a: num = 0;
-        b: num = 1;
-
-        for j: num = 0; j < n; j++ {
-            temp: num = a + b;
-            a = b;
-            b = temp;
-        }
-
-    } */
-
-
-    print(fib(30));
+def main() {
+    print(fib(40));
 } 
 
 def fib(n: num) -> num {
@@ -30,4 +14,4 @@ def fib(n: num) -> num {
     }
 
     return fib(n - 1) + fib(n - 2);
-}
+} 

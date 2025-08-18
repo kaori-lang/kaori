@@ -1,21 +1,15 @@
-const n = 100_000_007;
 const startTime = performance.now();
 
-let isPrime = true;
+function fib(n) {
+	if (n === 0) return 0;
+	if (n === 1) return 1;
 
-for (let i = 2; i < n; i++) {
-	if (n % i === 0) {
-		console.log("no");
-		isPrime = false;
-		break;
-	}
+	return fib(n - 1) + fib(n - 2);
 }
+
+console.log(fib(40));
 
 const endTime = performance.now();
 const executionTime = (endTime - startTime) / 1000; // convert ms to seconds
-
-if (isPrime) {
-	console.log("yes");
-}
 
 console.log(`Total time: ${executionTime.toFixed(3)}s`);

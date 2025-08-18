@@ -149,7 +149,9 @@ impl<'a> CfgIr {
             ResolvedExprKind::StringLiteral(value) => {
                 self.emit(CfgInstruction::StringConst(value.to_owned()));
             }
-            ResolvedExprKind::FunctionCall { callee, arguments } => {
+            ResolvedExprKind::FunctionCall {
+                callee, arguments, ..
+            } => {
                 self.visit_expression(callee)?;
 
                 self.emit(CfgInstruction::Call);

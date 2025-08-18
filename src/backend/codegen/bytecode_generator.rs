@@ -79,6 +79,8 @@ impl<'a> BytecodeGenerator<'a> {
                     .define_function_constant(*id, value);
 
                 self.visit_nodes(body)?;
+
+                self.emit(Instruction::Return);
             }
         };
 
@@ -214,14 +216,21 @@ impl<'a> BytecodeGenerator<'a> {
                 self.emit(Instruction::LoadConst(index as u16));
             }
             //ResolvedExprKind::StringLiteral(value) => self.emit_constant(Value::str(value.to_owned())),
-            ResolvedExprKind::FunctionCall { callee, arguments } => {
+            ResolvedExprKind::FunctionCall {
+                callee,
+                arguments,
+                frame_size,
+            } => {
                 for argument in arguments {
                     self.visit_expression(argument)?;
                 }
 
                 self.visit_expression(callee)?;
 
-                self.emit(Instruction::Call(arguments.len() as u16));
+                self.emit(Instruction::Call {
+                    arguments_size: arguments.len() as u8,
+                    frame_size: *frame_size as u8,
+                });
             }
             ResolvedExprKind::VariableRef { offset, .. } => {
                 self.emit(Instruction::LoadLocal(*offset as u16));

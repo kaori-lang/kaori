@@ -8,7 +8,6 @@ use crate::{
             decl::{Decl, DeclKind},
             expr::{Expr, ExprKind},
             stmt::{Stmt, StmtKind},
-            ty::Ty,
         },
     },
     kaori_error,
@@ -264,7 +263,9 @@ impl Resolver {
                     resolved_args.push(argument);
                 }
 
-                ResolvedExpr::function_call(callee, resolved_args, expression.span)
+                let frame_size = self.environment.variable_offset;
+
+                ResolvedExpr::function_call(callee, resolved_args, frame_size, expression.span)
             }
             ExprKind::NumberLiteral(value) => {
                 ResolvedExpr::number_literal(value.to_owned(), expression.span)

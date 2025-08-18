@@ -11,7 +11,7 @@ def fib(n):
     
     return fib(n - 1) + fib(n - 2)
 
-print(fib(30))
+print(fib(40))
 end_time = time.perf_counter()
 
 execution_time = (end_time - start_time)

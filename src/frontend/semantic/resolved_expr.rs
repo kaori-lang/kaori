@@ -38,6 +38,7 @@ pub enum ResolvedExprKind {
     FunctionCall {
         callee: Box<ResolvedExpr>,
         arguments: Vec<ResolvedExpr>,
+        frame_size: usize,
     },
     StringLiteral(String),
     NumberLiteral(f64),
@@ -98,6 +99,7 @@ impl ResolvedExpr {
     pub fn function_call(
         callee: ResolvedExpr,
         arguments: Vec<ResolvedExpr>,
+        frame_size: usize,
         span: Span,
     ) -> ResolvedExpr {
         ResolvedExpr {
@@ -105,6 +107,7 @@ impl ResolvedExpr {
             kind: ResolvedExprKind::FunctionCall {
                 callee: Box::new(callee),
                 arguments,
+                frame_size,
             },
         }
     }

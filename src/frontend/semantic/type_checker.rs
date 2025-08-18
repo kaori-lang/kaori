@@ -231,7 +231,9 @@ impl TypeChecker {
                     }
                 }
             }
-            ResolvedExprKind::FunctionCall { callee, arguments } => {
+            ResolvedExprKind::FunctionCall {
+                callee, arguments, ..
+            } => {
                 let Ty::Function {
                     parameters,
                     return_type,
