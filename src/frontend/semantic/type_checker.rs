@@ -19,12 +19,14 @@ use crate::{
 };
 
 pub struct TypeChecker {
-    return_type: Option<Ty>,
+    function_return_ty: Option<Ty>,
 }
 
 impl TypeChecker {
     pub fn new() -> Self {
-        Self { return_type: None }
+        Self {
+            function_return_ty: None,
+        }
     }
 
     pub fn check(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
@@ -53,24 +55,24 @@ impl TypeChecker {
     fn check_declaration(&mut self, declaration: &ResolvedDecl) -> Result<(), KaoriError> {
         match &declaration.kind {
             ResolvedDeclKind::Variable { right, ty, .. } => {
-                let right_type = self.check_expression(right)?;
+                let right_ty = self.check_expression(right)?;
 
-                if !right_type.eq(ty) {
+                if !right_ty.eq(ty) {
                     return Err(kaori_error!(
                         right.span,
-                        "expected value of type {:?}, but found {:?}",
+                        "expected {:?} for the right hand side, but found {:?}",
                         ty,
-                        right_type
+                        right_ty
                     ));
                 }
             }
             ResolvedDeclKind::Function { body, ty, .. } => {
-                if let Ty::Function { return_type, .. } = &ty {
-                    self.return_type = Some(*return_type.to_owned());
+                if let Ty::Function { return_ty, .. } = &ty {
+                    self.function_return_ty = Some(*return_ty.to_owned());
                 }
 
                 self.check_nodes(body)?;
-                self.return_type = None;
+                self.function_return_ty = None;
             }
         }
 
@@ -95,14 +97,14 @@ impl TypeChecker {
                 then_branch,
                 else_branch,
             } => {
-                let condition_type = self.check_expression(condition)?;
+                let condition_ty = self.check_expression(condition)?;
 
-                if !condition_type.eq(&Ty::Boolean) {
+                if !condition_ty.eq(&Ty::Boolean) {
                     return Err(kaori_error!(
                         condition.span,
-                        "expected {:?} for if statement condition, but found {:?}",
+                        "expected {:?} for condition, but found {:?}",
                         Ty::Boolean,
-                        condition_type
+                        condition_ty
                     ));
                 }
 
@@ -115,37 +117,38 @@ impl TypeChecker {
             ResolvedStmtKind::WhileLoop {
                 condition, block, ..
             } => {
-                let condition_type = self.check_expression(condition)?;
+                let condition_ty = self.check_expression(condition)?;
 
-                if !condition_type.eq(&Ty::Boolean) {
+                if !condition_ty.eq(&Ty::Boolean) {
                     return Err(kaori_error!(
                         condition.span,
-                        "expected {:?} for while loop statement condition, but found {:?}",
+                        "expected {:?} for condition, but found {:?}",
                         Ty::Boolean,
-                        condition_type
+                        condition_ty
                     ));
                 }
 
                 self.check_statement(block)?;
             }
             ResolvedStmtKind::Return(expr) => {
-                let return_type = match expr {
+                let return_ty = match expr {
                     Some(expr) => self.check_expression(expr)?,
                     None => Ty::Void,
                 };
 
-                if let Some(current_return_type) = &self.return_type
-                    && !return_type.eq(current_return_type)
+                if let Some(function_return_ty) = &self.function_return_ty
+                    && !return_ty.eq(function_return_ty)
                 {
                     return Err(kaori_error!(
                         statement.span,
-                        "expected {:?} for function return type, but found return with type of {:?}",
-                        current_return_type,
-                        return_type
+                        "expected {:?} for function return type, but found {:?}",
+                        function_return_ty,
+                        return_ty
                     ));
                 }
             }
-            _ => (),
+            ResolvedStmtKind::Break => {}
+            ResolvedStmtKind::Continue => {}
         };
 
         Ok(())
@@ -155,36 +158,32 @@ impl TypeChecker {
         let type_ = match &expression.kind {
             ResolvedExprKind::Assign { left, right } => {
                 let ResolvedExprKind::VariableRef { .. } = left.kind else {
-                    return Err(kaori_error!(
-                        expression.span,
-                        "invalid assign to a non variable {:?}",
-                        left.span,
-                    ));
+                    return Err(kaori_error!(left.span, "expected a variable to assign to",));
                 };
 
-                let right = self.check_expression(right)?;
-                let left = self.check_expression(left)?;
+                let right_ty = self.check_expression(right)?;
+                let left_ty = self.check_expression(left)?;
 
-                if !right.eq(&left) {
+                if !right_ty.eq(&left_ty) {
                     return Err(kaori_error!(
-                        expression.span,
+                        right.span,
                         "expected {:?} for assign, but found {:?}",
-                        left,
-                        right
+                        left_ty,
+                        right_ty
                     ));
                 }
 
-                right
+                right_ty
             }
             ResolvedExprKind::Binary {
                 left,
                 right,
                 operator,
             } => {
-                let left = self.check_expression(left)?;
-                let right = self.check_expression(right)?;
+                let left_ty = self.check_expression(left)?;
+                let right_ty = self.check_expression(right)?;
 
-                match (&left, &operator, &right) {
+                match (&left_ty, operator, &right_ty) {
                     (Ty::Number, BinaryOp::Add, Ty::Number) => Ty::Number,
                     (Ty::Number, BinaryOp::Subtract, Ty::Number) => Ty::Number,
                     (Ty::Number, BinaryOp::Multiply, Ty::Number) => Ty::Number,
@@ -207,26 +206,26 @@ impl TypeChecker {
                     _ => {
                         return Err(kaori_error!(
                             expression.span,
-                            "invalid {:?} operation between {:?} and {:?}",
+                            "expected valid types for {:?} operation, but found: {:?} and {:?}",
                             operator,
-                            left,
-                            right
+                            left_ty,
+                            right_ty
                         ));
                     }
                 }
             }
             ResolvedExprKind::Unary { right, operator } => {
-                let right = self.check_expression(right)?;
+                let right_ty = self.check_expression(right)?;
 
-                match (&operator, &right) {
+                match (operator, &right_ty) {
                     (UnaryOp::Negate, Ty::Number) => Ty::Number,
                     (UnaryOp::Not, Ty::Boolean) => Ty::Boolean,
                     _ => {
                         return Err(kaori_error!(
                             expression.span,
-                            "invalid {:?} operation for {:?}",
+                            "expected valid type for {:?} operation, but found {:?}",
                             operator,
-                            right
+                            right_ty
                         ));
                     }
                 }
@@ -236,19 +235,21 @@ impl TypeChecker {
             } => {
                 let Ty::Function {
                     parameters,
-                    return_type,
+                    return_ty,
                 } = self.check_expression(callee)?
                 else {
                     return Err(kaori_error!(
                         callee.span,
-                        "invalid function call to a non callable"
+                        "expected a callable function, but found"
                     ));
                 };
 
                 if parameters.len() != arguments.len() {
                     return Err(kaori_error!(
                         callee.span,
-                        "invalid number of arguments, it must match number of parameters"
+                        "expected {} arguments, but found {}",
+                        parameters.len(),
+                        arguments.len()
                     ));
                 }
 
@@ -264,7 +265,7 @@ impl TypeChecker {
                     }
                 }
 
-                *return_type
+                *return_ty
             }
             ResolvedExprKind::VariableRef { ty, .. } => ty.to_owned(),
             ResolvedExprKind::FunctionRef { ty, .. } => ty.to_owned(),

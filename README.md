@@ -32,6 +32,7 @@
     -   [ ] Register based bytecode
     -   [ ] Native data structures (e.g., lists, maps)
     -   [ ] Constant folding
+    
 
 ## Grammar
 

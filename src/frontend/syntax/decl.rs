@@ -47,7 +47,7 @@ impl Decl {
         name: String,
         parameters: Vec<Parameter>,
         body: Vec<AstNode>,
-        return_type: Ty,
+        return_ty: Ty,
         span: Span,
     ) -> Decl {
         let ty = Ty::function(
@@ -55,7 +55,7 @@ impl Decl {
                 .iter()
                 .map(|parameter| parameter.ty.to_owned())
                 .collect(),
-            return_type,
+            return_ty,
         );
 
         Decl {

@@ -127,11 +127,11 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::RightParen)?;
 
-        let mut return_type = Ty::Void;
+        let mut return_ty = Ty::Void;
 
         if self.token_stream.token_kind() == TokenKind::ThinArrow {
             self.token_stream.consume(TokenKind::ThinArrow)?;
-            return_type = self.parse_type()?;
+            return_ty = self.parse_type()?;
         }
 
         let mut body = Vec::new();
@@ -146,7 +146,7 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Decl::function(name, parameters, body, return_type, span))
+        Ok(Decl::function(name, parameters, body, return_ty, span))
     }
 
     /* Statements */
@@ -499,7 +499,11 @@ impl Parser {
             _ => {
                 let span = self.token_stream.span();
 
-                return Err(kaori_error!(span, "{:?} is a invalid operand", kind));
+                return Err(kaori_error!(
+                    span,
+                    "invalid operand token found: {:?}",
+                    kind
+                ));
             }
         })
     }
@@ -589,7 +593,7 @@ impl Parser {
             _ => {
                 return Err(kaori_error!(
                     self.token_stream.span(),
-                    "invalid primitive type: {:?}",
+                    "expected a valid type, but found: {:?}",
                     self.token_stream.token_kind(),
                 ));
             }

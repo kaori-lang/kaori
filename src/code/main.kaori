@@ -1,19 +1,30 @@
-
 def main() {
-    print(fib(40));
-
-    return 1;
+  
+    fib_iterative();
 } 
 
 def fib(n: num) -> num {
-
-    if n == 0 {
-        return 0;
-    }
-
-    if n == 1 {
-        return 1;
-    }
-
-    return fib(n - 1) + fib(n - 2);
+    return 1;
 } 
+
+def fib_iterative() {
+    iterations: num = 1000000;
+    max_fib: num = 30;
+
+    for i: num = 0; i < iterations; i++ {
+        a: num = 0;
+        b: num = 1;
+
+        for j: num = 0; j < max_fib; j++ {
+            temp: num = a + b ;
+            a = b;
+            b = temp;
+        }
+
+      
+    }
+
+    fib = 7;
+
+   
+}
