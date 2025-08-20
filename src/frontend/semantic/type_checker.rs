@@ -253,14 +253,15 @@ impl TypeChecker {
                     ));
                 }
 
-                for (argument, parameter_type) in arguments.iter().zip(parameters) {
-                    let argument_type = self.check_expression(argument)?;
-                    if !argument_type.eq(&parameter_type) {
+                for (argument, parameter_ty) in arguments.iter().zip(parameters) {
+                    let argument_ty = self.check_expression(argument)?;
+
+                    if !argument_ty.eq(&parameter_ty) {
                         return Err(kaori_error!(
                             argument.span,
                             "expected {:?}, but found argument of type {:?}",
-                            parameter_type,
-                            argument_type
+                            parameter_ty,
+                            argument_ty
                         ));
                     }
                 }

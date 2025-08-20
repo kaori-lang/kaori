@@ -32,7 +32,6 @@
     -   [ ] Register based bytecode
     -   [ ] Native data structures (e.g., lists, maps)
     -   [ ] Constant folding
-    
 
 ## Grammar
 
@@ -45,7 +44,7 @@ function_type            -> ( [type [, type]*] ) -> type
 
 variable_declaration     -> identifier : type = expression ;
 
-parameter                -> identifer: type
+parameter                -> identifier: type
 function_declaration     -> def identifier ( [parameter [, parameter]*]? ) (-> type)? block_statement
 
 block_statement          -> {

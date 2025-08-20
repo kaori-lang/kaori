@@ -1,10 +1,51 @@
 def main() {
-  
-    fib_iterative();
+    943.0 / 27.54 * 12.95 / 599 / 2 * 94.323;
+    358 - 54.91 + 263.12 - 958 - 23 + 6.37;
+    -24 + 94 / (3 * (12 - 34));
+
+
+    12 > 7;
+    7 > 12;
+    12 > 12;
+
+    6 < 4;
+    4 < 6;
+    6 < 6;
+
+    9 >= 5;
+    5 >= 9;
+    95 >= 95;
+
+    79 <= 45;
+    45 <= 79;
+    79 <= 79;
+
+    5 == 5;
+    5 != 5;
+    5 == 6;
+    5 != 6;
+
+    true == true;
+    false == false;
+    false == true;
+
+    true != false;
+    true != true;
+
+    !false;
+    !true;
 } 
 
 def fib(n: num) -> num {
-    return 1;
+    if n == 0 {
+        return 0;
+    }
+    
+    if n == 1 {
+        return 1;
+    }
+
+    return fib(n - 1) + fib(n - 2);
 } 
 
 def fib_iterative() {
@@ -23,8 +64,4 @@ def fib_iterative() {
 
       
     }
-
-    fib = 7;
-
-   
 }

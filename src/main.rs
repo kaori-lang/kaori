@@ -2,7 +2,7 @@ use std::{fs, time::Instant};
 
 use kaori::{
     backend::{
-        codegen::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator, constant_pool},
+        codegen::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
         vm::interpreter::Interpreter,
     },
     error::kaori_error::KaoriError,
