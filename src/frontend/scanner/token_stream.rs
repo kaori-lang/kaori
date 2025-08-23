@@ -2,7 +2,7 @@ use crate::{error::kaori_error::KaoriError, kaori_error};
 
 use super::{span::Span, token::Token, token_kind::TokenKind};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TokenStream {
     source: String,
     tokens: Vec<Token>,
@@ -37,7 +37,7 @@ impl TokenStream {
 
             Err(kaori_error!(
                 span,
-                "expected {:?}, but found {:?}",
+                "expected {}, but found {}",
                 expected,
                 found,
             ))

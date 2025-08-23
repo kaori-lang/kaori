@@ -2,7 +2,6 @@ use crate::{error::kaori_error::KaoriError, kaori_error};
 
 use super::{span::Span, token::Token, token_kind::TokenKind};
 
-#[derive(Debug)]
 pub struct Lexer<'a> {
     source: Vec<char>,
     position: usize,

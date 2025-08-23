@@ -501,7 +501,7 @@ impl Parser {
 
                 return Err(kaori_error!(
                     span,
-                    "invalid operand token found: {:?}",
+                    "expected a valid operand, but found: {}",
                     kind
                 ));
             }
@@ -577,7 +577,7 @@ impl Parser {
             TokenKind::Identifier => self.parse_primitive_type(),
             _ => Err(kaori_error!(
                 self.token_stream.span(),
-                "invalid type annotation: {:?}",
+                "expected a valid type, but found: {}",
                 self.token_stream.token_kind(),
             )),
         }
@@ -593,7 +593,7 @@ impl Parser {
             _ => {
                 return Err(kaori_error!(
                     self.token_stream.span(),
-                    "expected a valid type, but found: {:?}",
+                    "expected a valid type, but found: {}",
                     self.token_stream.token_kind(),
                 ));
             }
