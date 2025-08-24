@@ -2,7 +2,7 @@
 
 **Kaori** is a statically typed programming language, now implemented fully in **Rust**, previously implemented in Java 17
 
-See the full details: [Kaori Documentation](https://jenseits1.github.io/kaori-docs/)
+See the full details: [Kaori Documentation](https://kaori-lang.github.io/docs/)
 
 ## Getting Started
 
