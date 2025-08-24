@@ -589,7 +589,7 @@ impl Parser {
         let primitive = match sub {
             "bool" => Ty::Boolean,
             "str" => Ty::String,
-            "num" => Ty::Number,
+            "number" => Ty::Number,
             _ => {
                 return Err(kaori_error!(
                     self.token_stream.span(),

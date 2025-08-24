@@ -1,8 +1,8 @@
 def main() {
-    print(2 +);
+    print(2 + 5);
 } 
 
-def fib(n: num) -> num {
+def fib(n: number) -> number {
     if n == 0 {
         return 0;
     }
@@ -15,16 +15,16 @@ def fib(n: num) -> num {
 } 
 
 def fib_iterative() {
-    iterations: num = 1000000;
-    max_fib: num = 30;
+    iterations: number = 1000000;
+    max_fib: number = 30;
     max_fib = 5;
 
-    for i: num = 0; i < iterations; i++ {
-        a: num = 0;
-        b: num = 1;
+    for i: number = 0; i < iterations; i++ {
+        a: number = 0;
+        b: number = 1;
 
-        for j: num = 0; j < max_fib; j++ {
-            temp: num = a + b;
+        for j: number = 0; j < max_fib; j++ {
+            temp: number = a + b;
             a = b;
             b = temp;
         }
