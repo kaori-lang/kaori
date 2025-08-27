@@ -26,14 +26,7 @@ impl<'a> BytecodeGenerator<'a> {
     }
 
     pub fn generate(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
-        let jump_main = self.emit(Instruction::Nothing);
-
-        for (index, declaration) in declarations.iter().enumerate() {
-            if index == declarations.len() - 1 {
-                let offset = self.bytecode.instructions.len();
-                self.bytecode.instructions[jump_main] = Instruction::Jump(offset as u16);
-            }
-
+        for declaration in declarations {
             self.visit_declaration(declaration)?;
         }
 

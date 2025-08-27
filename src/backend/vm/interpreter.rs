@@ -29,7 +29,7 @@ impl FunctionFrame {
 
 impl Interpreter {
     pub fn new(instructions: Vec<Instruction>, constant_pool: Vec<Value>) -> Self {
-        let return_address = instructions.len();
+        let main_frame = FunctionFrame::new(0, instructions.len());
 
         Self {
             instruction_ptr: 0,
@@ -37,7 +37,7 @@ impl Interpreter {
             constant_pool,
             values: Vec::with_capacity(64),
             register: Register::default(),
-            function_frames: vec![FunctionFrame::new(0, return_address)],
+            function_frames: vec![main_frame],
         }
     }
 
