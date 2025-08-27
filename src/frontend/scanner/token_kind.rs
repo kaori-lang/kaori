@@ -84,7 +84,7 @@ impl fmt::Display for TokenKind {
             TokenKind::LeftBrace => "{",
             TokenKind::RightBrace => "}",
 
-            TokenKind::Function => "fn",
+            TokenKind::Function => "def",
             TokenKind::For => "for",
             TokenKind::While => "while",
             TokenKind::Break => "break",
@@ -102,6 +102,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Invalid => "invalid",
             TokenKind::EndOfFile => "EOF",
         };
+
         write!(f, "{name}")
     }
 }

@@ -1,5 +1,5 @@
 def main() {
-    print(2 + 5);
+    print(fib(40));
 } 
 
 def fib(n: number) -> number {
