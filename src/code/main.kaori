@@ -21,6 +21,12 @@ struct Foo {
     b: number
 }
 
+impl Foo {
+    def sum(self) -> number {
+        return self.a + self.b;
+    }
+}
+
 def fib_iterative() {
     iterations: number = 1000000;
     max_fib: number = 30;

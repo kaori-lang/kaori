@@ -22,6 +22,19 @@ pub enum DeclKind {
         body: Vec<AstNode>,
         ty: Ty,
     },
+    Struct {
+        id: usize,
+        name: String,
+        fields: Vec<Field>,
+        ty: Ty,
+    },
+}
+
+#[derive(Debug)]
+pub struct Field {
+    pub name: String,
+    pub ty: Ty,
+    pub span: Span,
 }
 
 #[derive(Debug)]
