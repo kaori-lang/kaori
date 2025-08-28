@@ -40,6 +40,7 @@ pub enum TokenKind {
     If,
     Else,
     Return,
+    Struct,
     Print,
 
     Identifier,
@@ -92,6 +93,7 @@ impl fmt::Display for TokenKind {
             TokenKind::If => "if",
             TokenKind::Else => "else",
             TokenKind::Return => "return",
+            TokenKind::Struct => "struct",
             TokenKind::Print => "print",
 
             TokenKind::Identifier => "identifier",

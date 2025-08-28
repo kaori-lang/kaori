@@ -45,6 +45,22 @@ pub struct Parameter {
 }
 
 impl Decl {
+    pub fn struct_(name: String, fields: Vec<Field>, span: Span) -> Decl {
+        let id = generate_id();
+
+        let ty = Ty::Struct { id };
+
+        Decl {
+            span,
+            kind: DeclKind::Struct {
+                id,
+                name,
+                fields,
+                ty,
+            },
+        }
+    }
+
     pub fn variable(name: String, right: Expr, ty: Ty, span: Span) -> Decl {
         Decl {
             span,

@@ -8,6 +8,9 @@ pub enum Ty {
         parameters: Vec<Ty>,
         return_ty: Box<Ty>,
     },
+    Struct {
+        id: usize,
+    },
 }
 
 impl Ty {

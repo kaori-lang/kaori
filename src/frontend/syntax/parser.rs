@@ -6,7 +6,7 @@ use crate::{
 
 use super::{
     ast_node::AstNode,
-    decl::{Decl, Parameter},
+    decl::{Decl, Field, Parameter},
     expr::Expr,
     operator::{BinaryOp, UnaryOp},
     stmt::Stmt,
@@ -147,6 +147,42 @@ impl Parser {
         self.token_stream.consume(TokenKind::RightBrace)?;
 
         Ok(Decl::function(name, parameters, body, return_ty, span))
+    }
+
+    fn parse_struct_declaration(&mut self) -> Result<Decl, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Struct)?;
+
+        let name = self.token_stream.lexeme().to_owned();
+
+        self.token_stream.consume(TokenKind::Identifier)?;
+
+        self.token_stream.consume(TokenKind::LeftBrace)?;
+
+        let mut fields = Vec::new();
+
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
+        {
+            let span = self.token_stream.span();
+            let name = self.token_stream.lexeme().to_owned();
+            self.token_stream.consume(TokenKind::Identifier)?;
+            self.token_stream.consume(TokenKind::Colon)?;
+            let ty = self.parse_type()?;
+
+            let field = Field { name, ty, span };
+
+            fields.push(field);
+
+            if self.token_stream.token_kind() == TokenKind::RightBrace {
+                break;
+            }
+
+            self.token_stream.consume(TokenKind::Comma)?;
+        }
+
+        self.token_stream.consume(TokenKind::RightBrace)?;
+        Ok(Decl::struct_(name, fields, span))
     }
 
     /* Statements */
