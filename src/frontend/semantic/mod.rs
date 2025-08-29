@@ -4,6 +4,7 @@ pub mod resolved_ast_node;
 pub mod resolved_decl;
 pub mod resolved_expr;
 pub mod resolved_stmt;
+pub mod resolved_ty;
 pub mod resolver;
 pub mod symbol;
 pub mod type_checker;
