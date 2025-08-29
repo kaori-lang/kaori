@@ -25,12 +25,11 @@ impl Parser {
     pub fn parse_assign(&mut self) -> Result<Expr, KaoriError> {
         let left = self.parse_identifier()?;
 
-        let span = self.token_stream.span();
         self.token_stream.consume(TokenKind::Assign)?;
 
         let right = self.parse_expression()?;
 
-        Ok(Expr::assign(left, right, span))
+        Ok(Expr::assign(left, right))
     }
 
     pub fn parse_or(&mut self) -> Result<Expr, KaoriError> {
@@ -38,7 +37,6 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let kind = self.token_stream.token_kind();
-            let span = self.token_stream.span();
 
             let operator = match kind {
                 TokenKind::Or => BinaryOp::Or,
@@ -49,7 +47,7 @@ impl Parser {
 
             let right = self.parse_and()?;
 
-            left = Expr::binary(operator, left, right, span);
+            left = Expr::binary(operator, left, right);
         }
 
         Ok(left)
@@ -60,7 +58,6 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let kind = self.token_stream.token_kind();
-            let span = self.token_stream.span();
 
             let operator = match kind {
                 TokenKind::And => BinaryOp::And,
@@ -70,7 +67,7 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_equality()?;
 
-            left = Expr::binary(operator, left, right, span);
+            left = Expr::binary(operator, left, right);
         }
 
         Ok(left)
@@ -81,7 +78,6 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let kind = self.token_stream.token_kind();
-            let span = self.token_stream.span();
 
             let operator = match kind {
                 TokenKind::Equal => BinaryOp::Equal,
@@ -92,7 +88,7 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_comparison()?;
 
-            left = Expr::binary(operator, left, right, span);
+            left = Expr::binary(operator, left, right);
         }
 
         Ok(left)
@@ -103,7 +99,6 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let kind = self.token_stream.token_kind();
-            let span = self.token_stream.span();
 
             let operator = match kind {
                 TokenKind::Greater => BinaryOp::Greater,
@@ -116,7 +111,7 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_term()?;
 
-            left = Expr::binary(operator, left, right, span);
+            left = Expr::binary(operator, left, right);
         }
 
         Ok(left)
@@ -127,7 +122,6 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let kind = self.token_stream.token_kind();
-            let span = self.token_stream.span();
 
             let operator = match kind {
                 TokenKind::Plus => BinaryOp::Add,
@@ -138,7 +132,7 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_factor()?;
 
-            left = Expr::binary(operator, left, right, span);
+            left = Expr::binary(operator, left, right);
         }
 
         Ok(left)
@@ -149,7 +143,6 @@ impl Parser {
 
         while !self.token_stream.at_end() {
             let kind = self.token_stream.token_kind();
-            let span = self.token_stream.span();
 
             let operator = match kind {
                 TokenKind::Multiply => BinaryOp::Multiply,
@@ -161,7 +154,7 @@ impl Parser {
             self.token_stream.advance();
             let right = self.parse_prefix_unary()?;
 
-            left = Expr::binary(operator, left, right, span);
+            left = Expr::binary(operator, left, right);
         }
 
         Ok(left)

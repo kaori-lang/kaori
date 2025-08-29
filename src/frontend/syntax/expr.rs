@@ -66,7 +66,7 @@ impl Expr {
             Expr::number_literal(1.0, span),
         );
 
-        Expr::assign(identifier, right, span)
+        Expr::assign(identifier, right)
     }
 
     pub fn decrement(identifier: Expr, span: Span) -> Expr {
@@ -99,6 +99,8 @@ impl Expr {
     }
 
     pub fn function_call(callee: Expr, arguments: Vec<Expr>, span: Span) -> Expr {
+        let span = Span::merge(callee.span, span);
+
         Expr {
             span,
             kind: ExprKind::FunctionCall {
