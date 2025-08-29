@@ -2,13 +2,11 @@ use crate::frontend::scanner::span::Span;
 
 use super::{resolved_ast_node::ResolvedAstNode, resolved_expr::ResolvedExpr};
 
-#[derive(Debug)]
 pub struct ResolvedStmt {
     pub span: Span,
     pub kind: ResolvedStmtKind,
 }
 
-#[derive(Debug)]
 pub enum ResolvedStmtKind {
     Print(Box<ResolvedExpr>),
     If {

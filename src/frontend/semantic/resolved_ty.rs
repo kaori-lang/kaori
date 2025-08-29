@@ -1,12 +1,14 @@
+use core::fmt;
+
 use crate::frontend::scanner::span::Span;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ResolvedTy {
     pub span: Span,
     pub kind: ResolvedTyKind,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum ResolvedTyKind {
     Boolean,
     String,
@@ -85,3 +87,32 @@ impl PartialEq for ResolvedTy {
 }
 
 impl Eq for ResolvedTy {}
+
+impl fmt::Display for ResolvedTyKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ResolvedTyKind::Boolean => write!(f, "boolean"),
+            ResolvedTyKind::String => write!(f, "string"),
+            ResolvedTyKind::Number => write!(f, "number"),
+            ResolvedTyKind::Void => write!(f, "void"),
+            ResolvedTyKind::Function {
+                parameters,
+                return_ty,
+            } => {
+                let params: Vec<String> = parameters.iter().map(|p| p.to_string()).collect();
+                write!(f, "({}) -> {}", params.join(", "), return_ty)
+            }
+            ResolvedTyKind::Struct { fields } => {
+                let field_strs: Vec<String> = fields.iter().map(|f| f.to_string()).collect();
+                write!(f, "struct {{{}}}", field_strs.join(", "))
+            }
+            ResolvedTyKind::Custom { name } => write!(f, "{name}"),
+        }
+    }
+}
+
+impl fmt::Display for ResolvedTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind)
+    }
+}

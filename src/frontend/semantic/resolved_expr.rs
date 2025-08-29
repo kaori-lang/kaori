@@ -8,13 +8,11 @@ use crate::frontend::{
 
 use super::resolved_ty::ResolvedTy;
 
-#[derive(Debug)]
 pub struct ResolvedExpr {
     pub span: Span,
     pub kind: ResolvedExprKind,
 }
 
-#[derive(Debug)]
 pub enum ResolvedExprKind {
     Binary {
         operator: BinaryOp,

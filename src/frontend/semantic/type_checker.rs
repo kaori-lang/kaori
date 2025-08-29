@@ -59,7 +59,7 @@ impl TypeChecker {
                 if !right_ty.eq(ty) {
                     return Err(kaori_error!(
                         right.span,
-                        "expected {:?} for the right hand side, but found {:?}",
+                        "expected {} for the right hand side, but found {}",
                         ty,
                         right_ty
                     ));
@@ -102,7 +102,7 @@ impl TypeChecker {
                 let ResolvedTyKind::Boolean = condition_ty.kind else {
                     return Err(kaori_error!(
                         condition.span,
-                        "expected boolean for condition, but found {:?}",
+                        "expected boolean for condition, but found {}",
                         condition_ty
                     ));
                 };
@@ -121,7 +121,7 @@ impl TypeChecker {
                 let ResolvedTyKind::Boolean = condition_ty.kind else {
                     return Err(kaori_error!(
                         condition.span,
-                        "expected boolean for condition, but found {:?}",
+                        "expected boolean for condition, but found {}",
                         condition_ty
                     ));
                 };
@@ -139,7 +139,7 @@ impl TypeChecker {
                 {
                     return Err(kaori_error!(
                         statement.span,
-                        "expected {:?} for function return type, but found {:?}",
+                        "expected {} for function return type, but found {}",
                         function_return_ty,
                         return_ty
                     ));
@@ -165,7 +165,7 @@ impl TypeChecker {
                 if !right_ty.eq(&left_ty) {
                     return Err(kaori_error!(
                         right.span,
-                        "expected {:?} for assign, but found {:?}",
+                        "expected {} for assign, but found {}",
                         left_ty,
                         right_ty
                     ));
@@ -201,7 +201,7 @@ impl TypeChecker {
                     _ => {
                         return Err(kaori_error!(
                             expression.span,
-                            "expected valid types for {:?} operation, but found: {:?} and {:?}",
+                            "expected valid types for {:?} operation, but found: {} and {}",
                             operator,
                             left_ty,
                             right_ty
@@ -221,7 +221,7 @@ impl TypeChecker {
                     _ => {
                         return Err(kaori_error!(
                             expression.span,
-                            "expected valid type for {:?} operation, but found {:?}",
+                            "expected valid type for {:?} operation, but found {}",
                             operator,
                             right_ty
                         ));
@@ -259,7 +259,7 @@ impl TypeChecker {
                     if !argument_ty.eq(&parameter_ty) {
                         return Err(kaori_error!(
                             argument.span,
-                            "expected {:?}, but found argument of type {:?}",
+                            "expected {}, but found argument of type {}",
                             parameter_ty,
                             argument_ty
                         ));

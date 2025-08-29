@@ -4,13 +4,11 @@ use super::{
     resolved_ast_node::ResolvedAstNode, resolved_expr::ResolvedExpr, resolved_ty::ResolvedTy,
 };
 
-#[derive(Debug)]
 pub struct ResolvedDecl {
     pub span: Span,
     pub kind: ResolvedDeclKind,
 }
 
-#[derive(Debug)]
 pub enum ResolvedDeclKind {
     Variable {
         offset: usize,
@@ -25,7 +23,6 @@ pub enum ResolvedDeclKind {
     },
 }
 
-#[derive(Debug)]
 pub struct ResolvedParameter {
     pub ty: ResolvedTy,
     pub span: Span,
