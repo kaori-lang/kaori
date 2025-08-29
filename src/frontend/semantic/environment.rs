@@ -1,6 +1,4 @@
-use crate::frontend::syntax::ty::Ty;
-
-use super::symbol::Symbol;
+use super::{resolved_ty::ResolvedTy, symbol::Symbol};
 
 pub struct Environment {
     pub symbols: Vec<Symbol>,
@@ -37,7 +35,7 @@ impl Environment {
         }
     }
 
-    pub fn declare_variable(&mut self, name: String, ty: Ty) -> usize {
+    pub fn declare_variable(&mut self, name: String, ty: ResolvedTy) -> usize {
         let offset = self.variable_offset;
         let declaration = Symbol::variable(offset, name, ty);
 
@@ -48,7 +46,7 @@ impl Environment {
         offset
     }
 
-    pub fn declare_function(&mut self, id: usize, name: String, ty: Ty) {
+    pub fn declare_function(&mut self, id: usize, name: String, ty: ResolvedTy) {
         let declaration = Symbol::function(id, name, ty);
 
         self.symbols.push(declaration);
