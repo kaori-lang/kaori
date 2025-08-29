@@ -16,7 +16,8 @@ use crate::{
 
 use super::{
     environment::Environment, resolved_ast_node::ResolvedAstNode, resolved_decl::ResolvedDecl,
-    resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt, symbol::Symbol,
+    resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt, resolved_ty::ResolvedTy,
+    symbol::Symbol,
 };
 
 pub struct Resolver {
@@ -291,5 +292,26 @@ impl Resolver {
         Ok(resolved_expr)
     }
 
-    pub fn resolve_ty(&self, ty: &Ty) {}
+    pub fn resolve_ty(&self, ty: &Ty) -> Result<ResolvedTy, KaoriError> {
+        let resolved_ty = match &ty {
+            Ty::Boolean => ResolvedTy::Boolean,
+            Ty::Number => ResolvedTy::Number,
+            Ty::Void => ResolvedTy::Void,
+            Ty::Function {
+                parameters,
+                return_ty,
+            } => {
+                let resolved_parameters = parameters
+                    .iter()
+                    .map(|parameter| self.resolve_ty(parameter))
+                    .collect::<Result<Vec<ResolvedTy>, KaoriError>>()?;
+
+                let resolved_return_ty = self.resolve_ty(return_ty);
+
+                ResolvedTy::function(resolved_parameters, resolved_return_ty)
+            }
+        };
+
+        Ok(resolved_ty)
+    }
 }

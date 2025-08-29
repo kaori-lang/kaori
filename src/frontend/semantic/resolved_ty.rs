@@ -15,7 +15,7 @@ pub enum ResolvedTy {
 
 impl ResolvedTy {
     pub fn function(parameters: Vec<ResolvedTy>, return_ty: ResolvedTy) -> ResolvedTy {
-        Ty::Function {
+        ResolvedTy::Function {
             parameters,
             return_ty: Box::new(return_ty),
         }
