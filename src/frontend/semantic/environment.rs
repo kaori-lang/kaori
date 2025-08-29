@@ -1,70 +1,83 @@
 use super::{resolved_ty::ResolvedTy, symbol::Symbol};
 
 pub struct Environment {
-    pub globals: Vec<Symbol>,
-    pub locals: Vec<Symbol>,
-    pub locals_scopes_ptr: Vec<usize>,
+    pub symbols: Vec<Symbol>,
+    pub scopes_ptr: Vec<usize>,
+    pub variable_offset: usize,
 }
 
 impl Default for Environment {
     fn default() -> Self {
         Self {
-            globals: Vec::new(),
-            locals: Vec::new(),
-            locals_scopes_ptr: vec![0],
+            symbols: Vec::new(),
+            scopes_ptr: vec![0],
+            variable_offset: 0,
         }
     }
 }
 
 impl Environment {
     pub fn enter_scope(&mut self) {
-        let ptr = self.locals.len();
+        let ptr = self.symbols.len();
 
-        self.locals_scopes_ptr.push(ptr);
+        self.scopes_ptr.push(ptr);
     }
 
     pub fn exit_scope(&mut self) {
-        let ptr = self.locals_scopes_ptr.pop().unwrap();
+        let ptr = self.scopes_ptr.pop().unwrap();
 
-        while self.locals.len() > ptr {
-            self.locals.pop();
+        while self.symbols.len() > ptr {
+            if let Some(Symbol::Variable { .. }) = self.symbols.last() {
+                self.variable_offset -= 1;
+            }
+
+            self.symbols.pop();
         }
     }
 
-    pub fn declare_local_variable(&mut self, name: String, ty: ResolvedTy) -> usize {
-        let offset = self.locals.len();
-        let declaration = Symbol::new(offset, name, ty);
+    pub fn declare_variable(&mut self, name: String, ty: ResolvedTy) -> usize {
+        let offset = self.variable_offset;
+        let declaration = Symbol::variable(offset, name, ty);
 
-        self.locals.push(declaration);
+        self.variable_offset += 1;
+
+        self.symbols.push(declaration);
 
         offset
     }
 
-    pub fn declare_global_variable(&mut self, name: String, ty: ResolvedTy) -> usize {
-        let offset = self.globals.len();
-        let declaration = Symbol::new(offset, name, ty);
+    pub fn declare_function(&mut self, id: usize, name: String, ty: ResolvedTy) {
+        let declaration = Symbol::function(id, name, ty);
 
-        self.globals.push(declaration);
+        self.symbols.push(declaration);
+    }
 
-        offset
+    pub fn declare_struct(&mut self, id: usize, name: String, ty: ResolvedTy) {
+        let declaration = Symbol::struct_(id, name, ty);
+
+        self.symbols.push(declaration);
     }
 
     pub fn search_current_scope(&self, name_: &str) -> Option<&Symbol> {
-        let ptr = *self.locals_scopes_ptr.last().unwrap();
+        let ptr = *self.scopes_ptr.last().unwrap();
 
-        self.locals[ptr..]
+        self.symbols[ptr..]
             .iter()
-            .find(|symbol| symbol.name == name_)
+            .find(|declaration| match declaration {
+                Symbol::Function { name, .. } => name == name_,
+                Symbol::Variable { name, .. } => name == name_,
+                Symbol::Struct { name, .. } => name == name_,
+            })
     }
 
-    pub fn search_local(&self, name_: &str) -> Option<&Symbol> {
-        self.locals.iter().rev().find(|symbol| symbol.name == name_)
-    }
-
-    pub fn search_glocal(&self, name_: &str) -> Option<&Symbol> {
-        self.globals
+    pub fn search(&self, name_: &str) -> Option<&Symbol> {
+        self.symbols
             .iter()
             .rev()
-            .find(|symbol| symbol.name == name_)
+            .find(|declaration| match declaration {
+                Symbol::Function { name, .. } => name == name_,
+                Symbol::Variable { name, .. } => name == name_,
+                Symbol::Struct { name, .. } => name == name_,
+            })
     }
 }

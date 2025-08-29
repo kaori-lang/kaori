@@ -16,6 +16,7 @@ pub enum DeclKind {
         ty: Ty,
     },
     Function {
+        id: usize,
         name: String,
         parameters: Vec<Parameter>,
         body: Vec<AstNode>,
@@ -81,6 +82,7 @@ impl Decl {
         Decl {
             span,
             kind: DeclKind::Function {
+                id: generate_id(),
                 name,
                 parameters,
                 body,

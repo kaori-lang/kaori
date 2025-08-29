@@ -29,14 +29,13 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     let instructions = bytecode.instructions;
     let constant_pool = bytecode.constant_pool.constants;
 
-    println!("{instructions:#?}");
-    /*   let mut interpreter = Interpreter::new(instructions, constant_pool);
+    let mut interpreter = Interpreter::new(instructions, constant_pool);
 
     let start = Instant::now();
 
     interpreter.execute_instructions()?;
 
-    println!("Vm executed in: {:#?}", start.elapsed()); */
+    println!("Vm executed in: {:#?}", start.elapsed());
 
     Ok(())
 }

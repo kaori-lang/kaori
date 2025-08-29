@@ -16,7 +16,7 @@ pub enum ResolvedDeclKind {
         ty: ResolvedTy,
     },
     Function {
-        offset: usize,
+        id: usize,
         parameters: Vec<ResolvedParameter>,
         body: Vec<ResolvedAstNode>,
         ty: ResolvedTy,
@@ -46,7 +46,7 @@ impl ResolvedDecl {
     }
 
     pub fn function(
-        offset: usize,
+        id: usize,
         parameters: Vec<ResolvedParameter>,
         body: Vec<ResolvedAstNode>,
         ty: ResolvedTy,
@@ -55,7 +55,7 @@ impl ResolvedDecl {
         ResolvedDecl {
             span,
             kind: ResolvedDeclKind::Function {
-                offset,
+                id,
                 parameters,
                 body,
                 ty,

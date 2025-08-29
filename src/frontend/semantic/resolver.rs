@@ -1,13 +1,11 @@
 #![allow(clippy::new_without_default)]
-#![allow(clippy::only_used_in_recursion)]
-
 use crate::{
     error::kaori_error::KaoriError,
     frontend::{
         scanner::span::Span,
         syntax::{
             ast_node::AstNode,
-            decl::{Decl, DeclKind, Parameter},
+            decl::{Decl, DeclKind},
             expr::{Expr, ExprKind},
             stmt::{Stmt, StmtKind},
             ty::{Ty, TyKind},
@@ -44,8 +42,8 @@ impl Resolver {
 
         for declaration in declarations.iter() {
             match &declaration.kind {
-                DeclKind::Function { name, ty, .. } => {
-                    if self.environment.search_glocal(name).is_some() {
+                DeclKind::Function { id, name, ty, .. } => {
+                    if self.environment.search_current_scope(name).is_some() {
                         return Err(kaori_error!(
                             declaration.span,
                             "{} is already declared",
@@ -55,11 +53,10 @@ impl Resolver {
 
                     let ty = self.resolve_type(ty)?;
 
-                    self.environment
-                        .declare_global_variable(name.to_owned(), ty);
+                    self.environment.declare_function(*id, name.to_owned(), ty);
                 }
                 DeclKind::Struct { id, name, ty, .. } => {
-                    if self.environment.search_glocal(name).is_some() {
+                    if self.environment.search_current_scope(name).is_some() {
                         return Err(kaori_error!(
                             declaration.span,
                             "{} is already declared",
@@ -68,9 +65,6 @@ impl Resolver {
                     }
 
                     let ty = self.resolve_type(ty)?;
-
-                    self.environment
-                        .declare_global_variable(name.to_owned(), ty);
                 }
                 _ => (),
             }
@@ -143,52 +137,55 @@ impl Resolver {
 
                 let offset = self
                     .environment
-                    .declare_local_variable(name.to_owned(), ty.to_owned());
+                    .declare_variable(name.to_owned(), ty.to_owned());
 
                 ResolvedDecl::variable(offset, right, ty, declaration.span)
             }
             DeclKind::Function {
+                id,
                 parameters,
                 body,
                 name,
-                ..
+                ty,
             } => {
                 self.environment.enter_scope();
 
-                let mut resolved_parameters = Vec::new();
-
-                for Parameter { name, ty, span } in parameters {
-                    if self.environment.search_current_scope(name).is_some() {
+                for parameter in parameters {
+                    if self
+                        .environment
+                        .search_current_scope(&parameter.name)
+                        .is_some()
+                    {
                         return Err(kaori_error!(
-                            *span,
+                            parameter.span,
                             "function {} can't have parameters with the same name",
                             name,
                         ));
                     };
 
-                    let ty = self.resolve_type(ty)?;
+                    let ty = self.resolve_type(&parameter.ty)?;
+                    let name = parameter.name.to_owned();
 
-                    self.environment
-                        .declare_local_variable(name.to_owned(), ty.to_owned());
-
-                    let resolve_parameter = ResolvedParameter { ty, span: *span };
-
-                    resolved_parameters.push(resolve_parameter);
+                    self.environment.declare_variable(name, ty);
                 }
 
                 let body = self.resolve_nodes(body)?;
 
                 self.environment.exit_scope();
 
-                let Symbol { offset, ty, .. } = self.environment.search_glocal(name).unwrap();
+                let mut resolved_parameters = Vec::new();
 
-                ResolvedDecl::function(
-                    *offset,
-                    resolved_parameters,
-                    body,
-                    ty.to_owned(),
-                    declaration.span,
-                )
+                for parameter in parameters {
+                    let ty = self.resolve_type(&parameter.ty)?;
+                    let span = parameter.span;
+                    let parameter = ResolvedParameter { ty, span };
+
+                    resolved_parameters.push(parameter);
+                }
+
+                let ty = self.resolve_type(ty)?;
+
+                ResolvedDecl::function(*id, resolved_parameters, body, ty, declaration.span)
             }
             DeclKind::Struct {
                 id,
@@ -309,7 +306,7 @@ impl Resolver {
                     resolved_args.push(argument);
                 }
 
-                let frame_size = self.environment.locals.len();
+                let frame_size = self.environment.variable_offset;
 
                 ResolvedExpr::function_call(callee, resolved_args, frame_size, expression.span)
             }
@@ -322,16 +319,15 @@ impl Resolver {
             ExprKind::StringLiteral(value) => {
                 ResolvedExpr::string_literal(value.to_owned(), expression.span)
             }
-            ExprKind::Identifier { name } => {
-                if let Some(Symbol { offset, ty, .. }) = self.environment.search_local(name) {
+            ExprKind::Identifier { name } => match self.environment.search(name) {
+                Some(Symbol::Variable { offset, ty, .. }) => {
                     ResolvedExpr::variable_ref(*offset, ty.to_owned(), expression.span)
-                } else if let Some(Symbol { offset, ty, .. }) = self.environment.search_glocal(name)
-                {
-                    ResolvedExpr::global_variable_ref(*offset, ty.to_owned(), expression.span)
-                } else {
-                    return Err(kaori_error!(expression.span, "{} is not declared", name));
                 }
-            }
+                Some(Symbol::Function { id, ty, .. }) => {
+                    ResolvedExpr::function_ref(*id, ty.to_owned(), expression.span)
+                }
+                _ => return Err(kaori_error!(expression.span, "{} is not declared", name)),
+            },
         };
 
         Ok(resolved_expr)
@@ -365,8 +361,7 @@ impl Resolver {
                 ResolvedTy::struct_(fields, ty.span)
             }
             TyKind::Custom { name } => {
-                todo!()
-                /* let Some(Symbol::Struct { ty, .. }) = self.environment.search(name) else {
+                let Some(Symbol::Struct { ty, .. }) = self.environment.search(name) else {
                     return Err(kaori_error!(
                         ty.span,
                         "expected a valid type, but found {}",
@@ -374,7 +369,7 @@ impl Resolver {
                     ));
                 };
 
-                ty.to_owned() */
+                ty.to_owned()
             }
         };
 

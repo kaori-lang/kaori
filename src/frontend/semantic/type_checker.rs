@@ -269,7 +269,7 @@ impl TypeChecker {
                 *return_ty
             }
             ResolvedExprKind::VariableRef { ty, .. } => ty.to_owned(),
-            ResolvedExprKind::GlobalVariableRef { ty, .. } => ty.to_owned(),
+            ResolvedExprKind::FunctionRef { ty, .. } => ty.to_owned(),
             ResolvedExprKind::NumberLiteral(..) => ResolvedTy::number(expression.span),
             ResolvedExprKind::BooleanLiteral(..) => ResolvedTy::boolean(expression.span),
             ResolvedExprKind::StringLiteral(..) => ResolvedTy::string(expression.span),

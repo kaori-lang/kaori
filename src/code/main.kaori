@@ -1,5 +1,7 @@
-
 def main() {
+    a: number = 5;
+    
+    print(fib(30));
 
 } 
 
@@ -17,7 +19,7 @@ def fib(n: number) -> number {
 } 
 
 
-/* 
+
 def fib_iterative() {
     iterations: number = 1000000;
     max_fib: number = 30;
@@ -33,4 +35,4 @@ def fib_iterative() {
             b = temp;
         }
     }
-} */
+}
