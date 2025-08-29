@@ -1,11 +1,12 @@
 def main() {
     a: number = 5;
-    print(11 + 2 *);
-
+    
   
 
 } 
-
+struct Number {
+    
+}
 def fib(n: number) -> number {
     if n == 0 {
         return 0;

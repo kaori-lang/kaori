@@ -52,6 +52,12 @@ impl Environment {
         self.symbols.push(declaration);
     }
 
+    pub fn declare_struct(&mut self, id: usize, name: String, ty: ResolvedTy) {
+        let declaration = Symbol::struct_(id, name, ty);
+
+        self.symbols.push(declaration);
+    }
+
     pub fn search_current_scope(&self, name_: &str) -> Option<&Symbol> {
         let ptr = *self.scopes_ptr.last().unwrap();
 

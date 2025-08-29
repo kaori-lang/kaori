@@ -1,5 +1,7 @@
 use crate::frontend::scanner::span::Span;
 
+use super::decl::{Field, Parameter};
+
 #[derive(Debug, Clone)]
 pub struct Ty {
     pub span: Span,
@@ -53,7 +55,12 @@ impl Ty {
         }
     }
 
-    pub fn function(parameters: Vec<Ty>, return_ty: Ty) -> Ty {
+    pub fn function(parameters: &[Parameter], return_ty: Ty) -> Ty {
+        let parameters = parameters
+            .iter()
+            .map(|parameter| parameter.ty.to_owned())
+            .collect();
+
         Ty {
             span: return_ty.span,
             kind: TyKind::Function {
@@ -63,7 +70,9 @@ impl Ty {
         }
     }
 
-    pub fn struct_(fields: Vec<Ty>) -> Ty {
+    pub fn struct_(fields: &[Field]) -> Ty {
+        let fields = fields.iter().map(|field| field.ty.to_owned()).collect();
+
         Ty {
             span: Span::default(),
             kind: TyKind::Struct { fields },

@@ -41,18 +41,34 @@ impl Resolver {
         self.resolve_main_function(declarations)?;
 
         for declaration in declarations.iter() {
-            if let DeclKind::Function { name, ty, id, .. } = &declaration.kind {
-                if self.environment.search_current_scope(name).is_some() {
-                    return Err(kaori_error!(
-                        declaration.span,
-                        "{} is already declared",
-                        name
-                    ));
+            match &declaration.kind {
+                DeclKind::Function { id, name, ty, .. } => {
+                    if self.environment.search_current_scope(name).is_some() {
+                        return Err(kaori_error!(
+                            declaration.span,
+                            "{} is already declared",
+                            name
+                        ));
+                    }
+
+                    let ty = self.resolve_type(ty)?;
+
+                    self.environment.declare_function(*id, name.to_owned(), ty);
                 }
+                DeclKind::Struct { id, name, ty, .. } => {
+                    if self.environment.search(name).is_some() {
+                        return Err(kaori_error!(
+                            declaration.span,
+                            "{} is already declared",
+                            name
+                        ));
+                    }
 
-                let ty = self.resolve_type(ty)?;
+                    let ty = self.resolve_type(ty)?;
 
-                self.environment.declare_function(*id, name.to_owned(), ty);
+                    self.environment.declare_struct(*id, name.to_owned(), ty);
+                }
+                _ => (),
             }
         }
 
@@ -173,7 +189,12 @@ impl Resolver {
 
                 ResolvedDecl::function(*id, resolved_parameters, body, ty, declaration.span)
             }
-            _ => todo!(),
+            DeclKind::Struct {
+                id,
+                name,
+                fields,
+                ty,
+            } => todo!(),
         };
 
         Ok(resolved_decl)
