@@ -62,6 +62,7 @@ impl Environment {
             .find(|declaration| match declaration {
                 Symbol::Function { name, .. } => name == name_,
                 Symbol::Variable { name, .. } => name == name_,
+                Symbol::Struct { name, .. } => name == name_,
             })
     }
 
@@ -72,6 +73,7 @@ impl Environment {
             .find(|declaration| match declaration {
                 Symbol::Function { name, .. } => name == name_,
                 Symbol::Variable { name, .. } => name == name_,
+                Symbol::Struct { name, .. } => name == name_,
             })
     }
 }

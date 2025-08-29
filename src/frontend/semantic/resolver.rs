@@ -4,19 +4,20 @@ use crate::{
     frontend::{
         scanner::span::Span,
         syntax::{
+            TyKind::Ty,
             ast_node::AstNode,
             decl::{Decl, DeclKind},
             expr::{Expr, ExprKind},
             stmt::{Stmt, StmtKind},
-            ty::Ty,
+            ty::TyKind,
         },
     },
     kaori_error,
 };
 
 use super::{
-    environment::Environment, resolved_ast_node::ResolvedAstNode, resolved_decl::ResolvedDecl,
-    resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt, resolved_ty::ResolvedTy,
+    environment::Environment, resolved_TyKind::ResolvedTy, resolved_ast_node::ResolvedAstNode,
+    resolved_decl::ResolvedDecl, resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt,
     symbol::Symbol,
 };
 
@@ -152,6 +153,7 @@ impl Resolver {
 
                 ResolvedDecl::function(*id, parameters, body, ty.to_owned(), declaration.span)
             }
+            _ => todo!(),
         };
 
         Ok(resolved_decl)
@@ -292,23 +294,39 @@ impl Resolver {
         Ok(resolved_expr)
     }
 
-    pub fn resolve_ty(&self, ty: &Ty) -> Result<ResolvedTy, KaoriError> {
-        let resolved_ty = match &ty {
-            Ty::Boolean => ResolvedTy::Boolean,
-            Ty::Number => ResolvedTy::Number,
-            Ty::Void => ResolvedTy::Void,
-            Ty::Function {
+    pub fn resolve_type(&self, ty: &Ty) -> Result<ResolvedTy, KaoriError> {
+        let resolved_ty = match &ty.kind {
+            TyKind::Boolean => ResolvedTy::Boolean,
+            TyKind::Number => ResolvedTy::Number,
+            TyKind::Void => ResolvedTy::Void,
+            TyKind::String => ResolvedTy::String,
+            TyKind::Function {
                 parameters,
                 return_ty,
             } => {
-                let resolved_parameters = parameters
+                let parameters = parameters
                     .iter()
-                    .map(|parameter| self.resolve_ty(parameter))
+                    .map(|parameter| self.resolve_type(parameter))
                     .collect::<Result<Vec<ResolvedTy>, KaoriError>>()?;
 
-                let resolved_return_ty = self.resolve_ty(return_ty);
+                let return_ty = self.resolve_type(return_ty)?;
 
-                ResolvedTy::function(resolved_parameters, resolved_return_ty)
+                ResolvedTy::function(parameters, return_ty)
+            }
+            TyKind::Struct { fields } => {
+                let fields = fields
+                    .iter()
+                    .map(|field| self.resolve_type(field))
+                    .collect::<Result<Vec<ResolvedTy>, KaoriError>>()?;
+
+                ResolvedTy::Struct { fields }
+            }
+            TyKind::Custom { name } => {
+                let Some(Symbol::Struct { ty, .. }) = self.environment.search(name) else {
+                    todo!()
+                };
+
+                self.resolve_type(ty)?
             }
         };
 

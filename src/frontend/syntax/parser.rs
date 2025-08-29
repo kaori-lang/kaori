@@ -182,6 +182,7 @@ impl Parser {
         }
 
         self.token_stream.consume(TokenKind::RightBrace)?;
+
         Ok(Decl::struct_(name, fields, span))
     }
 
@@ -620,14 +621,15 @@ impl Parser {
     }
 
     fn parse_primitive_type(&mut self) -> Result<Ty, KaoriError> {
+        let span = self.token_stream.span();
         let sub = self.token_stream.lexeme();
 
         let primitive = match sub {
-            "bool" => Ty::Boolean,
-            "number" => Ty::Number,
+            "bool" => Ty::boolean(span),
+            "number" => Ty::number(span),
             _ => {
                 return Err(kaori_error!(
-                    self.token_stream.span(),
+                    span,
                     "expected a valid type, but found: {}",
                     self.token_stream.token_kind(),
                 ));
