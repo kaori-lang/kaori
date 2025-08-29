@@ -50,6 +50,8 @@ impl Expr {
     }
 
     pub fn unary(operator: UnaryOp, right: Expr, span: Span) -> Expr {
+        let span = Span::merge(span, right.span);
+
         Expr {
             span,
             kind: ExprKind::Unary {
@@ -60,6 +62,8 @@ impl Expr {
     }
 
     pub fn increment(identifier: Expr, span: Span) -> Expr {
+        let span = Span::merge(span, identifier.span);
+
         let right = Expr::binary(
             BinaryOp::Add,
             identifier.to_owned(),
@@ -70,6 +74,8 @@ impl Expr {
     }
 
     pub fn decrement(identifier: Expr, span: Span) -> Expr {
+        let span = Span::merge(span, identifier.span);
+
         let right = Expr::binary(
             BinaryOp::Subtract,
             identifier.to_owned(),

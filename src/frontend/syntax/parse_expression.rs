@@ -278,10 +278,7 @@ impl Parser {
             self.token_stream.consume(TokenKind::Comma)?;
         }
 
-        let span = Span {
-            start: callee.span.start,
-            end: self.token_stream.span().end,
-        };
+        let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::RightParen)?;
 
