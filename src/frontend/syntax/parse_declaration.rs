@@ -1,4 +1,6 @@
-use crate::{error::kaori_error::KaoriError, frontend::scanner::token_kind::TokenKind};
+use crate::{
+    error::kaori_error::KaoriError, frontend::scanner::token_kind::TokenKind, kaori_error,
+};
 
 use super::{
     decl::{Decl, Field, Parameter},

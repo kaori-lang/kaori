@@ -9,5 +9,6 @@ pub mod operator;
 pub mod parse_declaration;
 pub mod parse_expression;
 pub mod parse_statement;
+pub mod parse_type;
 pub mod stmt;
 pub mod ty;

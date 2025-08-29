@@ -1,9 +1,6 @@
 use crate::frontend::{
     scanner::span::Span,
-    syntax::{
-        operator::{BinaryOp, UnaryOp},
-        ty::Ty,
-    },
+    syntax::operator::{BinaryOp, UnaryOp},
 };
 
 use super::resolved_ty::ResolvedTy;

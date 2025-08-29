@@ -1,14 +1,10 @@
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::scanner::{span::Span, token_kind::TokenKind, token_stream::TokenStream},
+    frontend::scanner::{token_kind::TokenKind, token_stream::TokenStream},
     kaori_error,
 };
 
-use super::{
-    ast_node::AstNode,
-    decl::{Decl, Field, Parameter},
-    ty::Ty,
-};
+use super::{ast_node::AstNode, decl::Decl};
 
 pub struct Parser {
     pub token_stream: TokenStream,
@@ -23,23 +19,18 @@ impl Parser {
         let mut declarations = Vec::new();
 
         while !self.token_stream.at_end() {
-            let declaration = self.parse_declaration()?;
+            let declaration = match self.token_stream.token_kind() {
+                TokenKind::Function => self.parse_function_declaration(),
+                _ => Err(kaori_error!(
+                    self.token_stream.span(),
+                    "invalid declaration at global scope"
+                )),
+            }?;
+
             declarations.push(declaration);
         }
 
         Ok(declarations)
-    }
-
-    fn parse_declaration(&mut self) -> Result<Decl, KaoriError> {
-        let declaration = match self.token_stream.token_kind() {
-            TokenKind::Function => self.parse_function_declaration(),
-            _ => Err(kaori_error!(
-                self.token_stream.span(),
-                "invalid declaration at global scope"
-            )),
-        }?;
-
-        Ok(declaration)
     }
 
     pub fn parse_ast_node(&mut self) -> Result<AstNode, KaoriError> {
@@ -70,32 +61,5 @@ impl Parser {
         }?;
 
         Ok(AstNode::Statement(stmt))
-    }
-
-    /* Types */
-    pub fn parse_type(&mut self) -> Result<Ty, KaoriError> {
-        match self.token_stream.token_kind() {
-            TokenKind::Identifier => self.parse_primitive_type(),
-            _ => Err(kaori_error!(
-                self.token_stream.span(),
-                "expected a valid type, but found: {}",
-                self.token_stream.token_kind(),
-            )),
-        }
-    }
-
-    fn parse_primitive_type(&mut self) -> Result<Ty, KaoriError> {
-        let span = self.token_stream.span();
-        let name = self.token_stream.lexeme();
-
-        let primitive = match name {
-            "bool" => Ty::boolean(span),
-            "number" => Ty::number(span),
-            _ => Ty::custom(name.to_owned(), span),
-        };
-
-        self.token_stream.advance();
-
-        Ok(primitive)
     }
 }
