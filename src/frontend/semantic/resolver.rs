@@ -4,20 +4,19 @@ use crate::{
     frontend::{
         scanner::span::Span,
         syntax::{
-            TyKind::Ty,
             ast_node::AstNode,
             decl::{Decl, DeclKind},
             expr::{Expr, ExprKind},
             stmt::{Stmt, StmtKind},
-            ty::TyKind,
+            ty::{Ty, TyKind},
         },
     },
     kaori_error,
 };
 
 use super::{
-    environment::Environment, resolved_TyKind::ResolvedTy, resolved_ast_node::ResolvedAstNode,
-    resolved_decl::ResolvedDecl, resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt,
+    environment::Environment, resolved_ast_node::ResolvedAstNode, resolved_decl::ResolvedDecl,
+    resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt, resolved_ty::ResolvedTy,
     symbol::Symbol,
 };
 
@@ -296,10 +295,10 @@ impl Resolver {
 
     pub fn resolve_type(&self, ty: &Ty) -> Result<ResolvedTy, KaoriError> {
         let resolved_ty = match &ty.kind {
-            TyKind::Boolean => ResolvedTy::Boolean,
-            TyKind::Number => ResolvedTy::Number,
-            TyKind::Void => ResolvedTy::Void,
-            TyKind::String => ResolvedTy::String,
+            TyKind::Boolean => ResolvedTy::boolean(ty.span),
+            TyKind::Number => ResolvedTy::number(ty.span),
+            TyKind::Void => ResolvedTy::void(ty.span),
+            TyKind::String => ResolvedTy::string(ty.span),
             TyKind::Function {
                 parameters,
                 return_ty,
@@ -311,7 +310,7 @@ impl Resolver {
 
                 let return_ty = self.resolve_type(return_ty)?;
 
-                ResolvedTy::function(parameters, return_ty)
+                ResolvedTy::function(parameters, return_ty, ty.span)
             }
             TyKind::Struct { fields } => {
                 let fields = fields
@@ -319,10 +318,10 @@ impl Resolver {
                     .map(|field| self.resolve_type(field))
                     .collect::<Result<Vec<ResolvedTy>, KaoriError>>()?;
 
-                ResolvedTy::Struct { fields }
+                ResolvedTy::struct_(fields, ty.span)
             }
             TyKind::Custom { name } => {
-                let Some(Symbol::Struct { ty, .. }) = self.environment.search(name) else {
+                let Some(Symbol::Struct { ty, .. }) = self.environment.search(&name) else {
                     todo!()
                 };
 

@@ -63,9 +63,9 @@ impl Ty {
         }
     }
 
-    pub fn struct_(fields: Vec<Ty>, span: Span) -> Ty {
+    pub fn struct_(fields: Vec<Ty>) -> Ty {
         Ty {
-            span,
+            span: Span::default(),
             kind: TyKind::Struct { fields },
         }
     }

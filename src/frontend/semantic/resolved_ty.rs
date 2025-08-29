@@ -53,9 +53,9 @@ impl ResolvedTy {
         }
     }
 
-    pub fn function(parameters: Vec<ResolvedTy>, return_ty: ResolvedTy) -> ResolvedTy {
+    pub fn function(parameters: Vec<ResolvedTy>, return_ty: ResolvedTy, span: Span) -> ResolvedTy {
         ResolvedTy {
-            span: return_ty.span,
+            span,
             kind: ResolvedTyKind::Function {
                 parameters,
                 return_ty: Box::new(return_ty),

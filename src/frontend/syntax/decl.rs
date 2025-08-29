@@ -46,9 +46,7 @@ pub struct Parameter {
 
 impl Decl {
     pub fn struct_(name: String, fields: Vec<Field>, span: Span) -> Decl {
-        let ty = Ty::Struct {
-            fields: fields.iter().map(|field| field.ty.to_owned()).collect(),
-        };
+        let ty = Ty::struct_(fields.iter().map(|field| field.ty.to_owned()).collect());
 
         Decl {
             span,
