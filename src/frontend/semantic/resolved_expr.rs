@@ -6,6 +6,8 @@ use crate::frontend::{
     },
 };
 
+use super::resolved_ty::ResolvedTy;
+
 #[derive(Debug)]
 pub struct ResolvedExpr {
     pub span: Span,
@@ -29,11 +31,11 @@ pub enum ResolvedExprKind {
     },
     VariableRef {
         offset: usize,
-        ty: Ty,
+        ty: ResolvedTy,
     },
     FunctionRef {
         function_id: usize,
-        ty: Ty,
+        ty: ResolvedTy,
     },
     FunctionCall {
         callee: Box<ResolvedExpr>,
@@ -82,14 +84,14 @@ impl ResolvedExpr {
         }
     }
 
-    pub fn variable_ref(offset: usize, ty: Ty, span: Span) -> ResolvedExpr {
+    pub fn variable_ref(offset: usize, ty: ResolvedTy, span: Span) -> ResolvedExpr {
         ResolvedExpr {
             span,
             kind: ResolvedExprKind::VariableRef { offset, ty },
         }
     }
 
-    pub fn function_ref(function_id: usize, ty: Ty, span: Span) -> ResolvedExpr {
+    pub fn function_ref(function_id: usize, ty: ResolvedTy, span: Span) -> ResolvedExpr {
         ResolvedExpr {
             span,
             kind: ResolvedExprKind::FunctionRef { function_id, ty },

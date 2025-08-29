@@ -78,6 +78,7 @@ impl<'a> Lexer<'a> {
             "continue" => TokenKind::Continue,
             "return" => TokenKind::Return,
             "def" => TokenKind::Function,
+            "struct" => TokenKind::Struct,
             "print" => TokenKind::Print,
             "true" | "false" => TokenKind::BooleanLiteral,
             _ => TokenKind::Identifier,

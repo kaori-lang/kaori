@@ -299,10 +299,14 @@ impl Resolver {
             }
             ExprKind::Identifier { name } => match self.environment.search(name) {
                 Some(Symbol::Variable { offset, ty, .. }) => {
-                    ResolvedExpr::variable_ref(*offset, ty.to_owned(), expression.span)
+                    let ty = self.resolve_type(ty)?;
+
+                    ResolvedExpr::variable_ref(*offset, ty, expression.span)
                 }
                 Some(Symbol::Function { id, ty, .. }) => {
-                    ResolvedExpr::function_ref(*id, ty.to_owned(), expression.span)
+                    let ty = self.resolve_type(ty)?;
+
+                    ResolvedExpr::function_ref(*id, ty, expression.span)
                 }
                 _ => return Err(kaori_error!(expression.span, "{} is not declared", name)),
             },

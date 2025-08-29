@@ -10,16 +10,15 @@ use crate::{
             resolved_expr::{ResolvedExpr, ResolvedExprKind},
             resolved_stmt::{ResolvedStmt, ResolvedStmtKind},
         },
-        syntax::{
-            operator::{BinaryOp, UnaryOp},
-            ty::Ty,
-        },
+        syntax::operator::{BinaryOp, UnaryOp},
     },
     kaori_error,
 };
 
+use super::resolved_ty::{ResolvedTy, ResolvedTyKind};
+
 pub struct TypeChecker {
-    function_return_ty: Option<Ty>,
+    function_return_ty: Option<ResolvedTy>,
 }
 
 impl TypeChecker {
@@ -67,11 +66,12 @@ impl TypeChecker {
                 }
             }
             ResolvedDeclKind::Function { body, ty, .. } => {
-                if let Ty::Function { return_ty, .. } = &ty {
+                if let ResolvedTyKind::Function { return_ty, .. } = &ty.kind {
                     self.function_return_ty = Some(*return_ty.to_owned());
                 }
 
                 self.check_nodes(body)?;
+
                 self.function_return_ty = None;
             }
         }
@@ -99,14 +99,13 @@ impl TypeChecker {
             } => {
                 let condition_ty = self.check_expression(condition)?;
 
-                if !condition_ty.eq(&Ty::Boolean) {
+                let ResolvedTyKind::Boolean = condition_ty.kind else {
                     return Err(kaori_error!(
                         condition.span,
-                        "expected {:?} for condition, but found {:?}",
-                        Ty::Boolean,
+                        "expected boolean for condition, but found {:?}",
                         condition_ty
                     ));
-                }
+                };
 
                 self.check_statement(then_branch)?;
 
@@ -119,21 +118,20 @@ impl TypeChecker {
             } => {
                 let condition_ty = self.check_expression(condition)?;
 
-                if !condition_ty.eq(&Ty::Boolean) {
+                let ResolvedTyKind::Boolean = condition_ty.kind else {
                     return Err(kaori_error!(
                         condition.span,
-                        "expected {:?} for condition, but found {:?}",
-                        Ty::Boolean,
+                        "expected boolean for condition, but found {:?}",
                         condition_ty
                     ));
-                }
+                };
 
                 self.check_statement(block)?;
             }
             ResolvedStmtKind::Return(expr) => {
                 let return_ty = match expr {
                     Some(expr) => self.check_expression(expr)?,
-                    None => Ty::Void,
+                    None => ResolvedTy::void(statement.span),
                 };
 
                 if let Some(function_return_ty) = &self.function_return_ty
@@ -154,7 +152,7 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn check_expression(&self, expression: &ResolvedExpr) -> Result<Ty, KaoriError> {
+    fn check_expression(&self, expression: &ResolvedExpr) -> Result<ResolvedTy, KaoriError> {
         let type_ = match &expression.kind {
             ResolvedExprKind::Assign { left, right } => {
                 let ResolvedExprKind::VariableRef { .. } = left.kind else {
@@ -183,26 +181,23 @@ impl TypeChecker {
                 let left_ty = self.check_expression(left)?;
                 let right_ty = self.check_expression(right)?;
 
-                match (&left_ty, operator, &right_ty) {
-                    (Ty::Number, BinaryOp::Add, Ty::Number) => Ty::Number,
-                    (Ty::Number, BinaryOp::Subtract, Ty::Number) => Ty::Number,
-                    (Ty::Number, BinaryOp::Multiply, Ty::Number) => Ty::Number,
-                    (Ty::Number, BinaryOp::Divide, Ty::Number) => Ty::Number,
-                    (Ty::Number, BinaryOp::Modulo, Ty::Number) => Ty::Number,
+                use BinaryOp::*;
+                use ResolvedTyKind::{Boolean as Bool, Number as Num};
 
-                    (Ty::Boolean, BinaryOp::And, Ty::Boolean) => Ty::Boolean,
-                    (Ty::Boolean, BinaryOp::Or, Ty::Boolean) => Ty::Boolean,
+                match (&left_ty.kind, operator, &right_ty.kind) {
+                    (Num, Add | Subtract | Multiply | Divide | Modulo, Num) => {
+                        ResolvedTy::number(expression.span)
+                    }
 
-                    (Ty::Number, BinaryOp::Equal, Ty::Number) => Ty::Boolean,
-                    (Ty::Boolean, BinaryOp::Equal, Ty::Boolean) => Ty::Boolean,
+                    (Bool, And | Or, Bool) => ResolvedTy::boolean(expression.span),
 
-                    (Ty::Number, BinaryOp::NotEqual, Ty::Number) => Ty::Boolean,
-                    (Ty::Boolean, BinaryOp::NotEqual, Ty::Boolean) => Ty::Boolean,
+                    (Num, Equal | NotEqual, Num) => ResolvedTy::boolean(expression.span),
 
-                    (Ty::Number, BinaryOp::Greater, Ty::Number) => Ty::Boolean,
-                    (Ty::Number, BinaryOp::GreaterEqual, Ty::Number) => Ty::Boolean,
-                    (Ty::Number, BinaryOp::Less, Ty::Number) => Ty::Boolean,
-                    (Ty::Number, BinaryOp::LessEqual, Ty::Number) => Ty::Boolean,
+                    (Bool, Equal | NotEqual, Bool) => ResolvedTy::boolean(expression.span),
+
+                    (Num, Greater | GreaterEqual | Less | LessEqual, Num) => {
+                        ResolvedTy::boolean(expression.span)
+                    }
                     _ => {
                         return Err(kaori_error!(
                             expression.span,
@@ -217,9 +212,12 @@ impl TypeChecker {
             ResolvedExprKind::Unary { right, operator } => {
                 let right_ty = self.check_expression(right)?;
 
-                match (operator, &right_ty) {
-                    (UnaryOp::Negate, Ty::Number) => Ty::Number,
-                    (UnaryOp::Not, Ty::Boolean) => Ty::Boolean,
+                use ResolvedTyKind::{Boolean as Bool, Number as Num};
+                use UnaryOp::*;
+
+                match (operator, &right_ty.kind) {
+                    (Negate, Num) => ResolvedTy::number(expression.span),
+                    (Not, Bool) => ResolvedTy::boolean(expression.span),
                     _ => {
                         return Err(kaori_error!(
                             expression.span,
@@ -233,10 +231,12 @@ impl TypeChecker {
             ResolvedExprKind::FunctionCall {
                 callee, arguments, ..
             } => {
-                let Ty::Function {
+                let callee_ty = self.check_expression(callee)?;
+
+                let ResolvedTyKind::Function {
                     parameters,
                     return_ty,
-                } = self.check_expression(callee)?
+                } = callee_ty.kind
                 else {
                     return Err(kaori_error!(
                         callee.span,
@@ -270,9 +270,9 @@ impl TypeChecker {
             }
             ResolvedExprKind::VariableRef { ty, .. } => ty.to_owned(),
             ResolvedExprKind::FunctionRef { ty, .. } => ty.to_owned(),
-            ResolvedExprKind::NumberLiteral(..) => Ty::Number,
-            ResolvedExprKind::BooleanLiteral(..) => Ty::Boolean,
-            ResolvedExprKind::StringLiteral(..) => Ty::String,
+            ResolvedExprKind::NumberLiteral(..) => ResolvedTy::number(expression.span),
+            ResolvedExprKind::BooleanLiteral(..) => ResolvedTy::boolean(expression.span),
+            ResolvedExprKind::StringLiteral(..) => ResolvedTy::string(expression.span),
         };
 
         Ok(type_)
