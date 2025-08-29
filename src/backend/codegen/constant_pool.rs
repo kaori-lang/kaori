@@ -1,11 +1,8 @@
-use std::collections::HashMap;
-
 use crate::backend::vm::value::Value;
 
 #[derive(Default, Debug)]
 pub struct ConstantPool {
     pub constants: Vec<Value>,
-    functions: HashMap<usize, usize>,
 }
 
 impl ConstantPool {

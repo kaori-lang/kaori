@@ -28,6 +28,10 @@ pub enum ResolvedExprKind {
         offset: usize,
         ty: ResolvedTy,
     },
+    GlobalVariableRef {
+        offset: usize,
+        ty: ResolvedTy,
+    },
     FunctionCall {
         callee: Box<ResolvedExpr>,
         arguments: Vec<ResolvedExpr>,
@@ -79,6 +83,13 @@ impl ResolvedExpr {
         ResolvedExpr {
             span,
             kind: ResolvedExprKind::VariableRef { offset, ty },
+        }
+    }
+
+    pub fn global_variable_ref(offset: usize, ty: ResolvedTy, span: Span) -> ResolvedExpr {
+        ResolvedExpr {
+            span,
+            kind: ResolvedExprKind::GlobalVariableRef { offset, ty },
         }
     }
 

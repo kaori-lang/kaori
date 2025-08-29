@@ -44,7 +44,7 @@ impl Environment {
         let offset = self.globals.len();
         let declaration = Symbol::new(offset, name, ty);
 
-        self.locals.push(declaration);
+        self.globals.push(declaration);
 
         offset
     }
@@ -57,7 +57,14 @@ impl Environment {
             .find(|symbol| symbol.name == name_)
     }
 
-    pub fn search(&self, name_: &str) -> Option<&Symbol> {
+    pub fn search_local(&self, name_: &str) -> Option<&Symbol> {
         self.locals.iter().rev().find(|symbol| symbol.name == name_)
+    }
+
+    pub fn search_glocal(&self, name_: &str) -> Option<&Symbol> {
+        self.globals
+            .iter()
+            .rev()
+            .find(|symbol| symbol.name == name_)
     }
 }

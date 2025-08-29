@@ -62,7 +62,7 @@ impl<'a> BytecodeGenerator<'a> {
                 self.visit_expression(right)?;
                 self.emit(Instruction::StoreLocal(*offset as u16));
             }
-            ResolvedDeclKind::Function { body, id, .. } => {
+            ResolvedDeclKind::Function { body, .. } => {
                 let instruction_ptr = self.bytecode.instructions.len();
 
                 let value = Value::function_ref(instruction_ptr);
