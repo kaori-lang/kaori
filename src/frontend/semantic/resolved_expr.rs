@@ -28,10 +28,6 @@ pub enum ResolvedExprKind {
         offset: usize,
         ty: ResolvedTy,
     },
-    FunctionRef {
-        function_id: usize,
-        ty: ResolvedTy,
-    },
     FunctionCall {
         callee: Box<ResolvedExpr>,
         arguments: Vec<ResolvedExpr>,
@@ -83,13 +79,6 @@ impl ResolvedExpr {
         ResolvedExpr {
             span,
             kind: ResolvedExprKind::VariableRef { offset, ty },
-        }
-    }
-
-    pub fn function_ref(function_id: usize, ty: ResolvedTy, span: Span) -> ResolvedExpr {
-        ResolvedExpr {
-            span,
-            kind: ResolvedExprKind::FunctionRef { function_id, ty },
         }
     }
 

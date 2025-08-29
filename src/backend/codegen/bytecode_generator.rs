@@ -67,10 +67,6 @@ impl<'a> BytecodeGenerator<'a> {
 
                 let value = Value::function_ref(instruction_ptr);
 
-                self.bytecode
-                    .constant_pool
-                    .define_function_constant(*id, value);
-
                 self.visit_nodes(body)?;
 
                 self.emit(Instruction::Return);
@@ -227,14 +223,6 @@ impl<'a> BytecodeGenerator<'a> {
             }
             ResolvedExprKind::VariableRef { offset, .. } => {
                 self.emit(Instruction::LoadLocal(*offset as u16));
-            }
-            ResolvedExprKind::FunctionRef { function_id, .. } => {
-                let index = self
-                    .bytecode
-                    .constant_pool
-                    .load_function_constant(*function_id);
-
-                self.emit(Instruction::LoadConst(index as u16));
             }
             _ => {}
         };

@@ -1,9 +1,9 @@
 use super::resolved_ty::ResolvedTy;
 
 pub struct Symbol {
-    offset: usize,
-    name: String,
-    ty: ResolvedTy,
+    pub offset: usize,
+    pub name: String,
+    pub ty: ResolvedTy,
 }
 
 impl Symbol {
