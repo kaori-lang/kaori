@@ -24,14 +24,6 @@ pub enum TyKind {
     },
 }
 
-impl PartialEq for Ty {
-    fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind
-    }
-}
-
-impl Eq for Ty {}
-
 impl Ty {
     pub fn boolean(span: Span) -> Ty {
         Ty {
@@ -61,9 +53,9 @@ impl Ty {
         }
     }
 
-    pub fn function(parameters: Vec<Ty>, return_ty: Ty, span: Span) -> Ty {
+    pub fn function(parameters: Vec<Ty>, return_ty: Ty) -> Ty {
         Ty {
-            span,
+            span: return_ty.span,
             kind: TyKind::Function {
                 parameters,
                 return_ty: Box::new(return_ty),
@@ -85,3 +77,11 @@ impl Ty {
         }
     }
 }
+
+impl PartialEq for Ty {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+    }
+}
+
+impl Eq for Ty {}

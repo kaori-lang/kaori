@@ -7,4 +7,4 @@ pub mod resolved_stmt;
 pub mod resolved_ty;
 pub mod resolver;
 pub mod symbol;
-pub mod type_checker;
+//pub mod type_checker;

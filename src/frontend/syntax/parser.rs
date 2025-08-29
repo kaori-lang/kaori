@@ -127,7 +127,7 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::RightParen)?;
 
-        let mut return_ty = Ty::Void;
+        let mut return_ty = Ty::void(self.token_stream.span());
 
         if self.token_stream.token_kind() == TokenKind::ThinArrow {
             self.token_stream.consume(TokenKind::ThinArrow)?;
@@ -622,18 +622,12 @@ impl Parser {
 
     fn parse_primitive_type(&mut self) -> Result<Ty, KaoriError> {
         let span = self.token_stream.span();
-        let sub = self.token_stream.lexeme();
+        let name = self.token_stream.lexeme();
 
-        let primitive = match sub {
+        let primitive = match name {
             "bool" => Ty::boolean(span),
             "number" => Ty::number(span),
-            _ => {
-                return Err(kaori_error!(
-                    span,
-                    "expected a valid type, but found: {}",
-                    self.token_stream.token_kind(),
-                ));
-            }
+            _ => Ty::custom(name.to_owned(), span),
         };
 
         self.token_stream.advance();
