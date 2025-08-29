@@ -8,6 +8,7 @@ use crate::{
             decl::{Decl, DeclKind},
             expr::{Expr, ExprKind},
             stmt::{Stmt, StmtKind},
+            ty::Ty,
         },
     },
     kaori_error,
@@ -289,4 +290,6 @@ impl Resolver {
 
         Ok(resolved_expr)
     }
+
+    pub fn resolve_ty(&self, ty: &Ty) {}
 }

@@ -46,14 +46,14 @@ pub struct Parameter {
 
 impl Decl {
     pub fn struct_(name: String, fields: Vec<Field>, span: Span) -> Decl {
-        let id = generate_id();
-
-        let ty = Ty::Struct { id };
+        let ty = Ty::Struct {
+            fields: fields.iter().map(|field| field.ty.to_owned()).collect(),
+        };
 
         Decl {
             span,
             kind: DeclKind::Struct {
-                id,
+                id: generate_id(),
                 name,
                 fields,
                 ty,

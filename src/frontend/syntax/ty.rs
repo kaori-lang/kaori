@@ -9,7 +9,10 @@ pub enum Ty {
         return_ty: Box<Ty>,
     },
     Struct {
-        id: usize,
+        fields: Vec<Ty>,
+    },
+    Custom {
+        name: String,
     },
 }
 
