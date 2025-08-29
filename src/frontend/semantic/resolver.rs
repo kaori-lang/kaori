@@ -15,8 +15,12 @@ use crate::{
 };
 
 use super::{
-    environment::Environment, resolved_ast_node::ResolvedAstNode, resolved_decl::ResolvedDecl,
-    resolved_expr::ResolvedExpr, resolved_stmt::ResolvedStmt, resolved_ty::ResolvedTy,
+    environment::Environment,
+    resolved_ast_node::ResolvedAstNode,
+    resolved_decl::{ResolvedDecl, ResolvedParameter},
+    resolved_expr::ResolvedExpr,
+    resolved_stmt::ResolvedStmt,
+    resolved_ty::ResolvedTy,
     symbol::Symbol,
 };
 
@@ -118,7 +122,9 @@ impl Resolver {
                     .environment
                     .declare_variable(name.to_owned(), ty.to_owned());
 
-                ResolvedDecl::variable(offset, right, ty.to_owned(), declaration.span)
+                let ty = self.resolve_type(ty)?;
+
+                ResolvedDecl::variable(offset, right, ty, declaration.span)
             }
             DeclKind::Function {
                 id,
@@ -150,7 +156,19 @@ impl Resolver {
 
                 self.environment.exit_scope();
 
-                ResolvedDecl::function(*id, parameters, body, ty.to_owned(), declaration.span)
+                let ty = self.resolve_type(ty)?;
+
+                let mut resolved_parameters = Vec::new();
+
+                for parameter in parameters {
+                    let ty = self.resolve_type(&parameter.ty)?;
+                    let span = parameter.span;
+                    let parameter = ResolvedParameter { ty, span };
+
+                    resolved_parameters.push(parameter);
+                }
+
+                ResolvedDecl::function(*id, resolved_parameters, body, ty, declaration.span)
             }
             _ => todo!(),
         };
