@@ -21,6 +21,7 @@ impl Parser {
         while !self.token_stream.at_end() {
             let declaration = match self.token_stream.token_kind() {
                 TokenKind::Function => self.parse_function_declaration(),
+                TokenKind::Struct => self.parse_struct_declaration(),
                 _ => Err(kaori_error!(
                     self.token_stream.span(),
                     "invalid declaration at global scope"

@@ -1,6 +1,6 @@
 def main() {
     a: number = 5;
-    print(true + 11);
+    print(11 + 2 *);
 
   
 
