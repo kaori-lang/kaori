@@ -36,7 +36,9 @@ pub enum ExprKind {
 }
 
 impl Expr {
-    pub fn binary(operator: BinaryOp, left: Expr, right: Expr, span: Span) -> Expr {
+    pub fn binary(operator: BinaryOp, left: Expr, right: Expr) -> Expr {
+        let span = Span::merge(left.span, right.span);
+
         Expr {
             span,
             kind: ExprKind::Binary {
@@ -62,7 +64,6 @@ impl Expr {
             BinaryOp::Add,
             identifier.to_owned(),
             Expr::number_literal(1.0, span),
-            span,
         );
 
         Expr::assign(identifier, right, span)
@@ -73,13 +74,14 @@ impl Expr {
             BinaryOp::Subtract,
             identifier.to_owned(),
             Expr::number_literal(1.0, span),
-            span,
         );
 
-        Expr::assign(identifier, right, span)
+        Expr::assign(identifier, right)
     }
 
-    pub fn assign(left: Expr, right: Expr, span: Span) -> Expr {
+    pub fn assign(left: Expr, right: Expr) -> Expr {
+        let span = Span::merge(left.span, right.span);
+
         Expr {
             span,
             kind: ExprKind::Assign {
