@@ -24,12 +24,12 @@ pub enum ResolvedExprKind {
         left: Box<ResolvedExpr>,
         right: Box<ResolvedExpr>,
     },
-    VariableRef {
+    LocalRef {
         offset: usize,
         ty: ResolvedTy,
     },
-    FunctionRef {
-        function_id: usize,
+    GlobalRef {
+        id: usize,
         ty: ResolvedTy,
     },
     FunctionCall {
@@ -79,17 +79,17 @@ impl ResolvedExpr {
         }
     }
 
-    pub fn variable_ref(offset: usize, ty: ResolvedTy, span: Span) -> ResolvedExpr {
+    pub fn local_ref(offset: usize, ty: ResolvedTy, span: Span) -> ResolvedExpr {
         ResolvedExpr {
             span,
-            kind: ResolvedExprKind::VariableRef { offset, ty },
+            kind: ResolvedExprKind::LocalRef { offset, ty },
         }
     }
 
-    pub fn function_ref(function_id: usize, ty: ResolvedTy, span: Span) -> ResolvedExpr {
+    pub fn global_ref(id: usize, ty: ResolvedTy, span: Span) -> ResolvedExpr {
         ResolvedExpr {
             span,
-            kind: ResolvedExprKind::FunctionRef { function_id, ty },
+            kind: ResolvedExprKind::GlobalRef { id, ty },
         }
     }
 

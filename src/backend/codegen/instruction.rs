@@ -19,8 +19,6 @@ pub enum Instruction {
     LoadConst(u16),
     LoadLocal(u16),
     StoreLocal(u16),
-    LoadGlobal(u16),
-    StoreGlobal(u16),
 
     Call { arguments_size: u8, frame_size: u8 },
     Return,

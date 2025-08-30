@@ -7,7 +7,7 @@ pub enum Value {
     Bool(bool),
 
     Null,
-    FunctionRef(usize),
+    InstructionPtr(usize),
 }
 
 impl Value {
@@ -19,8 +19,8 @@ impl Value {
         Value::Bool(value)
     }
 
-    pub fn function_ref(instruction_ptr: usize) -> Value {
-        Value::FunctionRef(instruction_ptr)
+    pub fn instruction_ptr(instruction_ptr: usize) -> Value {
+        Value::InstructionPtr(instruction_ptr)
     }
 
     pub unsafe fn as_number(self) -> f64 {
@@ -37,9 +37,9 @@ impl Value {
         }
     }
 
-    pub unsafe fn as_function_ref(self) -> usize {
+    pub unsafe fn as_instruction_ptr(self) -> usize {
         match self {
-            Value::FunctionRef(value) => value,
+            Value::InstructionPtr(value) => value,
             _ => unsafe { unreachable_unchecked() },
         }
     }

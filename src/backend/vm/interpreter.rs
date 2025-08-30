@@ -265,7 +265,7 @@ impl Interpreter {
         unsafe {
             let value = self.values.pop().unwrap_unchecked();
 
-            let function_ref = value.as_function_ref();
+            let instruction_ptr = value.as_instruction_ptr();
             let return_address = self.instruction_ptr;
 
             let current_frame = self.function_frames.last().unwrap_unchecked();
@@ -280,7 +280,7 @@ impl Interpreter {
 
             self.function_frames.push(frame);
 
-            self.instruction_ptr = function_ref - 1;
+            self.instruction_ptr = instruction_ptr - 1;
         }
     }
 

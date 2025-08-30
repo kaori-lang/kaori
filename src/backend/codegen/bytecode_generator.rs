@@ -65,7 +65,7 @@ impl<'a> BytecodeGenerator<'a> {
             ResolvedDeclKind::Function { body, id, .. } => {
                 let instruction_ptr = self.bytecode.instructions.len();
 
-                let value = Value::function_ref(instruction_ptr);
+                let value = Value::instruction_ptr(instruction_ptr);
 
                 self.bytecode
                     .constant_pool
@@ -148,12 +148,13 @@ impl<'a> BytecodeGenerator<'a> {
 
         Ok(())
     }
+
     fn visit_expression(&mut self, expression: &ResolvedExpr) -> Result<(), KaoriError> {
         match &expression.kind {
             ResolvedExprKind::Assign { left, right } => {
                 self.visit_expression(right)?;
 
-                if let ResolvedExprKind::VariableRef { offset, .. } = left.kind {
+                if let ResolvedExprKind::LocalRef { offset, .. } = left.kind {
                     self.emit(Instruction::StoreLocal(offset as u16));
                 };
             }
@@ -225,14 +226,11 @@ impl<'a> BytecodeGenerator<'a> {
                     frame_size: *frame_size as u8,
                 });
             }
-            ResolvedExprKind::VariableRef { offset, .. } => {
+            ResolvedExprKind::LocalRef { offset, .. } => {
                 self.emit(Instruction::LoadLocal(*offset as u16));
             }
-            ResolvedExprKind::FunctionRef { function_id, .. } => {
-                let index = self
-                    .bytecode
-                    .constant_pool
-                    .load_function_constant(*function_id);
+            ResolvedExprKind::GlobalRef { id, .. } => {
+                let index = self.bytecode.constant_pool.load_function_constant(*id);
 
                 self.emit(Instruction::LoadConst(index as u16));
             }

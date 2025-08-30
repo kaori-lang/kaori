@@ -3,7 +3,7 @@ use super::{resolved_ty::ResolvedTy, symbol::Symbol};
 pub struct Environment {
     pub symbols: Vec<Symbol>,
     pub scopes_ptr: Vec<usize>,
-    pub variable_offset: usize,
+    pub local_offset: usize,
 }
 
 impl Default for Environment {
@@ -11,7 +11,7 @@ impl Default for Environment {
         Self {
             symbols: Vec::new(),
             scopes_ptr: vec![0],
-            variable_offset: 0,
+            local_offset: 0,
         }
     }
 }
@@ -27,33 +27,27 @@ impl Environment {
         let ptr = self.scopes_ptr.pop().unwrap();
 
         while self.symbols.len() > ptr {
-            if let Some(Symbol::Variable { .. }) = self.symbols.last() {
-                self.variable_offset -= 1;
+            if let Some(Symbol::Local { .. }) = self.symbols.last() {
+                self.local_offset -= 1;
             }
 
             self.symbols.pop();
         }
     }
 
-    pub fn declare_variable(&mut self, name: String, ty: ResolvedTy) -> usize {
-        let offset = self.variable_offset;
-        let declaration = Symbol::variable(offset, name, ty);
+    pub fn declare_local(&mut self, name: String, ty: ResolvedTy) -> usize {
+        let offset = self.local_offset;
+        let declaration = Symbol::local(offset, name, ty);
 
-        self.variable_offset += 1;
+        self.local_offset += 1;
 
         self.symbols.push(declaration);
 
         offset
     }
 
-    pub fn declare_function(&mut self, id: usize, name: String, ty: ResolvedTy) {
-        let declaration = Symbol::function(id, name, ty);
-
-        self.symbols.push(declaration);
-    }
-
-    pub fn declare_struct(&mut self, id: usize, name: String, ty: ResolvedTy) {
-        let declaration = Symbol::struct_(id, name, ty);
+    pub fn declare_global(&mut self, id: usize, name: String, ty: ResolvedTy) {
+        let declaration = Symbol::global(id, name, ty);
 
         self.symbols.push(declaration);
     }
@@ -64,9 +58,8 @@ impl Environment {
         self.symbols[ptr..]
             .iter()
             .find(|declaration| match declaration {
-                Symbol::Function { name, .. } => name == name_,
-                Symbol::Variable { name, .. } => name == name_,
-                Symbol::Struct { name, .. } => name == name_,
+                Symbol::Global { name, .. } => name == name_,
+                Symbol::Local { name, .. } => name == name_,
             })
     }
 
@@ -75,9 +68,8 @@ impl Environment {
             .iter()
             .rev()
             .find(|declaration| match declaration {
-                Symbol::Function { name, .. } => name == name_,
-                Symbol::Variable { name, .. } => name == name_,
-                Symbol::Struct { name, .. } => name == name_,
+                Symbol::Global { name, .. } => name == name_,
+                Symbol::Local { name, .. } => name == name_,
             })
     }
 }

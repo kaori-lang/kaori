@@ -53,7 +53,7 @@ impl Resolver {
 
                     let ty = self.resolve_type(ty)?;
 
-                    self.environment.declare_function(*id, name.to_owned(), ty);
+                    self.environment.declare_global(*id, name.to_owned(), ty);
                 }
                 DeclKind::Struct { id, name, ty, .. } => {
                     if self.environment.search_current_scope(name).is_some() {
@@ -137,7 +137,7 @@ impl Resolver {
 
                 let offset = self
                     .environment
-                    .declare_variable(name.to_owned(), ty.to_owned());
+                    .declare_local(name.to_owned(), ty.to_owned());
 
                 ResolvedDecl::variable(offset, right, ty, declaration.span)
             }
@@ -166,7 +166,7 @@ impl Resolver {
                     let ty = self.resolve_type(&parameter.ty)?;
                     let name = parameter.name.to_owned();
 
-                    self.environment.declare_variable(name, ty);
+                    self.environment.declare_local(name, ty);
                 }
 
                 let body = self.resolve_nodes(body)?;
@@ -306,7 +306,7 @@ impl Resolver {
                     resolved_args.push(argument);
                 }
 
-                let frame_size = self.environment.variable_offset;
+                let frame_size = self.environment.local_offset;
 
                 ResolvedExpr::function_call(callee, resolved_args, frame_size, expression.span)
             }
@@ -320,11 +320,11 @@ impl Resolver {
                 ResolvedExpr::string_literal(value.to_owned(), expression.span)
             }
             ExprKind::Identifier { name } => match self.environment.search(name) {
-                Some(Symbol::Variable { offset, ty, .. }) => {
-                    ResolvedExpr::variable_ref(*offset, ty.to_owned(), expression.span)
+                Some(Symbol::Local { offset, ty, .. }) => {
+                    ResolvedExpr::local_ref(*offset, ty.to_owned(), expression.span)
                 }
-                Some(Symbol::Function { id, ty, .. }) => {
-                    ResolvedExpr::function_ref(*id, ty.to_owned(), expression.span)
+                Some(Symbol::Global { id, ty, .. }) => {
+                    ResolvedExpr::global_ref(*id, ty.to_owned(), expression.span)
                 }
                 _ => return Err(kaori_error!(expression.span, "{} is not declared", name)),
             },
@@ -361,7 +361,7 @@ impl Resolver {
                 ResolvedTy::struct_(fields, ty.span)
             }
             TyKind::Custom { name } => {
-                let Some(Symbol::Struct { ty, .. }) = self.environment.search(name) else {
+                let Some(Symbol::Global { ty, .. }) = self.environment.search(name) else {
                     return Err(kaori_error!(
                         ty.span,
                         "expected a valid type, but found {}",

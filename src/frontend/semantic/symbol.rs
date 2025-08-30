@@ -1,33 +1,24 @@
 use super::resolved_ty::ResolvedTy;
 
 pub enum Symbol {
-    Function {
+    Global {
         id: usize,
         name: String,
         ty: ResolvedTy,
     },
-    Variable {
+    Local {
         offset: usize,
-        name: String,
-        ty: ResolvedTy,
-    },
-    Struct {
-        id: usize,
         name: String,
         ty: ResolvedTy,
     },
 }
 
 impl Symbol {
-    pub fn function(id: usize, name: String, ty: ResolvedTy) -> Symbol {
-        Symbol::Function { id, name, ty }
+    pub fn global(id: usize, name: String, ty: ResolvedTy) -> Symbol {
+        Symbol::Global { id, name, ty }
     }
 
-    pub fn variable(offset: usize, name: String, ty: ResolvedTy) -> Symbol {
-        Symbol::Variable { offset, name, ty }
-    }
-
-    pub fn struct_(id: usize, name: String, ty: ResolvedTy) -> Symbol {
-        Symbol::Struct { id, name, ty }
+    pub fn local(offset: usize, name: String, ty: ResolvedTy) -> Symbol {
+        Symbol::Local { offset, name, ty }
     }
 }

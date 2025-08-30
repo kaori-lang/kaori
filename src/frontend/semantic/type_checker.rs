@@ -155,7 +155,7 @@ impl TypeChecker {
     fn check_expression(&self, expression: &ResolvedExpr) -> Result<ResolvedTy, KaoriError> {
         let type_ = match &expression.kind {
             ResolvedExprKind::Assign { left, right } => {
-                let ResolvedExprKind::VariableRef { .. } = left.kind else {
+                let ResolvedExprKind::LocalRef { .. } = left.kind else {
                     return Err(kaori_error!(left.span, "expected a variable to assign to",));
                 };
 
@@ -268,8 +268,8 @@ impl TypeChecker {
 
                 *return_ty
             }
-            ResolvedExprKind::VariableRef { ty, .. } => ty.to_owned(),
-            ResolvedExprKind::FunctionRef { ty, .. } => ty.to_owned(),
+            ResolvedExprKind::GlobalRef { ty, .. } => ty.to_owned(),
+            ResolvedExprKind::LocalRef { ty, .. } => ty.to_owned(),
             ResolvedExprKind::NumberLiteral(..) => ResolvedTy::number(expression.span),
             ResolvedExprKind::BooleanLiteral(..) => ResolvedTy::boolean(expression.span),
             ResolvedExprKind::StringLiteral(..) => ResolvedTy::string(expression.span),
