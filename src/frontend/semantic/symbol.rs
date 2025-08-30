@@ -1,8 +1,10 @@
+use crate::frontend::syntax::node_id::NodeId;
+
 use super::resolved_ty::ResolvedTy;
 
 pub enum Symbol {
     Global {
-        id: usize,
+        id: NodeId,
         name: String,
         ty: ResolvedTy,
     },
@@ -14,7 +16,7 @@ pub enum Symbol {
 }
 
 impl Symbol {
-    pub fn global(id: usize, name: String, ty: ResolvedTy) -> Symbol {
+    pub fn global(id: NodeId, name: String, ty: ResolvedTy) -> Symbol {
         Symbol::Global { id, name, ty }
     }
 

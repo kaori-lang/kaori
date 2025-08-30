@@ -1,4 +1,4 @@
-use crate::frontend::scanner::span::Span;
+use crate::frontend::{scanner::span::Span, syntax::node_id::NodeId};
 
 use super::{
     resolved_ast_node::ResolvedAstNode, resolved_expr::ResolvedExpr, resolved_ty::ResolvedTy,
@@ -16,7 +16,7 @@ pub enum ResolvedDeclKind {
         ty: ResolvedTy,
     },
     Function {
-        id: usize,
+        id: NodeId,
         parameters: Vec<ResolvedParameter>,
         body: Vec<ResolvedAstNode>,
         ty: ResolvedTy,
@@ -46,7 +46,7 @@ impl ResolvedDecl {
     }
 
     pub fn function(
-        id: usize,
+        id: NodeId,
         parameters: Vec<ResolvedParameter>,
         body: Vec<ResolvedAstNode>,
         ty: ResolvedTy,

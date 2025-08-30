@@ -1,3 +1,5 @@
+use crate::frontend::syntax::node_id::NodeId;
+
 use super::{resolved_ty::ResolvedTy, symbol::Symbol};
 
 pub struct Environment {
@@ -46,7 +48,7 @@ impl Environment {
         offset
     }
 
-    pub fn declare_global(&mut self, id: usize, name: String, ty: ResolvedTy) {
+    pub fn declare_global(&mut self, id: NodeId, name: String, ty: ResolvedTy) {
         let declaration = Symbol::global(id, name, ty);
 
         self.symbols.push(declaration);

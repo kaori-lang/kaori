@@ -1,6 +1,9 @@
 use crate::frontend::{
     scanner::span::Span,
-    syntax::operator::{BinaryOp, UnaryOp},
+    syntax::{
+        node_id::NodeId,
+        operator::{BinaryOp, UnaryOp},
+    },
 };
 
 use super::resolved_ty::ResolvedTy;
@@ -29,7 +32,7 @@ pub enum ResolvedExprKind {
         ty: ResolvedTy,
     },
     GlobalRef {
-        id: usize,
+        id: NodeId,
         ty: ResolvedTy,
     },
     FunctionCall {
@@ -86,7 +89,7 @@ impl ResolvedExpr {
         }
     }
 
-    pub fn global_ref(id: usize, ty: ResolvedTy, span: Span) -> ResolvedExpr {
+    pub fn global_ref(id: NodeId, ty: ResolvedTy, span: Span) -> ResolvedExpr {
         ResolvedExpr {
             span,
             kind: ResolvedExprKind::GlobalRef { id, ty },
