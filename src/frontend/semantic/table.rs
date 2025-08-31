@@ -7,11 +7,11 @@ pub enum Resolution {
     Offset(usize),
     Node(NodeId),
 }
-pub struct Table {
+pub struct ResolutionTable {
     resolutions: HashMap<NodeId, Resolution>,
 }
 
-impl Table {
+impl ResolutionTable {
     pub fn create_local_resolution(&mut self, id: NodeId, offset: usize) {
         let resolution = Resolution::Offset(offset);
 

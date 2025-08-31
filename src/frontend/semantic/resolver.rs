@@ -13,20 +13,20 @@ use crate::{
     kaori_error,
 };
 
-use super::{environment::Environment, symbol::Symbol, table::Table};
+use super::{environment::Environment, symbol::Symbol, table::ResolutionTable};
 
 pub struct Resolver<'a> {
     environment: Environment,
     active_loops: u8,
-    table: &'a mut Table,
+    resolution_table: &'a mut ResolutionTable,
 }
 
 impl<'a> Resolver<'a> {
-    pub fn new(table: &'a mut Table) -> Self {
+    pub fn new(resolution_table: &'a mut ResolutionTable) -> Self {
         Self {
             environment: Environment::default(),
             active_loops: 0,
-            table,
+            resolution_table,
         }
     }
 
@@ -115,7 +115,8 @@ impl<'a> Resolver<'a> {
                     .environment
                     .declare_local(name.to_owned(), ty.to_owned());
 
-                self.table.create_offset(declaration.id, offset);
+                self.resolution_table
+                    .create_local_resolution(declaration.id, offset);
             }
             HirDeclKind::Parameter { name, ty } => {
                 if self.environment.search_current_scope(&name).is_some() {
@@ -214,7 +215,7 @@ impl<'a> Resolver<'a> {
         Ok(())
     }
 
-    fn resolve_expression(&self, expression: &HirExpr) -> Result<(), KaoriError> {
+    fn resolve_expression(&mut self, expression: &HirExpr) -> Result<(), KaoriError> {
         match &expression.kind {
             HirExprKind::Assign(left, right) => {
                 self.resolve_expression(right)?;
@@ -288,10 +289,12 @@ impl<'a> Resolver<'a> {
             }
             HirExprKind::Identifier(name) => match self.environment.search(name) {
                 Some(Symbol::Local { offset, ty, .. }) => {
-                    self.table.create_local_resolution(expression.id, *offset);
+                    self.resolution_table
+                        .create_local_resolution(expression.id, *offset);
                 }
                 Some(Symbol::Global { id, ty, .. }) => {
-                    self.table.create_global_resolution(expression.id, id);
+                    self.resolution_table
+                        .create_global_resolution(expression.id, *id);
                 }
                 _ => return Err(kaori_error!(expression.span, "{} is not declared", name)),
             },
