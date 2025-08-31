@@ -1,10 +1,6 @@
 use crate::{error::kaori_error::KaoriError, frontend::scanner::token_kind::TokenKind};
 
-use super::{
-    decl::{Decl, Field, Parameter},
-    parser::Parser,
-    ty::Ty,
-};
+use super::{decl::Decl, parser::Parser, ty::Ty};
 
 impl Parser {
     pub fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
@@ -34,7 +30,7 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::LeftParen)?;
 
-        let mut parameters: Vec<Parameter> = Vec::new();
+        let mut parameters: Vec<Decl> = Vec::new();
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightParen
         {
@@ -45,7 +41,7 @@ impl Parser {
 
             let ty = self.parse_type()?;
 
-            let parameter = Parameter { name, ty, span };
+            let parameter = Decl::parameter(name, ty, span);
 
             parameters.push(parameter);
 
@@ -101,7 +97,7 @@ impl Parser {
             self.token_stream.consume(TokenKind::Colon)?;
             let ty = self.parse_type()?;
 
-            let field = Field { name, ty, span };
+            let field = Decl::field(name, ty, span);
 
             fields.push(field);
 

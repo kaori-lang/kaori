@@ -1,14 +1,15 @@
 use crate::{
     error::kaori_error::KaoriError,
     frontend::syntax::{
-        decl::Decl,
+        ast_node::AstNode,
+        decl::{Decl, DeclKind},
         expr::{Expr, ExprKind},
         operator::{BinaryOp, UnaryOp},
         stmt::{Stmt, StmtKind},
     },
 };
 
-use super::{hir_decl::HirDecl, hir_expr::HirExpr, hir_stmt::HirStmt};
+use super::{hir_ast_node::HirAstNode, hir_decl::HirDecl, hir_expr::HirExpr, hir_stmt::HirStmt};
 
 struct HirGen {}
 
@@ -23,152 +24,66 @@ impl HirGen {
     pub fn generate(&mut self, declarations: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
         self.generate_main_function(declarations)?;
 
-        for declaration in declarations.iter() {
-            match &declaration.kind {
-                DeclKind::Function { id, name, ty, .. } => {
-                    if self.environment.search_current_scope(name).is_some() {
-                        return Err(kaori_error!(
-                            declaration.span,
-                            "{} is already declared",
-                            name
-                        ));
-                    }
-
-                    let ty = self.generate_type(ty)?;
-
-                    self.environment.declare_global(*id, name.to_owned(), ty);
-                }
-                DeclKind::Struct { id, name, ty, .. } => {
-                    if self.environment.search_current_scope(name).is_some() {
-                        return Err(kaori_error!(
-                            declaration.span,
-                            "{} is already declared",
-                            name
-                        ));
-                    }
-
-                    let ty = self.generate_type(ty)?;
-                }
-                _ => (),
-            }
-        }
-
-        let resolved_declarations = declarations
-            .iter()
-            .map(|declaration| self.generate_declaration(declaration))
-            .collect::<Result<Vec<ResolvedDecl>, KaoriError>>()?;
+        for declaration in declarations.iter() {}
 
         Ok(resolved_declarations)
     }
 
-    fn generate_main_function(&mut self, declarations: &mut [Decl]) -> Result<(), KaoriError> {
+    fn swap_main_function(&mut self, declarations: &mut [Decl]) {
         for (index, declaration) in declarations.iter().enumerate() {
             if let DeclKind::Function { name, .. } = &declaration.kind
                 && name == "main"
             {
                 declarations.swap(0, index);
-                return Ok(());
+                break;
             }
         }
-
-        Err(kaori_error!(
-            Span::default(),
-            "main function is not declared"
-        ))
     }
 
-    fn generate_nodes(&mut self, nodes: &[AstNode]) -> Result<Vec<ResolvedAstNode>, KaoriError> {
-        let nodes = nodes
+    fn generate_nodes(&mut self, nodes: &[AstNode]) -> Vec<HirAstNode> {
+        nodes
             .iter()
             .map(|node| self.generate_ast_node(node))
-            .collect::<Result<Vec<ResolvedAstNode>, KaoriError>>()?;
-
-        Ok(nodes)
+            .collect()
     }
 
-    fn generate_ast_node(&mut self, node: &AstNode) -> Result<ResolvedAstNode, KaoriError> {
-        let resolved_node = match node {
+    fn generate_ast_node(&mut self, node: &AstNode) -> HirAstNode {
+        match node {
             AstNode::Declaration(declaration) => {
-                let declaration = self.generate_declaration(declaration)?;
+                let declaration = self.generate_declaration(declaration);
 
-                ResolvedAstNode::Declaration(declaration)
+                HirAstNode::Declaration(declaration)
             }
             AstNode::Statement(statement) => {
-                let statement = self.generate_statement(statement)?;
+                let statement = self.generate_statement(statement);
 
-                ResolvedAstNode::Statement(statement)
+                HirAstNode::Statement(statement)
             }
-        };
-
-        Ok(resolved_node)
+        }
     }
 
-    fn generate_declaration(&mut self, declaration: &Decl) -> Result<ResolvedDecl, KaoriError> {
+    fn generate_declaration(&mut self, declaration: &Decl) -> HirDecl {
         let resolved_decl = match &declaration.kind {
             DeclKind::Variable { name, right, ty } => {
-                let right = self.generate_expression(right)?;
+                let right = self.generate_expression(right);
 
-                if self.environment.search_current_scope(name).is_some() {
-                    return Err(kaori_error!(
-                        declaration.span,
-                        "{} is already declared",
-                        name
-                    ));
-                };
-
-                let ty = self.generate_type(ty)?;
-
-                let offset = self
-                    .environment
-                    .declare_local(name.to_owned(), ty.to_owned());
-
-                ResolvedDecl::variable(offset, right, ty, declaration.span)
+                HirDecl::variable(name.to_owned(), right, ty.to_owned(), declaration.span)
             }
             DeclKind::Function {
-                id,
                 parameters,
                 body,
                 name,
                 ty,
             } => {
-                self.environment.enter_scope();
+                let body = self.generate_nodes(body);
 
-                for parameter in parameters {
-                    if self
-                        .environment
-                        .search_current_scope(&parameter.name)
-                        .is_some()
-                    {
-                        return Err(kaori_error!(
-                            parameter.span,
-                            "function {} can't have parameters with the same name",
-                            name,
-                        ));
-                    };
-
-                    let ty = self.generate_type(&parameter.ty)?;
-                    let name = parameter.name.to_owned();
-
-                    self.environment.declare_local(name, ty);
-                }
-
-                let body = self.generate_nodes(body)?;
-
-                self.environment.exit_scope();
-
-                let mut resolved_parameters = Vec::new();
-
-                for parameter in parameters {
-                    let ty = self.generate_type(&parameter.ty)?;
-                    let span = parameter.span;
-                    let parameter = ResolvedParameter { ty, span };
-
-                    resolved_parameters.push(parameter);
-                }
-
-                let ty = self.generate_type(ty)?;
-
-                ResolvedDecl::function(*id, resolved_parameters, body, ty, declaration.span)
+                HirDecl::function(
+                    name.to_owned(),
+                    parameters.to_owned(),
+                    body,
+                    ty.to_owned(),
+                    declaration.span,
+                )
             }
             DeclKind::Struct {
                 id,

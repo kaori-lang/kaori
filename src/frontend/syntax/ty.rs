@@ -1,6 +1,6 @@
 use crate::frontend::scanner::span::Span;
 
-use super::decl::{Field, Parameter};
+use super::decl::{Decl, DeclKind};
 
 #[derive(Debug, Clone)]
 pub struct Ty {
@@ -55,10 +55,13 @@ impl Ty {
         }
     }
 
-    pub fn function(parameters: &[Parameter], return_ty: Ty) -> Ty {
+    pub fn function(parameters: &[Decl], return_ty: Ty) -> Ty {
         let parameters = parameters
             .iter()
-            .map(|parameter| parameter.ty.to_owned())
+            .map(|parameter| match &parameter.kind {
+                DeclKind::Parameter { ty, .. } => ty.to_owned(),
+                _ => unreachable!(),
+            })
             .collect();
 
         Ty {
@@ -70,8 +73,14 @@ impl Ty {
         }
     }
 
-    pub fn struct_(fields: &[Field]) -> Ty {
-        let fields = fields.iter().map(|field| field.ty.to_owned()).collect();
+    pub fn struct_(fields: &[Decl]) -> Ty {
+        let fields = fields
+            .iter()
+            .map(|field| match &field.kind {
+                DeclKind::Field { ty, .. } => ty.to_owned(),
+                _ => unreachable!(),
+            })
+            .collect();
 
         Ty {
             span: Span::default(),

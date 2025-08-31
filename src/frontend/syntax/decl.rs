@@ -17,33 +17,27 @@ pub enum DeclKind {
     },
     Function {
         name: String,
-        parameters: Vec<Parameter>,
+        parameters: Vec<Decl>,
         body: Vec<AstNode>,
         ty: Ty,
     },
     Struct {
         name: String,
-        fields: Vec<Field>,
+        fields: Vec<Decl>,
+        ty: Ty,
+    },
+    Parameter {
+        name: String,
+        ty: Ty,
+    },
+    Field {
+        name: String,
         ty: Ty,
     },
 }
 
-#[derive(Debug)]
-pub struct Field {
-    pub name: String,
-    pub ty: Ty,
-    pub span: Span,
-}
-
-#[derive(Debug)]
-pub struct Parameter {
-    pub name: String,
-    pub ty: Ty,
-    pub span: Span,
-}
-
 impl Decl {
-    pub fn struct_(name: String, fields: Vec<Field>, span: Span) -> Decl {
+    pub fn struct_(name: String, fields: Vec<Decl>, span: Span) -> Decl {
         let ty = Ty::struct_(&fields);
 
         Decl {
@@ -63,9 +57,23 @@ impl Decl {
         }
     }
 
+    pub fn parameter(name: String, ty: Ty, span: Span) -> Decl {
+        Decl {
+            span,
+            kind: DeclKind::Parameter { name, ty },
+        }
+    }
+
+    pub fn field(name: String, ty: Ty, span: Span) -> Decl {
+        Decl {
+            span,
+            kind: DeclKind::Field { name, ty },
+        }
+    }
+
     pub fn function(
         name: String,
-        parameters: Vec<Parameter>,
+        parameters: Vec<Decl>,
         body: Vec<AstNode>,
         return_ty: Ty,
         span: Span,

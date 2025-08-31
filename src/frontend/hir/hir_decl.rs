@@ -29,20 +29,6 @@ pub enum HirDeclKind {
     },
 }
 
-#[derive(Debug)]
-pub struct Field {
-    pub name: String,
-    pub ty: Ty,
-    pub span: Span,
-}
-
-#[derive(Debug)]
-pub struct Parameter {
-    pub name: String,
-    pub ty: Ty,
-    pub span: Span,
-}
-
 impl HirDecl {
     pub fn struct_(name: String, fields: Vec<Field>, ty: Ty, span: Span) -> HirDecl {
         HirDecl {
