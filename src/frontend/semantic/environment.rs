@@ -1,4 +1,6 @@
-use super::{resolved_ty::ResolvedTy, symbol::Symbol};
+use crate::frontend::{hir::node_id::NodeId, syntax::ty::Ty};
+
+use super::symbol::Symbol;
 
 pub struct Environment {
     pub symbols: Vec<Symbol>,
@@ -35,7 +37,7 @@ impl Environment {
         }
     }
 
-    pub fn declare_local(&mut self, name: String, ty: ResolvedTy) -> usize {
+    pub fn declare_local(&mut self, name: String, ty: Ty) -> usize {
         let offset = self.local_offset;
         let declaration = Symbol::local(offset, name, ty);
 
@@ -46,7 +48,7 @@ impl Environment {
         offset
     }
 
-    pub fn declare_global(&mut self, id: NodeId, name: String, ty: ResolvedTy) {
+    pub fn declare_global(&mut self, id: NodeId, name: String, ty: Ty) {
         let declaration = Symbol::global(id, name, ty);
 
         self.symbols.push(declaration);

@@ -22,7 +22,7 @@ pub enum HirStmtKind {
         block: Box<HirStmt>,
     },
     Block(Vec<HirAstNode>),
-    HirExpression(Box<HirExpr>),
+    Expression(Box<HirExpr>),
     Break,
     Continue,
     Return(Option<Box<HirExpr>>),
@@ -77,7 +77,7 @@ impl HirStmt {
         HirStmt {
             id: NodeId::default(),
             span,
-            kind: HirStmtKind::HirExpression(Box::new(expr)),
+            kind: HirStmtKind::Expression(Box::new(expr)),
         }
     }
 

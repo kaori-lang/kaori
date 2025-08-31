@@ -20,13 +20,14 @@ pub fn parse_and_analyze(source: String) -> Result<(), KaoriError> {
     let ast = parser.parse()?;
 
     let hir = HirGen::generate(&ast);
+
     let mut resolver = Resolver::new();
 
-    let resolved_declarations = resolver.resolve(&mut declarations)?;
+    let resolved_declarations = resolver.resolve(&hir)?;
 
     let mut type_checker = TypeChecker::new();
 
-    type_checker.check(&resolved_declarations)?;
+    type_checker.check(&hir)?;
 
     Ok(())
 }
