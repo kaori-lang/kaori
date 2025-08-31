@@ -1,4 +1,6 @@
-use crate::frontend::{scanner::span::Span, syntax::node_id::NodeId};
+use crate::frontend::scanner::span::Span;
+
+use super::node_id::NodeId;
 
 #[derive(Debug, Clone)]
 pub struct HirExpr {
@@ -13,6 +15,7 @@ pub enum HirExprKind {
     Sub(Box<HirExpr>, Box<HirExpr>),
     Mul(Box<HirExpr>, Box<HirExpr>),
     Div(Box<HirExpr>, Box<HirExpr>),
+    Mod(Box<HirExpr>, Box<HirExpr>),
     Equal(Box<HirExpr>, Box<HirExpr>),
     NotEqual(Box<HirExpr>, Box<HirExpr>),
     Less(Box<HirExpr>, Box<HirExpr>),
@@ -60,6 +63,14 @@ impl HirExpr {
     }
 
     pub fn div(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
+        HirExpr {
+            id: NodeId::default(),
+            span,
+            kind: HirExprKind::Div(Box::new(left), Box::new(right)),
+        }
+    }
+
+    pub fn mod_(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
         HirExpr {
             id: NodeId::default(),
             span,
