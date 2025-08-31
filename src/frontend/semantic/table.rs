@@ -2,25 +2,29 @@ use std::collections::HashMap;
 
 use crate::frontend::hir::node_id::NodeId;
 
+#[derive(Clone)]
+pub enum Resolution {
+    Offset(usize),
+    Node(NodeId),
+}
 pub struct Table {
-    offsets: HashMap<NodeId, usize>,
-    resolutions: HashMap<NodeId, NodeId>,
+    resolutions: HashMap<NodeId, Resolution>,
 }
 
 impl Table {
-    pub fn create_offset(&mut self, id: NodeId, offset: usize) {
-        self.offsets.insert(id, offset);
+    pub fn create_local_resolution(&mut self, id: NodeId, offset: usize) {
+        let resolution = Resolution::Offset(offset);
+
+        self.resolutions.insert(id, resolution);
     }
 
-    pub fn create_resolution(&mut self, id: NodeId, target: NodeId) {
-        self.resolutions.insert(id, target);
+    pub fn create_global_resolution(&mut self, id: NodeId, target: NodeId) {
+        let resolution = Resolution::Node(target);
+
+        self.resolutions.insert(id, resolution);
     }
 
-    pub fn get_offset(&self, id: NodeId) -> Option<&usize> {
-        self.offsets.get(&id)
-    }
-
-    pub fn get_resolution(&self, id: NodeId) -> Option<&NodeId> {
-        self.resolutions.get(&id)
+    pub fn get_resolution(&self, id: &NodeId) -> Option<&Resolution> {
+        self.resolutions.get(id)
     }
 }

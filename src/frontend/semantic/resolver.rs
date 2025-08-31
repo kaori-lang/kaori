@@ -18,15 +18,15 @@ use super::{environment::Environment, symbol::Symbol, table::Table};
 pub struct Resolver<'a> {
     environment: Environment,
     active_loops: u8,
-    table: &'a Table
+    table: &'a mut Table,
 }
 
-impl <'a> Resolver <'a> {
-    pub fn new(table: &'a Table) -> Self {
+impl<'a> Resolver<'a> {
+    pub fn new(table: &'a mut Table) -> Self {
         Self {
             environment: Environment::default(),
             active_loops: 0,
-            table
+            table,
         }
     }
 
@@ -42,10 +42,10 @@ impl <'a> Resolver <'a> {
                         ));
                     }
 
-
-                    self.environment.declare_global(declaration.id, name.to_owned(), ty.to_owned());
+                    self.environment
+                        .declare_global(declaration.id, name.to_owned(), ty.to_owned());
                 }
-                HirDeclKind::Struct {  name, ty, .. } => {
+                HirDeclKind::Struct { name, ty, .. } => {
                     if self.environment.search_current_scope(name).is_some() {
                         return Err(kaori_error!(
                             declaration.span,
@@ -53,8 +53,6 @@ impl <'a> Resolver <'a> {
                             name
                         ));
                     }
-
-                    let ty = self.resolve_type(ty)?;
                 }
                 _ => (),
             }
@@ -62,7 +60,7 @@ impl <'a> Resolver <'a> {
 
         for declaration in declarations {
             self.resolve_declaration(declaration)?;
-           }
+        }
 
         Ok(())
     }
@@ -83,32 +81,27 @@ impl <'a> Resolver <'a> {
            ))
        }
     */
-    fn resolve_nodes(
-        &mut self,
-        nodes: &[HirAstNode],
-    ) -> Result<Vec<ResolvedHirAstNode>, KaoriError> {
-        let nodes = nodes
-            .iter()
-            .map(|node| self.resolve_ast_node(node))
-            .collect::<Result<Vec<ResolvedHirAstNode>, KaoriError>>()?;
+    fn resolve_nodes(&mut self, nodes: &[HirAstNode]) -> Result<(), KaoriError> {
+        for node in nodes {
+            self.resolve_ast_node(node)?;
+        }
 
-        Ok(nodes)
+        Ok(())
     }
 
     fn resolve_ast_node(&mut self, node: &HirAstNode) -> Result<(), KaoriError> {
         match node {
             HirAstNode::Declaration(declaration) => self.resolve_declaration(declaration),
-
-            HirAstNode::Statement(statement) => self.resolve_statement(statement)?,
+            HirAstNode::Statement(statement) => self.resolve_statement(statement),
         }?;
 
         Ok(())
     }
 
-    fn resolve_declaration(&mut self, declaration: &HirDecl) -> Result<HirDecl, KaoriError> {
+    fn resolve_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
         match &declaration.kind {
             HirDeclKind::Variable { name, right, ty } => {
-                let right = self.resolve_expression(right)?;
+                self.resolve_expression(right)?;
 
                 if self.environment.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
@@ -122,7 +115,7 @@ impl <'a> Resolver <'a> {
                     .environment
                     .declare_local(name.to_owned(), ty.to_owned());
 
-                self.
+                self.table.create_offset(declaration.id, offset);
             }
             HirDeclKind::Parameter { name, ty } => {
                 if self.environment.search_current_scope(&name).is_some() {
@@ -133,8 +126,7 @@ impl <'a> Resolver <'a> {
                     ));
                 };
 
-                let offset = self
-                    .environment
+                self.environment
                     .declare_local(name.to_owned(), ty.to_owned());
             }
             HirDeclKind::Field { name, ty } => {
@@ -146,15 +138,11 @@ impl <'a> Resolver <'a> {
                     ));
                 };
 
-                let offset = self
-                    .environment
+                self.environment
                     .declare_local(name.to_owned(), ty.to_owned());
             }
             HirDeclKind::Function {
-                parameters,
-                body,
-                name,
-                ty,
+                parameters, body, ..
             } => {
                 self.environment.enter_scope();
 
@@ -188,6 +176,7 @@ impl <'a> Resolver <'a> {
             } => {
                 self.resolve_expression(condition)?;
                 self.resolve_statement(then_branch)?;
+
                 if let Some(branch) = else_branch {
                     self.resolve_statement(branch)?;
                 }
@@ -228,61 +217,91 @@ impl <'a> Resolver <'a> {
     fn resolve_expression(&self, expression: &HirExpr) -> Result<(), KaoriError> {
         match &expression.kind {
             HirExprKind::Assign(left, right) => {
-                let right = self.resolve_expression(right)?;
-                let left = self.resolve_expression(left)?;
-
-                ResolvedExpr::assign(left, right, expression.span)
+                self.resolve_expression(right)?;
+                self.resolve_expression(left)?;
             }
-            HirExprKind::Binary {
-                left,
-                right,
-                operator,
-            } => {
-                let left = self.resolve_expression(left)?;
-                let right = self.resolve_expression(right)?;
-
-                ResolvedExpr::binary(operator.to_owned(), left, right, expression.span)
+            HirExprKind::Add(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
             }
-            HirExprKind::Unary { right, operator } => {
-                let right = self.resolve_expression(right)?;
-
-                ResolvedExpr::unary(operator.to_owned(), right, expression.span)
+            HirExprKind::Sub(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
             }
+            HirExprKind::Mul(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
+            }
+            HirExprKind::Div(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
+            }
+            HirExprKind::Mod(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
+            }
+            HirExprKind::Equal(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
+            }
+            HirExprKind::NotEqual(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
+            }
+            HirExprKind::Less(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
+            }
+            HirExprKind::LessEqual(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
+            }
+            HirExprKind::Greater(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
+            }
+            HirExprKind::GreaterEqual(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
+            }
+            HirExprKind::And(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
+            }
+            HirExprKind::Or(left, right) => {
+                self.resolve_expression(left);
+                self.resolve_expression(right);
+            }
+            HirExprKind::Negate(right) => {
+                self.resolve_expression(right);
+            }
+            HirExprKind::Not(right) => {
+                self.resolve_expression(right);
+            }
+
             HirExprKind::FunctionCall { callee, arguments } => {
-                let callee = self.resolve_expression(callee)?;
-                let mut resolved_args = Vec::new();
+                self.resolve_expression(callee)?;
 
                 for argument in arguments {
-                    let argument = self.resolve_expression(argument)?;
-                    resolved_args.push(argument);
+                    self.resolve_expression(argument)?;
                 }
-
-                let frame_size = self.environment.local_offset;
-
-                ResolvedExpr::function_call(callee, resolved_args, frame_size, expression.span)
             }
-            HirExprKind::NumberLiteral(value) => {
-                ResolvedExpr::number_literal(value.to_owned(), expression.span)
-            }
-            HirExprKind::BooleanLiteral(value) => {
-                ResolvedExpr::boolean_literal(value.to_owned(), expression.span)
-            }
-            HirExprKind::StringLiteral(value) => {
-                ResolvedExpr::string_literal(value.to_owned(), expression.span)
-            }
-            HirExprKind::Identifier { name } => match self.environment.search(name) {
+            HirExprKind::Identifier(name) => match self.environment.search(name) {
                 Some(Symbol::Local { offset, ty, .. }) => {
-                    ResolvedExpr::local_ref(*offset, ty.to_owned(), expression.span)
+                    self.table.create_local_resolution(expression.id, *offset);
                 }
                 Some(Symbol::Global { id, ty, .. }) => {
-                    ResolvedExpr::global_ref(*id, ty.to_owned(), expression.span)
+                    self.table.create_global_resolution(expression.id, id);
                 }
                 _ => return Err(kaori_error!(expression.span, "{} is not declared", name)),
             },
+            _ => (),
         };
+
+        Ok(())
     }
 
-    pub fn resolve_type(&self, ty: &Ty) -> Result<(), KaoriError> {
+    /*     pub fn resolve_type(&self, ty: &Ty) -> Result<(), KaoriError> {
         match &ty.kind {
             TyKind::Boolean => ResolvedTy::boolean(ty.span),
             TyKind::Number => ResolvedTy::number(ty.span),
@@ -321,5 +340,5 @@ impl <'a> Resolver <'a> {
                 ty.to_owned()
             }
         };
-    }
+    } */
 }
