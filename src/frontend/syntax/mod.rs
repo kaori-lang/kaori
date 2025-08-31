@@ -4,7 +4,7 @@ pub mod expr;
 pub mod parser;
 
 pub mod decl;
-pub mod node_id;
+
 pub mod operator;
 pub mod parse_declaration;
 pub mod parse_expression;
