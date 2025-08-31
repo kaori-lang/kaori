@@ -122,7 +122,7 @@ impl<'a> Resolver<'a> {
                 if self.environment.search_current_scope(&name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
-                        "function {} can't have parameters with the same name",
+                        "function can't have parameters with the same name: {}",
                         name,
                     ));
                 };
@@ -221,65 +221,25 @@ impl<'a> Resolver<'a> {
                 self.resolve_expression(right)?;
                 self.resolve_expression(left)?;
             }
-            HirExprKind::Add(left, right) => {
-                self.resolve_expression(left);
+            HirExprKind::Add(left, right)
+            | HirExprKind::Sub(left, right)
+            | HirExprKind::Mul(left, right)
+            | HirExprKind::Div(left, right)
+            | HirExprKind::Mod(left, right)
+            | HirExprKind::Equal(left, right)
+            | HirExprKind::NotEqual(left, right)
+            | HirExprKind::Less(left, right)
+            | HirExprKind::LessEqual(left, right)
+            | HirExprKind::Greater(left, right)
+            | HirExprKind::GreaterEqual(left, right)
+            | HirExprKind::And(left, right)
+            | HirExprKind::Or(left, right) => {
+                self.resolve_expression(left)?;
+                self.resolve_expression(right)?;
+            }
+            HirExprKind::Negate(right) | HirExprKind::Not(right) => {
                 self.resolve_expression(right);
             }
-            HirExprKind::Sub(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::Mul(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::Div(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::Mod(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::Equal(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::NotEqual(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::Less(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::LessEqual(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::Greater(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::GreaterEqual(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::And(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::Or(left, right) => {
-                self.resolve_expression(left);
-                self.resolve_expression(right);
-            }
-            HirExprKind::Negate(right) => {
-                self.resolve_expression(right);
-            }
-            HirExprKind::Not(right) => {
-                self.resolve_expression(right);
-            }
-
             HirExprKind::FunctionCall { callee, arguments } => {
                 self.resolve_expression(callee)?;
 
