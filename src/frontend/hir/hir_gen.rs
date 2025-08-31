@@ -14,30 +14,11 @@ use super::{hir_ast_node::HirAstNode, hir_decl::HirDecl, hir_expr::HirExpr, hir_
 struct HirGen {}
 
 impl HirGen {
-    pub fn new() -> Self {
-        Self {
-            environment: Environment::default(),
-            active_loops: 0,
-        }
-    }
-
-    pub fn generate(&mut self, declarations: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
-        self.generate_main_function(declarations)?;
-
-        for declaration in declarations.iter() {}
-
-        Ok(resolved_declarations)
-    }
-
-    fn swap_main_function(&mut self, declarations: &mut [Decl]) {
-        for (index, declaration) in declarations.iter().enumerate() {
-            if let DeclKind::Function { name, .. } = &declaration.kind
-                && name == "main"
-            {
-                declarations.swap(0, index);
-                break;
-            }
-        }
+    pub fn generate(&mut self, declarations: &mut [Decl]) -> Vec<HirDecl> {
+        declarations
+            .iter()
+            .map(|declaration| self.generate_declaration(declaration))
+            .collect()
     }
 
     fn generate_nodes(&mut self, nodes: &[AstNode]) -> Vec<HirAstNode> {

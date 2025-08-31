@@ -1,5 +1,3 @@
-use crate::frontend::syntax::node_id::NodeId;
-
 use super::{resolved_ty::ResolvedTy, symbol::Symbol};
 
 pub struct Environment {
