@@ -134,7 +134,7 @@ impl<'a> Resolver<'a> {
                 if self.environment.search_current_scope(&name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
-                        "struct {} can't have fields with the same name",
+                        "struct can't have fields with the same name: {}",
                         name,
                     ));
                 };
@@ -247,17 +247,22 @@ impl<'a> Resolver<'a> {
                     self.resolve_expression(argument)?;
                 }
             }
-            HirExprKind::Identifier(name) => match self.environment.search(name) {
-                Some(Symbol::Local { offset, ty, .. }) => {
-                    self.resolution_table
-                        .create_local_resolution(expression.id, *offset);
+            HirExprKind::Identifier(name) => {
+                if let Some(symbol) = self.environment.search(name) {
+                    match symbol {
+                        Symbol::Local { offset, ty, .. } => {
+                            self.resolution_table
+                                .create_local_resolution(expression.id, *offset);
+                        }
+                        Symbol::Global { id, ty, .. } => {
+                            self.resolution_table
+                                .create_global_resolution(expression.id, *id);
+                        }
+                    }
+                } else {
+                    return Err(kaori_error!(expression.span, "{} is not declared", name));
                 }
-                Some(Symbol::Global { id, ty, .. }) => {
-                    self.resolution_table
-                        .create_global_resolution(expression.id, *id);
-                }
-                _ => return Err(kaori_error!(expression.span, "{} is not declared", name)),
-            },
+            }
             _ => (),
         };
 
