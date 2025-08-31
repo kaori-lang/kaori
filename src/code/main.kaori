@@ -1,7 +1,7 @@
 def main() {
     a: number = 5;
     
-    print(fib(30));
+    print(fib(40));
 
 } 
 

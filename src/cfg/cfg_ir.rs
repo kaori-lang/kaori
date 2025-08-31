@@ -1,7 +1,6 @@
 #![allow(clippy::new_without_default)]
 
 use crate::{
-    backend::vm::value::Value,
     error::kaori_error::KaoriError,
     frontend::{
         semantic::{
@@ -14,18 +13,46 @@ use crate::{
     },
 };
 
-use super::basic_block::{BasicBlock, CfgInstruction};
+use super::basic_block::{BasicBlock, CfgInst, Terminator};
 
 pub struct CfgIr {
     blocks: Vec<BasicBlock>,
+    current: usize,
 }
 
-impl<'a> CfgIr {
-    pub fn new(blocks: Vec<BasicBlock>) -> Self {
-        Self { blocks: Vec::new() }
+impl CfgIr {
+    pub fn new() -> Self {
+        Self {
+            blocks: Vec::new(),
+            current: 0,
+        }
     }
 
-    pub fn emit(&mut self, instruction: CfgInstruction) {}
+    pub fn emit(&mut self, instruction: CfgInst) {
+        self.blocks[self.current].instructions.push(instruction);
+    }
+
+    pub fn create_block(&mut self) -> usize {
+        let index = self.blocks.len();
+
+        let block = BasicBlock::default();
+
+        self.blocks.push(block);
+
+        index
+    }
+
+    pub fn update_block_terminal(&mut self, index: usize, terminator: Terminator) {
+        self.blocks[index].terminator = terminator;
+    }
+
+    pub fn start(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
+        for declaration in declarations {
+            self.visit_declaration(declaration)?;
+        }
+
+        Ok(())
+    }
 
     fn visit_nodes(&mut self, nodes: &[ResolvedAstNode]) -> Result<(), KaoriError> {
         for node in nodes {
@@ -46,7 +73,7 @@ impl<'a> CfgIr {
         match &declaration.kind {
             ResolvedDeclKind::Variable { offset, right, .. } => {
                 self.visit_expression(right)?;
-                self.emit(CfgInstruction::StoreLocal(*offset));
+                self.emit(CfgInst::StoreLocal(*offset));
             }
             ResolvedDeclKind::Function { body, id, .. } => {
                 self.visit_nodes(body)?;
@@ -61,12 +88,12 @@ impl<'a> CfgIr {
             ResolvedStmtKind::Expression(expression) => {
                 self.visit_expression(expression)?;
 
-                self.emit(CfgInstruction::Pop);
+                self.emit(CfgInst::Pop);
             }
             ResolvedStmtKind::Print(expression) => {
                 self.visit_expression(expression)?;
 
-                self.emit(CfgInstruction::Print);
+                self.emit(CfgInst::Print);
             }
             ResolvedStmtKind::Block(nodes) => {
                 for node in nodes {
@@ -87,7 +114,14 @@ impl<'a> CfgIr {
                 }
             }
             ResolvedStmtKind::WhileLoop { condition, block } => {
+                let condition_block = self.create_block();
+                let loop_block = self.create_block();
+
+                self.current = condition_block;
+
                 self.visit_expression(condition)?;
+
+                self.current = loop_block;
 
                 self.visit_statement(block)?;
             }
@@ -101,8 +135,8 @@ impl<'a> CfgIr {
             ResolvedExprKind::Assign { left, right } => {
                 self.visit_expression(right)?;
 
-                if let ResolvedExprKind::VariableRef { offset, .. } = left.kind {
-                    self.emit(CfgInstruction::StoreLocal(offset));
+                if let ResolvedExprKind::LocalRef { offset, .. } = left.kind {
+                    self.emit(CfgInst::StoreLocal(offset));
                 };
             }
             ResolvedExprKind::Binary {
@@ -114,60 +148,58 @@ impl<'a> CfgIr {
                 self.visit_expression(right)?;
 
                 match operator {
-                    BinaryOp::Add => self.emit(CfgInstruction::Plus),
-                    BinaryOp::Subtract => self.emit(CfgInstruction::Minus),
-                    BinaryOp::Multiply => self.emit(CfgInstruction::Multiply),
-                    BinaryOp::Divide => self.emit(CfgInstruction::Divide),
-                    BinaryOp::Modulo => self.emit(CfgInstruction::Modulo),
+                    BinaryOp::Add => self.emit(CfgInst::Plus),
+                    BinaryOp::Subtract => self.emit(CfgInst::Minus),
+                    BinaryOp::Multiply => self.emit(CfgInst::Multiply),
+                    BinaryOp::Divide => self.emit(CfgInst::Divide),
+                    BinaryOp::Modulo => self.emit(CfgInst::Modulo),
 
-                    BinaryOp::And => self.emit(CfgInstruction::And),
-                    BinaryOp::Or => self.emit(CfgInstruction::Or),
+                    BinaryOp::And => self.emit(CfgInst::And),
+                    BinaryOp::Or => self.emit(CfgInst::Or),
 
-                    BinaryOp::Equal => self.emit(CfgInstruction::Equal),
-                    BinaryOp::NotEqual => self.emit(CfgInstruction::NotEqual),
+                    BinaryOp::Equal => self.emit(CfgInst::Equal),
+                    BinaryOp::NotEqual => self.emit(CfgInst::NotEqual),
 
-                    BinaryOp::Greater => self.emit(CfgInstruction::Greater),
-                    BinaryOp::GreaterEqual => self.emit(CfgInstruction::GreaterEqual),
-                    BinaryOp::Less => self.emit(CfgInstruction::Less),
-                    BinaryOp::LessEqual => self.emit(CfgInstruction::LessEqual),
+                    BinaryOp::Greater => self.emit(CfgInst::Greater),
+                    BinaryOp::GreaterEqual => self.emit(CfgInst::GreaterEqual),
+                    BinaryOp::Less => self.emit(CfgInst::Less),
+                    BinaryOp::LessEqual => self.emit(CfgInst::LessEqual),
                 };
             }
             ResolvedExprKind::Unary { right, operator } => {
                 self.visit_expression(right)?;
 
                 match operator {
-                    UnaryOp::Negate => self.emit(CfgInstruction::Negate),
-                    UnaryOp::Not => self.emit(CfgInstruction::Not),
+                    UnaryOp::Negate => self.emit(CfgInst::Negate),
+                    UnaryOp::Not => self.emit(CfgInst::Not),
                 };
             }
             ResolvedExprKind::NumberLiteral(value) => {
-                self.emit(CfgInstruction::NumberConst(*value));
+                self.emit(CfgInst::NumberConst(*value));
             }
             ResolvedExprKind::BooleanLiteral(value) => {
-                self.emit(CfgInstruction::BooleanConst(*value));
+                self.emit(CfgInst::BooleanConst(*value));
             }
             ResolvedExprKind::StringLiteral(value) => {
-                self.emit(CfgInstruction::StringConst(value.to_owned()));
+                self.emit(CfgInst::StringConst(value.to_owned()));
             }
             ResolvedExprKind::FunctionCall {
                 callee, arguments, ..
             } => {
                 self.visit_expression(callee)?;
 
-                self.emit(CfgInstruction::Call);
+                self.emit(CfgInst::Call);
 
                 for (offset, argument) in arguments.iter().enumerate() {
                     self.visit_expression(argument)?;
-                    self.emit(CfgInstruction::StoreLocal(offset));
+                    self.emit(CfgInst::StoreLocal(offset));
                 }
             }
-            ResolvedExprKind::VariableRef { offset, .. } => {
-                self.emit(CfgInstruction::LoadLocal(*offset));
+            ResolvedExprKind::LocalRef { offset, .. } => {
+                self.emit(CfgInst::LoadLocal(*offset));
             }
-            ResolvedExprKind::FunctionRef { function_id, .. } => {
-                self.emit(CfgInstruction::FunctionConst {
-                    function_id: *function_id,
-                });
+            ResolvedExprKind::GlobalRef { id, .. } => {
+                self.emit(CfgInst::LoadGlobal(*id));
             }
             _ => {}
         };

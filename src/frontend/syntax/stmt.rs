@@ -1,9 +1,10 @@
 use crate::frontend::scanner::span::Span;
 
-use super::{ast_node::AstNode, decl::Decl, expr::Expr};
+use super::{ast_node::AstNode, decl::Decl, expr::Expr, node_id::NodeId};
 
 #[derive(Debug)]
 pub struct Stmt {
+    pub id: NodeId,
     pub span: Span,
     pub kind: StmtKind,
 }
@@ -30,6 +31,7 @@ pub enum StmtKind {
 impl Stmt {
     pub fn print(expression: Expr, span: Span) -> Stmt {
         Stmt {
+            id: NodeId::default(),
             span,
             kind: StmtKind::Print(Box::new(expression)),
         }
@@ -37,6 +39,7 @@ impl Stmt {
 
     pub fn if_(condition: Expr, then_branch: Stmt, else_branch: Option<Stmt>, span: Span) -> Stmt {
         Stmt {
+            id: NodeId::default(),
             span,
             kind: StmtKind::If {
                 condition: Box::new(condition),
@@ -48,6 +51,7 @@ impl Stmt {
 
     pub fn while_loop(condition: Expr, block: Stmt, span: Span) -> Stmt {
         Stmt {
+            id: NodeId::default(),
             span,
             kind: StmtKind::WhileLoop {
                 condition: Box::new(condition),
@@ -75,6 +79,7 @@ impl Stmt {
         ];
 
         Stmt {
+            id: NodeId::default(),
             span,
             kind: StmtKind::Block(nodes),
         }
@@ -82,6 +87,7 @@ impl Stmt {
 
     pub fn block(nodes: Vec<AstNode>, span: Span) -> Stmt {
         Stmt {
+            id: NodeId::default(),
             span,
             kind: StmtKind::Block(nodes),
         }
@@ -89,6 +95,7 @@ impl Stmt {
 
     pub fn expression(expr: Expr, span: Span) -> Stmt {
         Stmt {
+            id: NodeId::default(),
             span,
             kind: StmtKind::Expression(Box::new(expr)),
         }
@@ -96,6 +103,7 @@ impl Stmt {
 
     pub fn break_(span: Span) -> Stmt {
         Stmt {
+            id: NodeId::default(),
             span,
             kind: StmtKind::Break,
         }
@@ -103,6 +111,7 @@ impl Stmt {
 
     pub fn continue_(span: Span) -> Stmt {
         Stmt {
+            id: NodeId::default(),
             span,
             kind: StmtKind::Continue,
         }
@@ -110,6 +119,7 @@ impl Stmt {
 
     pub fn return_(expression: Option<Expr>, span: Span) -> Stmt {
         Stmt {
+            id: NodeId::default(),
             span,
             kind: StmtKind::Return(expression.map(Box::new)),
         }

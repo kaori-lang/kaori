@@ -30,3 +30,5 @@ pub enum Instruction {
 
     Nothing,
 }
+
+// 3 + (3 + (3 + (3+ 0)))

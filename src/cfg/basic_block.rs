@@ -1,6 +1,9 @@
+use crate::frontend::syntax::node_id::NodeId;
+
+#[derive(Default)]
 pub struct BasicBlock {
-    instructions: Vec<CfgInstruction>,
-    terminator: Terminator,
+    pub instructions: Vec<CfgInst>,
+    pub terminator: Terminator,
 }
 
 pub enum Terminator {
@@ -9,10 +12,17 @@ pub enum Terminator {
         else_branch: Option<usize>,
     },
     Jump(usize),
+    None,
+}
+
+impl Default for Terminator {
+    fn default() -> Self {
+        Self::None
+    }
 }
 
 #[derive(Debug, Clone)]
-pub enum CfgInstruction {
+pub enum CfgInst {
     Plus,
     Minus,
     Multiply,
@@ -32,7 +42,7 @@ pub enum CfgInstruction {
     StringConst(String),
     NumberConst(f64),
     BooleanConst(bool),
-    FunctionConst { function_id: usize },
+    LoadGlobal(NodeId),
     LoadLocal(usize),
     StoreLocal(usize),
 

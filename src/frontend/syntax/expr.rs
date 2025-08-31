@@ -1,6 +1,9 @@
 use crate::frontend::scanner::span::Span;
 
-use super::operator::{BinaryOp, UnaryOp};
+use super::{
+    node_id::NodeId,
+    operator::{BinaryOp, UnaryOp},
+};
 
 #[derive(Debug, Clone)]
 pub struct Expr {

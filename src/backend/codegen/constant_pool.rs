@@ -9,7 +9,7 @@ pub struct ConstantPool {
 }
 
 impl ConstantPool {
-    pub fn load_constant(&mut self, other: Value) -> usize {
+    pub fn load_const(&mut self, other: Value) -> usize {
         for (index, current) in self.constants.iter().enumerate() {
             if *current == other {
                 return index;
@@ -23,7 +23,7 @@ impl ConstantPool {
         index
     }
 
-    pub fn load_function_constant(&mut self, id: NodeId) -> usize {
+    pub fn load_global_const(&mut self, id: NodeId) -> usize {
         if let Some(index) = self.globals.get(&id) {
             return *index;
         };
@@ -36,7 +36,7 @@ impl ConstantPool {
         index
     }
 
-    pub fn define_function_constant(&mut self, id: NodeId, value: Value) {
+    pub fn update_global_const(&mut self, id: NodeId, value: Value) {
         if let Some(index) = self.globals.get(&id) {
             self.constants[*index] = value;
         } else {

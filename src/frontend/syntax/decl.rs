@@ -1,14 +1,10 @@
 use crate::frontend::scanner::span::Span;
 
-use super::{
-    ast_node::AstNode,
-    expr::Expr,
-    node_id::{NodeId, generate_id},
-    ty::Ty,
-};
+use super::{ast_node::AstNode, expr::Expr, node_id::NodeId, ty::Ty};
 
 #[derive(Debug)]
 pub struct Decl {
+    pub id: NodeId,
     pub span: Span,
     pub kind: DeclKind,
 }
@@ -21,14 +17,12 @@ pub enum DeclKind {
         ty: Ty,
     },
     Function {
-        id: NodeId,
         name: String,
         parameters: Vec<Parameter>,
         body: Vec<AstNode>,
         ty: Ty,
     },
     Struct {
-        id: NodeId,
         name: String,
         fields: Vec<Field>,
         ty: Ty,
@@ -54,18 +48,15 @@ impl Decl {
         let ty = Ty::struct_(&fields);
 
         Decl {
+            id: NodeId::default(),
             span,
-            kind: DeclKind::Struct {
-                id: NodeId::default(),
-                name,
-                fields,
-                ty,
-            },
+            kind: DeclKind::Struct { name, fields, ty },
         }
     }
 
     pub fn variable(name: String, right: Expr, ty: Ty, span: Span) -> Decl {
         Decl {
+            id: NodeId::default(),
             span,
             kind: DeclKind::Variable {
                 name,
@@ -85,9 +76,9 @@ impl Decl {
         let ty = Ty::function(&parameters, return_ty);
 
         Decl {
+            id: NodeId::default(),
             span,
             kind: DeclKind::Function {
-                id: NodeId::default(),
                 name,
                 parameters,
                 body,

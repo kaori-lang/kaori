@@ -18,11 +18,17 @@ use super::{bytecode::Bytecode, instruction::Instruction};
 
 pub struct BytecodeGenerator<'a> {
     bytecode: &'a mut Bytecode,
+    list_true: Vec<usize>,
+    list_false: Vec<usize>,
 }
 
 impl<'a> BytecodeGenerator<'a> {
     pub fn new(bytecode: &'a mut Bytecode) -> Self {
-        Self { bytecode }
+        Self {
+            bytecode,
+            list_true: Vec::new(),
+            list_false: Vec::new(),
+        }
     }
 
     pub fn generate(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
@@ -67,9 +73,7 @@ impl<'a> BytecodeGenerator<'a> {
 
                 let value = Value::instruction_ptr(instruction_ptr);
 
-                self.bytecode
-                    .constant_pool
-                    .define_function_constant(*id, value);
+                self.bytecode.constant_pool.update_global_const(*id, value);
 
                 self.visit_nodes(body)?;
 
@@ -197,7 +201,7 @@ impl<'a> BytecodeGenerator<'a> {
                 let index = self
                     .bytecode
                     .constant_pool
-                    .load_constant(Value::number(*value));
+                    .load_const(Value::number(*value));
 
                 self.emit(Instruction::LoadConst(index as u16));
             }
@@ -205,7 +209,7 @@ impl<'a> BytecodeGenerator<'a> {
                 let index = self
                     .bytecode
                     .constant_pool
-                    .load_constant(Value::boolean(*value));
+                    .load_const(Value::boolean(*value));
 
                 self.emit(Instruction::LoadConst(index as u16));
             }
@@ -230,7 +234,7 @@ impl<'a> BytecodeGenerator<'a> {
                 self.emit(Instruction::LoadLocal(*offset as u16));
             }
             ResolvedExprKind::GlobalRef { id, .. } => {
-                let index = self.bytecode.constant_pool.load_function_constant(*id);
+                let index = self.bytecode.constant_pool.load_global_const(*id);
 
                 self.emit(Instruction::LoadConst(index as u16));
             }
