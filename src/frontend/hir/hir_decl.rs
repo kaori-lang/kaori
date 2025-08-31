@@ -18,19 +18,43 @@ pub enum HirDeclKind {
     },
     Function {
         name: String,
-        parameters: Vec<Parameter>,
+        parameters: Vec<HirDecl>,
         body: Vec<HirAstNode>,
         ty: Ty,
     },
     Struct {
         name: String,
-        fields: Vec<Field>,
+        fields: Vec<HirDecl>,
+        ty: Ty,
+    },
+    Parameter {
+        name: String,
+        ty: Ty,
+    },
+    Field {
+        name: String,
         ty: Ty,
     },
 }
 
 impl HirDecl {
-    pub fn struct_(name: String, fields: Vec<Field>, ty: Ty, span: Span) -> HirDecl {
+    pub fn parameter(name: String, ty: Ty, span: Span) -> HirDecl {
+        HirDecl {
+            id: NodeId::default(),
+            span,
+            kind: HirDeclKind::Parameter { name, ty },
+        }
+    }
+
+    pub fn field(name: String, ty: Ty, span: Span) -> HirDecl {
+        HirDecl {
+            id: NodeId::default(),
+            span,
+            kind: HirDeclKind::Field { name, ty },
+        }
+    }
+
+    pub fn struct_(name: String, fields: Vec<HirDecl>, ty: Ty, span: Span) -> HirDecl {
         HirDecl {
             id: NodeId::default(),
             span,
@@ -52,7 +76,7 @@ impl HirDecl {
 
     pub fn function(
         name: String,
-        parameters: Vec<Parameter>,
+        parameters: Vec<HirDecl>,
         body: Vec<HirAstNode>,
         ty: Ty,
         span: Span,

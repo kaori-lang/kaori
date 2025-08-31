@@ -1,7 +1,5 @@
 use crate::{
-    error::kaori_error::KaoriError,
-    frontend::scanner::{span::Span, token_kind::TokenKind},
-    kaori_error,
+    error::kaori_error::KaoriError, frontend::scanner::token_kind::TokenKind, kaori_error,
 };
 
 use super::{

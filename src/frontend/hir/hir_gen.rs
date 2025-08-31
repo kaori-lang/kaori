@@ -63,7 +63,13 @@ impl HirGen {
     }
 
     fn generate_declaration(&mut self, declaration: &Decl) -> HirDecl {
-        let resolved_decl = match &declaration.kind {
+        match &declaration.kind {
+            DeclKind::Parameter { name, ty } => {
+                HirDecl::parameter(name.to_owned(), ty.to_owned(), declaration.span)
+            }
+            DeclKind::Field { name, ty } => {
+                HirDecl::field(name.to_owned(), ty.to_owned(), declaration.span)
+            }
             DeclKind::Variable { name, right, ty } => {
                 let right = self.generate_expression(right);
 
@@ -76,24 +82,28 @@ impl HirGen {
                 ty,
             } => {
                 let body = self.generate_nodes(body);
+                let parameters = parameters
+                    .iter()
+                    .map(|param| self.generate_declaration(param))
+                    .collect();
 
                 HirDecl::function(
                     name.to_owned(),
-                    parameters.to_owned(),
+                    parameters,
                     body,
                     ty.to_owned(),
                     declaration.span,
                 )
             }
-            DeclKind::Struct {
-                id,
-                name,
-                fields,
-                ty,
-            } => todo!(),
-        };
+            DeclKind::Struct { name, fields, ty } => {
+                let fields = fields
+                    .iter()
+                    .map(|field| self.generate_declaration(field))
+                    .collect();
 
-        Ok(resolved_decl)
+                HirDecl::struct_(name.to_owned(), fields, ty.to_owned(), declaration.span)
+            }
+        }
     }
 
     fn generate_statement(&mut self, statement: &Stmt) -> HirStmt {
