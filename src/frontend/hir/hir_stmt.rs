@@ -1,6 +1,6 @@
 use crate::frontend::{scanner::span::Span, syntax::node_id::NodeId};
 
-use super::hir_expr::HirExpr;
+use super::{hir_ast_node::HirAstNode, hir_expr::HirExpr};
 
 #[derive(Debug)]
 pub struct HirStmt {
@@ -21,7 +21,7 @@ pub enum HirStmtKind {
         condition: Box<HirExpr>,
         block: Box<HirStmt>,
     },
-    Block(Vec<AstNode>),
+    Block(Vec<HirAstNode>),
     HirExpression(Box<HirExpr>),
     Break,
     Continue,
@@ -37,7 +37,7 @@ impl HirStmt {
         }
     }
 
-    pub fn if_(
+    pub fn branch_(
         condition: HirExpr,
         then_branch: HirStmt,
         else_branch: Option<HirStmt>,
@@ -46,7 +46,7 @@ impl HirStmt {
         HirStmt {
             id: NodeId::default(),
             span,
-            kind: HirStmtKind::If {
+            kind: HirStmtKind::Branch {
                 condition: Box::new(condition),
                 then_branch: Box::new(then_branch),
                 else_branch: else_branch.map(Box::new),
@@ -65,7 +65,7 @@ impl HirStmt {
         }
     }
 
-    pub fn block(nodes: Vec<AstNode>, span: Span) -> HirStmt {
+    pub fn block(nodes: Vec<HirAstNode>, span: Span) -> HirStmt {
         HirStmt {
             id: NodeId::default(),
             span,
