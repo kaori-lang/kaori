@@ -1,18 +1,6 @@
 #![allow(clippy::new_without_default)]
 
-use crate::{
-    backend::vm::value::Value,
-    error::kaori_error::KaoriError,
-    frontend::{
-        semantic::{
-            resolved_ast_node::ResolvedAstNode,
-            resolved_decl::{ResolvedDecl, ResolvedDeclKind},
-            resolved_expr::{ResolvedExpr, ResolvedExprKind},
-            resolved_stmt::{ResolvedStmt, ResolvedStmtKind},
-        },
-        syntax::operator::{BinaryOp, UnaryOp},
-    },
-};
+use crate::{backend::vm::value::Value, error::kaori_error::KaoriError};
 
 use super::{bytecode::Bytecode, instruction::Instruction};
 

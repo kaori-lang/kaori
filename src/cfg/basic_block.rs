@@ -1,4 +1,4 @@
-use crate::frontend::syntax::node_id::NodeId;
+use crate::frontend::hir::node_id::NodeId;
 
 #[derive(Default)]
 pub struct BasicBlock {

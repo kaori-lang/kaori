@@ -2,15 +2,7 @@
 
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::{
-        semantic::{
-            resolved_ast_node::ResolvedAstNode,
-            resolved_decl::{ResolvedDecl, ResolvedDeclKind},
-            resolved_expr::{ResolvedExpr, ResolvedExprKind},
-            resolved_stmt::{ResolvedStmt, ResolvedStmtKind},
-        },
-        syntax::operator::{BinaryOp, UnaryOp},
-    },
+    frontend::syntax::operator::{BinaryOp, UnaryOp},
 };
 
 use super::basic_block::{BasicBlock, CfgInst, Terminator};

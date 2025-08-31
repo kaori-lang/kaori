@@ -1,49 +1,46 @@
-use crate::{
-    error::kaori_error::KaoriError,
-    frontend::syntax::{
-        ast_node::AstNode,
-        decl::{Decl, DeclKind},
-        expr::{Expr, ExprKind},
-        operator::{BinaryOp, UnaryOp},
-        stmt::{Stmt, StmtKind},
-    },
+use crate::frontend::syntax::{
+    ast_node::AstNode,
+    decl::{Decl, DeclKind},
+    expr::{Expr, ExprKind},
+    operator::{BinaryOp, UnaryOp},
+    stmt::{Stmt, StmtKind},
 };
 
 use super::{hir_ast_node::HirAstNode, hir_decl::HirDecl, hir_expr::HirExpr, hir_stmt::HirStmt};
 
-struct HirGen {}
+pub struct HirGen {}
 
 impl HirGen {
-    pub fn generate(&mut self, declarations: &mut [Decl]) -> Vec<HirDecl> {
+    pub fn generate(declarations: &[Decl]) -> Vec<HirDecl> {
         declarations
             .iter()
-            .map(|declaration| self.generate_declaration(declaration))
+            .map(|declaration| HirGen::generate_declaration(declaration))
             .collect()
     }
 
-    fn generate_nodes(&mut self, nodes: &[AstNode]) -> Vec<HirAstNode> {
+    fn generate_nodes(nodes: &[AstNode]) -> Vec<HirAstNode> {
         nodes
             .iter()
-            .map(|node| self.generate_ast_node(node))
+            .map(|node| HirGen::generate_ast_node(node))
             .collect()
     }
 
-    fn generate_ast_node(&mut self, node: &AstNode) -> HirAstNode {
+    fn generate_ast_node(node: &AstNode) -> HirAstNode {
         match node {
             AstNode::Declaration(declaration) => {
-                let declaration = self.generate_declaration(declaration);
+                let declaration = HirGen::generate_declaration(declaration);
 
                 HirAstNode::Declaration(declaration)
             }
             AstNode::Statement(statement) => {
-                let statement = self.generate_statement(statement);
+                let statement = HirGen::generate_statement(statement);
 
                 HirAstNode::Statement(statement)
             }
         }
     }
 
-    fn generate_declaration(&mut self, declaration: &Decl) -> HirDecl {
+    fn generate_declaration(declaration: &Decl) -> HirDecl {
         match &declaration.kind {
             DeclKind::Parameter { name, ty } => {
                 HirDecl::parameter(name.to_owned(), ty.to_owned(), declaration.span)
@@ -52,7 +49,7 @@ impl HirGen {
                 HirDecl::field(name.to_owned(), ty.to_owned(), declaration.span)
             }
             DeclKind::Variable { name, right, ty } => {
-                let right = self.generate_expression(right);
+                let right = HirGen::generate_expression(right);
 
                 HirDecl::variable(name.to_owned(), right, ty.to_owned(), declaration.span)
             }
@@ -62,10 +59,10 @@ impl HirGen {
                 name,
                 ty,
             } => {
-                let body = self.generate_nodes(body);
+                let body = HirGen::generate_nodes(body);
                 let parameters = parameters
                     .iter()
-                    .map(|param| self.generate_declaration(param))
+                    .map(|param| HirGen::generate_declaration(param))
                     .collect();
 
                 HirDecl::function(
@@ -79,7 +76,7 @@ impl HirGen {
             DeclKind::Struct { name, fields, ty } => {
                 let fields = fields
                     .iter()
-                    .map(|field| self.generate_declaration(field))
+                    .map(|field| HirGen::generate_declaration(field))
                     .collect();
 
                 HirDecl::struct_(name.to_owned(), fields, ty.to_owned(), declaration.span)
@@ -87,20 +84,20 @@ impl HirGen {
         }
     }
 
-    fn generate_statement(&mut self, statement: &Stmt) -> HirStmt {
+    fn generate_statement(statement: &Stmt) -> HirStmt {
         match &statement.kind {
             StmtKind::Expression(expression) => {
-                let expr = self.generate_expression(expression);
+                let expr = HirGen::generate_expression(expression);
 
                 HirStmt::expression(expr, statement.span)
             }
             StmtKind::Print(expression) => {
-                let expr = self.generate_expression(expression);
+                let expr = HirGen::generate_expression(expression);
 
                 HirStmt::print(expr, statement.span)
             }
             StmtKind::Block(nodes) => {
-                let nodes = self.generate_nodes(nodes);
+                let nodes = HirGen::generate_nodes(nodes);
 
                 HirStmt::block(nodes, statement.span)
             }
@@ -109,10 +106,10 @@ impl HirGen {
                 then_branch,
                 else_branch,
             } => {
-                let condition = self.generate_expression(condition);
-                let then_branch = self.generate_statement(then_branch);
+                let condition = HirGen::generate_expression(condition);
+                let then_branch = HirGen::generate_statement(then_branch);
                 let else_branch = if let Some(branch) = else_branch {
-                    Some(self.generate_statement(branch))
+                    Some(HirGen::generate_statement(branch))
                 } else {
                     None
                 };
@@ -120,8 +117,8 @@ impl HirGen {
                 HirStmt::branch_(condition, then_branch, else_branch, statement.span)
             }
             StmtKind::WhileLoop { condition, block } => {
-                let condition = self.generate_expression(condition);
-                let block = self.generate_statement(block);
+                let condition = HirGen::generate_expression(condition);
+                let block = HirGen::generate_statement(block);
 
                 HirStmt::while_loop(condition, block, statement.span)
             }
@@ -131,7 +128,7 @@ impl HirGen {
 
             StmtKind::Return(expr) => {
                 let expr = match expr {
-                    Some(expr) => Some(self.generate_expression(expr)),
+                    Some(expr) => Some(HirGen::generate_expression(expr)),
                     None => None,
                 };
 
@@ -140,54 +137,58 @@ impl HirGen {
         }
     }
 
-    fn generate_expression(&self, expression: &Expr) -> HirExpr {
+    fn generate_expression(expression: &Expr) -> HirExpr {
         match &expression.kind {
             ExprKind::Assign { left, right } => {
-                let right = self.generate_expression(right);
-                let left = self.generate_expression(left);
+                let right = HirGen::generate_expression(right);
+                let left = HirGen::generate_expression(left);
+                let span = expression.span;
 
-                HirExpr::assign(left, right, expression.span)
+                HirExpr::assign(left, right, span)
             }
             ExprKind::Binary {
                 left,
                 right,
                 operator,
             } => {
-                let left = self.generate_expression(left);
-                let right = self.generate_expression(right);
+                let left = HirGen::generate_expression(left);
+                let right = HirGen::generate_expression(right);
+                let span = expression.span;
 
                 match operator {
-                    BinaryOp::Add => HirExpr::add(left, right, expression.span),
-                    BinaryOp::Subtract => HirExpr::sub(left, right, expression.span),
-                    BinaryOp::Multiply => HirExpr::mul(left, right, expression.span),
-                    BinaryOp::Divide => HirExpr::div(left, right, expression.span),
-                    BinaryOp::Modulo => HirExpr::mod_(left, right, expression.span),
-                    BinaryOp::Equal => HirExpr::equal(left, right, expression.span),
-                    BinaryOp::NotEqual => HirExpr::not_equal(left, right, expression.span),
-                    BinaryOp::Less => HirExpr::less(left, right, expression.span),
-                    BinaryOp::LessEqual => HirExpr::less_equal(left, right, expression.span),
-                    BinaryOp::Greater => HirExpr::greater(left, right, expression.span),
-                    BinaryOp::GreaterEqual => HirExpr::greater_equal(left, right, expression.span),
-                    BinaryOp::And => HirExpr::and(left, right, expression.span),
-                    BinaryOp::Or => HirExpr::or(left, right, expression.span),
+                    BinaryOp::Add => HirExpr::add(left, right, span),
+                    BinaryOp::Subtract => HirExpr::sub(left, right, span),
+                    BinaryOp::Multiply => HirExpr::mul(left, right, span),
+                    BinaryOp::Divide => HirExpr::div(left, right, span),
+                    BinaryOp::Modulo => HirExpr::mod_(left, right, span),
+                    BinaryOp::Equal => HirExpr::equal(left, right, span),
+                    BinaryOp::NotEqual => HirExpr::not_equal(left, right, span),
+                    BinaryOp::Less => HirExpr::less(left, right, span),
+                    BinaryOp::LessEqual => HirExpr::less_equal(left, right, span),
+                    BinaryOp::Greater => HirExpr::greater(left, right, span),
+                    BinaryOp::GreaterEqual => HirExpr::greater_equal(left, right, span),
+                    BinaryOp::And => HirExpr::and(left, right, span),
+                    BinaryOp::Or => HirExpr::or(left, right, span),
                 }
             }
             ExprKind::Unary { right, operator } => {
-                let right = self.generate_expression(right);
+                let right = HirGen::generate_expression(right);
+                let span = expression.span;
 
                 match operator {
-                    UnaryOp::Not => HirExpr::not(right, expression.span),
-                    UnaryOp::Negate => HirExpr::negate(right, expression.span),
+                    UnaryOp::Not => HirExpr::not(right, span),
+                    UnaryOp::Negate => HirExpr::negate(right, span),
                 }
             }
             ExprKind::FunctionCall { callee, arguments } => {
-                let callee = self.generate_expression(callee);
+                let span = expression.span;
+                let callee = HirGen::generate_expression(callee);
                 let arguments = arguments
                     .iter()
-                    .map(|arg| self.generate_expression(arg))
+                    .map(|arg| HirGen::generate_expression(arg))
                     .collect();
 
-                HirExpr::function_call(callee, arguments, expression.span)
+                HirExpr::function_call(callee, arguments, span)
             }
             ExprKind::NumberLiteral(value) => HirExpr::number_literal(*value, expression.span),
             ExprKind::BooleanLiteral(value) => HirExpr::boolean_literal(*value, expression.span),

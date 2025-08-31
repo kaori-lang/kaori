@@ -1,12 +1,13 @@
 use crate::error::kaori_error::KaoriError;
 
 use super::{
+    hir::hir_gen::HirGen,
     scanner::{lexer::Lexer, token_stream::TokenStream},
-    semantic::{resolved_decl::ResolvedDecl, resolver::Resolver, type_checker::TypeChecker},
+    semantic::{resolver::Resolver, type_checker::TypeChecker},
     syntax::parser::Parser,
 };
 
-pub fn parse_and_analyze(source: String) -> Result<Vec<ResolvedDecl>, KaoriError> {
+pub fn parse_and_analyze(source: String) -> Result<(), KaoriError> {
     let mut tokens = Vec::new();
     let mut lexer = Lexer::new(&source, &mut tokens);
 
@@ -16,8 +17,9 @@ pub fn parse_and_analyze(source: String) -> Result<Vec<ResolvedDecl>, KaoriError
 
     let mut parser = Parser::new(token_stream);
 
-    let mut declarations = parser.parse()?;
+    let ast = parser.parse()?;
 
+    let hir = HirGen::generate(&ast);
     let mut resolver = Resolver::new();
 
     let resolved_declarations = resolver.resolve(&mut declarations)?;
@@ -26,5 +28,5 @@ pub fn parse_and_analyze(source: String) -> Result<Vec<ResolvedDecl>, KaoriError
 
     type_checker.check(&resolved_declarations)?;
 
-    Ok(resolved_declarations)
+    Ok(())
 }
