@@ -33,7 +33,7 @@ impl<'a> Resolver<'a> {
     pub fn resolve(&mut self, declarations: &[HirDecl]) -> Result<(), KaoriError> {
         for declaration in declarations.iter() {
             match &declaration.kind {
-                HirDeclKind::Function { name, ty, .. } => {
+                HirDeclKind::Function { name, .. } => {
                     if self.environment.search_current_scope(name).is_some() {
                         return Err(kaori_error!(
                             declaration.span,
@@ -43,9 +43,9 @@ impl<'a> Resolver<'a> {
                     }
 
                     self.environment
-                        .declare_global(declaration.id, name.to_owned(), ty.to_owned());
+                        .declare_global(declaration.id, name.to_owned());
                 }
-                HirDeclKind::Struct { name, ty, .. } => {
+                HirDeclKind::Struct { name, .. } => {
                     if self.environment.search_current_scope(name).is_some() {
                         return Err(kaori_error!(
                             declaration.span,
@@ -111,12 +111,12 @@ impl<'a> Resolver<'a> {
                     ));
                 };
 
-                let offset = self
-                    .environment
-                    .declare_local(name.to_owned(), ty.to_owned());
+                let offset = self.environment.declare_local(name.to_owned());
 
                 self.resolution_table
                     .create_local_resolution(declaration.id, offset);
+
+                self.resolve_type(ty)?;
             }
             HirDeclKind::Parameter { name, ty } => {
                 if self.environment.search_current_scope(name).is_some() {
@@ -127,8 +127,8 @@ impl<'a> Resolver<'a> {
                     ));
                 };
 
-                self.environment
-                    .declare_local(name.to_owned(), ty.to_owned());
+                self.environment.declare_local(name.to_owned());
+                self.resolve_type(ty)?;
             }
             HirDeclKind::Field { name, ty } => {
                 if self.environment.search_current_scope(name).is_some() {
@@ -139,11 +139,14 @@ impl<'a> Resolver<'a> {
                     ));
                 };
 
-                self.environment
-                    .declare_local(name.to_owned(), ty.to_owned());
+                self.environment.declare_local(name.to_owned());
+                self.resolve_type(ty)?;
             }
             HirDeclKind::Function {
-                parameters, body, ..
+                parameters,
+                body,
+                return_ty,
+                ..
             } => {
                 self.environment.enter_scope();
 
@@ -154,8 +157,10 @@ impl<'a> Resolver<'a> {
                 self.resolve_nodes(body)?;
 
                 self.environment.exit_scope();
+
+                self.resolve_type(return_ty)?;
             }
-            HirDeclKind::Struct { name, fields, ty } => todo!(),
+            HirDeclKind::Struct { name, fields } => todo!(),
         };
 
         Ok(())
@@ -250,19 +255,13 @@ impl<'a> Resolver<'a> {
             HirExprKind::Identifier(name) => {
                 if let Some(symbol) = self.environment.search(name) {
                     match symbol {
-                        Symbol::Local { offset, ty, .. } => {
+                        Symbol::Local { offset, .. } => {
                             self.resolution_table
                                 .create_local_resolution(expression.id, *offset);
-
-                            self.resolution_table
-                                .create_type_resolution(expression.id, ty.to_owned());
                         }
-                        Symbol::Global { id, ty, .. } => {
+                        Symbol::Global { id, .. } => {
                             self.resolution_table
                                 .create_global_resolution(expression.id, *id);
-
-                            self.resolution_table
-                                .create_type_resolution(expression.id, ty.to_owned());
                         }
                     }
                 } else {
@@ -277,44 +276,36 @@ impl<'a> Resolver<'a> {
         Ok(())
     }
 
-    pub fn resolve_type(&self, ty: &Ty) -> Result<Ty, KaoriError> {
+    pub fn resolve_type(&mut self, ty: &Ty) -> Result<(), KaoriError> {
         match &ty.kind {
-            TyKind::Boolean => Ty::boolean(ty.span),
-            TyKind::Number => Ty::number(ty.span),
-            TyKind::Void => Ty::void(ty.span),
-            TyKind::String => Ty::string(ty.span),
             TyKind::Function {
                 parameters,
                 return_ty,
             } => {
-                let parameters = parameters
-                    .iter()
-                    .map(|parameter| self.resolve_type(parameter))
-                    .collect::<Result<Vec<Ty>, KaoriError>>()?;
+                for parameter in parameters {
+                    self.resolve_type(parameter)?;
+                }
 
-                let return_ty = self.resolve_type(return_ty)?;
-
-                Ty::function(parameters, return_ty)
+                self.resolve_type(return_ty)?;
             }
             TyKind::Struct { fields } => {
-                let fields = fields
-                    .iter()
-                    .map(|field| self.resolve_type(field))
-                    .collect::<Result<Vec<Ty>, KaoriError>>()?;
-
-                Ty::struct_(fields, ty.span)
+                for field in fields {
+                    self.resolve_type(field)?;
+                }
             }
             TyKind::Custom { name } => {
-                let Some(Symbol::Global { ty, .. }) = self.environment.search(name) else {
-                    return Err(kaori_error!(
-                        ty.span,
-                        "expected a valid type, but found {}",
-                        name
-                    ));
+                let Some(Symbol::Global { id, .. }) = self.environment.search(name) else {
+                    return Err(kaori_error!(ty.span, "{} type is not declared", name));
                 };
 
-                ty.to_owned()
+                self.resolution_table.create_global_resolution(ty.id, *id);
             }
+            TyKind::Boolean => {}
+            TyKind::Number => {}
+            TyKind::String => {}
+            TyKind::Void => {}
         };
+
+        Ok(())
     }
 }

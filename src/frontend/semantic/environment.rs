@@ -1,4 +1,4 @@
-use crate::frontend::{hir::node_id::NodeId, syntax::ty::Ty};
+use crate::frontend::hir::node_id::NodeId;
 
 use super::symbol::Symbol;
 
@@ -37,9 +37,9 @@ impl Environment {
         }
     }
 
-    pub fn declare_local(&mut self, name: String, ty: Ty) -> usize {
+    pub fn declare_local(&mut self, name: String) -> usize {
         let offset = self.local_offset;
-        let declaration = Symbol::local(offset, name, ty);
+        let declaration = Symbol::local(offset, name);
 
         self.local_offset += 1;
 
@@ -48,8 +48,8 @@ impl Environment {
         offset
     }
 
-    pub fn declare_global(&mut self, id: NodeId, name: String, ty: Ty) {
-        let declaration = Symbol::global(id, name, ty);
+    pub fn declare_global(&mut self, id: NodeId, name: String) {
+        let declaration = Symbol::global(id, name);
 
         self.symbols.push(declaration);
     }

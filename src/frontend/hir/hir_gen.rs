@@ -9,14 +9,11 @@ use crate::frontend::syntax::{
 use super::{hir_ast_node::HirAstNode, hir_decl::HirDecl, hir_expr::HirExpr, hir_stmt::HirStmt};
 
 pub fn generate_hir(declarations: &[Decl]) -> Vec<HirDecl> {
-    declarations
-        .iter()
-        .map(|declaration| generate_declaration(declaration))
-        .collect()
+    declarations.iter().map(generate_declaration).collect()
 }
 
 fn generate_nodes(nodes: &[AstNode]) -> Vec<HirAstNode> {
-    nodes.iter().map(|node| generate_ast_node(node)).collect()
+    nodes.iter().map(generate_ast_node).collect()
 }
 
 fn generate_ast_node(node: &AstNode) -> HirAstNode {
@@ -51,29 +48,23 @@ fn generate_declaration(declaration: &Decl) -> HirDecl {
             parameters,
             body,
             name,
-            ty,
+            return_ty,
         } => {
             let body = generate_nodes(body);
-            let parameters = parameters
-                .iter()
-                .map(|param| generate_declaration(param))
-                .collect();
+            let parameters = parameters.iter().map(generate_declaration).collect();
 
             HirDecl::function(
                 name.to_owned(),
                 parameters,
                 body,
-                ty.to_owned(),
+                return_ty.to_owned(),
                 declaration.span,
             )
         }
-        DeclKind::Struct { name, fields, ty } => {
-            let fields = fields
-                .iter()
-                .map(|field| generate_declaration(field))
-                .collect();
+        DeclKind::Struct { name, fields } => {
+            let fields = fields.iter().map(generate_declaration).collect();
 
-            HirDecl::struct_(name.to_owned(), fields, ty.to_owned(), declaration.span)
+            HirDecl::struct_(name.to_owned(), fields, declaration.span)
         }
     }
 }
