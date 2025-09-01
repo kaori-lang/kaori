@@ -248,6 +248,7 @@ impl Interpreter {
     pub unsafe fn op_print(&mut self) {
         unsafe {
             let value = self.values.pop().unwrap_unchecked();
+
             println!("{value:?}");
         }
     }
@@ -255,6 +256,7 @@ impl Interpreter {
     pub unsafe fn op_jump_if_false(&mut self, index: usize) {
         unsafe {
             let value = self.values.pop().unwrap_unchecked();
+
             if !value.as_bool() {
                 self.instruction_ptr = index - 1;
             }

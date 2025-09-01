@@ -4,31 +4,30 @@
 use crate::{
     error::kaori_error::KaoriError,
     frontend::{
-        semantic::{
-            resolved_ast_node::ResolvedAstNode,
-            resolved_decl::{ResolvedDecl, ResolvedDeclKind},
-            resolved_expr::{ResolvedExpr, ResolvedExprKind},
-            resolved_stmt::{ResolvedStmt, ResolvedStmtKind},
+        hir::{hir_decl::HirDecl, hir_expr::HirExprKind},
+        syntax::{
+            operator::{BinaryOp, UnaryOp},
+            ty::Ty,
         },
-        syntax::operator::{BinaryOp, UnaryOp},
     },
     kaori_error,
 };
 
-use super::resolved_ty::{ResolvedTy, ResolvedTyKind};
+use super::resolution_table::ResolutionTable;
 
-pub struct TypeChecker {
-    function_return_ty: Option<ResolvedTy>,
+pub struct TypeChecker<'a> {
+    function_return_ty: Option<Ty>,
+    resolution_table: &'a mut ResolutionTable,
 }
 
-impl TypeChecker {
+impl<'a> TypeChecker<'a> {
     pub fn new() -> Self {
         Self {
             function_return_ty: None,
         }
     }
 
-    pub fn check(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
+    pub fn check(&mut self, declarations: &[HirDecl]) -> Result<(), KaoriError> {
         for declaration in declarations {
             self.check_declaration(declaration)?;
         }
@@ -154,8 +153,8 @@ impl TypeChecker {
 
     fn check_expression(&self, expression: &ResolvedExpr) -> Result<ResolvedTy, KaoriError> {
         let type_ = match &expression.kind {
-            ResolvedExprKind::Assign { left, right } => {
-                let ResolvedExprKind::LocalRef { .. } = left.kind else {
+            HirExprKind::Assign { left, right } => {
+                let HirExprKind::LocalRef { .. } = left.kind else {
                     return Err(kaori_error!(left.span, "expected a variable to assign to",));
                 };
 
@@ -173,7 +172,7 @@ impl TypeChecker {
 
                 right_ty
             }
-            ResolvedExprKind::Binary {
+            HirExprKind::Binary {
                 left,
                 right,
                 operator,
@@ -209,7 +208,7 @@ impl TypeChecker {
                     }
                 }
             }
-            ResolvedExprKind::Unary { right, operator } => {
+            HirExprKind::Unary { right, operator } => {
                 let right_ty = self.check_expression(right)?;
 
                 use ResolvedTyKind::{Boolean as Bool, Number as Num};
@@ -228,7 +227,7 @@ impl TypeChecker {
                     }
                 }
             }
-            ResolvedExprKind::FunctionCall {
+            HirExprKind::FunctionCall {
                 callee, arguments, ..
             } => {
                 let callee_ty = self.check_expression(callee)?;
@@ -268,11 +267,11 @@ impl TypeChecker {
 
                 *return_ty
             }
-            ResolvedExprKind::GlobalRef { ty, .. } => ty.to_owned(),
-            ResolvedExprKind::LocalRef { ty, .. } => ty.to_owned(),
-            ResolvedExprKind::NumberLiteral(..) => ResolvedTy::number(expression.span),
-            ResolvedExprKind::BooleanLiteral(..) => ResolvedTy::boolean(expression.span),
-            ResolvedExprKind::StringLiteral(..) => ResolvedTy::string(expression.span),
+            HirExprKind::GlobalRef { ty, .. } => ty.to_owned(),
+            HirExprKind::LocalRef { ty, .. } => ty.to_owned(),
+            HirExprKind::NumberLiteral(..) => ResolvedTy::number(expression.span),
+            HirExprKind::BooleanLiteral(..) => ResolvedTy::boolean(expression.span),
+            HirExprKind::StringLiteral(..) => ResolvedTy::string(expression.span),
         };
 
         Ok(type_)
