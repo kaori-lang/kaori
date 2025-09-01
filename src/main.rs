@@ -1,13 +1,6 @@
 use std::{fs, time::Instant};
 
-use kaori::{
-    backend::{
-        codegen::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
-        vm::interpreter::Interpreter,
-    },
-    error::kaori_error::KaoriError,
-    frontend::parse_and_analyze::parse_and_analyze,
-};
+use kaori::{ error::kaori_error::KaoriError, frontend::parse_and_analyze::parse_and_analyze};
 
 fn main() {
     if let Ok(source) = fs::read_to_string("src/code/main.kaori") {
@@ -20,7 +13,7 @@ fn main() {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let resolved_declarations = parse_and_analyze(source)?;
 
-    let mut bytecode = Bytecode::default();
+    /*  let mut bytecode = Bytecode::default();
 
     let mut bytecode_generator = BytecodeGenerator::new(&mut bytecode);
 
@@ -35,7 +28,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     interpreter.execute_instructions()?;
 
-    println!("Vm executed in: {:#?}", start.elapsed());
+    println!("Vm executed in: {:#?}", start.elapsed()); */
 
     Ok(())
 }

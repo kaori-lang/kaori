@@ -8,204 +8,224 @@ use crate::frontend::syntax::{
 
 use super::{hir_ast_node::HirAstNode, hir_decl::HirDecl, hir_expr::HirExpr, hir_stmt::HirStmt};
 
-pub struct HirGen {}
+pub fn generate_hir(declarations: &[Decl]) -> Vec<HirDecl> {
+    declarations
+        .iter()
+        .map(|declaration| generate_declaration(declaration))
+        .collect()
+}
 
-impl HirGen {
-    pub fn generate(declarations: &[Decl]) -> Vec<HirDecl> {
-        declarations
-            .iter()
-            .map(|declaration| HirGen::generate_declaration(declaration))
-            .collect()
-    }
+fn generate_nodes(nodes: &[AstNode]) -> Vec<HirAstNode> {
+    nodes.iter().map(|node| generate_ast_node(node)).collect()
+}
 
-    fn generate_nodes(nodes: &[AstNode]) -> Vec<HirAstNode> {
-        nodes
-            .iter()
-            .map(|node| HirGen::generate_ast_node(node))
-            .collect()
-    }
+fn generate_ast_node(node: &AstNode) -> HirAstNode {
+    match node {
+        AstNode::Declaration(declaration) => {
+            let declaration = generate_declaration(declaration);
 
-    fn generate_ast_node(node: &AstNode) -> HirAstNode {
-        match node {
-            AstNode::Declaration(declaration) => {
-                let declaration = HirGen::generate_declaration(declaration);
+            HirAstNode::Declaration(declaration)
+        }
+        AstNode::Statement(statement) => {
+            let statement = generate_statement(statement);
 
-                HirAstNode::Declaration(declaration)
-            }
-            AstNode::Statement(statement) => {
-                let statement = HirGen::generate_statement(statement);
-
-                HirAstNode::Statement(statement)
-            }
+            HirAstNode::Statement(statement)
         }
     }
+}
 
-    fn generate_declaration(declaration: &Decl) -> HirDecl {
-        match &declaration.kind {
-            DeclKind::Parameter { name, ty } => {
-                HirDecl::parameter(name.to_owned(), ty.to_owned(), declaration.span)
-            }
-            DeclKind::Field { name, ty } => {
-                HirDecl::field(name.to_owned(), ty.to_owned(), declaration.span)
-            }
-            DeclKind::Variable { name, right, ty } => {
-                let right = HirGen::generate_expression(right);
+fn generate_declaration(declaration: &Decl) -> HirDecl {
+    match &declaration.kind {
+        DeclKind::Parameter { name, ty } => {
+            HirDecl::parameter(name.to_owned(), ty.to_owned(), declaration.span)
+        }
+        DeclKind::Field { name, ty } => {
+            HirDecl::field(name.to_owned(), ty.to_owned(), declaration.span)
+        }
+        DeclKind::Variable { name, right, ty } => {
+            let right = generate_expression(right);
 
-                HirDecl::variable(name.to_owned(), right, ty.to_owned(), declaration.span)
-            }
-            DeclKind::Function {
+            HirDecl::variable(name.to_owned(), right, ty.to_owned(), declaration.span)
+        }
+        DeclKind::Function {
+            parameters,
+            body,
+            name,
+            ty,
+        } => {
+            let body = generate_nodes(body);
+            let parameters = parameters
+                .iter()
+                .map(|param| generate_declaration(param))
+                .collect();
+
+            HirDecl::function(
+                name.to_owned(),
                 parameters,
                 body,
-                name,
-                ty,
-            } => {
-                let body = HirGen::generate_nodes(body);
-                let parameters = parameters
-                    .iter()
-                    .map(|param| HirGen::generate_declaration(param))
-                    .collect();
+                ty.to_owned(),
+                declaration.span,
+            )
+        }
+        DeclKind::Struct { name, fields, ty } => {
+            let fields = fields
+                .iter()
+                .map(|field| generate_declaration(field))
+                .collect();
 
-                HirDecl::function(
-                    name.to_owned(),
-                    parameters,
-                    body,
-                    ty.to_owned(),
-                    declaration.span,
-                )
-            }
-            DeclKind::Struct { name, fields, ty } => {
-                let fields = fields
-                    .iter()
-                    .map(|field| HirGen::generate_declaration(field))
-                    .collect();
-
-                HirDecl::struct_(name.to_owned(), fields, ty.to_owned(), declaration.span)
-            }
+            HirDecl::struct_(name.to_owned(), fields, ty.to_owned(), declaration.span)
         }
     }
+}
 
-    fn generate_statement(statement: &Stmt) -> HirStmt {
-        match &statement.kind {
-            StmtKind::Expression(expression) => {
-                let expr = HirGen::generate_expression(expression);
+fn generate_statement(statement: &Stmt) -> HirStmt {
+    match &statement.kind {
+        StmtKind::Expression(expression) => {
+            let expr = generate_expression(expression);
 
-                HirStmt::expression(expr, statement.span)
-            }
-            StmtKind::Print(expression) => {
-                let expr = HirGen::generate_expression(expression);
+            HirStmt::expression(expr, statement.span)
+        }
+        StmtKind::Print(expression) => {
+            let expr = generate_expression(expression);
 
-                HirStmt::print(expr, statement.span)
-            }
-            StmtKind::Block(nodes) => {
-                let nodes = HirGen::generate_nodes(nodes);
+            HirStmt::print(expr, statement.span)
+        }
+        StmtKind::Block(nodes) => {
+            let nodes = generate_nodes(nodes);
 
-                HirStmt::block(nodes, statement.span)
-            }
-            StmtKind::If {
-                condition,
-                then_branch,
-                else_branch,
-            } => {
-                let condition = HirGen::generate_expression(condition);
-                let then_branch = HirGen::generate_statement(then_branch);
-                let else_branch = if let Some(branch) = else_branch {
-                    Some(HirGen::generate_statement(branch))
-                } else {
-                    None
-                };
+            HirStmt::block(nodes, statement.span)
+        }
+        StmtKind::If {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            let condition = generate_expression(condition);
+            let then_branch = generate_statement(then_branch);
+            let else_branch = if let Some(branch) = else_branch {
+                Some(generate_statement(branch))
+            } else {
+                None
+            };
 
-                HirStmt::branch_(condition, then_branch, else_branch, statement.span)
-            }
-            StmtKind::WhileLoop { condition, block } => {
-                let condition = HirGen::generate_expression(condition);
-                let block = HirGen::generate_statement(block);
+            HirStmt::branch_(condition, then_branch, else_branch, statement.span)
+        }
+        StmtKind::WhileLoop { condition, block } => {
+            let condition = generate_expression(condition);
+            let block = generate_statement(block);
 
-                HirStmt::while_loop(condition, block, statement.span)
-            }
-            StmtKind::Break => HirStmt::break_(statement.span),
+            HirStmt::while_loop(condition, block, statement.span)
+        }
+        StmtKind::ForLoop {
+            init,
+            condition,
+            increment,
+            block,
+        } => {
+            /*    let mut nodes = Vec::new();
+            let init = HirAstNode::Declaration(generate_declaration(init));
 
-            StmtKind::Continue => HirStmt::continue_(statement.span),
+            nodes.push(init);
 
-            StmtKind::Return(expr) => {
-                let expr = match expr {
-                    Some(expr) => Some(HirGen::generate_expression(expr)),
-                    None => None,
-                };
+            let condition = generate_expression(condition);
+            let while_loop_block = generate_statement(block);
 
-                HirStmt::return_(expr, statement.span)
-            }
+            if let HirStmtKind::Block(mut nodes) = &while_loop_block.kind {
+                let increment = generate_statement(increment);
+
+                nodes.push(HirAstNode::Statement(increment));
+            };
+
+            let while_loop = HirStmt::while_loop(condition, while_loop_block, statement.span);
+
+            nodes.push(HirAstNode::Statement(while_loop));
+
+            HirStmt::block(nodes, statement.span) */
+            todo!()
+        }
+        StmtKind::Break => HirStmt::break_(statement.span),
+
+        StmtKind::Continue => HirStmt::continue_(statement.span),
+
+        StmtKind::Return(expr) => {
+            let expr = match expr {
+                Some(expr) => Some(generate_expression(expr)),
+                None => None,
+            };
+
+            HirStmt::return_(expr, statement.span)
         }
     }
+}
 
-    fn generate_expression(expression: &Expr) -> HirExpr {
-        match &expression.kind {
-            ExprKind::Assign { left, right } => {
-                let right = HirGen::generate_expression(right);
-                let left = HirGen::generate_expression(left);
-                let span = expression.span;
+fn generate_expression(expression: &Expr) -> HirExpr {
+    match &expression.kind {
+        ExprKind::Assign { left, right } => {
+            let right = generate_expression(right);
+            let left = generate_expression(left);
+            let span = expression.span;
 
-                HirExpr::assign(left, right, span)
-            }
-            ExprKind::Binary {
-                left,
-                right,
-                operator,
-            } => {
-                let left = HirGen::generate_expression(left);
-                let right = HirGen::generate_expression(right);
-                let span = expression.span;
-
-                match operator {
-                    BinaryOp::Add => HirExpr::add(left, right, span),
-                    BinaryOp::Subtract => HirExpr::sub(left, right, span),
-                    BinaryOp::Multiply => HirExpr::mul(left, right, span),
-                    BinaryOp::Divide => HirExpr::div(left, right, span),
-                    BinaryOp::Modulo => HirExpr::mod_(left, right, span),
-                    BinaryOp::Equal => HirExpr::equal(left, right, span),
-                    BinaryOp::NotEqual => HirExpr::not_equal(left, right, span),
-                    BinaryOp::Less => HirExpr::less(left, right, span),
-                    BinaryOp::LessEqual => HirExpr::less_equal(left, right, span),
-                    BinaryOp::Greater => HirExpr::greater(left, right, span),
-                    BinaryOp::GreaterEqual => HirExpr::greater_equal(left, right, span),
-                    BinaryOp::And => HirExpr::and(left, right, span),
-                    BinaryOp::Or => HirExpr::or(left, right, span),
-                }
-            }
-            ExprKind::Unary { right, operator } => {
-                let right = HirGen::generate_expression(right);
-                let span = expression.span;
-
-                match operator {
-                    UnaryOp::Not => HirExpr::not(right, span),
-                    UnaryOp::Negate => HirExpr::negate(right, span),
-                    UnaryOp::Increment => {
-                        let left = HirExpr::number_literal(1.0, span);
-
-                        HirExpr::assign(right.to_owned(), HirExpr::add(left, right, span), span)
-                    }
-                    UnaryOp::Decrement => {
-                        let left = HirExpr::number_literal(1.0, span);
-
-                        HirExpr::assign(right.to_owned(), HirExpr::sub(left, right, span), span)
-                    }
-                }
-            }
-            ExprKind::FunctionCall { callee, arguments } => {
-                let span = expression.span;
-                let callee = HirGen::generate_expression(callee);
-                let arguments = arguments
-                    .iter()
-                    .map(|arg| HirGen::generate_expression(arg))
-                    .collect();
-
-                HirExpr::function_call(callee, arguments, span)
-            }
-            ExprKind::NumberLiteral(value) => HirExpr::number_literal(*value, expression.span),
-            ExprKind::BooleanLiteral(value) => HirExpr::boolean_literal(*value, expression.span),
-            ExprKind::StringLiteral(value) => {
-                HirExpr::string_literal(value.to_owned(), expression.span)
-            }
-            ExprKind::Identifier { name } => HirExpr::identifier(name.to_owned(), expression.span),
+            HirExpr::assign(left, right, span)
         }
+        ExprKind::Binary {
+            left,
+            right,
+            operator,
+        } => {
+            let left = generate_expression(left);
+            let right = generate_expression(right);
+            let span = expression.span;
+
+            match operator {
+                BinaryOp::Add => HirExpr::add(left, right, span),
+                BinaryOp::Subtract => HirExpr::sub(left, right, span),
+                BinaryOp::Multiply => HirExpr::mul(left, right, span),
+                BinaryOp::Divide => HirExpr::div(left, right, span),
+                BinaryOp::Modulo => HirExpr::mod_(left, right, span),
+                BinaryOp::Equal => HirExpr::equal(left, right, span),
+                BinaryOp::NotEqual => HirExpr::not_equal(left, right, span),
+                BinaryOp::Less => HirExpr::less(left, right, span),
+                BinaryOp::LessEqual => HirExpr::less_equal(left, right, span),
+                BinaryOp::Greater => HirExpr::greater(left, right, span),
+                BinaryOp::GreaterEqual => HirExpr::greater_equal(left, right, span),
+                BinaryOp::And => HirExpr::and(left, right, span),
+                BinaryOp::Or => HirExpr::or(left, right, span),
+            }
+        }
+        ExprKind::Unary { right, operator } => {
+            let right = generate_expression(right);
+            let span = expression.span;
+
+            match operator {
+                UnaryOp::Not => HirExpr::not(right, span),
+                UnaryOp::Negate => HirExpr::negate(right, span),
+                UnaryOp::Increment => {
+                    let left = HirExpr::number_literal(1.0, span);
+
+                    HirExpr::assign(right.to_owned(), HirExpr::add(left, right, span), span)
+                }
+                UnaryOp::Decrement => {
+                    let left = HirExpr::number_literal(1.0, span);
+
+                    HirExpr::assign(right.to_owned(), HirExpr::sub(left, right, span), span)
+                }
+            }
+        }
+        ExprKind::FunctionCall { callee, arguments } => {
+            let span = expression.span;
+            let callee = generate_expression(callee);
+            let arguments = arguments
+                .iter()
+                .map(|arg| generate_expression(arg))
+                .collect();
+
+            HirExpr::function_call(callee, arguments, span)
+        }
+        ExprKind::NumberLiteral(value) => HirExpr::number_literal(*value, expression.span),
+        ExprKind::BooleanLiteral(value) => HirExpr::boolean_literal(*value, expression.span),
+        ExprKind::StringLiteral(value) => {
+            HirExpr::string_literal(value.to_owned(), expression.span)
+        }
+        ExprKind::Identifier { name } => HirExpr::identifier(name.to_owned(), expression.span),
     }
 }

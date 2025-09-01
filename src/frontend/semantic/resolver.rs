@@ -13,7 +13,7 @@ use crate::{
     kaori_error,
 };
 
-use super::{environment::Environment, symbol::Symbol, table::ResolutionTable};
+use super::{environment::Environment, resolution_table::ResolutionTable, symbol::Symbol};
 
 pub struct Resolver<'a> {
     environment: Environment,
@@ -167,7 +167,7 @@ impl<'a> Resolver<'a> {
             HirStmtKind::Print(expression) => self.resolve_expression(expression)?,
             HirStmtKind::Block(nodes) => {
                 self.environment.enter_scope();
-                self.resolve_nodes(nodes);
+                self.resolve_nodes(nodes)?;
                 self.environment.exit_scope();
             }
             HirStmtKind::Branch {
@@ -238,7 +238,7 @@ impl<'a> Resolver<'a> {
                 self.resolve_expression(right)?;
             }
             HirExprKind::Negate(right) | HirExprKind::Not(right) => {
-                self.resolve_expression(right);
+                self.resolve_expression(right)?;
             }
             HirExprKind::FunctionCall { callee, arguments } => {
                 self.resolve_expression(callee)?;
@@ -253,28 +253,36 @@ impl<'a> Resolver<'a> {
                         Symbol::Local { offset, ty, .. } => {
                             self.resolution_table
                                 .create_local_resolution(expression.id, *offset);
+
+                            self.resolution_table
+                                .create_type_resolution(expression.id, ty.to_owned());
                         }
                         Symbol::Global { id, ty, .. } => {
                             self.resolution_table
                                 .create_global_resolution(expression.id, *id);
+
+                            self.resolution_table
+                                .create_type_resolution(expression.id, ty.to_owned());
                         }
                     }
                 } else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));
                 }
             }
-            _ => (),
+            HirExprKind::StringLiteral(..) => {}
+            HirExprKind::BooleanLiteral(..) => {}
+            HirExprKind::NumberLiteral(..) => {}
         };
 
         Ok(())
     }
 
-    /*     pub fn resolve_type(&self, ty: &Ty) -> Result<(), KaoriError> {
+    pub fn resolve_type(&self, ty: &Ty) -> Result<Ty, KaoriError> {
         match &ty.kind {
-            TyKind::Boolean => ResolvedTy::boolean(ty.span),
-            TyKind::Number => ResolvedTy::number(ty.span),
-            TyKind::Void => ResolvedTy::void(ty.span),
-            TyKind::String => ResolvedTy::string(ty.span),
+            TyKind::Boolean => Ty::boolean(ty.span),
+            TyKind::Number => Ty::number(ty.span),
+            TyKind::Void => Ty::void(ty.span),
+            TyKind::String => Ty::string(ty.span),
             TyKind::Function {
                 parameters,
                 return_ty,
@@ -282,19 +290,19 @@ impl<'a> Resolver<'a> {
                 let parameters = parameters
                     .iter()
                     .map(|parameter| self.resolve_type(parameter))
-                    .collect::<Result<Vec<ResolvedTy>, KaoriError>>()?;
+                    .collect::<Result<Vec<Ty>, KaoriError>>()?;
 
                 let return_ty = self.resolve_type(return_ty)?;
 
-                ResolvedTy::function(parameters, return_ty, ty.span)
+                Ty::function(parameters, return_ty)
             }
             TyKind::Struct { fields } => {
                 let fields = fields
                     .iter()
                     .map(|field| self.resolve_type(field))
-                    .collect::<Result<Vec<ResolvedTy>, KaoriError>>()?;
+                    .collect::<Result<Vec<Ty>, KaoriError>>()?;
 
-                ResolvedTy::struct_(fields, ty.span)
+                Ty::struct_(fields, ty.span)
             }
             TyKind::Custom { name } => {
                 let Some(Symbol::Global { ty, .. }) = self.environment.search(name) else {
@@ -308,5 +316,5 @@ impl<'a> Resolver<'a> {
                 ty.to_owned()
             }
         };
-    } */
+    }
 }

@@ -3,7 +3,9 @@ def main() {
     
     print(fib(40));
 
+
 } 
+
 
 def fib(n: number) -> number {
     if n == 0 {
@@ -25,7 +27,7 @@ def fib_iterative() {
     max_fib: number = 30;
     max_fib = 5;
 
-    for i: number = 0; i < iterations; i++ {
+    /* for i: number = 0; i < iterations; i++ {
         a: number = 0;
         b: number = 1;
 
@@ -34,5 +36,5 @@ def fib_iterative() {
             a = b;
             b = temp;
         }
-    }
+    } */
 }

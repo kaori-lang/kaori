@@ -244,13 +244,7 @@ impl Parser {
             TokenKind::Increment => UnaryOp::Increment,
             TokenKind::Decrement => UnaryOp::Decrement,
             TokenKind::LeftParen => return self.parse_function_call(identifier),
-            _ => {
-                return Err(kaori_error!(
-                    span,
-                    "expected a valid postfix operator, but found: {}",
-                    kind
-                ));
-            }
+            _ => return Ok(identifier),
         };
 
         self.token_stream.advance();

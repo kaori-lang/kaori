@@ -1,9 +1,8 @@
-use crate::error::kaori_error::KaoriError;
+use crate::{error::kaori_error::KaoriError, frontend::hir::hir_gen::generate_hir};
 
 use super::{
-    hir::hir_gen::HirGen,
     scanner::{lexer::Lexer, token_stream::TokenStream},
-    semantic::{resolver::Resolver, type_checker::TypeChecker},
+    semantic::{resolution_table::ResolutionTable, resolver::Resolver},
     syntax::parser::Parser,
 };
 
@@ -19,15 +18,17 @@ pub fn parse_and_analyze(source: String) -> Result<(), KaoriError> {
 
     let ast = parser.parse()?;
 
-    let hir = HirGen::generate(&ast);
+    let hir = generate_hir(&ast);
 
-    let mut resolver = Resolver::new();
+    let mut resolution_table = ResolutionTable::default();
+    let mut resolver = Resolver::new(&mut resolution_table);
 
-    let resolved_declarations = resolver.resolve(&hir)?;
+    resolver.resolve(&hir)?;
 
-    let mut type_checker = TypeChecker::new();
+    println!("{resolution_table:#?}");
+    //let type_checker = TypeChecker::new();
 
-    type_checker.check(&hir)?;
+    //type_checker.check(&hir)?;
 
     Ok(())
 }
