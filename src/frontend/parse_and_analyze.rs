@@ -25,7 +25,6 @@ pub fn parse_and_analyze(source: String) -> Result<(), KaoriError> {
 
     resolver.resolve(&hir)?;
 
-    println!("{resolution_table:#?}");
     //let type_checker = TypeChecker::new();
 
     //type_checker.check(&hir)?;
