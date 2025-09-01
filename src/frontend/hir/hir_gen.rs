@@ -93,11 +93,9 @@ fn generate_statement(statement: &Stmt) -> HirStmt {
         } => {
             let condition = generate_expression(condition);
             let then_branch = generate_statement(then_branch);
-            let else_branch = if let Some(branch) = else_branch {
-                Some(generate_statement(branch))
-            } else {
-                None
-            };
+            let else_branch = else_branch
+                .as_ref()
+                .map(|branch| generate_statement(branch));
 
             HirStmt::branch_(condition, then_branch, else_branch, statement.span)
         }
@@ -139,10 +137,7 @@ fn generate_statement(statement: &Stmt) -> HirStmt {
         StmtKind::Continue => HirStmt::continue_(statement.span),
 
         StmtKind::Return(expr) => {
-            let expr = match expr {
-                Some(expr) => Some(generate_expression(expr)),
-                None => None,
-            };
+            let expr = expr.as_ref().map(|e| generate_expression(e));
 
             HirStmt::return_(expr, statement.span)
         }
@@ -205,10 +200,7 @@ fn generate_expression(expression: &Expr) -> HirExpr {
         ExprKind::FunctionCall { callee, arguments } => {
             let span = expression.span;
             let callee = generate_expression(callee);
-            let arguments = arguments
-                .iter()
-                .map(|arg| generate_expression(arg))
-                .collect();
+            let arguments = arguments.iter().map(generate_expression).collect();
 
             HirExpr::function_call(callee, arguments, span)
         }
