@@ -5,7 +5,7 @@ use super::symbol::Symbol;
 pub struct Environment {
     pub symbols: Vec<Symbol>,
     pub scopes_ptr: Vec<usize>,
-    pub local_offset: usize,
+    pub variable_offset: usize,
 }
 
 impl Default for Environment {
@@ -13,7 +13,7 @@ impl Default for Environment {
         Self {
             symbols: Vec::new(),
             scopes_ptr: vec![0],
-            local_offset: 0,
+            variable_offset: 0,
         }
     }
 }
@@ -29,49 +29,52 @@ impl Environment {
         let ptr = self.scopes_ptr.pop().unwrap();
 
         while self.symbols.len() > ptr {
-            if let Some(Symbol::Local { .. }) = self.symbols.last() {
-                self.local_offset -= 1;
+            if let Some(Symbol::Variable { .. }) = self.symbols.last() {
+                self.variable_offset -= 1;
             }
 
             self.symbols.pop();
         }
     }
 
-    pub fn declare_local(&mut self, name: String) -> usize {
-        let offset = self.local_offset;
-        let declaration = Symbol::local(offset, name);
+    pub fn declare_variable(&mut self, id: NodeId, name: String) -> usize {
+        let offset = self.variable_offset;
+        let symbol = Symbol::variable(id, name, offset);
 
-        self.local_offset += 1;
+        self.variable_offset += 1;
 
-        self.symbols.push(declaration);
+        self.symbols.push(symbol);
 
         offset
     }
 
-    pub fn declare_global(&mut self, id: NodeId, name: String) {
-        let declaration = Symbol::global(id, name);
+    pub fn declare_function(&mut self, id: NodeId, name: String) {
+        let symbol = Symbol::function(id, name);
 
-        self.symbols.push(declaration);
+        self.symbols.push(symbol);
+    }
+
+    pub fn declare_struct(&mut self, id: NodeId, name: String) {
+        let symbol = Symbol::struct_(id, name);
+
+        self.symbols.push(symbol);
     }
 
     pub fn search_current_scope(&self, name_: &str) -> Option<&Symbol> {
         let ptr = *self.scopes_ptr.last().unwrap();
 
-        self.symbols[ptr..]
-            .iter()
-            .find(|declaration| match declaration {
-                Symbol::Global { name, .. } => name == name_,
-                Symbol::Local { name, .. } => name == name_,
-            })
+        self.symbols[ptr..].iter().find(|symbol| match symbol {
+            Symbol::Variable { name, .. } => name == name_,
+            Symbol::Struct { name, .. } => name == name_,
+            Symbol::Function { name, .. } => name == name_,
+        })
     }
 
     pub fn search(&self, name_: &str) -> Option<&Symbol> {
-        self.symbols
-            .iter()
-            .rev()
-            .find(|declaration| match declaration {
-                Symbol::Global { name, .. } => name == name_,
-                Symbol::Local { name, .. } => name == name_,
-            })
+        self.symbols.iter().rev().find(|symbol| match symbol {
+            Symbol::Variable { name, .. } => name == name_,
+            Symbol::Struct { name, .. } => name == name_,
+            Symbol::Function { name, .. } => name == name_,
+        })
     }
 }

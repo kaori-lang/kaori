@@ -2,26 +2,19 @@ use std::collections::HashMap;
 
 use crate::frontend::{hir::node_id::NodeId, syntax::ty::Ty};
 
-#[derive(Clone, Debug)]
-pub enum Resolution {
-    Offset(usize),
-    Node(NodeId),
-}
-
 #[derive(Default, Debug)]
 pub struct ResolutionTable {
-    name_resolutions: HashMap<NodeId, Resolution>,
+    variable_offsets: HashMap<NodeId, usize>,
+    resolutions: HashMap<NodeId, Resolution>,
     type_resolutions: HashMap<NodeId, Ty>,
 }
 
 impl ResolutionTable {
-    pub fn create_local_resolution(&mut self, id: NodeId, offset: usize) {
-        let resolution = Resolution::Offset(offset);
-
-        self.name_resolutions.insert(id, resolution);
+    pub fn insert_variable_offset(&mut self, id: NodeId, offset: usize) {
+        self.variable_offsets.insert(id, offset);
     }
 
-    pub fn create_global_resolution(&mut self, id: NodeId, target: NodeId) {
+    pub fn create_resolution(&mut self, id: NodeId, target: NodeId) {
         let resolution = Resolution::Node(target);
 
         self.name_resolutions.insert(id, resolution);

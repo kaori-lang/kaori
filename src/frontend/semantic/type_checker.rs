@@ -4,10 +4,15 @@
 use crate::{
     error::kaori_error::KaoriError,
     frontend::{
-        hir::{hir_decl::HirDecl, hir_expr::HirExprKind},
+        hir::{
+            hir_ast_node::HirAstNode,
+            hir_decl::{HirDecl, HirDeclKind},
+            hir_expr::{HirExpr, HirExprKind},
+            hir_stmt::{HirStmt, HirStmtKind},
+        },
         syntax::{
             operator::{BinaryOp, UnaryOp},
-            ty::Ty,
+            ty::{Ty, TyKind},
         },
     },
     kaori_error,
@@ -21,13 +26,22 @@ pub struct TypeChecker<'a> {
 }
 
 impl<'a> TypeChecker<'a> {
-    pub fn new() -> Self {
+    pub fn new(resolution_table: &'a mut ResolutionTable) -> Self {
         Self {
             function_return_ty: None,
+            resolution_table,
         }
     }
 
     pub fn check(&mut self, declarations: &[HirDecl]) -> Result<(), KaoriError> {
+        for declaration in declarations.iter() {
+            match &declaration.kind {
+                HirDeclKind::Function { name, .. } => {}
+                HirDeclKind::Struct { name, .. } => {}
+                _ => (),
+            }
+        }
+
         for declaration in declarations {
             self.check_declaration(declaration)?;
         }
@@ -35,7 +49,23 @@ impl<'a> TypeChecker<'a> {
         Ok(())
     }
 
-    fn check_nodes(&mut self, nodes: &[ResolvedAstNode]) -> Result<(), KaoriError> {
+    /*  fn check_main_function(&mut self, declarations: &[Decl]) -> Result<(), KaoriError> {
+           for (index, declaration) in declarations.iter().enumerate() {
+               if let HirDeclKind::Function { name, .. } = &declaration.kind
+                   && name == "main"
+               {
+                   declarations.swap(0, index);
+                   return Ok(());
+               }
+           }
+
+           Err(kaori_error!(
+               Span::default(),
+               "main function is not declared"
+           ))
+       }
+    */
+    fn check_nodes(&mut self, nodes: &[HirAstNode]) -> Result<(), KaoriError> {
         for node in nodes {
             self.check_ast_node(node)?;
         }
@@ -43,237 +73,135 @@ impl<'a> TypeChecker<'a> {
         Ok(())
     }
 
-    fn check_ast_node(&mut self, node: &ResolvedAstNode) -> Result<(), KaoriError> {
+    fn check_ast_node(&mut self, node: &HirAstNode) -> Result<(), KaoriError> {
         match node {
-            ResolvedAstNode::Declaration(declaration) => self.check_declaration(declaration),
-            ResolvedAstNode::Statement(statement) => self.check_statement(statement),
-        }
-    }
-
-    fn check_declaration(&mut self, declaration: &ResolvedDecl) -> Result<(), KaoriError> {
-        match &declaration.kind {
-            ResolvedDeclKind::Variable { right, ty, .. } => {
-                let right_ty = self.check_expression(right)?;
-
-                if !right_ty.eq(ty) {
-                    return Err(kaori_error!(
-                        right.span,
-                        "expected {} for the right hand side, but found {}",
-                        ty,
-                        right_ty
-                    ));
-                }
-            }
-            ResolvedDeclKind::Function { body, ty, .. } => {
-                if let ResolvedTyKind::Function { return_ty, .. } = &ty.kind {
-                    self.function_return_ty = Some(*return_ty.to_owned());
-                }
-
-                self.check_nodes(body)?;
-
-                self.function_return_ty = None;
-            }
-        }
+            HirAstNode::Declaration(declaration) => self.check_declaration(declaration),
+            HirAstNode::Statement(statement) => self.check_statement(statement),
+        }?;
 
         Ok(())
     }
 
-    fn check_statement(&mut self, statement: &ResolvedStmt) -> Result<(), KaoriError> {
+    fn check_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
+        match &declaration.kind {
+            HirDeclKind::Variable { name, right, ty } => {}
+            HirDeclKind::Parameter { name, ty } => {}
+            HirDeclKind::Field { name, ty } => {}
+            HirDeclKind::Function {
+                parameters,
+                body,
+                return_ty,
+                ..
+            } => {}
+            HirDeclKind::Struct { name, fields } => todo!(),
+        };
+
+        Ok(())
+    }
+
+    fn check_statement(&mut self, statement: &HirStmt) -> Result<(), KaoriError> {
         match &statement.kind {
-            ResolvedStmtKind::Expression(expression) => {
-                self.check_expression(expression)?;
+            HirStmtKind::Expression(expression) => self.check_expression(expression)?,
+            HirStmtKind::Print(expression) => self.check_expression(expression)?,
+            HirStmtKind::Block(nodes) => {
+                self.check_nodes(nodes)?;
             }
-            ResolvedStmtKind::Print(expression) => {
-                self.check_expression(expression)?;
-            }
-            ResolvedStmtKind::Block(nodes) => {
-                for node in nodes {
-                    self.check_ast_node(node)?;
-                }
-            }
-            ResolvedStmtKind::If {
+            HirStmtKind::Branch {
                 condition,
                 then_branch,
                 else_branch,
             } => {
-                let condition_ty = self.check_expression(condition)?;
-
-                let ResolvedTyKind::Boolean = condition_ty.kind else {
-                    return Err(kaori_error!(
-                        condition.span,
-                        "expected boolean for condition, but found {}",
-                        condition_ty
-                    ));
-                };
-
+                self.check_expression(condition)?;
                 self.check_statement(then_branch)?;
 
                 if let Some(branch) = else_branch {
                     self.check_statement(branch)?;
                 }
             }
-            ResolvedStmtKind::WhileLoop {
-                condition, block, ..
-            } => {
-                let condition_ty = self.check_expression(condition)?;
-
-                let ResolvedTyKind::Boolean = condition_ty.kind else {
-                    return Err(kaori_error!(
-                        condition.span,
-                        "expected boolean for condition, but found {}",
-                        condition_ty
-                    ));
-                };
+            HirStmtKind::WhileLoop { condition, block } => {
+                self.check_expression(condition)?;
 
                 self.check_statement(block)?;
             }
-            ResolvedStmtKind::Return(expr) => {
-                let return_ty = match expr {
-                    Some(expr) => self.check_expression(expr)?,
-                    None => ResolvedTy::void(statement.span),
-                };
-
-                if let Some(function_return_ty) = &self.function_return_ty
-                    && !return_ty.eq(function_return_ty)
-                {
-                    return Err(kaori_error!(
-                        statement.span,
-                        "expected {} for function return type, but found {}",
-                        function_return_ty,
-                        return_ty
-                    ));
+            HirStmtKind::Break => {}
+            HirStmtKind::Continue => {}
+            HirStmtKind::Return(expr) => {
+                if let Some(expr) = expr {
+                    self.check_expression(expr)?;
                 }
             }
-            ResolvedStmtKind::Break => {}
-            ResolvedStmtKind::Continue => {}
         };
 
         Ok(())
     }
 
-    fn check_expression(&self, expression: &ResolvedExpr) -> Result<ResolvedTy, KaoriError> {
-        let type_ = match &expression.kind {
-            HirExprKind::Assign { left, right } => {
-                let HirExprKind::LocalRef { .. } = left.kind else {
-                    return Err(kaori_error!(left.span, "expected a variable to assign to",));
-                };
-
-                let right_ty = self.check_expression(right)?;
-                let left_ty = self.check_expression(left)?;
-
-                if !right_ty.eq(&left_ty) {
-                    return Err(kaori_error!(
-                        right.span,
-                        "expected {} for assign, but found {}",
-                        left_ty,
-                        right_ty
-                    ));
-                }
-
-                right_ty
+    fn check_expression(&mut self, expression: &HirExpr) -> Result<(), KaoriError> {
+        match &expression.kind {
+            HirExprKind::Assign(left, right) => {
+                self.check_expression(right)?;
+                self.check_expression(left)?;
             }
-            HirExprKind::Binary {
-                left,
-                right,
-                operator,
-            } => {
-                let left_ty = self.check_expression(left)?;
-                let right_ty = self.check_expression(right)?;
+            HirExprKind::Add(left, right)
+            | HirExprKind::Sub(left, right)
+            | HirExprKind::Mul(left, right)
+            | HirExprKind::Div(left, right)
+            | HirExprKind::Mod(left, right)
+            | HirExprKind::Equal(left, right)
+            | HirExprKind::NotEqual(left, right)
+            | HirExprKind::Less(left, right)
+            | HirExprKind::LessEqual(left, right)
+            | HirExprKind::Greater(left, right)
+            | HirExprKind::GreaterEqual(left, right)
+            | HirExprKind::And(left, right)
+            | HirExprKind::Or(left, right) => {
+                self.check_expression(left)?;
+                self.check_expression(right)?;
+            }
+            HirExprKind::Negate(right) | HirExprKind::Not(right) => {
+                self.check_expression(right)?;
+            }
+            HirExprKind::FunctionCall { callee, arguments } => {
+                self.check_expression(callee)?;
 
-                use BinaryOp::*;
-                use ResolvedTyKind::{Boolean as Bool, Number as Num};
-
-                match (&left_ty.kind, operator, &right_ty.kind) {
-                    (Num, Add | Subtract | Multiply | Divide | Modulo, Num) => {
-                        ResolvedTy::number(expression.span)
-                    }
-
-                    (Bool, And | Or, Bool) => ResolvedTy::boolean(expression.span),
-
-                    (Num, Equal | NotEqual, Num) => ResolvedTy::boolean(expression.span),
-
-                    (Bool, Equal | NotEqual, Bool) => ResolvedTy::boolean(expression.span),
-
-                    (Num, Greater | GreaterEqual | Less | LessEqual, Num) => {
-                        ResolvedTy::boolean(expression.span)
-                    }
-                    _ => {
-                        return Err(kaori_error!(
-                            expression.span,
-                            "expected valid types for {:?} operation, but found: {} and {}",
-                            operator,
-                            left_ty,
-                            right_ty
-                        ));
-                    }
+                for argument in arguments {
+                    self.check_expression(argument)?;
                 }
             }
-            HirExprKind::Unary { right, operator } => {
-                let right_ty = self.check_expression(right)?;
-
-                use ResolvedTyKind::{Boolean as Bool, Number as Num};
-                use UnaryOp::*;
-
-                match (operator, &right_ty.kind) {
-                    (Negate, Num) => ResolvedTy::number(expression.span),
-                    (Not, Bool) => ResolvedTy::boolean(expression.span),
-                    _ => {
-                        return Err(kaori_error!(
-                            expression.span,
-                            "expected valid type for {:?} operation, but found {}",
-                            operator,
-                            right_ty
-                        ));
-                    }
-                }
+            HirExprKind::Identifier(..) => {
+                let id = match self.resolution_table.get_name_resolution(id)
             }
-            HirExprKind::FunctionCall {
-                callee, arguments, ..
-            } => {
-                let callee_ty = self.check_expression(callee)?;
-
-                let ResolvedTyKind::Function {
-                    parameters,
-                    return_ty,
-                } = callee_ty.kind
-                else {
-                    return Err(kaori_error!(
-                        callee.span,
-                        "expected a callable function, but found"
-                    ));
-                };
-
-                if parameters.len() != arguments.len() {
-                    return Err(kaori_error!(
-                        callee.span,
-                        "expected {} arguments, but found {}",
-                        parameters.len(),
-                        arguments.len()
-                    ));
-                }
-
-                for (argument, parameter_ty) in arguments.iter().zip(parameters) {
-                    let argument_ty = self.check_expression(argument)?;
-
-                    if !argument_ty.eq(&parameter_ty) {
-                        return Err(kaori_error!(
-                            argument.span,
-                            "expected {}, but found argument of type {}",
-                            parameter_ty,
-                            argument_ty
-                        ));
-                    }
-                }
-
-                *return_ty
-            }
-            HirExprKind::GlobalRef { ty, .. } => ty.to_owned(),
-            HirExprKind::LocalRef { ty, .. } => ty.to_owned(),
-            HirExprKind::NumberLiteral(..) => ResolvedTy::number(expression.span),
-            HirExprKind::BooleanLiteral(..) => ResolvedTy::boolean(expression.span),
-            HirExprKind::StringLiteral(..) => ResolvedTy::string(expression.span),
+            HirExprKind::StringLiteral(..) => {}
+            HirExprKind::BooleanLiteral(..) => {}
+            HirExprKind::NumberLiteral(..) => {}
         };
 
-        Ok(type_)
+        Ok(())
+    }
+
+    pub fn check_type(&mut self, ty: &Ty) -> Result<(), KaoriError> {
+        match &ty.kind {
+            TyKind::Function {
+                parameters,
+                return_ty,
+            } => {
+                for parameter in parameters {
+                    self.check_type(parameter)?;
+                }
+
+                self.check_type(return_ty)?;
+            }
+            TyKind::Struct { fields } => {
+                for field in fields {
+                    self.check_type(field)?;
+                }
+            }
+            TyKind::Custom { name } => {}
+            TyKind::Boolean => {}
+            TyKind::Number => {}
+            TyKind::String => {}
+            TyKind::Void => {}
+        };
+
+        Ok(())
     }
 }

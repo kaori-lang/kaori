@@ -111,7 +111,9 @@ impl<'a> Resolver<'a> {
                     ));
                 };
 
-                let offset = self.environment.declare_local(name.to_owned());
+                let offset = self
+                    .environment
+                    .declare_variable(declaration.id, name.to_owned());
 
                 self.resolution_table
                     .create_local_resolution(declaration.id, offset);
