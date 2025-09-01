@@ -13,7 +13,11 @@ use crate::{
     kaori_error,
 };
 
-use super::{environment::Environment, resolution_table::ResolutionTable, symbol::Symbol};
+use super::{
+    environment::Environment,
+    resolution_table::{Resolution, ResolutionTable},
+    symbol::Symbol,
+};
 
 pub struct Resolver<'a> {
     environment: Environment,
@@ -43,7 +47,7 @@ impl<'a> Resolver<'a> {
                     }
 
                     self.environment
-                        .declare_global(declaration.id, name.to_owned());
+                        .declare_function(declaration.id, name.to_owned());
                 }
                 HirDeclKind::Struct { name, .. } => {
                     if self.environment.search_current_scope(name).is_some() {
@@ -53,6 +57,9 @@ impl<'a> Resolver<'a> {
                             name
                         ));
                     }
+
+                    self.environment
+                        .declare_struct(declaration.id, name.to_owned());
                 }
                 _ => (),
             }
@@ -116,7 +123,7 @@ impl<'a> Resolver<'a> {
                     .declare_variable(declaration.id, name.to_owned());
 
                 self.resolution_table
-                    .create_local_resolution(declaration.id, offset);
+                    .insert_variable_offset(declaration.id, offset);
 
                 self.resolve_type(ty)?;
             }
@@ -129,7 +136,13 @@ impl<'a> Resolver<'a> {
                     ));
                 };
 
-                self.environment.declare_local(name.to_owned());
+                let offset = self
+                    .environment
+                    .declare_variable(declaration.id, name.to_owned());
+
+                self.resolution_table
+                    .insert_variable_offset(declaration.id, offset);
+
                 self.resolve_type(ty)?;
             }
             HirDeclKind::Field { name, ty } => {
@@ -141,7 +154,13 @@ impl<'a> Resolver<'a> {
                     ));
                 };
 
-                self.environment.declare_local(name.to_owned());
+                let offset = self
+                    .environment
+                    .declare_variable(declaration.id, name.to_owned());
+
+                self.resolution_table
+                    .insert_variable_offset(declaration.id, offset);
+
                 self.resolve_type(ty)?;
             }
             HirDeclKind::Function {
@@ -256,16 +275,8 @@ impl<'a> Resolver<'a> {
             }
             HirExprKind::Identifier(name) => {
                 if let Some(symbol) = self.environment.search(name) {
-                    match symbol {
-                        Symbol::Local { offset, .. } => {
-                            self.resolution_table
-                                .create_local_resolution(expression.id, *offset);
-                        }
-                        Symbol::Global { id, .. } => {
-                            self.resolution_table
-                                .create_global_resolution(expression.id, *id);
-                        }
-                    }
+                    self.resolution_table
+                        .insert_name_resolution(expression.id, symbol.as_resolution());
                 } else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));
                 }
@@ -296,11 +307,12 @@ impl<'a> Resolver<'a> {
                 }
             }
             TyKind::Custom { name } => {
-                let Some(Symbol::Global { id, .. }) = self.environment.search(name) else {
+                let Some(symbol) = self.environment.search(name) else {
                     return Err(kaori_error!(ty.span, "{} type is not declared", name));
                 };
 
-                self.resolution_table.create_global_resolution(ty.id, *id);
+                self.resolution_table
+                    .insert_name_resolution(ty.id, symbol.as_resolution());
             }
             TyKind::Boolean => {}
             TyKind::Number => {}

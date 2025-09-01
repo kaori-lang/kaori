@@ -1,5 +1,7 @@
 use crate::frontend::hir::node_id::NodeId;
 
+use super::resolution_table::Resolution;
+
 #[derive(Clone)]
 pub enum Symbol {
     Variable {
@@ -28,5 +30,13 @@ impl Symbol {
 
     pub fn struct_(id: NodeId, name: String) -> Symbol {
         Symbol::Struct { id, name }
+    }
+
+    pub fn as_resolution(&self) -> Resolution {
+        match &self {
+            Symbol::Struct { id, .. } => Resolution::struct_(*id),
+            Symbol::Function { id, .. } => Resolution::function(*id),
+            Symbol::Variable { id, .. } => Resolution::variable(*id),
+        }
     }
 }
