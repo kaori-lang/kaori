@@ -1,9 +1,10 @@
-use crate::frontend::scanner::span::Span;
+use crate::frontend::{hir::node_id::NodeId, scanner::span::Span};
 
 use super::decl::{Decl, DeclKind};
 
 #[derive(Debug, Clone)]
 pub struct Ty {
+    pub id: NodeId,
     pub span: Span,
     pub kind: TyKind,
 }
@@ -29,6 +30,7 @@ pub enum TyKind {
 impl Ty {
     pub fn boolean(span: Span) -> Ty {
         Ty {
+            id: NodeId::default(),
             span,
             kind: TyKind::Boolean,
         }
@@ -36,6 +38,7 @@ impl Ty {
 
     pub fn string(span: Span) -> Ty {
         Ty {
+            id: NodeId::default(),
             span,
             kind: TyKind::String,
         }
@@ -43,6 +46,7 @@ impl Ty {
 
     pub fn number(span: Span) -> Ty {
         Ty {
+            id: NodeId::default(),
             span,
             kind: TyKind::Number,
         }
@@ -50,6 +54,7 @@ impl Ty {
 
     pub fn void(span: Span) -> Ty {
         Ty {
+            id: NodeId::default(),
             span,
             kind: TyKind::Void,
         }
@@ -65,6 +70,7 @@ impl Ty {
             .collect();
 
         Ty {
+            id: NodeId::default(),
             span: return_ty.span,
             kind: TyKind::Function {
                 parameters,
@@ -83,6 +89,7 @@ impl Ty {
             .collect();
 
         Ty {
+            id: NodeId::default(),
             span: Span::default(),
             kind: TyKind::Struct { fields },
         }
@@ -90,6 +97,7 @@ impl Ty {
 
     pub fn custom(name: String, span: Span) -> Ty {
         Ty {
+            id: NodeId::default(),
             span,
             kind: TyKind::Custom { name },
         }
