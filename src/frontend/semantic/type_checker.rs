@@ -167,9 +167,7 @@ impl<'a> TypeChecker<'a> {
                     self.check_expression(argument)?;
                 }
             }
-            HirExprKind::Identifier(..) => {
-                let id = match self.resolution_table.get_name_resolution(id)
-            }
+            HirExprKind::Identifier(..) => {}
             HirExprKind::StringLiteral(..) => {}
             HirExprKind::BooleanLiteral(..) => {}
             HirExprKind::NumberLiteral(..) => {}

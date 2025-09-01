@@ -27,7 +27,7 @@ pub fn parse_and_analyze(source: String) -> Result<(), KaoriError> {
 
     let mut type_checker = TypeChecker::new(&mut resolution_table);
 
-    type_checker.check(&hir)?;
+    //type_checker.check(&hir)?;
 
     Ok(())
 }

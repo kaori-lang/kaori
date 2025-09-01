@@ -13,11 +13,7 @@ use crate::{
     kaori_error,
 };
 
-use super::{
-    environment::Environment,
-    resolution_table::{Resolution, ResolutionTable},
-    symbol::Symbol,
-};
+use super::{environment::Environment, resolution_table::ResolutionTable};
 
 pub struct Resolver<'a> {
     environment: Environment,
@@ -181,7 +177,13 @@ impl<'a> Resolver<'a> {
 
                 self.resolve_type(return_ty)?;
             }
-            HirDeclKind::Struct { name, fields } => todo!(),
+            HirDeclKind::Struct { fields, .. } => {
+                self.environment.enter_scope();
+
+                for field in fields {
+                    self.resolve_declaration(field)?;
+                }
+            }
         };
 
         Ok(())

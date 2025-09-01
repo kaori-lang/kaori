@@ -1,5 +1,8 @@
+struct number {
+    
+}
 def main() {
-    a: number = 5;
+    a: numbe = 5;
     
     print(fib(40));
 
