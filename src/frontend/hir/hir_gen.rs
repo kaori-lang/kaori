@@ -178,6 +178,16 @@ impl HirGen {
                 match operator {
                     UnaryOp::Not => HirExpr::not(right, span),
                     UnaryOp::Negate => HirExpr::negate(right, span),
+                    UnaryOp::Increment => {
+                        let left = HirExpr::number_literal(1.0, span);
+
+                        HirExpr::assign(right.to_owned(), HirExpr::add(left, right, span), span)
+                    }
+                    UnaryOp::Decrement => {
+                        let left = HirExpr::number_literal(1.0, span);
+
+                        HirExpr::assign(right.to_owned(), HirExpr::sub(left, right, span), span)
+                    }
                 }
             }
             ExprKind::FunctionCall { callee, arguments } => {

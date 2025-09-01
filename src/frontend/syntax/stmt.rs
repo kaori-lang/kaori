@@ -20,6 +20,12 @@ pub enum StmtKind {
         condition: Box<Expr>,
         block: Box<Stmt>,
     },
+    ForLoop {
+        init: Decl,
+        condition: Expr,
+        increment: Box<Stmt>,
+        block: Box<Stmt>,
+    },
     Block(Vec<AstNode>),
     Expression(Box<Expr>),
     Break,
@@ -56,27 +62,15 @@ impl Stmt {
         }
     }
 
-    pub fn for_loop(
-        declaration: Decl,
-        condition: Expr,
-        increment: Stmt,
-        mut block: Stmt,
-        span: Span,
-    ) -> Stmt {
-        if let StmtKind::Block(nodes) = &mut block.kind {
-            nodes.push(AstNode::Statement(increment));
-        }
-
-        let while_loop_ = Stmt::while_loop(condition, block, span);
-
-        let nodes: Vec<AstNode> = vec![
-            AstNode::Declaration(declaration),
-            AstNode::Statement(while_loop_),
-        ];
-
+    pub fn for_loop(init: Decl, condition: Expr, increment: Stmt, block: Stmt, span: Span) -> Stmt {
         Stmt {
             span,
-            kind: StmtKind::Block(nodes),
+            kind: StmtKind::ForLoop {
+                init,
+                condition,
+                increment: Box::new(increment),
+                block: Box::new(block),
+            },
         }
     }
 

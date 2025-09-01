@@ -119,7 +119,7 @@ impl<'a> Resolver<'a> {
                     .create_local_resolution(declaration.id, offset);
             }
             HirDeclKind::Parameter { name, ty } => {
-                if self.environment.search_current_scope(&name).is_some() {
+                if self.environment.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
                         "function can't have parameters with the same name: {}",
@@ -131,7 +131,7 @@ impl<'a> Resolver<'a> {
                     .declare_local(name.to_owned(), ty.to_owned());
             }
             HirDeclKind::Field { name, ty } => {
-                if self.environment.search_current_scope(&name).is_some() {
+                if self.environment.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
                         "struct can't have fields with the same name: {}",

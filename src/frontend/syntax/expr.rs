@@ -16,8 +16,8 @@ pub enum ExprKind {
         right: Box<Expr>,
     },
     Unary {
-        operator: UnaryOp,
         right: Box<Expr>,
+        operator: UnaryOp,
     },
     Assign {
         left: Box<Expr>,
@@ -59,30 +59,6 @@ impl Expr {
                 right: Box::new(right),
             },
         }
-    }
-
-    pub fn increment(identifier: Expr, span: Span) -> Expr {
-        let span = Span::merge(span, identifier.span);
-
-        let right = Expr::binary(
-            BinaryOp::Add,
-            identifier.to_owned(),
-            Expr::number_literal(1.0, span),
-        );
-
-        Expr::assign(identifier, right)
-    }
-
-    pub fn decrement(identifier: Expr, span: Span) -> Expr {
-        let span = Span::merge(span, identifier.span);
-
-        let right = Expr::binary(
-            BinaryOp::Subtract,
-            identifier.to_owned(),
-            Expr::number_literal(1.0, span),
-        );
-
-        Expr::assign(identifier, right)
     }
 
     pub fn assign(left: Expr, right: Expr) -> Expr {

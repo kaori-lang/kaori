@@ -19,4 +19,6 @@ pub enum BinaryOp {
 pub enum UnaryOp {
     Negate,
     Not,
+    Increment,
+    Decrement,
 }

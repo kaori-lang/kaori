@@ -240,18 +240,22 @@ impl Parser {
         let kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
 
-        Ok(match kind {
-            TokenKind::Increment => {
-                self.token_stream.advance();
-                Expr::increment(identifier, span)
+        let operator = match kind {
+            TokenKind::Increment => UnaryOp::Increment,
+            TokenKind::Decrement => UnaryOp::Decrement,
+            TokenKind::LeftParen => return self.parse_function_call(identifier),
+            _ => {
+                return Err(kaori_error!(
+                    span,
+                    "expected a valid postfix operator, but found: {}",
+                    kind
+                ));
             }
-            TokenKind::Decrement => {
-                self.token_stream.advance();
-                Expr::decrement(identifier, span)
-            }
-            TokenKind::LeftParen => self.parse_function_call(identifier)?,
-            _ => identifier,
-        })
+        };
+
+        self.token_stream.advance();
+
+        Ok(Expr::unary(operator, identifier, span))
     }
 
     pub fn parse_function_call(&mut self, callee: Expr) -> Result<Expr, KaoriError> {
@@ -280,6 +284,8 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::RightParen)?;
 
-        self.parse_function_call(Expr::function_call(callee, arguments, span))
+        let callee = Expr::function_call(callee, arguments, span);
+
+        self.parse_function_call(callee)
     }
 }
