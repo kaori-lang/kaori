@@ -1,12 +1,12 @@
 use crate::frontend::scanner::span::Span;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BinaryOp {
-    span: Span,
-    kind: BinaryOpKind,
+    pub span: Span,
+    pub kind: BinaryOpKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum BinaryOpKind {
     Add,
     Subtract,

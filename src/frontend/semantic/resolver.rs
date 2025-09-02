@@ -251,23 +251,11 @@ impl<'a> Resolver<'a> {
                 self.resolve_expression(right)?;
                 self.resolve_expression(left)?;
             }
-            HirExprKind::Add(left, right)
-            | HirExprKind::Sub(left, right)
-            | HirExprKind::Mul(left, right)
-            | HirExprKind::Div(left, right)
-            | HirExprKind::Mod(left, right)
-            | HirExprKind::Equal(left, right)
-            | HirExprKind::NotEqual(left, right)
-            | HirExprKind::Less(left, right)
-            | HirExprKind::LessEqual(left, right)
-            | HirExprKind::Greater(left, right)
-            | HirExprKind::GreaterEqual(left, right)
-            | HirExprKind::And(left, right)
-            | HirExprKind::Or(left, right) => {
+            HirExprKind::Binary { left, right, .. } => {
                 self.resolve_expression(left)?;
                 self.resolve_expression(right)?;
             }
-            HirExprKind::Negate(right) | HirExprKind::Not(right) => {
+            HirExprKind::Unary { right, .. } => {
                 self.resolve_expression(right)?;
             }
             HirExprKind::FunctionCall { callee, arguments } => {

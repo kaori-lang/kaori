@@ -1,10 +1,12 @@
-#[derive(Debug, Clone)]
+use crate::frontend::scanner::span::Span;
+
+#[derive(Debug, Clone, Copy)]
 pub struct UnaryOp {
-    span: Span,
-    kind: UnaryOpKind,
+    pub span: Span,
+    pub kind: UnaryOpKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum UnaryOpKind {
     Negate,
     Not,
@@ -14,6 +16,6 @@ pub enum UnaryOpKind {
 
 impl UnaryOp {
     pub fn new(kind: UnaryOpKind, span: Span) -> UnaryOp {
-        BinaryOp { span, kind }
+        UnaryOp { span, kind }
     }
 }
