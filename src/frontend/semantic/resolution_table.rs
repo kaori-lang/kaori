@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::frontend::{hir::node_id::NodeId, syntax::ty::Ty};
 
-#[derive(Clone, Debug)]
 pub enum Resolution {
     Variable(NodeId),
     Struct(NodeId),
@@ -15,7 +14,7 @@ impl Resolution {
     }
 
     pub fn struct_(id: NodeId) -> Resolution {
-        Resolution::Variable(id)
+        Resolution::Struct(id)
     }
 
     pub fn function(id: NodeId) -> Resolution {
@@ -23,7 +22,7 @@ impl Resolution {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct ResolutionTable {
     variable_offsets: HashMap<NodeId, usize>,
     name_resolutions: HashMap<NodeId, Resolution>,
@@ -39,12 +38,16 @@ impl ResolutionTable {
         self.name_resolutions.insert(id, resolution);
     }
 
-    pub fn get_name_resolution(&self, id: &NodeId) -> Option<&Resolution> {
-        self.name_resolutions.get(id)
+    pub fn insert_type_resolution(&mut self, id: NodeId, ty: Ty) {
+        self.type_resolutions.insert(id, ty);
     }
 
-    pub fn create_type_resolution(&mut self, id: NodeId, ty: Ty) {
-        self.type_resolutions.insert(id, ty);
+    pub fn get_variable_offset(&self, id: &NodeId) -> Option<&usize> {
+        self.variable_offsets.get(id)
+    }
+
+    pub fn get_name_resolution(&self, id: &NodeId) -> Option<&Resolution> {
+        self.name_resolutions.get(id)
     }
 
     pub fn get_type_resolution(&self, id: &NodeId) -> Option<&Ty> {

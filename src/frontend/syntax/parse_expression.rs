@@ -4,8 +4,8 @@ use crate::{
 
 use super::{
     expr::Expr,
-    operator::{BinaryOp, UnaryOp},
     parser::Parser,
+    unary_op::{BinaryOp, BinaryOpKind, UnaryOp, UnaryOpKind},
 };
 
 impl Parser {
@@ -18,6 +18,45 @@ impl Parser {
         }
 
         self.parse_or()
+    }
+
+    pub fn build_binary_operator(&mut self) -> BinaryOp {
+        let token_kind = self.token_stream.token_kind();
+        let span = self.token_stream.span();
+
+        let kind = match token_kind {
+            TokenKind::Plus => BinaryOpKind::Add,
+            TokenKind::Minus => BinaryOpKind::Subtract,
+            TokenKind::Multiply => BinaryOpKind::Multiply,
+            TokenKind::Divide => BinaryOpKind::Divide,
+            TokenKind::Modulo => BinaryOpKind::Modulo,
+            TokenKind::And => BinaryOpKind::And,
+            TokenKind::Or => BinaryOpKind::Or,
+            TokenKind::Equal => BinaryOpKind::Equal,
+            TokenKind::NotEqual => BinaryOpKind::NotEqual,
+            TokenKind::Greater => BinaryOpKind::Greater,
+            TokenKind::GreaterEqual => BinaryOpKind::GreaterEqual,
+            TokenKind::Less => BinaryOpKind::Less,
+            TokenKind::LessEqual => BinaryOpKind::LessEqual,
+            _ => unreachable!(),
+        };
+
+        BinaryOp::new(kind, span)
+    }
+
+    pub fn build_unary_operator(&mut self) -> UnaryOp {
+        let token_kind = self.token_stream.token_kind();
+        let span = self.token_stream.span();
+
+        let kind = match token_kind {
+            TokenKind::Minus => UnaryOpKind::Negate,
+            TokenKind::Not => UnaryOpKind::Not,
+            TokenKind::Increment => UnaryOpKind::Increment,
+            TokenKind::Decrement => UnaryOpKind::Decrement,
+            _ => unreachable!(),
+        };
+
+        UnaryOp::new(kind, span)
     }
 
     pub fn parse_assign(&mut self) -> Result<Expr, KaoriError> {

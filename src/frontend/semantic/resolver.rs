@@ -183,6 +183,8 @@ impl<'a> Resolver<'a> {
                 for field in fields {
                     self.resolve_declaration(field)?;
                 }
+
+                self.environment.exit_scope();
             }
         };
 
@@ -291,7 +293,7 @@ impl<'a> Resolver<'a> {
         Ok(())
     }
 
-    pub fn resolve_type(&mut self, ty: &Ty) -> Result<(), KaoriError> {
+    pub fn resolve_type(&mut self, ty: &Ty) -> Result<Ty, KaoriError> {
         match &ty.kind {
             TyKind::Function {
                 parameters,

@@ -1,4 +1,4 @@
-struct number {
+struct numbe {
     
 }
 def main() {
@@ -10,7 +10,7 @@ def main() {
 } 
 
 
-def fib(n: number) -> number {
+def fib(n: number, n: number) -> number {
     if n == 0 {
         return 0;
     }
@@ -24,6 +24,14 @@ def fib(n: number) -> number {
 } 
 
 
+
+struct A {
+    f: B,
+}
+
+struct B {
+    d: number
+}
 
 def fib_iterative() {
     iterations: number = 1000000;

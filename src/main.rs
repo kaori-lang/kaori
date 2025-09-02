@@ -1,6 +1,6 @@
 use std::{fs, time::Instant};
 
-use kaori::{ error::kaori_error::KaoriError, frontend::parse_and_analyze::parse_and_analyze};
+use kaori::{error::kaori_error::KaoriError, frontend::parse_and_analyze::parse_and_analyze};
 
 fn main() {
     if let Ok(source) = fs::read_to_string("src/code/main.kaori") {

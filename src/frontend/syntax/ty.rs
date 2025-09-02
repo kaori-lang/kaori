@@ -1,10 +1,7 @@
 use crate::frontend::{hir::node_id::NodeId, scanner::span::Span};
 
-use super::decl::{Decl, DeclKind};
-
 #[derive(Debug, Clone)]
 pub struct Ty {
-    pub id: NodeId,
     pub span: Span,
     pub kind: TyKind,
 }
@@ -30,7 +27,6 @@ pub enum TyKind {
 impl Ty {
     pub fn boolean(span: Span) -> Ty {
         Ty {
-            id: NodeId::default(),
             span,
             kind: TyKind::Boolean,
         }
@@ -38,7 +34,6 @@ impl Ty {
 
     pub fn string(span: Span) -> Ty {
         Ty {
-            id: NodeId::default(),
             span,
             kind: TyKind::String,
         }
@@ -46,7 +41,6 @@ impl Ty {
 
     pub fn number(span: Span) -> Ty {
         Ty {
-            id: NodeId::default(),
             span,
             kind: TyKind::Number,
         }
@@ -54,23 +48,13 @@ impl Ty {
 
     pub fn void(span: Span) -> Ty {
         Ty {
-            id: NodeId::default(),
             span,
             kind: TyKind::Void,
         }
     }
 
-    pub fn function(parameters: &[Decl], return_ty: Ty) -> Ty {
-        let parameters = parameters
-            .iter()
-            .map(|parameter| match &parameter.kind {
-                DeclKind::Parameter { ty, .. } => ty.to_owned(),
-                _ => unreachable!(),
-            })
-            .collect();
-
+    pub fn function(parameters: Vec<Ty>, return_ty: Ty) -> Ty {
         Ty {
-            id: NodeId::default(),
             span: return_ty.span,
             kind: TyKind::Function {
                 parameters,
@@ -79,17 +63,8 @@ impl Ty {
         }
     }
 
-    pub fn struct_(fields: &[Decl]) -> Ty {
-        let fields = fields
-            .iter()
-            .map(|field| match &field.kind {
-                DeclKind::Field { ty, .. } => ty.to_owned(),
-                _ => unreachable!(),
-            })
-            .collect();
-
+    pub fn struct_(fields: Vec<Ty>) -> Ty {
         Ty {
-            id: NodeId::default(),
             span: Span::default(),
             kind: TyKind::Struct { fields },
         }
@@ -97,7 +72,6 @@ impl Ty {
 
     pub fn custom(name: String, span: Span) -> Ty {
         Ty {
-            id: NodeId::default(),
             span,
             kind: TyKind::Custom { name },
         }

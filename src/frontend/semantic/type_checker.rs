@@ -9,6 +9,7 @@ use crate::{
             hir_decl::{HirDecl, HirDeclKind},
             hir_expr::{HirExpr, HirExprKind},
             hir_stmt::{HirStmt, HirStmtKind},
+            node_id::NodeId,
         },
         syntax::{
             operator::{BinaryOp, UnaryOp},
@@ -36,7 +37,11 @@ impl<'a> TypeChecker<'a> {
     pub fn check(&mut self, declarations: &[HirDecl]) -> Result<(), KaoriError> {
         for declaration in declarations.iter() {
             match &declaration.kind {
-                HirDeclKind::Function { name, .. } => {}
+                HirDeclKind::Function {
+                    parameters,
+                    return_ty,
+                    ..
+                } => {}
                 HirDeclKind::Struct { name, .. } => {}
                 _ => (),
             }
@@ -101,8 +106,12 @@ impl<'a> TypeChecker<'a> {
 
     fn check_statement(&mut self, statement: &HirStmt) -> Result<(), KaoriError> {
         match &statement.kind {
-            HirStmtKind::Expression(expression) => self.check_expression(expression)?,
-            HirStmtKind::Print(expression) => self.check_expression(expression)?,
+            HirStmtKind::Expression(expression) => {
+                self.check_expression(expression)?;
+            }
+            HirStmtKind::Print(expression) => {
+                self.check_expression(expression)?;
+            }
             HirStmtKind::Block(nodes) => {
                 self.check_nodes(nodes)?;
             }
@@ -138,8 +147,8 @@ impl<'a> TypeChecker<'a> {
     fn check_expression(&mut self, expression: &HirExpr) -> Result<(), KaoriError> {
         match &expression.kind {
             HirExprKind::Assign(left, right) => {
-                self.check_expression(right)?;
-                self.check_expression(left)?;
+                let right = self.check_expression(right)?;
+                let left = self.check_expression(left)?;
             }
             HirExprKind::Add(left, right)
             | HirExprKind::Sub(left, right)
@@ -193,7 +202,7 @@ impl<'a> TypeChecker<'a> {
                     self.check_type(field)?;
                 }
             }
-            TyKind::Custom { name } => {}
+            TyKind::Custom { .. } => {}
             TyKind::Boolean => {}
             TyKind::Number => {}
             TyKind::String => {}

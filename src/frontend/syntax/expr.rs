@@ -1,6 +1,6 @@
 use crate::frontend::scanner::span::Span;
 
-use super::operator::{BinaryOp, UnaryOp};
+use super::operator::{BinOp, UnaryOp};
 
 #[derive(Debug, Clone)]
 pub struct Expr {
@@ -11,7 +11,7 @@ pub struct Expr {
 #[derive(Debug, Clone)]
 pub enum ExprKind {
     Binary {
-        operator: BinaryOp,
+        operator: BinOp,
         left: Box<Expr>,
         right: Box<Expr>,
     },
@@ -36,7 +36,7 @@ pub enum ExprKind {
 }
 
 impl Expr {
-    pub fn binary(operator: BinaryOp, left: Expr, right: Expr) -> Expr {
+    pub fn binary(operator: BinOp, left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
 
         Expr {
