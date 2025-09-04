@@ -11,19 +11,19 @@ pub struct Ty {
 pub enum TyKind {
     Function {
         parameters: Vec<Ty>,
-        return_ty: Box<Ty>,
+        return_ty: Option<Box<Ty>>,
     },
     Identifier(String),
 }
 
 impl Ty {
-    pub fn function(parameters: Vec<Ty>, return_ty: Ty) -> Ty {
+    pub fn function(parameters: Vec<Ty>, return_ty: Option<Ty>) -> Ty {
         Ty {
             id: NodeId::default(),
-            span: return_ty.span,
+            span: Span::default(),
             kind: TyKind::Function {
                 parameters,
-                return_ty: Box::new(return_ty),
+                return_ty: return_ty.map(Box::new),
             },
         }
     }

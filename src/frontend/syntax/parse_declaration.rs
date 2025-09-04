@@ -54,11 +54,11 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::RightParen)?;
 
-        let mut return_ty = Ty::void(self.token_stream.span());
+        let mut return_ty = None;
 
         if self.token_stream.token_kind() == TokenKind::ThinArrow {
             self.token_stream.consume(TokenKind::ThinArrow)?;
-            return_ty = self.parse_type()?;
+            return_ty = Some(self.parse_type()?);
         }
 
         let mut body = Vec::new();
