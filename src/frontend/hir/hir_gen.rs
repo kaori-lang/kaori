@@ -178,6 +178,6 @@ fn generate_expression(expression: &Expr) -> HirExpr {
         ExprKind::StringLiteral(value) => {
             HirExpr::string_literal(value.to_owned(), expression.span)
         }
-        ExprKind::Identifier { name } => HirExpr::identifier(name.to_owned(), expression.span),
+        ExprKind::Identifier(name) => HirExpr::identifier(name.to_owned(), expression.span),
     }
 }

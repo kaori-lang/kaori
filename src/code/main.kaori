@@ -1,12 +1,8 @@
-struct number {
-}
-
-struct bool {
-}
-
+struct number {}
+struct bool {}
 
 def main() {
-    a: numba = 5;
+    a: number = 5;
     
     print(fib(40));
 

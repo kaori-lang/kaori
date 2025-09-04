@@ -175,7 +175,9 @@ impl<'a> Resolver<'a> {
 
                 self.environment.exit_scope();
 
-                self.resolve_type(return_ty)?;
+                if let Some(ty) = return_ty {
+                    self.resolve_type(ty)?;
+                }
             }
             HirDeclKind::Struct { fields, .. } => {
                 self.environment.enter_scope();
@@ -291,9 +293,11 @@ impl<'a> Resolver<'a> {
                     self.resolve_type(parameter)?;
                 }
 
-                self.resolve_type(return_ty)?;
+                if let Some(ty) = return_ty {
+                    self.resolve_type(ty)?;
+                }
             }
-            TyKind::Custom { name } => {
+            TyKind::Identifier(name) => {
                 let Some(symbol) = self.environment.search(name) else {
                     return Err(kaori_error!(ty.span, "{} type is not declared", name));
                 };
@@ -301,10 +305,6 @@ impl<'a> Resolver<'a> {
                 self.resolution_table
                     .insert_name_resolution(ty.id, symbol.as_resolution());
             }
-            TyKind::Boolean => {}
-            TyKind::Number => {}
-            TyKind::String => {}
-            TyKind::Void => {}
         };
 
         Ok(())

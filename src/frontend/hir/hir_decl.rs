@@ -20,7 +20,7 @@ pub enum HirDeclKind {
         name: String,
         parameters: Vec<HirDecl>,
         body: Vec<HirAstNode>,
-        return_ty: Ty,
+        return_ty: Option<Ty>,
     },
     Struct {
         name: String,
@@ -77,7 +77,7 @@ impl HirDecl {
         name: String,
         parameters: Vec<HirDecl>,
         body: Vec<HirAstNode>,
-        return_ty: Ty,
+        return_ty: Option<Ty>,
         span: Span,
     ) -> HirDecl {
         HirDecl {

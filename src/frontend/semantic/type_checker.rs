@@ -207,11 +207,14 @@ impl<'a> TypeChecker<'a> {
                     .map(|param| self.check_type(param))
                     .collect();
 
-                let return_ty = self.check_type(return_ty);
+                let return_ty = match return_ty {
+                    Some(ty) => self.check_type(ty),
+                    None => CheckedTy::Void,
+                };
 
                 CheckedTy::function(parameters, return_ty)
             }
-            TyKind::Custom { name } => {
+            TyKind::Identifier(name) => {
                 if let Some(Resolution::Struct(id)) =
                     self.resolution_table.get_name_resolution(&ty.id)
                 {
@@ -223,10 +226,6 @@ impl<'a> TypeChecker<'a> {
                     unreachable!()
                 }
             }
-            TyKind::Boolean => CheckedTy::Boolean,
-            TyKind::Number => CheckedTy::Number,
-            TyKind::String => CheckedTy::String,
-            TyKind::Void => CheckedTy::Void,
         }
     }
 }
