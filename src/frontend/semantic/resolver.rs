@@ -281,7 +281,7 @@ impl<'a> Resolver<'a> {
         Ok(())
     }
 
-    pub fn resolve_type(&mut self, ty: &Ty) -> Result<Ty, KaoriError> {
+    pub fn resolve_type(&mut self, ty: &Ty) -> Result<(), KaoriError> {
         match &ty.kind {
             TyKind::Function {
                 parameters,
@@ -292,11 +292,6 @@ impl<'a> Resolver<'a> {
                 }
 
                 self.resolve_type(return_ty)?;
-            }
-            TyKind::Struct { fields } => {
-                for field in fields {
-                    self.resolve_type(field)?;
-                }
             }
             TyKind::Custom { name } => {
                 let Some(symbol) = self.environment.search(name) else {

@@ -1,8 +1,12 @@
-struct numbe {
-    
+struct number {
 }
+
+struct bool {
+}
+
+
 def main() {
-    a: numbe = 5;
+    a: numba = 5;
     
     print(fib(40));
 
@@ -10,7 +14,7 @@ def main() {
 } 
 
 
-def fib(n: number, n: number) -> number {
+def fib(n: number, m: number) -> number {
     if n == 0 {
         return 0;
     }
@@ -22,12 +26,6 @@ def fib(n: number, n: number) -> number {
 
     return fib(n - 1) + fib(n - 2);
 } 
-
-
-
-struct A {
-    f: B,
-}
 
 struct B {
     d: number

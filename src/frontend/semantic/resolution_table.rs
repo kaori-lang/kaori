@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::frontend::{hir::node_id::NodeId, syntax::ty::Ty};
+use crate::frontend::hir::node_id::NodeId;
+
+use super::checked_ty::CheckedTy;
 
 pub enum Resolution {
     Variable(NodeId),
@@ -26,7 +28,7 @@ impl Resolution {
 pub struct ResolutionTable {
     variable_offsets: HashMap<NodeId, usize>,
     name_resolutions: HashMap<NodeId, Resolution>,
-    type_resolutions: HashMap<NodeId, Ty>,
+    type_resolutions: HashMap<NodeId, CheckedTy>,
 }
 
 impl ResolutionTable {
@@ -38,7 +40,7 @@ impl ResolutionTable {
         self.name_resolutions.insert(id, resolution);
     }
 
-    pub fn insert_type_resolution(&mut self, id: NodeId, ty: Ty) {
+    pub fn insert_type_resolution(&mut self, id: NodeId, ty: CheckedTy) {
         self.type_resolutions.insert(id, ty);
     }
 
@@ -50,7 +52,7 @@ impl ResolutionTable {
         self.name_resolutions.get(id)
     }
 
-    pub fn get_type_resolution(&self, id: &NodeId) -> Option<&Ty> {
+    pub fn get_type_resolution(&self, id: &NodeId) -> Option<&CheckedTy> {
         self.type_resolutions.get(id)
     }
 }

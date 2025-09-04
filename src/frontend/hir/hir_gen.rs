@@ -1,9 +1,9 @@
 use crate::frontend::syntax::{
     ast_node::AstNode,
-    binary_op::BinaryOpKind,
     decl::{Decl, DeclKind},
     expr::{Expr, ExprKind},
     stmt::{Stmt, StmtKind},
+    ty::{Ty, TyKind},
 };
 
 use super::{hir_ast_node::HirAstNode, hir_decl::HirDecl, hir_expr::HirExpr, hir_stmt::HirStmt};

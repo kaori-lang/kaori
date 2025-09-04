@@ -23,9 +23,7 @@ pub enum ExprKind {
         left: Box<Expr>,
         right: Box<Expr>,
     },
-    Identifier {
-        name: String,
-    },
+    Identifier(String),
     FunctionCall {
         callee: Box<Expr>,
         arguments: Vec<Expr>,
@@ -76,7 +74,7 @@ impl Expr {
     pub fn identifier(name: String, span: Span) -> Expr {
         Expr {
             span,
-            kind: ExprKind::Identifier { name },
+            kind: ExprKind::Identifier(name),
         }
     }
 
