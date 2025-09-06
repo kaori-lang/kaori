@@ -1,1 +1,7 @@
+.DS_Store
+.git
+
 /target
+./a.out
+.env
+*.exe
