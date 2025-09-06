@@ -1,12 +1,12 @@
 
-
 def main() {
     a: number = 5;
     
     print(fib(40));
 
 
-} 
+    print(fib(40));
+}
 
 
 def fib(n: number, m: number) -> number {
@@ -20,11 +20,8 @@ def fib(n: number, m: number) -> number {
 
 
     return fib(n - 1) + fib(n - 2);
-} 
-
-struct B {
-    d: number
 }
+
 
 def fib_iterative() {
     iterations: number = 1000000;

@@ -1,0 +1,21 @@
+/* test recursive fibonacci */
+
+def fib(n: number) -> number {
+    if n == 0 {
+        return 0;
+    }
+
+    if n == 1 {
+        return 1; 
+    }
+
+    return fib(n - 1) + fib(n - 2);
+}
+
+def main() {
+    x: number = 30;
+
+    if fib(x) != 832040 {
+        print(1);
+    }
+}

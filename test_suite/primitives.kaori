@@ -1,0 +1,68 @@
+/* test primitive vars. & operations */
+
+
+
+def test_numbers() -> bool {
+    a: number = 10.0;
+    b: number = -2.0;
+
+    // test arithmetic
+    sum_a_b: number = a + b;
+    diff_a_b: number = a - b;
+    prod_a_b: number = a * b;
+    quot_a_b: number = a / b;
+
+    if sum_a_b != 8.0 {
+        return false;
+    }
+
+    if diff_a_b != 12.0 {
+        return false;
+    }
+
+    if prod_a_b != -20.0 {
+        return false;
+    }
+
+    if quot_a_b != -5.0 {
+        return false;
+    }
+
+    return true;
+}
+
+def test_newton() -> bool {
+    /* approximate magnitude of the 2-D vector of <x, y> using Newton's Method */
+    x: number = 8.0;
+    y: number = 4.0;
+
+    dist_squ: number = x * x + y * y;
+    guess: number = 7.25;
+
+    for iter: number = 0; iter < 4; iter++ {
+        guess = 0.5 * ( guess + dist_squ / guess );
+    }
+
+    /* max allowed error in magnitude approximation */
+    max_elipson = 0.01;
+
+    /* expected answer: D_target = sqrt(80) */
+    target_answer = 8.944;
+
+    print(guess);
+    print(target_answer);
+
+    return (target_answer - guess) < max_elipson;
+}
+
+def main() {
+    /* test arithmetic: 1 is an error */
+    if !test_numbers() {
+        print(1);
+    }
+
+    /* test complex arithmetic: 1 is an error */
+    if !test_newton() {
+        print(1);
+    }
+}
