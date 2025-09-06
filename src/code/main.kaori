@@ -1,13 +1,8 @@
-struct number {
-    
-}
 def main() {
-    a: numbe = 5;
-    
+    a: number = 5;
+
     print(fib(40));
-
-
-} 
+}
 
 
 def fib(n: number) -> number {
@@ -21,8 +16,7 @@ def fib(n: number) -> number {
 
 
     return fib(n - 1) + fib(n - 2);
-} 
-
+}
 
 
 def fib_iterative() {
