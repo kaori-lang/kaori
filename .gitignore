@@ -1,1 +1,6 @@
-/target
+# Ignore rust artifacts
+**/target
+# Ignore debug info files
+**/*.pdb
+# Ignore executables
+**/*.exe

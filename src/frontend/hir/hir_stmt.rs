@@ -1,4 +1,4 @@
-use crate::frontend::scanner::span::Span;
+use crate::frontend::lexer::span::Span;
 
 use super::{hir_ast_node::HirAstNode, hir_expr::HirExpr, node_id::NodeId};
 
