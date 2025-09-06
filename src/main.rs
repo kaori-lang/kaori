@@ -5,7 +5,7 @@ use std::process::ExitCode;
 #[allow(unused_imports)]
 use std::{fs, time::Instant};
 
-use kaori::{ error::kaori_error::KaoriError, frontend::parse_and_analyze::parse_and_analyze};
+use kaori::{error::kaori_error::KaoriError, frontend::parse_and_analyze::parse_and_analyze};
 
 fn main() -> ExitCode {
     let source_to_run = args().nth(1);

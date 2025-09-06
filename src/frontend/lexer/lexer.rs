@@ -21,19 +21,13 @@ impl<'a> Lexer<'a> {
         self.position >= self.source.len()
     }
 
-    fn look_ahead(&mut self, expected: &[char]) -> bool {
-        for (i, _) in expected.iter().enumerate() {
+    fn look_ahead(&mut self, expected: &str) -> bool {
+        for (i, expected) in expected.chars().enumerate() {
             let j = self.position + i;
 
-            if j >= self.source.len() {
+            if Some(&expected) != self.source.get(j) {
                 return false;
             }
-
-            if expected[i] == self.source[j] {
-                continue;
-            }
-
-            return false;
         }
 
         true
@@ -48,7 +42,7 @@ impl<'a> Lexer<'a> {
     fn comment(&mut self) {
         self.position += 2;
 
-        while !self.at_end() && !self.look_ahead(&['*', '/']) {
+        while !self.at_end() && !self.look_ahead("*/") {
             self.position += 1;
         }
 
@@ -143,7 +137,7 @@ impl<'a> Lexer<'a> {
 
         let kind = match curr_char {
             '+' => {
-                if self.look_ahead(&['+', '+']) {
+                if self.look_ahead("++") {
                     TokenKind::Increment
                 } else {
                     TokenKind::Plus
@@ -151,9 +145,9 @@ impl<'a> Lexer<'a> {
             }
 
             '-' => {
-                if self.look_ahead(&['-', '-']) {
+                if self.look_ahead("--") {
                     TokenKind::Decrement
-                } else if self.look_ahead(&['-', '>']) {
+                } else if self.look_ahead("->") {
                     TokenKind::ThinArrow
                 } else {
                     TokenKind::Minus
@@ -163,42 +157,42 @@ impl<'a> Lexer<'a> {
             '/' => TokenKind::Divide,
             '%' => TokenKind::Modulo,
             '&' => {
-                if self.look_ahead(&['&', '&']) {
+                if self.look_ahead("&&") {
                     TokenKind::And
                 } else {
                     TokenKind::Invalid
                 }
             }
             '|' => {
-                if self.look_ahead(&['|', '|']) {
+                if self.look_ahead("||") {
                     TokenKind::Or
                 } else {
                     TokenKind::Invalid
                 }
             }
             '!' => {
-                if self.look_ahead(&['!', '=']) {
+                if self.look_ahead("!=") {
                     TokenKind::NotEqual
                 } else {
                     TokenKind::Not
                 }
             }
             '=' => {
-                if self.look_ahead(&['=', '=']) {
+                if self.look_ahead("==") {
                     TokenKind::Equal
                 } else {
                     TokenKind::Assign
                 }
             }
             '>' => {
-                if self.look_ahead(&['>', '=']) {
+                if self.look_ahead(">=") {
                     TokenKind::GreaterEqual
                 } else {
                     TokenKind::Greater
                 }
             }
             '<' => {
-                if self.look_ahead(&['<', '=']) {
+                if self.look_ahead("<=") {
                     TokenKind::LessEqual
                 } else {
                     TokenKind::Less
@@ -245,21 +239,14 @@ impl<'a> Lexer<'a> {
 
     pub fn get_next_token(&mut self) -> Result<(), KaoriError> {
         let c = self.source[self.position];
-
-        if c == '"' {
-            self.string_literal()?;
-        } else if self.look_ahead(&['/', '*']) {
-            self.comment();
-        } else if c.is_alphabetic() {
-            self.identifier_or_keyword();
-        } else if c.is_ascii_digit() {
-            self.number_literal();
-        } else if c.is_whitespace() {
-            self.white_space();
-        } else {
-            self.symbol()?;
-        }
-
+        match c {
+            '"' => self.string_literal()?,
+            '/' if self.look_ahead("/*") => self.comment(),
+            c if c.is_alphabetic() => self.identifier_or_keyword(),
+            '0'..='9' => self.number_literal(),
+            c if c.is_whitespace() => self.white_space(),
+            _ => self.symbol()?,
+        };
         Ok(())
     }
 

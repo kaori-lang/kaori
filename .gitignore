@@ -1,7 +1,15 @@
+
+# OS / IDE
 .DS_Store
 .git
 
-/target
+# Rust artifacts
+**/target
+# Ignore debug info files
+**/*.pdb
+# Ignore executables
+**/*.exe
+
+# Local files
 ./a.out
 .env
-*.exe

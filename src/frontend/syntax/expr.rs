@@ -1,6 +1,6 @@
-use crate::frontend::scanner::span::Span;
+use crate::frontend::lexer::span::Span;
 
-use super::operator::{BinaryOp, UnaryOp};
+use super::{binary_op::BinaryOp, unary_op::UnaryOp};
 
 #[derive(Debug, Clone)]
 pub struct Expr {
@@ -23,9 +23,7 @@ pub enum ExprKind {
         left: Box<Expr>,
         right: Box<Expr>,
     },
-    Identifier {
-        name: String,
-    },
+    Identifier(String),
     FunctionCall {
         callee: Box<Expr>,
         arguments: Vec<Expr>,
@@ -49,8 +47,8 @@ impl Expr {
         }
     }
 
-    pub fn unary(operator: UnaryOp, right: Expr, span: Span) -> Expr {
-        let span = Span::merge(span, right.span);
+    pub fn unary(operator: UnaryOp, right: Expr) -> Expr {
+        let span = Span::merge(operator.span, right.span);
 
         Expr {
             span,
@@ -76,7 +74,7 @@ impl Expr {
     pub fn identifier(name: String, span: Span) -> Expr {
         Expr {
             span,
-            kind: ExprKind::Identifier { name },
+            kind: ExprKind::Identifier(name),
         }
     }
 

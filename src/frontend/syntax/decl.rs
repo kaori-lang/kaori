@@ -1,4 +1,4 @@
-use crate::frontend::scanner::span::Span;
+use crate::frontend::lexer::span::Span;
 
 use super::{ast_node::AstNode, expr::Expr, ty::Ty};
 
@@ -19,7 +19,7 @@ pub enum DeclKind {
         name: String,
         parameters: Vec<Decl>,
         body: Vec<AstNode>,
-        return_ty: Ty,
+        return_ty: Option<Ty>,
     },
     Struct {
         name: String,
@@ -72,7 +72,7 @@ impl Decl {
         name: String,
         parameters: Vec<Decl>,
         body: Vec<AstNode>,
-        return_ty: Ty,
+        return_ty: Option<Ty>,
         span: Span,
     ) -> Decl {
         Decl {

@@ -1,4 +1,7 @@
-use crate::frontend::scanner::span::Span;
+use crate::frontend::{
+    lexer::span::Span,
+    syntax::{binary_op::BinaryOp, unary_op::UnaryOp},
+};
 
 use super::node_id::NodeId;
 
@@ -11,21 +14,15 @@ pub struct HirExpr {
 
 #[derive(Debug, Clone)]
 pub enum HirExprKind {
-    Add(Box<HirExpr>, Box<HirExpr>),
-    Sub(Box<HirExpr>, Box<HirExpr>),
-    Mul(Box<HirExpr>, Box<HirExpr>),
-    Div(Box<HirExpr>, Box<HirExpr>),
-    Mod(Box<HirExpr>, Box<HirExpr>),
-    Equal(Box<HirExpr>, Box<HirExpr>),
-    NotEqual(Box<HirExpr>, Box<HirExpr>),
-    Less(Box<HirExpr>, Box<HirExpr>),
-    LessEqual(Box<HirExpr>, Box<HirExpr>),
-    Greater(Box<HirExpr>, Box<HirExpr>),
-    GreaterEqual(Box<HirExpr>, Box<HirExpr>),
-    And(Box<HirExpr>, Box<HirExpr>),
-    Or(Box<HirExpr>, Box<HirExpr>),
-    Negate(Box<HirExpr>),
-    Not(Box<HirExpr>),
+    Binary {
+        operator: BinaryOp,
+        left: Box<HirExpr>,
+        right: Box<HirExpr>,
+    },
+    Unary {
+        right: Box<HirExpr>,
+        operator: UnaryOp,
+    },
     Assign(Box<HirExpr>, Box<HirExpr>),
     Identifier(String),
     FunctionCall {
@@ -38,123 +35,26 @@ pub enum HirExprKind {
 }
 
 impl HirExpr {
-    pub fn add(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
+    pub fn binary(operator: BinaryOp, left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
         HirExpr {
             id: NodeId::default(),
             span,
-            kind: HirExprKind::Add(Box::new(left), Box::new(right)),
+            kind: HirExprKind::Binary {
+                operator,
+                left: Box::new(left),
+                right: Box::new(right),
+            },
         }
     }
 
-    pub fn sub(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
+    pub fn unary(operator: UnaryOp, right: HirExpr, span: Span) -> HirExpr {
         HirExpr {
             id: NodeId::default(),
             span,
-            kind: HirExprKind::Sub(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn mul(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::Mul(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn div(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::Div(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn mod_(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::Div(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn equal(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::Equal(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn not_equal(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::NotEqual(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn less(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::Less(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn less_equal(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::LessEqual(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn greater(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::Greater(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn greater_equal(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::GreaterEqual(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn and(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::And(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn or(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::Or(Box::new(left), Box::new(right)),
-        }
-    }
-
-    pub fn negate(expr: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::Negate(Box::new(expr)),
-        }
-    }
-
-    pub fn not(expr: HirExpr, span: Span) -> HirExpr {
-        HirExpr {
-            id: NodeId::default(),
-            span,
-            kind: HirExprKind::Not(Box::new(expr)),
+            kind: HirExprKind::Unary {
+                operator,
+                right: Box::new(right),
+            },
         }
     }
 

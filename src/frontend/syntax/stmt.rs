@@ -1,4 +1,4 @@
-use crate::frontend::scanner::span::Span;
+use crate::frontend::lexer::span::Span;
 
 use super::{ast_node::AstNode, decl::Decl, expr::Expr};
 

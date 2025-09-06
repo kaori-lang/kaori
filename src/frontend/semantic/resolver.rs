@@ -175,7 +175,9 @@ impl<'a> Resolver<'a> {
 
                 self.environment.exit_scope();
 
-                self.resolve_type(return_ty)?;
+                if let Some(ty) = return_ty {
+                    self.resolve_type(ty)?;
+                }
             }
             HirDeclKind::Struct { fields, .. } => {
                 self.environment.enter_scope();
@@ -183,6 +185,8 @@ impl<'a> Resolver<'a> {
                 for field in fields {
                     self.resolve_declaration(field)?;
                 }
+
+                self.environment.exit_scope();
             }
         };
 
@@ -249,23 +253,11 @@ impl<'a> Resolver<'a> {
                 self.resolve_expression(right)?;
                 self.resolve_expression(left)?;
             }
-            HirExprKind::Add(left, right)
-            | HirExprKind::Sub(left, right)
-            | HirExprKind::Mul(left, right)
-            | HirExprKind::Div(left, right)
-            | HirExprKind::Mod(left, right)
-            | HirExprKind::Equal(left, right)
-            | HirExprKind::NotEqual(left, right)
-            | HirExprKind::Less(left, right)
-            | HirExprKind::LessEqual(left, right)
-            | HirExprKind::Greater(left, right)
-            | HirExprKind::GreaterEqual(left, right)
-            | HirExprKind::And(left, right)
-            | HirExprKind::Or(left, right) => {
+            HirExprKind::Binary { left, right, .. } => {
                 self.resolve_expression(left)?;
                 self.resolve_expression(right)?;
             }
-            HirExprKind::Negate(right) | HirExprKind::Not(right) => {
+            HirExprKind::Unary { right, .. } => {
                 self.resolve_expression(right)?;
             }
             HirExprKind::FunctionCall { callee, arguments } => {
@@ -301,14 +293,11 @@ impl<'a> Resolver<'a> {
                     self.resolve_type(parameter)?;
                 }
 
-                self.resolve_type(return_ty)?;
-            }
-            TyKind::Struct { fields } => {
-                for field in fields {
-                    self.resolve_type(field)?;
+                if let Some(ty) = return_ty {
+                    self.resolve_type(ty)?;
                 }
             }
-            TyKind::Custom { name } => {
+            TyKind::Identifier(name) => {
                 let Some(symbol) = self.environment.search(name) else {
                     return Err(kaori_error!(ty.span, "{} type is not declared", name));
                 };
@@ -316,10 +305,6 @@ impl<'a> Resolver<'a> {
                 self.resolution_table
                     .insert_name_resolution(ty.id, symbol.as_resolution());
             }
-            TyKind::Boolean => {}
-            TyKind::Number => {}
-            TyKind::String => {}
-            TyKind::Void => {}
         };
 
         Ok(())

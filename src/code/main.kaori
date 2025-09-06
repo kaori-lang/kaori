@@ -1,11 +1,15 @@
+
 def main() {
     a: number = 5;
+    
+    print(fib(40));
+
 
     print(fib(40));
 }
 
 
-def fib(n: number) -> number {
+def fib(n: number, m: number) -> number {
     if n == 0 {
         return 0;
     }

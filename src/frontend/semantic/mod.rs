@@ -1,3 +1,4 @@
+pub mod checked_ty;
 pub mod environment;
 pub mod resolution_table;
 pub mod resolver;

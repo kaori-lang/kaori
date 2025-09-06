@@ -1,6 +1,6 @@
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::scanner::{token_kind::TokenKind, token_stream::TokenStream},
+    frontend::lexer::{token_kind::TokenKind, token_stream::TokenStream},
     kaori_error,
 };
 

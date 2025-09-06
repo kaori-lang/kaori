@@ -1,6 +1,4 @@
-use crate::frontend::{hir::node_id::NodeId, scanner::span::Span};
-
-use super::decl::{Decl, DeclKind};
+use crate::frontend::{hir::node_id::NodeId, lexer::span::Span};
 
 #[derive(Debug, Clone)]
 pub struct Ty {
@@ -11,95 +9,30 @@ pub struct Ty {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TyKind {
-    Boolean,
-    String,
-    Number,
-    Void,
     Function {
         parameters: Vec<Ty>,
-        return_ty: Box<Ty>,
+        return_ty: Option<Box<Ty>>,
     },
-    Struct {
-        fields: Vec<Ty>,
-    },
-    Custom {
-        name: String,
-    },
+    Identifier(String),
 }
 
 impl Ty {
-    pub fn boolean(span: Span) -> Ty {
+    pub fn function(parameters: Vec<Ty>, return_ty: Option<Ty>) -> Ty {
         Ty {
             id: NodeId::default(),
-            span,
-            kind: TyKind::Boolean,
-        }
-    }
-
-    pub fn string(span: Span) -> Ty {
-        Ty {
-            id: NodeId::default(),
-            span,
-            kind: TyKind::String,
-        }
-    }
-
-    pub fn number(span: Span) -> Ty {
-        Ty {
-            id: NodeId::default(),
-            span,
-            kind: TyKind::Number,
-        }
-    }
-
-    pub fn void(span: Span) -> Ty {
-        Ty {
-            id: NodeId::default(),
-            span,
-            kind: TyKind::Void,
-        }
-    }
-
-    pub fn function(parameters: &[Decl], return_ty: Ty) -> Ty {
-        let parameters = parameters
-            .iter()
-            .map(|parameter| match &parameter.kind {
-                DeclKind::Parameter { ty, .. } => ty.to_owned(),
-                _ => unreachable!(),
-            })
-            .collect();
-
-        Ty {
-            id: NodeId::default(),
-            span: return_ty.span,
+            span: Span::default(),
             kind: TyKind::Function {
                 parameters,
-                return_ty: Box::new(return_ty),
+                return_ty: return_ty.map(Box::new),
             },
         }
     }
 
-    pub fn struct_(fields: &[Decl]) -> Ty {
-        let fields = fields
-            .iter()
-            .map(|field| match &field.kind {
-                DeclKind::Field { ty, .. } => ty.to_owned(),
-                _ => unreachable!(),
-            })
-            .collect();
-
-        Ty {
-            id: NodeId::default(),
-            span: Span::default(),
-            kind: TyKind::Struct { fields },
-        }
-    }
-
-    pub fn custom(name: String, span: Span) -> Ty {
+    pub fn identifier(name: String, span: Span) -> Ty {
         Ty {
             id: NodeId::default(),
             span,
-            kind: TyKind::Custom { name },
+            kind: TyKind::Identifier(name),
         }
     }
 }

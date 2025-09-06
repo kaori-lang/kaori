@@ -1,33 +1,30 @@
-use crate::{
-    error::kaori_error::KaoriError, frontend::scanner::token_kind::TokenKind, kaori_error,
-};
+use crate::{error::kaori_error::KaoriError, frontend::lexer::token_kind::TokenKind, kaori_error};
 
 use super::{parser::Parser, ty::Ty};
 
 impl Parser {
     pub fn parse_type(&mut self) -> Result<Ty, KaoriError> {
-        match self.token_stream.token_kind() {
-            TokenKind::Identifier => self.parse_primitive_type(),
+        let span = self.token_stream.span();
+        let kind = self.token_stream.token_kind();
+
+        match kind {
+            TokenKind::Identifier => self.parse_identifier_type(),
             _ => Err(kaori_error!(
-                self.token_stream.span(),
+                span,
                 "expected a valid type, but found: {}",
-                self.token_stream.token_kind(),
+                kind,
             )),
         }
     }
 
-    fn parse_primitive_type(&mut self) -> Result<Ty, KaoriError> {
+    fn parse_identifier_type(&mut self) -> Result<Ty, KaoriError> {
         let span = self.token_stream.span();
-        let name = self.token_stream.lexeme();
+        let name = self.token_stream.lexeme().to_owned();
 
-        let primitive = match name {
-            "bool" => Ty::boolean(span),
-            "number" => Ty::number(span),
-            _ => Ty::custom(name.to_owned(), span),
-        };
+        let identifier = Ty::identifier(name, span);
 
-        self.token_stream.advance();
+        self.token_stream.consume(TokenKind::Identifier);
 
-        Ok(primitive)
+        Ok(identifier)
     }
 }

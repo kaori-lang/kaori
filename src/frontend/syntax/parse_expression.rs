@@ -1,11 +1,10 @@
-use crate::{
-    error::kaori_error::KaoriError, frontend::scanner::token_kind::TokenKind, kaori_error,
-};
+use crate::{error::kaori_error::KaoriError, frontend::lexer::token_kind::TokenKind, kaori_error};
 
 use super::{
+    binary_op::{BinaryOp, BinaryOpKind},
     expr::Expr,
-    operator::{BinaryOp, UnaryOp},
     parser::Parser,
+    unary_op::{UnaryOp, UnaryOpKind},
 };
 
 impl Parser {
@@ -18,6 +17,45 @@ impl Parser {
         }
 
         self.parse_or()
+    }
+
+    pub fn build_binary_operator(&mut self) -> BinaryOp {
+        let token_kind = self.token_stream.token_kind();
+        let span = self.token_stream.span();
+
+        let kind = match token_kind {
+            TokenKind::Plus => BinaryOpKind::Add,
+            TokenKind::Minus => BinaryOpKind::Subtract,
+            TokenKind::Multiply => BinaryOpKind::Multiply,
+            TokenKind::Divide => BinaryOpKind::Divide,
+            TokenKind::Modulo => BinaryOpKind::Modulo,
+            TokenKind::And => BinaryOpKind::And,
+            TokenKind::Or => BinaryOpKind::Or,
+            TokenKind::Equal => BinaryOpKind::Equal,
+            TokenKind::NotEqual => BinaryOpKind::NotEqual,
+            TokenKind::Greater => BinaryOpKind::Greater,
+            TokenKind::GreaterEqual => BinaryOpKind::GreaterEqual,
+            TokenKind::Less => BinaryOpKind::Less,
+            TokenKind::LessEqual => BinaryOpKind::LessEqual,
+            _ => unreachable!(),
+        };
+
+        BinaryOp::new(kind, span)
+    }
+
+    pub fn build_unary_operator(&mut self) -> UnaryOp {
+        let token_kind = self.token_stream.token_kind();
+        let span = self.token_stream.span();
+
+        let kind = match token_kind {
+            TokenKind::Minus => UnaryOpKind::Negate,
+            TokenKind::Not => UnaryOpKind::Not,
+            TokenKind::Increment => UnaryOpKind::Increment,
+            TokenKind::Decrement => UnaryOpKind::Decrement,
+            _ => unreachable!(),
+        };
+
+        UnaryOp::new(kind, span)
     }
 
     pub fn parse_assign(&mut self) -> Result<Expr, KaoriError> {
@@ -37,7 +75,7 @@ impl Parser {
             let kind = self.token_stream.token_kind();
 
             let operator = match kind {
-                TokenKind::Or => BinaryOp::Or,
+                TokenKind::Or => self.build_binary_operator(),
                 _ => break,
             };
 
@@ -58,7 +96,7 @@ impl Parser {
             let kind = self.token_stream.token_kind();
 
             let operator = match kind {
-                TokenKind::And => BinaryOp::And,
+                TokenKind::And => self.build_binary_operator(),
                 _ => break,
             };
 
@@ -78,8 +116,7 @@ impl Parser {
             let kind = self.token_stream.token_kind();
 
             let operator = match kind {
-                TokenKind::Equal => BinaryOp::Equal,
-                TokenKind::NotEqual => BinaryOp::NotEqual,
+                TokenKind::Equal | TokenKind::NotEqual => self.build_binary_operator(),
                 _ => break,
             };
 
@@ -99,10 +136,10 @@ impl Parser {
             let kind = self.token_stream.token_kind();
 
             let operator = match kind {
-                TokenKind::Greater => BinaryOp::Greater,
-                TokenKind::GreaterEqual => BinaryOp::GreaterEqual,
-                TokenKind::Less => BinaryOp::Less,
-                TokenKind::LessEqual => BinaryOp::LessEqual,
+                TokenKind::Greater
+                | TokenKind::GreaterEqual
+                | TokenKind::Less
+                | TokenKind::LessEqual => self.build_binary_operator(),
                 _ => break,
             };
 
@@ -122,8 +159,7 @@ impl Parser {
             let kind = self.token_stream.token_kind();
 
             let operator = match kind {
-                TokenKind::Plus => BinaryOp::Add,
-                TokenKind::Minus => BinaryOp::Subtract,
+                TokenKind::Plus | TokenKind::Minus => self.build_binary_operator(),
                 _ => break,
             };
 
@@ -143,9 +179,9 @@ impl Parser {
             let kind = self.token_stream.token_kind();
 
             let operator = match kind {
-                TokenKind::Multiply => BinaryOp::Multiply,
-                TokenKind::Divide => BinaryOp::Divide,
-                TokenKind::Modulo => BinaryOp::Modulo,
+                TokenKind::Multiply | TokenKind::Divide | TokenKind::Modulo => {
+                    self.build_binary_operator()
+                }
                 _ => break,
             };
 
@@ -160,15 +196,13 @@ impl Parser {
 
     pub fn parse_prefix_unary(&mut self) -> Result<Expr, KaoriError> {
         let kind = self.token_stream.token_kind();
-        let span = self.token_stream.span();
 
         let operator = match kind {
             TokenKind::Plus => {
                 self.token_stream.advance();
                 return self.parse_prefix_unary();
             }
-            TokenKind::Minus => UnaryOp::Negate,
-            TokenKind::Not => UnaryOp::Not,
+            TokenKind::Minus | TokenKind::Not => self.build_unary_operator(),
             _ => return self.parse_primary(),
         };
 
@@ -176,7 +210,7 @@ impl Parser {
 
         let right = self.parse_prefix_unary()?;
 
-        Ok(Expr::unary(operator, right, span))
+        Ok(Expr::unary(operator, right))
     }
 
     pub fn parse_primary(&mut self) -> Result<Expr, KaoriError> {
@@ -238,18 +272,16 @@ impl Parser {
         let identifier = self.parse_identifier()?;
 
         let kind = self.token_stream.token_kind();
-        let span = self.token_stream.span();
 
         let operator = match kind {
-            TokenKind::Increment => UnaryOp::Increment,
-            TokenKind::Decrement => UnaryOp::Decrement,
+            TokenKind::Increment | TokenKind::Decrement => self.build_unary_operator(),
             TokenKind::LeftParen => return self.parse_function_call(identifier),
             _ => return Ok(identifier),
         };
 
         self.token_stream.advance();
 
-        Ok(Expr::unary(operator, identifier, span))
+        Ok(Expr::unary(operator, identifier))
     }
 
     pub fn parse_function_call(&mut self, callee: Expr) -> Result<Expr, KaoriError> {

@@ -2,8 +2,8 @@ use crate::frontend::syntax::{
     ast_node::AstNode,
     decl::{Decl, DeclKind},
     expr::{Expr, ExprKind},
-    operator::{BinaryOp, UnaryOp},
     stmt::{Stmt, StmtKind},
+    ty::{Ty, TyKind},
 };
 
 use super::{hir_ast_node::HirAstNode, hir_decl::HirDecl, hir_expr::HirExpr, hir_stmt::HirStmt};
@@ -149,9 +149,8 @@ fn generate_expression(expression: &Expr) -> HirExpr {
         ExprKind::Assign { left, right } => {
             let right = generate_expression(right);
             let left = generate_expression(left);
-            let span = expression.span;
 
-            HirExpr::assign(left, right, span)
+            HirExpr::assign(left, right, expression.span)
         }
         ExprKind::Binary {
             left,
@@ -160,55 +159,25 @@ fn generate_expression(expression: &Expr) -> HirExpr {
         } => {
             let left = generate_expression(left);
             let right = generate_expression(right);
-            let span = expression.span;
 
-            match operator {
-                BinaryOp::Add => HirExpr::add(left, right, span),
-                BinaryOp::Subtract => HirExpr::sub(left, right, span),
-                BinaryOp::Multiply => HirExpr::mul(left, right, span),
-                BinaryOp::Divide => HirExpr::div(left, right, span),
-                BinaryOp::Modulo => HirExpr::mod_(left, right, span),
-                BinaryOp::Equal => HirExpr::equal(left, right, span),
-                BinaryOp::NotEqual => HirExpr::not_equal(left, right, span),
-                BinaryOp::Less => HirExpr::less(left, right, span),
-                BinaryOp::LessEqual => HirExpr::less_equal(left, right, span),
-                BinaryOp::Greater => HirExpr::greater(left, right, span),
-                BinaryOp::GreaterEqual => HirExpr::greater_equal(left, right, span),
-                BinaryOp::And => HirExpr::and(left, right, span),
-                BinaryOp::Or => HirExpr::or(left, right, span),
-            }
+            HirExpr::binary(*operator, left, right, expression.span)
         }
         ExprKind::Unary { right, operator } => {
             let right = generate_expression(right);
-            let span = expression.span;
 
-            match operator {
-                UnaryOp::Not => HirExpr::not(right, span),
-                UnaryOp::Negate => HirExpr::negate(right, span),
-                UnaryOp::Increment => {
-                    let left = HirExpr::number_literal(1.0, span);
-
-                    HirExpr::assign(right.to_owned(), HirExpr::add(left, right, span), span)
-                }
-                UnaryOp::Decrement => {
-                    let left = HirExpr::number_literal(1.0, span);
-
-                    HirExpr::assign(right.to_owned(), HirExpr::sub(left, right, span), span)
-                }
-            }
+            HirExpr::unary(*operator, right, expression.span)
         }
         ExprKind::FunctionCall { callee, arguments } => {
-            let span = expression.span;
             let callee = generate_expression(callee);
             let arguments = arguments.iter().map(generate_expression).collect();
 
-            HirExpr::function_call(callee, arguments, span)
+            HirExpr::function_call(callee, arguments, expression.span)
         }
         ExprKind::NumberLiteral(value) => HirExpr::number_literal(*value, expression.span),
         ExprKind::BooleanLiteral(value) => HirExpr::boolean_literal(*value, expression.span),
         ExprKind::StringLiteral(value) => {
             HirExpr::string_literal(value.to_owned(), expression.span)
         }
-        ExprKind::Identifier { name } => HirExpr::identifier(name.to_owned(), expression.span),
+        ExprKind::Identifier(name) => HirExpr::identifier(name.to_owned(), expression.span),
     }
 }
