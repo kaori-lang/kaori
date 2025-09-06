@@ -1,6 +1,4 @@
-use crate::{
-    error::kaori_error::KaoriError, frontend::scanner::token_kind::TokenKind, kaori_error,
-};
+use crate::{error::kaori_error::KaoriError, frontend::lexer::token_kind::TokenKind, kaori_error};
 
 use super::{parser::Parser, ty::Ty};
 

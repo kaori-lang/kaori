@@ -1,7 +1,4 @@
-use crate::frontend::{
-    scanner::span::Span,
-    syntax::{binary_op::BinaryOp, unary_op::UnaryOp},
-};
+use crate::frontend::scanner::span::Span;
 
 use super::node_id::NodeId;
 

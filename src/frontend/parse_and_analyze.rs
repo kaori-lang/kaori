@@ -1,7 +1,7 @@
 use crate::{error::kaori_error::KaoriError, frontend::hir::hir_gen::generate_hir};
 
 use super::{
-    scanner::{lexer::Lexer, token_stream::TokenStream},
+    lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{resolution_table::ResolutionTable, resolver::Resolver, type_checker::TypeChecker},
     syntax::parser::Parser,
 };

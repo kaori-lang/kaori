@@ -1,4 +1,4 @@
-use crate::frontend::{hir::node_id::NodeId, scanner::span::Span};
+use crate::frontend::{hir::node_id::NodeId, lexer::span::Span};
 
 #[derive(Debug, Clone)]
 pub struct Ty {

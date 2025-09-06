@@ -1,4 +1,4 @@
-use crate::frontend::scanner::span::Span;
+use crate::frontend::lexer::span::Span;
 
 use super::{binary_op::BinaryOp, unary_op::UnaryOp};
 
