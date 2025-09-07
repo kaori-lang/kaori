@@ -1,6 +1,6 @@
 use crate::{error::kaori_error::KaoriError, frontend::lexer::token_kind::TokenKind};
 
-use super::{decl::Decl, parser::Parser, ty::Ty};
+use super::{decl::Decl, parser::Parser};
 
 impl Parser {
     pub fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {

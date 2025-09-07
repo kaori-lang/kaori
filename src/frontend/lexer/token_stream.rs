@@ -45,18 +45,17 @@ impl TokenStream {
     }
 
     pub fn look_ahead(&mut self, expected: &[TokenKind]) -> bool {
-        for (i, _) in expected.iter().enumerate() {
+        for (i, expected) in expected.iter().enumerate() {
             let j = self.index + i;
 
-            if j >= self.tokens.len() {
+            let matched = match self.tokens.get(j) {
+                Some(token) => token.kind == *expected,
+                None => false,
+            };
+
+            if !matched {
                 return false;
             }
-
-            if self.tokens[j].kind == expected[i] {
-                continue;
-            }
-
-            return false;
         }
 
         true

@@ -23,7 +23,7 @@ impl Parser {
 
         let identifier = Ty::identifier(name, span);
 
-        self.token_stream.consume(TokenKind::Identifier);
+        self.token_stream.consume(TokenKind::Identifier)?;
 
         Ok(identifier)
     }
