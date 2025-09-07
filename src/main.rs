@@ -8,7 +8,8 @@ use std::{fs, time::Instant};
 use kaori::{error::kaori_error::KaoriError, frontend::parse_and_analyze::parse_and_analyze};
 
 fn main() -> ExitCode {
-    let source_to_run = args().nth(1);
+    let source_to_run = Some("test_suite/fib_recur.kaori".to_owned()); // Debug purposes
+    //let source_to_run = args().nth(1);
 
     if source_to_run.is_none() {
         eprintln!("Error: No path was found for the program's source!");
@@ -16,7 +17,7 @@ fn main() -> ExitCode {
     }
 
     let source_path = source_to_run.unwrap();
-
+    println!("{source_path}");
     if let Ok(source) = fs::read_to_string(source_path) {
         if let Err(err) = run_program(source.clone()) {
             err.report(&source);

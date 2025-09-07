@@ -231,12 +231,13 @@ impl Parser {
                 self.token_stream.advance();
                 Expr::number_literal(value, span)
             }
-            TokenKind::BooleanLiteral => {
-                let lexeme = self.token_stream.lexeme();
-                let value = lexeme.parse::<bool>().unwrap();
-
+            TokenKind::True => {
                 self.token_stream.advance();
-                Expr::boolean_literal(value, span)
+                Expr::boolean_literal(true, span)
+            }
+            TokenKind::False => {
+                self.token_stream.advance();
+                Expr::boolean_literal(false, span)
             }
             TokenKind::StringLiteral => {
                 let value = self.token_stream.lexeme().to_owned();

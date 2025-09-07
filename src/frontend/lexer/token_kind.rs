@@ -32,6 +32,7 @@ pub enum TokenKind {
     LeftBrace,
     RightBrace,
 
+    // Keywords
     Function,
     For,
     While,
@@ -42,11 +43,14 @@ pub enum TokenKind {
     Return,
     Struct,
     Print,
+    True,
+    False,
+    Bool,
+    Number,
 
     Identifier,
     StringLiteral,
     NumberLiteral,
-    BooleanLiteral,
 
     Invalid,
     EndOfFile,
@@ -95,11 +99,14 @@ impl fmt::Display for TokenKind {
             TokenKind::Return => "return",
             TokenKind::Struct => "struct",
             TokenKind::Print => "print",
+            TokenKind::True => "true",
+            TokenKind::False => "false",
+            TokenKind::Bool => "bool",
+            TokenKind::Number => "number",
 
             TokenKind::Identifier => "identifier",
             TokenKind::StringLiteral => "string",
             TokenKind::NumberLiteral => "number",
-            TokenKind::BooleanLiteral => "boolean",
 
             TokenKind::Invalid => "invalid",
             TokenKind::EndOfFile => "EOF",

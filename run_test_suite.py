@@ -19,6 +19,7 @@ def try_kaori_tests(test_sources: list[str]) -> bool:
 
     for test_file in test_sources:
         next_test_path = test_suite_dir.joinpath(test_file)
+
         print(f'Testing source: \'{next_test_path}\'\n')
 
         test_result = run(['cargo', 'run', f'{next_test_path}'], capture_output=False)
