@@ -96,7 +96,7 @@ impl<'a> TypeChecker<'a> {
                 return_ty,
                 ..
             } => {}
-            HirDeclKind::Struct { name, fields } => todo!(),
+            HirDeclKind::Struct { name, fields } => {}
         };
 
         Ok(())

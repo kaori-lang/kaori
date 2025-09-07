@@ -1,4 +1,7 @@
-use crate::{error::kaori_error::KaoriError, frontend::lexer::token_kind::TokenKind};
+use crate::{
+    error::kaori_error::KaoriError,
+    frontend::lexer::{span::Span, token_kind::TokenKind},
+};
 
 use super::{decl::Decl, parser::Parser};
 
@@ -76,6 +79,21 @@ impl Parser {
         Ok(Decl::function(name, parameters, body, return_ty, span))
     }
 
+    pub fn parse_struct_field(&mut self) -> Result<Decl, KaoriError> {
+        let start = self.token_stream.span();
+
+        let name = self.token_stream.lexeme().to_owned();
+        self.token_stream.consume(TokenKind::Identifier)?;
+        self.token_stream.consume(TokenKind::Colon)?;
+        let ty = self.parse_type()?;
+
+        let end = self.token_stream.span();
+
+        let span = Span::merge(start, end);
+
+        Ok(Decl::field(name, ty, span))
+    }
+
     pub fn parse_struct_declaration(&mut self) -> Result<Decl, KaoriError> {
         let span = self.token_stream.span();
 
@@ -91,13 +109,7 @@ impl Parser {
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
         {
-            let span = self.token_stream.span();
-            let name = self.token_stream.lexeme().to_owned();
-            self.token_stream.consume(TokenKind::Identifier)?;
-            self.token_stream.consume(TokenKind::Colon)?;
-            let ty = self.parse_type()?;
-
-            let field = Decl::field(name, ty, span);
+            let field = self.parse_struct_field()?;
 
             fields.push(field);
 
