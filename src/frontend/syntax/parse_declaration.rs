@@ -6,27 +6,6 @@ use crate::{
 use super::{decl::Decl, parser::Parser};
 
 impl Parser {
-    pub fn parse_comma_separator<T>(
-        &mut self,
-        func: fn(&mut Self) -> Result<T, KaoriError>,
-        end_parse_token: TokenKind,
-    ) -> Result<Vec<T>, KaoriError> {
-        let mut items: Vec<T> = Vec::new();
-
-        while !self.token_stream.at_end() && self.token_stream.token_kind() != end_parse_token {
-            let item = func(self)?;
-            items.push(item);
-
-            if self.token_stream.token_kind() == end_parse_token {
-                break;
-            }
-
-            self.token_stream.consume(TokenKind::Comma)?;
-        }
-
-        Ok(items)
-    }
-
     pub fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
         let span = self.token_stream.span();
         let name = self.token_stream.lexeme().to_owned();
@@ -87,6 +66,7 @@ impl Parser {
         let name = self.token_stream.lexeme().to_owned();
         self.token_stream.consume(TokenKind::Identifier)?;
         self.token_stream.consume(TokenKind::Colon)?;
+
         let ty = self.parse_type()?;
 
         let end = self.token_stream.span();

@@ -63,4 +63,25 @@ impl Parser {
 
         Ok(AstNode::Statement(stmt))
     }
+
+    pub fn parse_comma_separator<T>(
+        &mut self,
+        parse_item: fn(&mut Self) -> Result<T, KaoriError>,
+        end_parse_token: TokenKind,
+    ) -> Result<Vec<T>, KaoriError> {
+        let mut items: Vec<T> = Vec::new();
+
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != end_parse_token {
+            let item = parse_item(self)?;
+            items.push(item);
+
+            if self.token_stream.token_kind() == end_parse_token {
+                break;
+            }
+
+            self.token_stream.consume(TokenKind::Comma)?;
+        }
+
+        Ok(items)
+    }
 }
