@@ -308,8 +308,16 @@ impl<'a> Resolver<'a> {
                 }
             }
             TyKind::Identifier(name) => {
-                let Some(symbol) = self.environment.search(name) else {
-                    return Err(kaori_error!(ty.span, "{} type is not declared", name));
+                match self.environment.search(name) {
+                    Some(symbol) => {
+                        if let SymbolKind::Struct = symbol.kind {
+                            self.resolution_table
+                                .insert_name_resolution(ty.id, Resolution::Type(symbol.id));
+                        } else {
+                            return Err(kaori_error!(ty.span, "{} is not a valid type", name));
+                        }
+                    }
+                    None => return Err(kaori_error!(ty.span, "{} type is not declared", name)),
                 };
             }
             TyKind::Bool => {}
