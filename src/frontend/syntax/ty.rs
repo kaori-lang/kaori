@@ -14,6 +14,8 @@ pub enum TyKind {
         return_ty: Option<Box<Ty>>,
     },
     Identifier(String),
+    Number,
+    Bool,
 }
 
 impl Ty {
@@ -25,6 +27,22 @@ impl Ty {
                 parameters,
                 return_ty: return_ty.map(Box::new),
             },
+        }
+    }
+
+    pub fn number(span: Span) -> Ty {
+        Ty {
+            id: NodeId::default(),
+            span,
+            kind: TyKind::Number,
+        }
+    }
+
+    pub fn bool(span: Span) -> Ty {
+        Ty {
+            id: NodeId::default(),
+            span,
+            kind: TyKind::Bool,
         }
     }
 

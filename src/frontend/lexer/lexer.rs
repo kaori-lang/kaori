@@ -86,6 +86,8 @@ impl<'a> Lexer<'a> {
             "print" => TokenKind::Print,
             "true" => TokenKind::True,
             "false" => TokenKind::False,
+            "bool" => TokenKind::Bool,
+            "number" => TokenKind::Number,
             _ => TokenKind::Identifier,
         };
 
