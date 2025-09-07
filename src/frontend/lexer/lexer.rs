@@ -39,7 +39,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn comment(&mut self) {
+    fn multiline_comment(&mut self) {
         self.position += 2;
 
         while !self.at_end() && !self.look_ahead("*/") {
@@ -47,6 +47,16 @@ impl<'a> Lexer<'a> {
         }
 
         self.position += 2;
+    }
+
+    fn line_comment(&mut self) {
+        self.position += 2;
+
+        while !self.at_end() && !self.look_ahead("\n") {
+            self.position += 1;
+        }
+
+        self.position += 1;
     }
 
     fn identifier_or_keyword(&mut self) {
@@ -241,7 +251,8 @@ impl<'a> Lexer<'a> {
         let c = self.source[self.position];
         match c {
             '"' => self.string_literal()?,
-            '/' if self.look_ahead("/*") => self.comment(),
+            '/' if self.look_ahead("/*") => self.multiline_comment(),
+            '/' if self.look_ahead("//") => self.line_comment(),
             c if c.is_alphabetic() => self.identifier_or_keyword(),
             '0'..='9' => self.number_literal(),
             c if c.is_whitespace() => self.white_space(),
