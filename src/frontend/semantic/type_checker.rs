@@ -181,9 +181,10 @@ impl<'a> TypeChecker<'a> {
                     .unwrap();
 
                 match resolution {
-                    Resolution::Variable(id) => self.resolution_table.get_type_resolution(id),
-                    Resolution::Function(id) => self.resolution_table.get_type_resolution(id),
-                    Resolution::Struct(id) => self.resolution_table.get_type_resolution(id),
+                    Resolution::Variable(id)
+                    | Resolution::Function(id)
+                    | Resolution::Struct(id)
+                    | Resolution::Type(id) => self.resolution_table.get_type_resolution(id),
                 }
                 .unwrap()
                 .clone()
@@ -226,6 +227,8 @@ impl<'a> TypeChecker<'a> {
                     unreachable!()
                 }
             }
+            TyKind::Bool => CheckedTy::Boolean,
+            TyKind::Number => CheckedTy::Number,
         }
     }
 }

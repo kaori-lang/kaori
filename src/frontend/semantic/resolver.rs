@@ -293,8 +293,8 @@ impl<'a> Resolver<'a> {
                     self.resolve_type(parameter)?;
                 }
 
-                if let Some(ty) = return_ty {
-                    self.resolve_type(ty)?;
+                if let Some(return_ty) = return_ty {
+                    self.resolve_type(return_ty)?;
                 }
             }
             TyKind::Identifier(name) => {
@@ -305,6 +305,8 @@ impl<'a> Resolver<'a> {
                 self.resolution_table
                     .insert_name_resolution(ty.id, symbol.as_resolution());
             }
+            TyKind::Bool => {}
+            TyKind::Number => {}
         };
 
         Ok(())

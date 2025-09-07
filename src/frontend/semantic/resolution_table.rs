@@ -8,6 +8,7 @@ pub enum Resolution {
     Variable(NodeId),
     Struct(NodeId),
     Function(NodeId),
+    Type(NodeId),
 }
 
 impl Resolution {

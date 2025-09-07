@@ -1,42 +1,50 @@
+use super::resolution_table::Resolution;
 use crate::frontend::hir::node_id::NodeId;
 
-use super::resolution_table::Resolution;
+#[derive(Clone)]
+pub struct Symbol {
+    pub id: NodeId,
+    pub name: String,
+    pub kind: SymbolKind,
+}
 
 #[derive(Clone)]
-pub enum Symbol {
-    Variable {
-        id: NodeId,
-        name: String,
-        offset: usize,
-    },
-    Function {
-        id: NodeId,
-        name: String,
-    },
-    Struct {
-        id: NodeId,
-        name: String,
-    },
+pub enum SymbolKind {
+    Variable { offset: usize },
+    Function,
+    Struct,
 }
 
 impl Symbol {
     pub fn variable(id: NodeId, name: String, offset: usize) -> Symbol {
-        Symbol::Variable { id, name, offset }
+        Symbol {
+            id,
+            name,
+            kind: SymbolKind::Variable { offset },
+        }
     }
 
     pub fn function(id: NodeId, name: String) -> Symbol {
-        Symbol::Function { id, name }
+        Symbol {
+            id,
+            name,
+            kind: SymbolKind::Function,
+        }
     }
 
     pub fn struct_(id: NodeId, name: String) -> Symbol {
-        Symbol::Struct { id, name }
+        Symbol {
+            id,
+            name,
+            kind: SymbolKind::Struct,
+        }
     }
 
     pub fn as_resolution(&self) -> Resolution {
-        match &self {
-            Symbol::Struct { id, .. } => Resolution::struct_(*id),
-            Symbol::Function { id, .. } => Resolution::function(*id),
-            Symbol::Variable { id, .. } => Resolution::variable(*id),
+        match &self.kind {
+            SymbolKind::Struct => Resolution::struct_(self.id),
+            SymbolKind::Function => Resolution::function(self.id),
+            SymbolKind::Variable { .. } => Resolution::variable(self.id),
         }
     }
 }

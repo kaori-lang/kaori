@@ -1,6 +1,6 @@
 use crate::frontend::hir::node_id::NodeId;
 
-use super::symbol::Symbol;
+use super::symbol::{Symbol, SymbolKind};
 
 pub struct Environment {
     pub symbols: Vec<Symbol>,
@@ -29,7 +29,9 @@ impl Environment {
         let ptr = self.scopes_ptr.pop().unwrap();
 
         while self.symbols.len() > ptr {
-            if let Some(Symbol::Variable { .. }) = self.symbols.last() {
+            if let Some(symbol) = self.symbols.last()
+                && let SymbolKind::Variable { .. } = symbol.kind
+            {
                 self.variable_offset -= 1;
             }
 
@@ -60,21 +62,15 @@ impl Environment {
         self.symbols.push(symbol);
     }
 
-    pub fn search_current_scope(&self, name_: &str) -> Option<&Symbol> {
+    pub fn search_current_scope(&self, name: &str) -> Option<&Symbol> {
         let ptr = *self.scopes_ptr.last().unwrap();
 
-        self.symbols[ptr..].iter().find(|symbol| match symbol {
-            Symbol::Variable { name, .. } => name == name_,
-            Symbol::Struct { name, .. } => name == name_,
-            Symbol::Function { name, .. } => name == name_,
-        })
+        self.symbols[ptr..]
+            .iter()
+            .find(|symbol| symbol.name == name)
     }
 
-    pub fn search(&self, name_: &str) -> Option<&Symbol> {
-        self.symbols.iter().rev().find(|symbol| match symbol {
-            Symbol::Variable { name, .. } => name == name_,
-            Symbol::Struct { name, .. } => name == name_,
-            Symbol::Function { name, .. } => name == name_,
-        })
+    pub fn search(&self, name: &str) -> Option<&Symbol> {
+        self.symbols.iter().rev().find(|symbol| symbol.name == name)
     }
 }

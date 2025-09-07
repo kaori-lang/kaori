@@ -225,24 +225,25 @@ impl Parser {
                 expr
             }
             TokenKind::NumberLiteral => {
-                let lexeme = self.token_stream.lexeme();
-                let value = lexeme.parse::<f64>().unwrap();
-
+                let value = self.token_stream.lexeme().parse::<f64>().unwrap();
                 self.token_stream.advance();
+
                 Expr::number_literal(value, span)
             }
             TokenKind::True => {
                 self.token_stream.advance();
+
                 Expr::boolean_literal(true, span)
             }
             TokenKind::False => {
                 self.token_stream.advance();
+
                 Expr::boolean_literal(false, span)
             }
             TokenKind::StringLiteral => {
                 let value = self.token_stream.lexeme().to_owned();
-
                 self.token_stream.advance();
+
                 Expr::string_literal(value, span)
             }
             TokenKind::Identifier => self.parse_postfix_unary()?,
