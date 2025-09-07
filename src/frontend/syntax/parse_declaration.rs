@@ -37,14 +37,7 @@ impl Parser {
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightParen
         {
-            let span = self.token_stream.span();
-            let name = self.token_stream.lexeme().to_owned();
-            self.token_stream.consume(TokenKind::Identifier)?;
-            self.token_stream.consume(TokenKind::Colon)?;
-
-            let ty = self.parse_type()?;
-
-            let parameter = Decl::parameter(name, ty, span);
+            let parameter = self.parse_function_parameter()?;
 
             parameters.push(parameter);
 
@@ -77,6 +70,21 @@ impl Parser {
         self.token_stream.consume(TokenKind::RightBrace)?;
 
         Ok(Decl::function(name, parameters, body, return_ty, span))
+    }
+
+    pub fn parse_function_parameter(&mut self) -> Result<Decl, KaoriError> {
+        let start = self.token_stream.span();
+
+        let name = self.token_stream.lexeme().to_owned();
+        self.token_stream.consume(TokenKind::Identifier)?;
+        self.token_stream.consume(TokenKind::Colon)?;
+        let ty = self.parse_type()?;
+
+        let end = self.token_stream.span();
+
+        let span = Span::merge(start, end);
+
+        Ok(Decl::parameter(name, ty, span))
     }
 
     pub fn parse_struct_field(&mut self) -> Result<Decl, KaoriError> {
