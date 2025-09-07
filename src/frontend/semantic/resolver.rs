@@ -13,7 +13,11 @@ use crate::{
     kaori_error,
 };
 
-use super::{environment::Environment, resolution_table::ResolutionTable};
+use super::{
+    environment::Environment,
+    resolution_table::{Resolution, ResolutionTable},
+    symbol::SymbolKind,
+};
 
 pub struct Resolver<'a> {
     environment: Environment,
@@ -269,8 +273,14 @@ impl<'a> Resolver<'a> {
             }
             HirExprKind::Identifier(name) => {
                 if let Some(symbol) = self.environment.search(name) {
+                    let resolution = match symbol.kind {
+                        SymbolKind::Variable => Resolution::variable(symbol.id),
+                        SymbolKind::Function => Resolution::function(symbol.id),
+                        SymbolKind::Struct => Resolution::struct_(symbol.id),
+                    };
+
                     self.resolution_table
-                        .insert_name_resolution(expression.id, symbol.as_resolution());
+                        .insert_name_resolution(expression.id, resolution);
                 } else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));
                 }
@@ -301,9 +311,6 @@ impl<'a> Resolver<'a> {
                 let Some(symbol) = self.environment.search(name) else {
                     return Err(kaori_error!(ty.span, "{} type is not declared", name));
                 };
-
-                self.resolution_table
-                    .insert_name_resolution(ty.id, symbol.as_resolution());
             }
             TyKind::Bool => {}
             TyKind::Number => {}

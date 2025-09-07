@@ -30,7 +30,7 @@ impl Environment {
 
         while self.symbols.len() > ptr {
             if let Some(symbol) = self.symbols.last()
-                && let SymbolKind::Variable { .. } = symbol.kind
+                && let SymbolKind::Variable = symbol.kind
             {
                 self.variable_offset -= 1;
             }
@@ -41,7 +41,7 @@ impl Environment {
 
     pub fn declare_variable(&mut self, id: NodeId, name: String) -> usize {
         let offset = self.variable_offset;
-        let symbol = Symbol::variable(id, name, offset);
+        let symbol = Symbol::variable(id, name);
 
         self.variable_offset += 1;
 
