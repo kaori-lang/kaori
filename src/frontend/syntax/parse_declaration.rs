@@ -6,6 +6,27 @@ use crate::{
 use super::{decl::Decl, parser::Parser};
 
 impl Parser {
+    pub fn parse_comma_separator<T>(
+        &mut self,
+        func: fn(&mut Self) -> Result<T, KaoriError>,
+        end_parse_token: TokenKind,
+    ) -> Result<Vec<T>, KaoriError> {
+        let mut items: Vec<T> = Vec::new();
+
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != end_parse_token {
+            let item = func(self)?;
+            items.push(item);
+
+            if self.token_stream.token_kind() == end_parse_token {
+                break;
+            }
+
+            self.token_stream.consume(TokenKind::Comma)?;
+        }
+
+        Ok(items)
+    }
+
     pub fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
         let span = self.token_stream.span();
         let name = self.token_stream.lexeme().to_owned();
@@ -33,20 +54,8 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::LeftParen)?;
 
-        let mut parameters: Vec<Decl> = Vec::new();
-
-        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightParen
-        {
-            let parameter = self.parse_function_parameter()?;
-
-            parameters.push(parameter);
-
-            if self.token_stream.token_kind() == TokenKind::RightParen {
-                break;
-            }
-
-            self.token_stream.consume(TokenKind::Comma)?;
-        }
+        let parameters =
+            self.parse_comma_separator(Parser::parse_function_parameter, TokenKind::RightParen)?;
 
         self.token_stream.consume(TokenKind::RightParen)?;
 
@@ -113,20 +122,8 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::LeftBrace)?;
 
-        let mut fields = Vec::new();
-
-        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
-        {
-            let field = self.parse_struct_field()?;
-
-            fields.push(field);
-
-            if self.token_stream.token_kind() == TokenKind::RightBrace {
-                break;
-            }
-
-            self.token_stream.consume(TokenKind::Comma)?;
-        }
+        let fields =
+            self.parse_comma_separator(Parser::parse_struct_field, TokenKind::RightBrace)?;
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
