@@ -293,21 +293,8 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::LeftParen)?;
 
-        let mut arguments: Vec<Expr> = Vec::new();
-
-        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightParen
-        {
-            let argument = self.parse_expression()?;
-
-            arguments.push(argument);
-
-            if self.token_stream.token_kind() == TokenKind::RightParen {
-                break;
-            }
-
-            self.token_stream.consume(TokenKind::Comma)?;
-        }
-
+        let arguments =
+            self.parse_comma_separator(Parser::parse_expression, TokenKind::RightParen)?;
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::RightParen)?;
