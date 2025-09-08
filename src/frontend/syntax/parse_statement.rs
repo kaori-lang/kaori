@@ -118,24 +118,21 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::For)?;
 
-        let declaration = self.parse_variable_declaration()?;
+        let init =
+            self.parse_comma_separator(Parser::parse_variable_declaration, TokenKind::Semicolon)?;
 
         self.token_stream.consume(TokenKind::Semicolon)?;
 
-        let condition = self.parse_expression()?;
+        let condition =
+            self.parse_comma_separator(Parser::parse_expression, TokenKind::Semicolon)?;
 
         self.token_stream.consume(TokenKind::Semicolon)?;
 
-        let increment = self.parse_expression_statement()?;
+        let increment =
+            self.parse_comma_separator(Parser::parse_expression_statement, TokenKind::LeftBrace)?;
 
         let block = self.parse_block_statement()?;
 
-        Ok(Stmt::for_loop(
-            declaration,
-            condition,
-            increment,
-            block,
-            span,
-        ))
+        Ok(Stmt::for_loop(init, condition, increment, block, span))
     }
 }

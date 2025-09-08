@@ -69,7 +69,7 @@ impl Parser {
         parse_item: fn(&mut Self) -> Result<T, KaoriError>,
         terminator: TokenKind,
     ) -> Result<Vec<T>, KaoriError> {
-        let mut items: Vec<T> = Vec::new();
+        let mut items = Vec::new();
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != terminator {
             let item = parse_item(self)?;

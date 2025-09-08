@@ -1,6 +1,6 @@
 use crate::frontend::lexer::span::Span;
 
-use super::{hir_ast_node::HirAstNode, hir_expr::HirExpr, node_id::NodeId};
+use super::{hir_ast_node::HirAstNode, hir_decl::HirDecl, hir_expr::HirExpr, node_id::NodeId};
 
 #[derive(Debug)]
 pub struct HirStmt {
@@ -17,8 +17,10 @@ pub enum HirStmtKind {
         then_branch: Box<HirStmt>,
         else_branch: Option<Box<HirStmt>>,
     },
-    WhileLoop {
-        condition: Box<HirExpr>,
+    Loop {
+        init: HirDecl,
+        condition: HirExpr,
+        increment: Box<HirStmt>,
         block: Box<HirStmt>,
     },
     Block(Vec<HirAstNode>),
@@ -58,7 +60,7 @@ impl HirStmt {
         HirStmt {
             id: NodeId::default(),
             span,
-            kind: HirStmtKind::WhileLoop {
+            kind: HirStmtKind::Loop {
                 condition: Box::new(condition),
                 block: Box::new(block),
             },
