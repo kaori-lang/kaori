@@ -3,14 +3,12 @@
 
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::{
-        hir::{
-            hir_ast_node::HirAstNode,
-            hir_decl::{HirDecl, HirDeclKind},
-            hir_expr::{HirExpr, HirExprKind},
-            hir_stmt::{HirStmt, HirStmtKind},
-        },
-        syntax::ty::{Ty, TyKind},
+    frontend::hir::{
+        hir_ast_node::HirAstNode,
+        hir_decl::{HirDecl, HirDeclKind},
+        hir_expr::{HirExpr, HirExprKind},
+        hir_stmt::{HirStmt, HirStmtKind},
+        hir_ty::{HirTy, HirTyKind},
     },
 };
 
@@ -20,7 +18,7 @@ use super::{
 };
 
 pub struct TypeChecker<'a> {
-    function_return_ty: Option<Ty>,
+    function_return_ty: Option<HirTy>,
     resolution_table: &'a mut ResolutionTable,
 }
 
@@ -197,9 +195,9 @@ impl<'a> TypeChecker<'a> {
         Ok(ty)
     }
 
-    pub fn check_type(&mut self, ty: &Ty) -> CheckedTy {
+    pub fn check_type(&mut self, ty: &HirTy) -> CheckedTy {
         match &ty.kind {
-            TyKind::Function {
+            HirTyKind::Function {
                 parameters,
                 return_ty,
             } => {
@@ -215,7 +213,7 @@ impl<'a> TypeChecker<'a> {
 
                 CheckedTy::function(parameters, return_ty)
             }
-            TyKind::Identifier(name) => {
+            HirTyKind::Identifier(name) => {
                 if let Some(Resolution::Struct(id)) =
                     self.resolution_table.get_name_resolution(&ty.id)
                 {
@@ -224,8 +222,8 @@ impl<'a> TypeChecker<'a> {
                     unreachable!()
                 }
             }
-            TyKind::Bool => CheckedTy::Boolean,
-            TyKind::Number => CheckedTy::Number,
+            HirTyKind::Bool => CheckedTy::Boolean,
+            HirTyKind::Number => CheckedTy::Number,
         }
     }
 }

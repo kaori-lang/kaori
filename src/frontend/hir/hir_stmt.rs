@@ -1,6 +1,6 @@
 use crate::frontend::lexer::span::Span;
 
-use super::{hir_ast_node::HirAstNode, hir_expr::HirExpr, node_id::NodeId};
+use super::{hir_expr::HirExpr, hir_node::HirNode, node_id::NodeId};
 
 #[derive(Debug)]
 pub struct HirStmt {
@@ -21,7 +21,7 @@ pub enum HirStmtKind {
         condition: Box<HirExpr>,
         block: Box<HirStmt>,
     },
-    Block(Vec<HirAstNode>),
+    Block(Vec<HirNode>),
     Expression(Box<HirExpr>),
     Break,
     Continue,
@@ -65,7 +65,7 @@ impl HirStmt {
         }
     }
 
-    pub fn block(nodes: Vec<HirAstNode>, span: Span) -> HirStmt {
+    pub fn block(nodes: Vec<HirNode>, span: Span) -> HirStmt {
         HirStmt {
             id: NodeId::default(),
             span,

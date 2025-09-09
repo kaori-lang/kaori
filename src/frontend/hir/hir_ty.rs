@@ -1,13 +1,13 @@
 use crate::frontend::{hir::node_id::NodeId, lexer::span::Span};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HirTy {
     pub id: NodeId,
     pub span: Span,
     pub kind: HirTyKind,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug)]
 pub enum HirTyKind {
     Function {
         parameters: Vec<HirTy>,
@@ -54,11 +54,3 @@ impl HirTy {
         }
     }
 }
-
-impl PartialEq for HirTy {
-    fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind
-    }
-}
-
-impl Eq for HirTy {}

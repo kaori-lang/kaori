@@ -1,18 +1,18 @@
 use super::{hir_decl::HirDecl, hir_stmt::HirStmt};
 
 #[derive(Debug)]
-pub enum HirAstNode {
+pub enum HirNode {
     Declaration(HirDecl),
     Statement(HirStmt),
 }
 
-impl From<HirDecl> for HirAstNode {
+impl From<HirDecl> for HirNode {
     fn from(node: HirDecl) -> Self {
         Self::Declaration(node)
     }
 }
 
-impl From<HirStmt> for HirAstNode {
+impl From<HirStmt> for HirNode {
     fn from(node: HirStmt) -> Self {
         Self::Statement(node)
     }

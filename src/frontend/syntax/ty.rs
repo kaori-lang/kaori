@@ -1,12 +1,12 @@
 use crate::frontend::lexer::span::Span;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Ty {
     pub span: Span,
     pub kind: TyKind,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug)]
 pub enum TyKind {
     Function {
         parameters: Vec<Ty>,
@@ -49,11 +49,3 @@ impl Ty {
         }
     }
 }
-
-impl PartialEq for Ty {
-    fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind
-    }
-}
-
-impl Eq for Ty {}

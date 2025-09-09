@@ -24,7 +24,7 @@ pub enum HirExprKind {
         operator: UnaryOp,
     },
     Assign(Box<HirExpr>, Box<HirExpr>),
-    Identifier(String),
+    Identifier,
     FunctionCall {
         callee: Box<HirExpr>,
         arguments: Vec<HirExpr>,
@@ -66,11 +66,11 @@ impl HirExpr {
         }
     }
 
-    pub fn identifier(name: String, span: Span) -> HirExpr {
+    pub fn identifier(span: Span) -> HirExpr {
         HirExpr {
             id: NodeId::default(),
             span,
-            kind: HirExprKind::Identifier(name),
+            kind: HirExprKind::Identifier,
         }
     }
 

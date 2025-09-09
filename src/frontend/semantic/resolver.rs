@@ -1,14 +1,12 @@
 #![allow(clippy::new_without_default)]
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::{
-        hir::{
-            hir_ast_node::HirAstNode,
-            hir_decl::{HirDecl, HirDeclKind},
-            hir_expr::{HirExpr, HirExprKind},
-            hir_stmt::{HirStmt, HirStmtKind},
-        },
-        syntax::ty::{Ty, TyKind},
+    frontend::hir::{
+        hir_ast_node::HirAstNode,
+        hir_decl::{HirDecl, HirDeclKind},
+        hir_expr::{HirExpr, HirExprKind},
+        hir_stmt::{HirStmt, HirStmtKind},
+        hir_ty::{HirTy, HirTyKind},
     },
     kaori_error,
 };
@@ -293,9 +291,9 @@ impl<'a> Resolver<'a> {
         Ok(())
     }
 
-    pub fn resolve_type(&mut self, ty: &Ty) -> Result<(), KaoriError> {
+    pub fn resolve_type(&mut self, ty: &HirTy) -> Result<(), KaoriError> {
         match &ty.kind {
-            TyKind::Function {
+            HirTyKind::Function {
                 parameters,
                 return_ty,
             } => {
@@ -307,7 +305,7 @@ impl<'a> Resolver<'a> {
                     self.resolve_type(return_ty)?;
                 }
             }
-            TyKind::Identifier(name) => {
+            HirTyKind::Identifier(name) => {
                 match self.environment.search(name) {
                     Some(symbol) => {
                         if let SymbolKind::Struct = symbol.kind {
@@ -320,8 +318,8 @@ impl<'a> Resolver<'a> {
                     None => return Err(kaori_error!(ty.span, "{} type is not declared", name)),
                 };
             }
-            TyKind::Bool => {}
-            TyKind::Number => {}
+            HirTyKind::Bool => {}
+            HirTyKind::Number => {}
         };
 
         Ok(())

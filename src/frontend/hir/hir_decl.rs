@@ -1,6 +1,6 @@
 use crate::frontend::lexer::span::Span;
 
-use super::{hir_ast_node::HirAstNode, hir_expr::HirExpr, hir_ty::HirTy, node_id::NodeId};
+use super::{hir_expr::HirExpr, hir_node::HirNode, hir_ty::HirTy, node_id::NodeId};
 
 #[derive(Debug)]
 pub struct HirDecl {
@@ -19,7 +19,7 @@ pub enum HirDeclKind {
     Function {
         name: String,
         parameters: Vec<HirDecl>,
-        body: Vec<HirAstNode>,
+        body: Vec<HirNode>,
         return_ty: Option<HirTy>,
     },
     Struct {
@@ -76,7 +76,7 @@ impl HirDecl {
     pub fn function(
         name: String,
         parameters: Vec<HirDecl>,
-        body: Vec<HirAstNode>,
+        body: Vec<HirNode>,
         return_ty: Option<HirTy>,
         span: Span,
     ) -> HirDecl {
