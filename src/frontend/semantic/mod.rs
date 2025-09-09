@@ -1,4 +1,5 @@
 pub mod checked_ty;
+pub mod environment;
 pub mod hir_decl;
 pub mod hir_expr;
 pub mod hir_node;

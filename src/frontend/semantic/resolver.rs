@@ -2,7 +2,6 @@ use crate::{
     error::kaori_error::KaoriError,
     frontend::{
         semantic::{
-            environment::Environment,
             resolution_table::{Resolution, ResolutionTable},
             symbol::SymbolKind,
         },
@@ -18,7 +17,8 @@ use crate::{
 };
 
 use super::{
-    hir_decl::HirDecl, hir_expr::HirExpr, hir_node::HirNode, hir_stmt::HirStmt, hir_ty::HirTy,
+    environment::Environment, hir_decl::HirDecl, hir_expr::HirExpr, hir_node::HirNode,
+    hir_stmt::HirStmt, hir_ty::HirTy,
 };
 
 pub struct Resolver<'a> {
@@ -75,7 +75,7 @@ impl<'a> Resolver<'a> {
         declarations
     }
 
-    fn resolve_node(&self, node: &AstNode) -> Result<HirNode, KaoriError> {
+    fn resolve_node(&mut self, node: &AstNode) -> Result<HirNode, KaoriError> {
         let node = match node {
             AstNode::Declaration(declaration) => {
                 let declaration = self.resolve_declaration(declaration)?;
@@ -200,7 +200,7 @@ impl<'a> Resolver<'a> {
         Ok(hir_decl)
     }
 
-    fn resolve_statement(&self, statement: &Stmt) -> Result<HirStmt, KaoriError> {
+    fn resolve_statement(&mut self, statement: &Stmt) -> Result<HirStmt, KaoriError> {
         let hir_stmt = match &statement.kind {
             StmtKind::Expression(expression) => {
                 let expr = self.resolve_expression(expression)?;
@@ -255,6 +255,12 @@ impl<'a> Resolver<'a> {
                 increment,
                 block,
             } => {
+                self.environment.enter_scope();
+
+                let init = Some(self.resolve_declaration(init)?);
+                let condition = self.resolve_expression(condition)?;
+                let increment = HirNode::from(self.resolve_statement(increment)?);
+
                 let mut nodes = match &block.kind {
                     StmtKind::Block(nodes) => nodes
                         .iter()
@@ -263,18 +269,34 @@ impl<'a> Resolver<'a> {
                     _ => unreachable!(),
                 };
 
-                let increment = HirNode::from(self.resolve_statement(increment)?);
                 nodes.push(increment);
 
                 let block = HirStmt::block(block.id, nodes, block.span);
 
-                let init = Some(self.resolve_declaration(init)?);
-                let condition = self.resolve_expression(condition)?;
+                self.environment.exit_scope();
 
                 HirStmt::loop_(statement.id, init, condition, block, statement.span)
             }
-            StmtKind::Break => HirStmt::break_(statement.id, statement.span),
-            StmtKind::Continue => HirStmt::continue_(statement.id, statement.span),
+            StmtKind::Break => {
+                if self.active_loops == 0 {
+                    return Err(kaori_error!(
+                        statement.span,
+                        "break statement can't appear outside of loops"
+                    ));
+                }
+
+                HirStmt::break_(statement.id, statement.span)
+            }
+            StmtKind::Continue => {
+                if self.active_loops == 0 {
+                    return Err(kaori_error!(
+                        statement.span,
+                        "continue statement can't appear outside of loops"
+                    ));
+                }
+
+                HirStmt::continue_(statement.id, statement.span)
+            }
             StmtKind::Return(expr) => {
                 let expr = match expr {
                     Some(e) => Some(self.resolve_expression(e)?),
@@ -330,15 +352,16 @@ impl<'a> Resolver<'a> {
                 HirExpr::string_literal(expression.id, value.to_owned(), expression.span)
             }
             ExprKind::Identifier(name) => {
-                if let Some(symbol) = self.environment.search(name) {
-                    let resolution = match symbol.kind {
-                        SymbolKind::Variable => Resolution::variable(symbol.id),
-                        SymbolKind::Function => Resolution::function(symbol.id),
-                        SymbolKind::Struct => Resolution::struct_(symbol.id),
-                    };
-                } else {
+                let Some(symbol) = self.environment.search(name) else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));
-                }
+                };
+
+                let resolution = match symbol.kind {
+                    SymbolKind::Variable => Resolution::variable(symbol.id),
+                    SymbolKind::Function => Resolution::function(symbol.id),
+                    SymbolKind::Struct => Resolution::struct_(symbol.id),
+                };
+
                 HirExpr::identifier(expression.id, expression.span)
             }
         };
@@ -346,7 +369,7 @@ impl<'a> Resolver<'a> {
         Ok(hir_expr)
     }
 
-    fn resolve_type(&self, ty: &Ty) -> Result<HirTy, KaoriError> {
+    fn resolve_type(&mut self, ty: &Ty) -> Result<HirTy, KaoriError> {
         let hir_ty = match &ty.kind {
             TyKind::Function {
                 parameters,
@@ -364,19 +387,20 @@ impl<'a> Resolver<'a> {
 
                 HirTy::function(ty.id, parameters, return_ty, ty.span)
             }
-            TyKind::Identifier(name) => match self.environment.search(name) {
-                Some(symbol) => {
-                    if let SymbolKind::Struct = symbol.kind {
-                        self.resolution_table
-                            .insert_name_resolution(ty.id, Resolution::Type(symbol.id));
+            TyKind::Identifier(name) => {
+                let Some(symbol) = self.environment.search(name) else {
+                    return Err(kaori_error!(ty.span, "{} type is not declared", name));
+                };
 
-                        HirTy::identifier(ty.id, ty.span)
-                    } else {
-                        return Err(kaori_error!(ty.span, "{} is not a valid type", name));
-                    }
-                }
-                None => return Err(kaori_error!(ty.span, "{} type is not declared", name)),
-            },
+                let SymbolKind::Struct = symbol.kind else {
+                    return Err(kaori_error!(ty.span, "{} is not a valid type", name));
+                };
+
+                self.resolution_table
+                    .insert_name_resolution(ty.id, Resolution::Type(symbol.id));
+
+                HirTy::identifier(ty.id, ty.span)
+            }
             TyKind::Bool => HirTy::bool(ty.id, ty.span),
             TyKind::Number => HirTy::number(ty.id, ty.span),
         };

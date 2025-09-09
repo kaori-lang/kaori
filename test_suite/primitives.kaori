@@ -66,3 +66,12 @@ def main() {
         print(1);
     }
 }
+
+
+def foo() {
+    a: number = 5;
+    
+    for a: number = 0; a < 10; a++ {
+        print(a);
+    }
+}

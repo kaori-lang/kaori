@@ -119,7 +119,14 @@ impl<'a> TypeChecker<'a> {
                     self.check_statement(branch)?;
                 }
             }
-            HirStmtKind::WhileLoop { condition, block } => {
+            HirStmtKind::Loop {
+                init,
+                condition,
+                block,
+            } => {
+                if let Some(init) = init {
+                    self.check_declaration(init)?;
+                }
                 self.check_expression(condition)?;
 
                 self.check_statement(block)?;
