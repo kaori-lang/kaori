@@ -1,6 +1,6 @@
 use super::{decl::Decl, stmt::Stmt};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum AstNode {
     Declaration(Decl),
     Statement(Stmt),

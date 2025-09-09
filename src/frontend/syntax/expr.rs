@@ -2,13 +2,13 @@ use crate::frontend::lexer::span::Span;
 
 use super::{binary_op::BinaryOp, unary_op::UnaryOp};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Expr {
     pub span: Span,
     pub kind: ExprKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ExprKind {
     Binary {
         operator: BinaryOp,

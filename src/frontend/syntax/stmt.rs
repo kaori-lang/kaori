@@ -2,13 +2,13 @@ use crate::frontend::lexer::span::Span;
 
 use super::{ast_node::AstNode, decl::Decl, expr::Expr};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Stmt {
     pub span: Span,
     pub kind: StmtKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum StmtKind {
     Print(Box<Expr>),
     If {
