@@ -1,6 +1,6 @@
-use crate::frontend::{lexer::span::Span, syntax::ty::Ty};
+use crate::frontend::lexer::span::Span;
 
-use super::{hir_ast_node::HirAstNode, hir_expr::HirExpr, node_id::NodeId};
+use super::{hir_ast_node::HirAstNode, hir_expr::HirExpr, hir_ty::HirTy, node_id::NodeId};
 
 #[derive(Debug)]
 pub struct HirDecl {
@@ -14,13 +14,13 @@ pub enum HirDeclKind {
     Variable {
         name: String,
         right: Box<HirExpr>,
-        ty: Ty,
+        ty: HirTy,
     },
     Function {
         name: String,
         parameters: Vec<HirDecl>,
         body: Vec<HirAstNode>,
-        return_ty: Option<Ty>,
+        return_ty: Option<HirTy>,
     },
     Struct {
         name: String,
@@ -28,16 +28,16 @@ pub enum HirDeclKind {
     },
     Parameter {
         name: String,
-        ty: Ty,
+        ty: HirTy,
     },
     Field {
         name: String,
-        ty: Ty,
+        ty: HirTy,
     },
 }
 
 impl HirDecl {
-    pub fn parameter(name: String, ty: Ty, span: Span) -> HirDecl {
+    pub fn parameter(name: String, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id: NodeId::default(),
             span,
@@ -45,7 +45,7 @@ impl HirDecl {
         }
     }
 
-    pub fn field(name: String, ty: Ty, span: Span) -> HirDecl {
+    pub fn field(name: String, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id: NodeId::default(),
             span,
@@ -61,7 +61,7 @@ impl HirDecl {
         }
     }
 
-    pub fn variable(name: String, right: HirExpr, ty: Ty, span: Span) -> HirDecl {
+    pub fn variable(name: String, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id: NodeId::default(),
             span,
@@ -77,7 +77,7 @@ impl HirDecl {
         name: String,
         parameters: Vec<HirDecl>,
         body: Vec<HirAstNode>,
-        return_ty: Option<Ty>,
+        return_ty: Option<HirTy>,
         span: Span,
     ) -> HirDecl {
         HirDecl {

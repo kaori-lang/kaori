@@ -219,10 +219,7 @@ impl<'a> TypeChecker<'a> {
                 if let Some(Resolution::Struct(id)) =
                     self.resolution_table.get_name_resolution(&ty.id)
                 {
-                    self.resolution_table
-                        .get_type_resolution(id)
-                        .unwrap()
-                        .to_owned()
+                    CheckedTy::Identifier(*id)
                 } else {
                     unreachable!()
                 }

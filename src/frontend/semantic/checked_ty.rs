@@ -1,3 +1,5 @@
+use crate::frontend::hir::node_id::NodeId;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CheckedTy {
     Boolean,
@@ -11,6 +13,7 @@ pub enum CheckedTy {
     Struct {
         fields: Vec<CheckedTy>,
     },
+    Identifier(NodeId),
 }
 
 impl CheckedTy {

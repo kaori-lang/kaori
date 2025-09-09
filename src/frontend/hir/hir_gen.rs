@@ -3,9 +3,13 @@ use crate::frontend::syntax::{
     decl::{Decl, DeclKind},
     expr::{Expr, ExprKind},
     stmt::{Stmt, StmtKind},
+    ty::{Ty, TyKind},
 };
 
-use super::{hir_ast_node::HirAstNode, hir_decl::HirDecl, hir_expr::HirExpr, hir_stmt::HirStmt};
+use super::{
+    hir_ast_node::HirAstNode, hir_decl::HirDecl, hir_expr::HirExpr, hir_stmt::HirStmt,
+    hir_ty::HirTy,
+};
 
 pub fn generate_hir(declarations: &[Decl]) -> Vec<HirDecl> {
     declarations.iter().map(generate_declaration).collect()
@@ -33,15 +37,18 @@ fn generate_ast_node(node: &AstNode) -> HirAstNode {
 fn generate_declaration(declaration: &Decl) -> HirDecl {
     match &declaration.kind {
         DeclKind::Parameter { name, ty } => {
-            HirDecl::parameter(name.to_owned(), ty.to_owned(), declaration.span)
+            let ty = generate_type(ty);
+            HirDecl::parameter(name.to_owned(), ty, declaration.span)
         }
         DeclKind::Field { name, ty } => {
+            let ty = generate_type(ty);
             HirDecl::field(name.to_owned(), ty.to_owned(), declaration.span)
         }
         DeclKind::Variable { name, right, ty } => {
             let right = generate_expression(right);
+            let ty = generate_type(ty);
 
-            HirDecl::variable(name.to_owned(), right, ty.to_owned(), declaration.span)
+            HirDecl::variable(name.to_owned(), right, ty, declaration.span)
         }
         DeclKind::Function {
             parameters,
@@ -51,12 +58,12 @@ fn generate_declaration(declaration: &Decl) -> HirDecl {
         } => {
             let body = generate_nodes(body);
             let parameters = parameters.iter().map(generate_declaration).collect();
-
+            let return_ty = return_ty.as_ref().map(|ty| generate_type(ty));
             HirDecl::function(
                 name.to_owned(),
                 parameters,
                 body,
-                return_ty.to_owned(),
+                return_ty,
                 declaration.span,
             )
         }
@@ -180,5 +187,23 @@ fn generate_expression(expression: &Expr) -> HirExpr {
             HirExpr::string_literal(value.to_owned(), expression.span)
         }
         ExprKind::Identifier(name) => HirExpr::identifier(name.to_owned(), expression.span),
+    }
+}
+
+fn generate_type(ty: &Ty) -> HirTy {
+    match &ty.kind {
+        TyKind::Function {
+            parameters,
+            return_ty,
+        } => {
+            let parameters = parameters.iter().map(generate_type).collect();
+
+            let return_ty = return_ty.as_ref().map(|ty| generate_type(ty));
+
+            HirTy::function(parameters, return_ty, ty.span)
+        }
+        TyKind::Identifier(name) => HirTy::identifier(name.to_owned(), ty.span),
+        TyKind::Bool => HirTy::bool(ty.span),
+        TyKind::Number => HirTy::number(ty.span),
     }
 }
