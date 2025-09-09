@@ -147,11 +147,11 @@ impl<'a> HirGen<'a> {
         let hir_stmt = match &statement.kind {
             StmtKind::Expression(expression) => {
                 let expr = self.resolve_expression(expression)?;
-                HirStmt::expression(expr, statement.span)
+                HirStmt::expression(statement.id, expr, statement.span)
             }
             StmtKind::Print(expression) => {
                 let expr = self.resolve_expression(expression)?;
-                HirStmt::print(expr, statement.span)
+                HirStmt::print(statement.id, expr, statement.span)
             }
             StmtKind::Block(nodes) => {
                 let nodes = nodes
@@ -159,7 +159,7 @@ impl<'a> HirGen<'a> {
                     .map(|node| self.resolve_node(node))
                     .collect::<Result<Vec<HirNode>, KaoriError>>()?;
 
-                HirStmt::block(nodes, statement.span)
+                HirStmt::block(statement.id, nodes, statement.span)
             }
             StmtKind::If {
                 condition,
@@ -170,15 +170,21 @@ impl<'a> HirGen<'a> {
                 let then_branch = self.resolve_statement(then_branch)?;
                 let else_branch = match else_branch {
                     Some(branch) => Some(self.resolve_statement(branch)?),
-                    None => None,
+                    _ => None,
                 };
 
-                HirStmt::branch_(condition, then_branch, else_branch, statement.span)
+                HirStmt::branch_(
+                    statement.id,
+                    condition,
+                    then_branch,
+                    else_branch,
+                    statement.span,
+                )
             }
             StmtKind::WhileLoop { condition, block } => {
                 let condition = self.resolve_expression(condition)?;
                 let block = self.resolve_statement(block)?;
-                HirStmt::while_loop(condition, block, statement.span)
+                HirStmt::while_loop(statement.id, condition, block, statement.span)
             }
             StmtKind::ForLoop {
                 init,
@@ -197,7 +203,7 @@ impl<'a> HirGen<'a> {
                 let increment = HirNode::from(self.resolve_statement(increment)?);
                 inner_block.push(increment);
 
-                let inner_block = HirStmt::block(inner_block, block.span);
+                let inner_block = HirStmt::block(statement.id, inner_block, block.span);
 
                 let condition = self.resolve_expression(condition)?;
                 let while_loop = HirStmt::while_loop(condition, inner_block, block.span);
@@ -216,7 +222,7 @@ impl<'a> HirGen<'a> {
             StmtKind::Return(expr) => {
                 let expr = match expr {
                     Some(e) => Some(self.resolve_expression(e)?),
-                    None => None,
+                    _ => None,
                 };
 
                 HirStmt::return_(expr, statement.span)
@@ -232,7 +238,7 @@ impl<'a> HirGen<'a> {
                 let right = self.resolve_expression(right)?;
                 let left = self.resolve_expression(left)?;
 
-                HirExpr::assign(left, right, expression.span)
+                HirExpr::assign(expression.id, left, right, expression.span)
             }
             ExprKind::Binary {
                 left,
@@ -242,12 +248,12 @@ impl<'a> HirGen<'a> {
                 let left = self.resolve_expression(left)?;
                 let right = self.resolve_expression(right)?;
 
-                HirExpr::binary(*operator, left, right, expression.span)
+                HirExpr::binary(expression.id, *operator, left, right, expression.span)
             }
             ExprKind::Unary { right, operator } => {
                 let right = self.resolve_expression(right)?;
 
-                HirExpr::unary(*operator, right, expression.span)
+                HirExpr::unary(expression.id, *operator, right, expression.span)
             }
             ExprKind::FunctionCall { callee, arguments } => {
                 let callee = self.resolve_expression(callee)?;
@@ -256,12 +262,16 @@ impl<'a> HirGen<'a> {
                     .map(|a| self.resolve_expression(a))
                     .collect::<Result<Vec<HirExpr>, KaoriError>>()?;
 
-                HirExpr::function_call(callee, arguments, expression.span)
+                HirExpr::function_call(expression.id, callee, arguments, expression.span)
             }
-            ExprKind::NumberLiteral(value) => HirExpr::number_literal(*value, expression.span),
-            ExprKind::BooleanLiteral(value) => HirExpr::boolean_literal(*value, expression.span),
+            ExprKind::NumberLiteral(value) => {
+                HirExpr::number_literal(expression.id, *value, expression.span)
+            }
+            ExprKind::BooleanLiteral(value) => {
+                HirExpr::boolean_literal(expression.id, *value, expression.span)
+            }
             ExprKind::StringLiteral(value) => {
-                HirExpr::string_literal(value.to_owned(), expression.span)
+                HirExpr::string_literal(expression.id, value.to_owned(), expression.span)
             }
             ExprKind::Identifier(name) => {
                 if let Some(symbol) = self.environment.search(name) {
@@ -273,26 +283,48 @@ impl<'a> HirGen<'a> {
                 } else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));
                 }
-                HirExpr::identifier(expression.span)
+                HirExpr::identifier(expression.id, expression.span)
             }
         };
 
         Ok(hir_expr)
     }
 
-    fn resolve_type(&self, ty: &Ty) -> HirTy {
-        match &ty.kind {
+    fn resolve_type(&self, ty: &Ty) -> Result<HirTy, KaoriError> {
+        let hir_ty = match &ty.kind {
             TyKind::Function {
                 parameters,
                 return_ty,
             } => {
-                let parameters = parameters.iter().map(|p| self.resolve_type(p)).collect();
-                let return_ty = return_ty.as_ref().map(|ty| self.resolve_type(ty));
-                HirTy::function(parameters, return_ty, ty.span)
+                let parameters = parameters
+                    .iter()
+                    .map(|p| self.resolve_type(p))
+                    .collect::<Result<Vec<HirTy>, KaoriError>>()?;
+
+                let return_ty = match return_ty {
+                    Some(ty) => Some(self.resolve_type(ty)?),
+                    _ => None,
+                };
+
+                HirTy::function(ty.id, parameters, return_ty, ty.span)
             }
-            TyKind::Identifier(name) => HirTy::identifier(name.to_owned(), ty.span),
-            TyKind::Bool => HirTy::bool(ty.span),
-            TyKind::Number => HirTy::number(ty.span),
-        }
+            TyKind::Identifier(name) => match self.environment.search(name) {
+                Some(symbol) => {
+                    if let SymbolKind::Struct = symbol.kind {
+                        self.resolution_table
+                            .insert_name_resolution(ty.id, Resolution::Type(symbol.id));
+
+                        HirTy::identifier(ty.id, ty.span)
+                    } else {
+                        return Err(kaori_error!(ty.span, "{} is not a valid type", name));
+                    }
+                }
+                None => return Err(kaori_error!(ty.span, "{} type is not declared", name)),
+            },
+            TyKind::Bool => HirTy::bool(ty.id, ty.span),
+            TyKind::Number => HirTy::number(ty.id, ty.span),
+        };
+
+        Ok(hir_ty)
     }
 }

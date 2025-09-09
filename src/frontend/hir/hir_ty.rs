@@ -1,4 +1,4 @@
-use crate::frontend::{hir::node_id::NodeId, lexer::span::Span};
+use crate::frontend::{lexer::span::Span, syntax::node_id::NodeId};
 
 #[derive(Debug)]
 pub struct HirTy {
@@ -13,15 +13,20 @@ pub enum HirTyKind {
         parameters: Vec<HirTy>,
         return_ty: Option<Box<HirTy>>,
     },
-    Identifier(String),
+    Identifier,
     Number,
     Bool,
 }
 
 impl HirTy {
-    pub fn function(parameters: Vec<HirTy>, return_ty: Option<HirTy>, span: Span) -> HirTy {
+    pub fn function(
+        id: NodeId,
+        parameters: Vec<HirTy>,
+        return_ty: Option<HirTy>,
+        span: Span,
+    ) -> HirTy {
         HirTy {
-            id: NodeId::default(),
+            id,
             span,
             kind: HirTyKind::Function {
                 parameters,
@@ -30,27 +35,27 @@ impl HirTy {
         }
     }
 
-    pub fn number(span: Span) -> HirTy {
+    pub fn number(id: NodeId, span: Span) -> HirTy {
         HirTy {
-            id: NodeId::default(),
+            id,
             span,
             kind: HirTyKind::Number,
         }
     }
 
-    pub fn bool(span: Span) -> HirTy {
+    pub fn bool(id: NodeId, span: Span) -> HirTy {
         HirTy {
-            id: NodeId::default(),
+            id,
             span,
             kind: HirTyKind::Bool,
         }
     }
 
-    pub fn identifier(name: String, span: Span) -> HirTy {
+    pub fn identifier(id: NodeId, span: Span) -> HirTy {
         HirTy {
-            id: NodeId::default(),
+            id,
             span,
-            kind: HirTyKind::Identifier(name),
+            kind: HirTyKind::Identifier,
         }
     }
 }

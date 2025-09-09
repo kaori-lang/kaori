@@ -1,6 +1,6 @@
-use crate::frontend::lexer::span::Span;
+use crate::frontend::{lexer::span::Span, syntax::node_id::NodeId};
 
-use super::{hir_expr::HirExpr, hir_node::HirNode, hir_ty::HirTy, node_id::NodeId};
+use super::{hir_expr::HirExpr, hir_node::HirNode, hir_ty::HirTy};
 
 #[derive(Debug)]
 pub struct HirDecl {
@@ -37,33 +37,33 @@ pub enum HirDeclKind {
 }
 
 impl HirDecl {
-    pub fn parameter(name: String, ty: HirTy, span: Span) -> HirDecl {
+    pub fn parameter(id: NodeId, name: String, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
-            id: NodeId::default(),
+            id,
             span,
             kind: HirDeclKind::Parameter { name, ty },
         }
     }
 
-    pub fn field(name: String, ty: HirTy, span: Span) -> HirDecl {
+    pub fn field(id: NodeId, name: String, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
-            id: NodeId::default(),
+            id,
             span,
             kind: HirDeclKind::Field { name, ty },
         }
     }
 
-    pub fn struct_(name: String, fields: Vec<HirDecl>, span: Span) -> HirDecl {
+    pub fn struct_(id: NodeId, name: String, fields: Vec<HirDecl>, span: Span) -> HirDecl {
         HirDecl {
-            id: NodeId::default(),
+            id,
             span,
             kind: HirDeclKind::Struct { name, fields },
         }
     }
 
-    pub fn variable(name: String, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
+    pub fn variable(id: NodeId, name: String, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
-            id: NodeId::default(),
+            id,
             span,
             kind: HirDeclKind::Variable {
                 name,
@@ -74,6 +74,7 @@ impl HirDecl {
     }
 
     pub fn function(
+        id: NodeId,
         name: String,
         parameters: Vec<HirDecl>,
         body: Vec<HirNode>,
@@ -81,7 +82,7 @@ impl HirDecl {
         span: Span,
     ) -> HirDecl {
         HirDecl {
-            id: NodeId::default(),
+            id,
             span,
             kind: HirDeclKind::Function {
                 name,

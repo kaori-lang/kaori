@@ -1,9 +1,10 @@
 use crate::frontend::lexer::span::Span;
 
-use super::{binary_op::BinaryOp, unary_op::UnaryOp};
+use super::{binary_op::BinaryOp, node_id::NodeId, unary_op::UnaryOp};
 
 #[derive(Debug)]
 pub struct Expr {
+    pub id: NodeId,
     pub span: Span,
     pub kind: ExprKind,
 }
@@ -38,6 +39,7 @@ impl Expr {
         let span = Span::merge(left.span, right.span);
 
         Expr {
+            id: NodeId::default(),
             span,
             kind: ExprKind::Binary {
                 operator,
@@ -51,6 +53,7 @@ impl Expr {
         let span = Span::merge(operator.span, right.span);
 
         Expr {
+            id: NodeId::default(),
             span,
             kind: ExprKind::Unary {
                 operator,
@@ -63,6 +66,7 @@ impl Expr {
         let span = Span::merge(left.span, right.span);
 
         Expr {
+            id: NodeId::default(),
             span,
             kind: ExprKind::Assign {
                 left: Box::new(left),
@@ -73,6 +77,7 @@ impl Expr {
 
     pub fn identifier(name: String, span: Span) -> Expr {
         Expr {
+            id: NodeId::default(),
             span,
             kind: ExprKind::Identifier(name),
         }
@@ -82,6 +87,7 @@ impl Expr {
         let span = Span::merge(callee.span, span);
 
         Expr {
+            id: NodeId::default(),
             span,
             kind: ExprKind::FunctionCall {
                 callee: Box::new(callee),
@@ -92,6 +98,7 @@ impl Expr {
 
     pub fn string_literal(value: String, span: Span) -> Expr {
         Expr {
+            id: NodeId::default(),
             span,
             kind: ExprKind::StringLiteral(value),
         }
@@ -99,6 +106,7 @@ impl Expr {
 
     pub fn number_literal(value: f64, span: Span) -> Expr {
         Expr {
+            id: NodeId::default(),
             span,
             kind: ExprKind::NumberLiteral(value),
         }
@@ -106,6 +114,7 @@ impl Expr {
 
     pub fn boolean_literal(value: bool, span: Span) -> Expr {
         Expr {
+            id: NodeId::default(),
             span,
             kind: ExprKind::BooleanLiteral(value),
         }
