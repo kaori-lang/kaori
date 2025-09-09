@@ -20,12 +20,12 @@ fn generate_ast_node(node: &AstNode) -> HirAstNode {
         AstNode::Declaration(declaration) => {
             let declaration = generate_declaration(declaration);
 
-            HirAstNode::Declaration(declaration)
+            HirAstNode::from(declaration)
         }
         AstNode::Statement(statement) => {
             let statement = generate_statement(statement);
 
-            HirAstNode::Statement(statement)
+            HirAstNode::from(statement)
         }
     }
 }
@@ -110,26 +110,28 @@ fn generate_statement(statement: &Stmt) -> HirStmt {
             increment,
             block,
         } => {
-            /*    let mut nodes = Vec::new();
-            let init = HirAstNode::Declaration(generate_declaration(init));
-
-            nodes.push(init);
-
-            let condition = generate_expression(condition);
-            let while_loop_block = generate_statement(block);
-
-            if let HirStmtKind::Block(mut nodes) = &while_loop_block.kind {
-                let increment = generate_statement(increment);
-
-                nodes.push(HirAstNode::Statement(increment));
+            let mut inner_block: Vec<HirAstNode> = match &block.kind {
+                StmtKind::Block(nodes) => nodes.iter().map(generate_ast_node).collect(),
+                _ => unreachable!(),
             };
 
-            let while_loop = HirStmt::while_loop(condition, while_loop_block, statement.span);
+            let increment = HirAstNode::from(generate_statement(increment));
 
-            nodes.push(HirAstNode::Statement(while_loop));
+            inner_block.push(increment);
 
-            HirStmt::block(nodes, statement.span) */
-            todo!()
+            let inner_block = HirStmt::block(inner_block, block.span);
+
+            let condition = generate_expression(condition);
+            let while_loop = HirStmt::while_loop(condition, inner_block, block.span);
+
+            let mut outer_block = Vec::new();
+            let init = HirAstNode::from(generate_declaration(init));
+            let while_loop = HirAstNode::from(while_loop);
+
+            outer_block.push(init);
+            outer_block.push(while_loop);
+
+            HirStmt::block(outer_block, statement.span)
         }
         StmtKind::Break => HirStmt::break_(statement.span),
 

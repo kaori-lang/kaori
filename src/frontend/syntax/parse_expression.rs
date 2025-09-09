@@ -295,6 +295,7 @@ impl Parser {
 
         let arguments =
             self.parse_comma_separator(Parser::parse_expression, TokenKind::RightParen)?;
+            
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::RightParen)?;

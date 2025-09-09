@@ -2,13 +2,13 @@ use crate::frontend::lexer::span::Span;
 
 use super::{ast_node::AstNode, decl::Decl, expr::Expr};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Stmt {
     pub span: Span,
     pub kind: StmtKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum StmtKind {
     Print(Box<Expr>),
     If {
@@ -21,9 +21,9 @@ pub enum StmtKind {
         block: Box<Stmt>,
     },
     ForLoop {
-        init: Vec<Decl>,
-        condition: Vec<Expr>,
-        increment: Vec<Stmt>,
+        init: Decl,
+        condition: Expr,
+        increment: Box<Stmt>,
         block: Box<Stmt>,
     },
     Block(Vec<AstNode>),
@@ -62,19 +62,13 @@ impl Stmt {
         }
     }
 
-    pub fn for_loop(
-        init: Vec<Decl>,
-        condition: Vec<Expr>,
-        increment: Vec<Stmt>,
-        block: Stmt,
-        span: Span,
-    ) -> Stmt {
+    pub fn for_loop(init: Decl, condition: Expr, increment: Stmt, block: Stmt, span: Span) -> Stmt {
         Stmt {
             span,
             kind: StmtKind::ForLoop {
                 init,
                 condition,
-                increment,
+                increment: Box::new(increment),
                 block: Box::new(block),
             },
         }

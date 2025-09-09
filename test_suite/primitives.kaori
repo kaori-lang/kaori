@@ -44,10 +44,10 @@ def test_newton() -> bool {
     }
 
     /* max allowed error in magnitude approximation */
-    max_elipson = 0.01;
+    max_elipson: number = 0.01;
 
     /* expected answer: D_target = sqrt(80) */
-    target_answer = 8.944;
+    target_answer: number = 8.944;
 
     print(guess);
     print(target_answer);

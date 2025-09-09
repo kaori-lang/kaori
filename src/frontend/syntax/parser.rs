@@ -51,7 +51,7 @@ impl Parser {
                 {
                     let declaration = self.parse_variable_declaration()?;
                     self.token_stream.consume(TokenKind::Semicolon)?;
-                    return Ok(AstNode::Declaration(declaration));
+                    return Ok(AstNode::from(declaration));
                 } else {
                     let statement = self.parse_expression_statement();
                     self.token_stream.consume(TokenKind::Semicolon)?;
@@ -61,7 +61,7 @@ impl Parser {
             }
         }?;
 
-        Ok(AstNode::Statement(stmt))
+        Ok(AstNode::from(stmt))
     }
 
     pub fn parse_comma_separator<T>(

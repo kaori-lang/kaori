@@ -2,13 +2,13 @@ use crate::frontend::lexer::span::Span;
 
 use super::{ast_node::AstNode, expr::Expr, ty::Ty};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Decl {
     pub span: Span,
     pub kind: DeclKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DeclKind {
     Variable {
         name: String,

@@ -1,6 +1,6 @@
 use crate::{error::kaori_error::KaoriError, frontend::lexer::token_kind::TokenKind};
 
-use super::{ast_node::AstNode, parser::Parser, stmt::Stmt};
+use super::{parser::Parser, stmt::Stmt};
 
 impl Parser {
     pub fn parse_return_statement(&mut self) -> Result<Stmt, KaoriError> {
@@ -61,7 +61,7 @@ impl Parser {
     pub fn parse_block_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
 
-        let mut nodes: Vec<AstNode> = Vec::new();
+        let mut nodes = Vec::new();
 
         self.token_stream.consume(TokenKind::LeftBrace)?;
 
@@ -118,18 +118,15 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::For)?;
 
-        let init =
-            self.parse_comma_separator(Parser::parse_variable_declaration, TokenKind::Semicolon)?;
+        let init = self.parse_variable_declaration()?;
 
         self.token_stream.consume(TokenKind::Semicolon)?;
 
-        let condition =
-            self.parse_comma_separator(Parser::parse_expression, TokenKind::Semicolon)?;
+        let condition = self.parse_expression()?;
 
         self.token_stream.consume(TokenKind::Semicolon)?;
 
-        let increment =
-            self.parse_comma_separator(Parser::parse_expression_statement, TokenKind::LeftBrace)?;
+        let increment = self.parse_expression_statement()?;
 
         let block = self.parse_block_statement()?;
 
