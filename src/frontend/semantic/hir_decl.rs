@@ -12,61 +12,55 @@ pub struct HirDecl {
 #[derive(Debug)]
 pub enum HirDeclKind {
     Variable {
-        name: String,
         right: Box<HirExpr>,
         ty: HirTy,
     },
     Function {
-        name: String,
         parameters: Vec<HirDecl>,
         body: Vec<HirNode>,
         return_ty: Option<HirTy>,
     },
     Struct {
-        name: String,
         fields: Vec<HirDecl>,
     },
     Parameter {
-        name: String,
         ty: HirTy,
     },
     Field {
-        name: String,
         ty: HirTy,
     },
 }
 
 impl HirDecl {
-    pub fn parameter(id: NodeId, name: String, ty: HirTy, span: Span) -> HirDecl {
+    pub fn parameter(id: NodeId, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
-            kind: HirDeclKind::Parameter { name, ty },
+            kind: HirDeclKind::Parameter { ty },
         }
     }
 
-    pub fn field(id: NodeId, name: String, ty: HirTy, span: Span) -> HirDecl {
+    pub fn field(id: NodeId, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
-            kind: HirDeclKind::Field { name, ty },
+            kind: HirDeclKind::Field { ty },
         }
     }
 
-    pub fn struct_(id: NodeId, name: String, fields: Vec<HirDecl>, span: Span) -> HirDecl {
+    pub fn struct_(id: NodeId, fields: Vec<HirDecl>, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
-            kind: HirDeclKind::Struct { name, fields },
+            kind: HirDeclKind::Struct { fields },
         }
     }
 
-    pub fn variable(id: NodeId, name: String, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
+    pub fn variable(id: NodeId, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
             kind: HirDeclKind::Variable {
-                name,
                 right: Box::new(right),
                 ty,
             },
@@ -75,7 +69,7 @@ impl HirDecl {
 
     pub fn function(
         id: NodeId,
-        name: String,
+
         parameters: Vec<HirDecl>,
         body: Vec<HirNode>,
         return_ty: Option<HirTy>,
@@ -85,7 +79,6 @@ impl HirDecl {
             id,
             span,
             kind: HirDeclKind::Function {
-                name,
                 parameters,
                 body,
                 return_ty,

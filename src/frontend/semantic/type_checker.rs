@@ -1,19 +1,15 @@
 #![allow(clippy::new_without_default)]
 #![allow(clippy::only_used_in_recursion)]
 
-use crate::{
-    error::kaori_error::KaoriError,
-    frontend::hir::{
-        hir_ast_node::HirAstNode,
-        hir_decl::{HirDecl, HirDeclKind},
-        hir_expr::{HirExpr, HirExprKind},
-        hir_stmt::{HirStmt, HirStmtKind},
-        hir_ty::{HirTy, HirTyKind},
-    },
-};
+use crate::error::kaori_error::KaoriError;
 
 use super::{
     checked_ty::CheckedTy,
+    hir_decl::{HirDecl, HirDeclKind},
+    hir_expr::{HirExpr, HirExprKind},
+    hir_node::HirNode,
+    hir_stmt::{HirStmt, HirStmtKind},
+    hir_ty::{HirTy, HirTyKind},
     resolution_table::{Resolution, ResolutionTable},
 };
 
@@ -66,7 +62,7 @@ impl<'a> TypeChecker<'a> {
            ))
        }
     */
-    fn check_nodes(&mut self, nodes: &[HirAstNode]) -> Result<(), KaoriError> {
+    fn check_nodes(&mut self, nodes: &[HirNode]) -> Result<(), KaoriError> {
         for node in nodes {
             self.check_ast_node(node)?;
         }
@@ -74,10 +70,10 @@ impl<'a> TypeChecker<'a> {
         Ok(())
     }
 
-    fn check_ast_node(&mut self, node: &HirAstNode) -> Result<(), KaoriError> {
+    fn check_ast_node(&mut self, node: &HirNode) -> Result<(), KaoriError> {
         match node {
-            HirAstNode::Declaration(declaration) => self.check_declaration(declaration),
-            HirAstNode::Statement(statement) => self.check_statement(statement),
+            HirNode::Declaration(declaration) => self.check_declaration(declaration),
+            HirNode::Statement(statement) => self.check_statement(statement),
         }?;
 
         Ok(())
@@ -85,16 +81,16 @@ impl<'a> TypeChecker<'a> {
 
     fn check_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
         match &declaration.kind {
-            HirDeclKind::Variable { name, right, ty } => {}
-            HirDeclKind::Parameter { name, ty } => {}
-            HirDeclKind::Field { name, ty } => {}
+            HirDeclKind::Variable { right, ty } => {}
+            HirDeclKind::Parameter { ty } => {}
+            HirDeclKind::Field { ty } => {}
             HirDeclKind::Function {
                 parameters,
                 body,
                 return_ty,
                 ..
             } => {}
-            HirDeclKind::Struct { name, fields } => {}
+            HirDeclKind::Struct { fields } => {}
         };
 
         Ok(())
@@ -172,7 +168,7 @@ impl<'a> TypeChecker<'a> {
 
                 callee
             }
-            HirExprKind::Identifier(..) => {
+            HirExprKind::Identifier => {
                 let resolution = self
                     .resolution_table
                     .get_name_resolution(&expression.id)
@@ -213,7 +209,7 @@ impl<'a> TypeChecker<'a> {
 
                 CheckedTy::function(parameters, return_ty)
             }
-            HirTyKind::Identifier(name) => {
+            HirTyKind::Identifier => {
                 if let Some(Resolution::Struct(id)) =
                     self.resolution_table.get_name_resolution(&ty.id)
                 {

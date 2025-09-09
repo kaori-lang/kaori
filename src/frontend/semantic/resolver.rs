@@ -1,20 +1,24 @@
-#![allow(clippy::new_without_default)]
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::hir::{
-        hir_ast_node::HirAstNode,
-        hir_decl::{HirDecl, HirDeclKind},
-        hir_expr::{HirExpr, HirExprKind},
-        hir_stmt::{HirStmt, HirStmtKind},
-        hir_ty::{HirTy, HirTyKind},
+    frontend::{
+        semantic::{
+            environment::Environment,
+            resolution_table::{Resolution, ResolutionTable},
+            symbol::SymbolKind,
+        },
+        syntax::{
+            ast_node::AstNode,
+            decl::{Decl, DeclKind},
+            expr::{Expr, ExprKind},
+            stmt::{Stmt, StmtKind},
+            ty::{Ty, TyKind},
+        },
     },
     kaori_error,
 };
 
 use super::{
-    environment::Environment,
-    resolution_table::{Resolution, ResolutionTable},
-    symbol::SymbolKind,
+    hir_decl::HirDecl, hir_expr::HirExpr, hir_node::HirNode, hir_stmt::HirStmt, hir_ty::HirTy,
 };
 
 pub struct Resolver<'a> {
@@ -32,10 +36,10 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn resolve(&mut self, declarations: &[HirDecl]) -> Result<(), KaoriError> {
+    pub fn generate_hir(&mut self, declarations: &[Decl]) -> Result<Vec<HirDecl>, KaoriError> {
         for declaration in declarations.iter() {
             match &declaration.kind {
-                HirDeclKind::Function { name, .. } => {
+                DeclKind::Function { name, .. } => {
                     if self.environment.search_current_scope(name).is_some() {
                         return Err(kaori_error!(
                             declaration.span,
@@ -47,7 +51,7 @@ impl<'a> Resolver<'a> {
                     self.environment
                         .declare_function(declaration.id, name.to_owned());
                 }
-                HirDeclKind::Struct { name, .. } => {
+                DeclKind::Struct { name, .. } => {
                     if self.environment.search_current_scope(name).is_some() {
                         return Err(kaori_error!(
                             declaration.span,
@@ -60,53 +64,76 @@ impl<'a> Resolver<'a> {
                         .declare_struct(declaration.id, name.to_owned());
                 }
                 _ => (),
+            };
+        }
+
+        let declarations = declarations
+            .iter()
+            .map(|declaration| self.resolve_declaration(declaration))
+            .collect();
+
+        declarations
+    }
+
+    fn resolve_node(&self, node: &AstNode) -> Result<HirNode, KaoriError> {
+        let node = match node {
+            AstNode::Declaration(declaration) => {
+                let declaration = self.resolve_declaration(declaration)?;
+                HirNode::from(declaration)
             }
-        }
+            AstNode::Statement(statement) => {
+                let statement = self.resolve_statement(statement)?;
+                HirNode::from(statement)
+            }
+        };
 
-        for declaration in declarations {
-            self.resolve_declaration(declaration)?;
-        }
-
-        Ok(())
+        Ok(node)
     }
 
-    /*  fn resolve_main_function(&mut self, declarations: &[Decl]) -> Result<(), KaoriError> {
-           for (index, declaration) in declarations.iter().enumerate() {
-               if let HirDeclKind::Function { name, .. } = &declaration.kind
-                   && name == "main"
-               {
-                   declarations.swap(0, index);
-                   return Ok(());
-               }
-           }
+    fn resolve_declaration(&mut self, declaration: &Decl) -> Result<HirDecl, KaoriError> {
+        let hir_decl = match &declaration.kind {
+            DeclKind::Parameter { name, ty } => {
+                if self.environment.search_current_scope(name).is_some() {
+                    return Err(kaori_error!(
+                        declaration.span,
+                        "function can't have parameters with the same name: {}",
+                        name,
+                    ));
+                };
 
-           Err(kaori_error!(
-               Span::default(),
-               "main function is not declared"
-           ))
-       }
-    */
-    fn resolve_nodes(&mut self, nodes: &[HirAstNode]) -> Result<(), KaoriError> {
-        for node in nodes {
-            self.resolve_ast_node(node)?;
-        }
+                let offset = self
+                    .environment
+                    .declare_variable(declaration.id, name.to_owned());
 
-        Ok(())
-    }
+                self.resolution_table
+                    .insert_variable_offset(declaration.id, offset);
 
-    fn resolve_ast_node(&mut self, node: &HirAstNode) -> Result<(), KaoriError> {
-        match node {
-            HirAstNode::Declaration(declaration) => self.resolve_declaration(declaration),
-            HirAstNode::Statement(statement) => self.resolve_statement(statement),
-        }?;
+                let ty = self.resolve_type(ty)?;
 
-        Ok(())
-    }
+                HirDecl::parameter(declaration.id, ty, declaration.span)
+            }
+            DeclKind::Field { name, ty } => {
+                if self.environment.search_current_scope(name).is_some() {
+                    return Err(kaori_error!(
+                        declaration.span,
+                        "struct can't have fields with the same name: {}",
+                        name,
+                    ));
+                };
 
-    fn resolve_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
-        match &declaration.kind {
-            HirDeclKind::Variable { name, right, ty } => {
-                self.resolve_expression(right)?;
+                let offset = self
+                    .environment
+                    .declare_variable(declaration.id, name.to_owned());
+
+                self.resolution_table
+                    .insert_variable_offset(declaration.id, offset);
+
+                let ty = self.resolve_type(ty)?;
+
+                HirDecl::field(declaration.id, ty, declaration.span)
+            }
+            DeclKind::Variable { name, right, ty } => {
+                let right = self.resolve_expression(right)?;
 
                 if self.environment.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
@@ -123,205 +150,237 @@ impl<'a> Resolver<'a> {
                 self.resolution_table
                     .insert_variable_offset(declaration.id, offset);
 
-                self.resolve_type(ty)?;
+                let ty = self.resolve_type(ty)?;
+
+                HirDecl::variable(declaration.id, right, ty, declaration.span)
             }
-            HirDeclKind::Parameter { name, ty } => {
-                if self.environment.search_current_scope(name).is_some() {
-                    return Err(kaori_error!(
-                        declaration.span,
-                        "function can't have parameters with the same name: {}",
-                        name,
-                    ));
-                };
-
-                let offset = self
-                    .environment
-                    .declare_variable(declaration.id, name.to_owned());
-
-                self.resolution_table
-                    .insert_variable_offset(declaration.id, offset);
-
-                self.resolve_type(ty)?;
-            }
-            HirDeclKind::Field { name, ty } => {
-                if self.environment.search_current_scope(name).is_some() {
-                    return Err(kaori_error!(
-                        declaration.span,
-                        "struct can't have fields with the same name: {}",
-                        name,
-                    ));
-                };
-
-                let offset = self
-                    .environment
-                    .declare_variable(declaration.id, name.to_owned());
-
-                self.resolution_table
-                    .insert_variable_offset(declaration.id, offset);
-
-                self.resolve_type(ty)?;
-            }
-            HirDeclKind::Function {
+            DeclKind::Function {
                 parameters,
                 body,
+                name,
                 return_ty,
-                ..
             } => {
                 self.environment.enter_scope();
 
-                for parameter in parameters {
-                    self.resolve_declaration(parameter)?;
-                }
+                let parameters = parameters
+                    .iter()
+                    .map(|p| self.resolve_declaration(p))
+                    .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
 
-                self.resolve_nodes(body)?;
+                let body = body
+                    .iter()
+                    .map(|node| self.resolve_node(node))
+                    .collect::<Result<Vec<HirNode>, KaoriError>>()?;
+
+                let return_ty = match return_ty {
+                    Some(ty) => Some(self.resolve_type(ty)?),
+                    _ => None,
+                };
 
                 self.environment.exit_scope();
 
-                if let Some(ty) = return_ty {
-                    self.resolve_type(ty)?;
-                }
+                HirDecl::function(
+                    declaration.id,
+                    parameters,
+                    body,
+                    return_ty,
+                    declaration.span,
+                )
             }
-            HirDeclKind::Struct { fields, .. } => {
-                self.environment.enter_scope();
+            DeclKind::Struct { name, fields } => {
+                let fields = fields
+                    .iter()
+                    .map(|f| self.resolve_declaration(f))
+                    .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
 
-                for field in fields {
-                    self.resolve_declaration(field)?;
-                }
-
-                self.environment.exit_scope();
+                HirDecl::struct_(declaration.id, fields, declaration.span)
             }
         };
 
-        Ok(())
+        Ok(hir_decl)
     }
 
-    fn resolve_statement(&mut self, statement: &HirStmt) -> Result<(), KaoriError> {
-        match &statement.kind {
-            HirStmtKind::Expression(expression) => self.resolve_expression(expression)?,
-            HirStmtKind::Print(expression) => self.resolve_expression(expression)?,
-            HirStmtKind::Block(nodes) => {
-                self.environment.enter_scope();
-                self.resolve_nodes(nodes)?;
-                self.environment.exit_scope();
+    fn resolve_statement(&self, statement: &Stmt) -> Result<HirStmt, KaoriError> {
+        let hir_stmt = match &statement.kind {
+            StmtKind::Expression(expression) => {
+                let expr = self.resolve_expression(expression)?;
+                HirStmt::expression(statement.id, expr, statement.span)
             }
-            HirStmtKind::Branch {
+            StmtKind::Print(expression) => {
+                let expr = self.resolve_expression(expression)?;
+                HirStmt::print(statement.id, expr, statement.span)
+            }
+            StmtKind::Block(nodes) => {
+                self.environment.enter_scope();
+
+                let nodes = nodes
+                    .iter()
+                    .map(|node| self.resolve_node(node))
+                    .collect::<Result<Vec<HirNode>, KaoriError>>()?;
+
+                self.environment.exit_scope();
+
+                HirStmt::block(statement.id, nodes, statement.span)
+            }
+            StmtKind::If {
                 condition,
                 then_branch,
                 else_branch,
             } => {
-                self.resolve_expression(condition)?;
-                self.resolve_statement(then_branch)?;
+                let condition = self.resolve_expression(condition)?;
+                let then_branch = self.resolve_statement(then_branch)?;
+                let else_branch = match else_branch {
+                    Some(branch) => Some(self.resolve_statement(branch)?),
+                    _ => None,
+                };
 
-                if let Some(branch) = else_branch {
-                    self.resolve_statement(branch)?;
-                }
+                HirStmt::branch_(
+                    statement.id,
+                    condition,
+                    then_branch,
+                    else_branch,
+                    statement.span,
+                )
             }
-            HirStmtKind::WhileLoop { condition, block } => {
-                self.resolve_expression(condition)?;
+            StmtKind::WhileLoop { condition, block } => {
+                let init = None;
+                let condition = self.resolve_expression(condition)?;
+                let block = self.resolve_statement(block)?;
 
-                self.active_loops += 1;
-                self.resolve_statement(block)?;
-                self.active_loops -= 1;
+                HirStmt::loop_(statement.id, init, condition, block, statement.span)
             }
-            HirStmtKind::Break => {
-                if self.active_loops == 0 {
-                    return Err(kaori_error!(
-                        statement.span,
-                        "break statement can't appear outside of loops"
-                    ));
-                }
+            StmtKind::ForLoop {
+                init,
+                condition,
+                increment,
+                block,
+            } => {
+                let mut nodes = match &block.kind {
+                    StmtKind::Block(nodes) => nodes
+                        .iter()
+                        .map(|node| self.resolve_node(node))
+                        .collect::<Result<Vec<HirNode>, KaoriError>>()?,
+                    _ => unreachable!(),
+                };
+
+                let increment = HirNode::from(self.resolve_statement(increment)?);
+                nodes.push(increment);
+
+                let block = HirStmt::block(block.id, nodes, block.span);
+
+                let init = Some(self.resolve_declaration(init)?);
+                let condition = self.resolve_expression(condition)?;
+
+                HirStmt::loop_(statement.id, init, condition, block, statement.span)
             }
-            HirStmtKind::Continue => {
-                if self.active_loops == 0 {
-                    return Err(kaori_error!(
-                        statement.span,
-                        "continue statement can't appear outside of loops"
-                    ));
-                }
-            }
-            HirStmtKind::Return(expr) => {
-                if let Some(expr) = expr {
-                    self.resolve_expression(expr)?;
-                }
+            StmtKind::Break => HirStmt::break_(statement.id, statement.span),
+            StmtKind::Continue => HirStmt::continue_(statement.id, statement.span),
+            StmtKind::Return(expr) => {
+                let expr = match expr {
+                    Some(e) => Some(self.resolve_expression(e)?),
+                    _ => None,
+                };
+
+                HirStmt::return_(statement.id, expr, statement.span)
             }
         };
 
-        Ok(())
+        Ok(hir_stmt)
     }
 
-    fn resolve_expression(&mut self, expression: &HirExpr) -> Result<(), KaoriError> {
-        match &expression.kind {
-            HirExprKind::Assign(left, right) => {
-                self.resolve_expression(right)?;
-                self.resolve_expression(left)?;
-            }
-            HirExprKind::Binary { left, right, .. } => {
-                self.resolve_expression(left)?;
-                self.resolve_expression(right)?;
-            }
-            HirExprKind::Unary { right, .. } => {
-                self.resolve_expression(right)?;
-            }
-            HirExprKind::FunctionCall { callee, arguments } => {
-                self.resolve_expression(callee)?;
+    fn resolve_expression(&self, expression: &Expr) -> Result<HirExpr, KaoriError> {
+        let hir_expr = match &expression.kind {
+            ExprKind::Assign { left, right } => {
+                let right = self.resolve_expression(right)?;
+                let left = self.resolve_expression(left)?;
 
-                for argument in arguments {
-                    self.resolve_expression(argument)?;
-                }
+                HirExpr::assign(expression.id, left, right, expression.span)
             }
-            HirExprKind::Identifier(name) => {
+            ExprKind::Binary {
+                left,
+                right,
+                operator,
+            } => {
+                let left = self.resolve_expression(left)?;
+                let right = self.resolve_expression(right)?;
+
+                HirExpr::binary(expression.id, *operator, left, right, expression.span)
+            }
+            ExprKind::Unary { right, operator } => {
+                let right = self.resolve_expression(right)?;
+
+                HirExpr::unary(expression.id, *operator, right, expression.span)
+            }
+            ExprKind::FunctionCall { callee, arguments } => {
+                let callee = self.resolve_expression(callee)?;
+                let arguments = arguments
+                    .iter()
+                    .map(|a| self.resolve_expression(a))
+                    .collect::<Result<Vec<HirExpr>, KaoriError>>()?;
+
+                HirExpr::function_call(expression.id, callee, arguments, expression.span)
+            }
+            ExprKind::NumberLiteral(value) => {
+                HirExpr::number_literal(expression.id, *value, expression.span)
+            }
+            ExprKind::BooleanLiteral(value) => {
+                HirExpr::boolean_literal(expression.id, *value, expression.span)
+            }
+            ExprKind::StringLiteral(value) => {
+                HirExpr::string_literal(expression.id, value.to_owned(), expression.span)
+            }
+            ExprKind::Identifier(name) => {
                 if let Some(symbol) = self.environment.search(name) {
                     let resolution = match symbol.kind {
                         SymbolKind::Variable => Resolution::variable(symbol.id),
                         SymbolKind::Function => Resolution::function(symbol.id),
                         SymbolKind::Struct => Resolution::struct_(symbol.id),
                     };
-
-                    self.resolution_table
-                        .insert_name_resolution(expression.id, resolution);
                 } else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));
                 }
+                HirExpr::identifier(expression.id, expression.span)
             }
-            HirExprKind::StringLiteral(..) => {}
-            HirExprKind::BooleanLiteral(..) => {}
-            HirExprKind::NumberLiteral(..) => {}
         };
 
-        Ok(())
+        Ok(hir_expr)
     }
 
-    pub fn resolve_type(&mut self, ty: &HirTy) -> Result<(), KaoriError> {
-        match &ty.kind {
-            HirTyKind::Function {
+    fn resolve_type(&self, ty: &Ty) -> Result<HirTy, KaoriError> {
+        let hir_ty = match &ty.kind {
+            TyKind::Function {
                 parameters,
                 return_ty,
             } => {
-                for parameter in parameters {
-                    self.resolve_type(parameter)?;
-                }
+                let parameters = parameters
+                    .iter()
+                    .map(|p| self.resolve_type(p))
+                    .collect::<Result<Vec<HirTy>, KaoriError>>()?;
 
-                if let Some(return_ty) = return_ty {
-                    self.resolve_type(return_ty)?;
-                }
-            }
-            HirTyKind::Identifier(name) => {
-                match self.environment.search(name) {
-                    Some(symbol) => {
-                        if let SymbolKind::Struct = symbol.kind {
-                            self.resolution_table
-                                .insert_name_resolution(ty.id, Resolution::Type(symbol.id));
-                        } else {
-                            return Err(kaori_error!(ty.span, "{} is not a valid type", name));
-                        }
-                    }
-                    None => return Err(kaori_error!(ty.span, "{} type is not declared", name)),
+                let return_ty = match return_ty {
+                    Some(ty) => Some(self.resolve_type(ty)?),
+                    _ => None,
                 };
+
+                HirTy::function(ty.id, parameters, return_ty, ty.span)
             }
-            HirTyKind::Bool => {}
-            HirTyKind::Number => {}
+            TyKind::Identifier(name) => match self.environment.search(name) {
+                Some(symbol) => {
+                    if let SymbolKind::Struct = symbol.kind {
+                        self.resolution_table
+                            .insert_name_resolution(ty.id, Resolution::Type(symbol.id));
+
+                        HirTy::identifier(ty.id, ty.span)
+                    } else {
+                        return Err(kaori_error!(ty.span, "{} is not a valid type", name));
+                    }
+                }
+                None => return Err(kaori_error!(ty.span, "{} type is not declared", name)),
+            },
+            TyKind::Bool => HirTy::bool(ty.id, ty.span),
+            TyKind::Number => HirTy::number(ty.id, ty.span),
         };
 
-        Ok(())
+        Ok(hir_ty)
     }
 }
