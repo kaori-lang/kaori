@@ -6,7 +6,7 @@ pub mod parser;
 pub mod decl;
 
 pub mod binary_op;
-pub mod node_id;
+
 pub mod parse_declaration;
 pub mod parse_expression;
 pub mod parse_statement;

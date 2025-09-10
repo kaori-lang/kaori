@@ -1,10 +1,10 @@
-use crate::frontend::{lexer::span::Span, syntax::node_id::NodeId};
+use crate::frontend::lexer::span::Span;
 
-use super::{hir_decl::HirDecl, hir_expr::HirExpr, hir_node::HirNode};
+use super::{hir_decl::HirDecl, hir_expr::HirExpr, hir_id::HirId, hir_node::HirNode};
 
 #[derive(Debug)]
 pub struct HirStmt {
-    pub id: NodeId,
+    pub id: HirId,
     pub span: Span,
     pub kind: HirStmtKind,
 }
@@ -30,23 +30,22 @@ pub enum HirStmtKind {
 }
 
 impl HirStmt {
-    pub fn print(id: NodeId, expr: HirExpr, span: Span) -> HirStmt {
+    pub fn print(expr: HirExpr, span: Span) -> HirStmt {
         HirStmt {
-            id,
+            id: HirId::default(),
             span,
             kind: HirStmtKind::Print(Box::new(expr)),
         }
     }
 
     pub fn branch_(
-        id: NodeId,
         condition: HirExpr,
         then_branch: HirStmt,
         else_branch: Option<HirStmt>,
         span: Span,
     ) -> HirStmt {
         HirStmt {
-            id,
+            id: HirId::default(),
             span,
             kind: HirStmtKind::Branch {
                 condition: Box::new(condition),
@@ -56,15 +55,9 @@ impl HirStmt {
         }
     }
 
-    pub fn loop_(
-        id: NodeId,
-        init: Option<HirDecl>,
-        condition: HirExpr,
-        block: HirStmt,
-        span: Span,
-    ) -> HirStmt {
+    pub fn loop_(init: Option<HirDecl>, condition: HirExpr, block: HirStmt, span: Span) -> HirStmt {
         HirStmt {
-            id,
+            id: HirId::default(),
             span,
             kind: HirStmtKind::Loop {
                 init,
@@ -74,41 +67,41 @@ impl HirStmt {
         }
     }
 
-    pub fn block(id: NodeId, nodes: Vec<HirNode>, span: Span) -> HirStmt {
+    pub fn block(nodes: Vec<HirNode>, span: Span) -> HirStmt {
         HirStmt {
-            id,
+            id: HirId::default(),
             span,
             kind: HirStmtKind::Block(nodes),
         }
     }
 
-    pub fn expression(id: NodeId, expr: HirExpr, span: Span) -> HirStmt {
+    pub fn expression(expr: HirExpr, span: Span) -> HirStmt {
         HirStmt {
-            id,
+            id: HirId::default(),
             span,
             kind: HirStmtKind::Expression(Box::new(expr)),
         }
     }
 
-    pub fn break_(id: NodeId, span: Span) -> HirStmt {
+    pub fn break_(span: Span) -> HirStmt {
         HirStmt {
-            id,
+            id: HirId::default(),
             span,
             kind: HirStmtKind::Break,
         }
     }
 
-    pub fn continue_(id: NodeId, span: Span) -> HirStmt {
+    pub fn continue_(span: Span) -> HirStmt {
         HirStmt {
-            id,
+            id: HirId::default(),
             span,
             kind: HirStmtKind::Continue,
         }
     }
 
-    pub fn return_(id: NodeId, expr: Option<HirExpr>, span: Span) -> HirStmt {
+    pub fn return_(expr: Option<HirExpr>, span: Span) -> HirStmt {
         HirStmt {
-            id,
+            id: HirId::default(),
             span,
             kind: HirStmtKind::Return(expr.map(Box::new)),
         }

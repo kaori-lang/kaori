@@ -1,5 +1,3 @@
-use crate::frontend::syntax::node_id::NodeId;
-
 use super::symbol::{Symbol, SymbolKind};
 
 pub struct Environment {
@@ -30,7 +28,7 @@ impl Environment {
 
         while self.symbols.len() > ptr {
             if let Some(symbol) = self.symbols.last()
-                && let SymbolKind::Variable = symbol.kind
+                && let SymbolKind::Variable { .. } = symbol.kind
             {
                 self.variable_offset -= 1;
             }
@@ -39,9 +37,9 @@ impl Environment {
         }
     }
 
-    pub fn declare_variable(&mut self, id: NodeId, name: String) -> usize {
+    pub fn declare_variable(&mut self, name: String) -> usize {
         let offset = self.variable_offset;
-        let symbol = Symbol::variable(id, name);
+        let symbol = Symbol::variable(name, offset);
 
         self.variable_offset += 1;
 
@@ -50,14 +48,14 @@ impl Environment {
         offset
     }
 
-    pub fn declare_function(&mut self, id: NodeId, name: String) {
-        let symbol = Symbol::function(id, name);
+    pub fn declare_function(&mut self, name: String) {
+        let symbol = Symbol::function(name);
 
         self.symbols.push(symbol);
     }
 
-    pub fn declare_struct(&mut self, id: NodeId, name: String) {
-        let symbol = Symbol::struct_(id, name);
+    pub fn declare_struct(&mut self, name: String) {
+        let symbol = Symbol::struct_(name);
 
         self.symbols.push(symbol);
     }

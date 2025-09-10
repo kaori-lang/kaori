@@ -1,4 +1,4 @@
-use crate::frontend::syntax::node_id::NodeId;
+use super::hir_id::HirId;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CheckedTy {
@@ -13,7 +13,7 @@ pub enum CheckedTy {
     Struct {
         fields: Vec<CheckedTy>,
     },
-    Identifier(NodeId),
+    Identifier(HirId),
 }
 
 impl CheckedTy {

@@ -1,10 +1,10 @@
-use crate::frontend::{lexer::span::Span, syntax::node_id::NodeId};
+use crate::frontend::lexer::span::Span;
 
-use super::{hir_expr::HirExpr, hir_node::HirNode, hir_ty::HirTy};
+use super::{hir_expr::HirExpr, hir_id::HirId, hir_node::HirNode, hir_ty::HirTy};
 
 #[derive(Debug)]
 pub struct HirDecl {
-    pub id: NodeId,
+    pub id: HirId,
     pub span: Span,
     pub kind: HirDeclKind,
 }
@@ -32,33 +32,33 @@ pub enum HirDeclKind {
 }
 
 impl HirDecl {
-    pub fn parameter(id: NodeId, ty: HirTy, span: Span) -> HirDecl {
+    pub fn parameter(ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
-            id,
+            id: HirId::default(),
             span,
             kind: HirDeclKind::Parameter { ty },
         }
     }
 
-    pub fn field(id: NodeId, ty: HirTy, span: Span) -> HirDecl {
+    pub fn field(ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
-            id,
+            id: HirId::default(),
             span,
             kind: HirDeclKind::Field { ty },
         }
     }
 
-    pub fn struct_(id: NodeId, fields: Vec<HirDecl>, span: Span) -> HirDecl {
+    pub fn struct_(fields: Vec<HirDecl>, span: Span) -> HirDecl {
         HirDecl {
-            id,
+            id: HirId::default(),
             span,
             kind: HirDeclKind::Struct { fields },
         }
     }
 
-    pub fn variable(id: NodeId, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
+    pub fn variable(right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
-            id,
+            id: HirId::default(),
             span,
             kind: HirDeclKind::Variable {
                 right: Box::new(right),
@@ -68,15 +68,13 @@ impl HirDecl {
     }
 
     pub fn function(
-        id: NodeId,
-
         parameters: Vec<HirDecl>,
         body: Vec<HirNode>,
         return_ty: Option<HirTy>,
         span: Span,
     ) -> HirDecl {
         HirDecl {
-            id,
+            id: HirId::default(),
             span,
             kind: HirDeclKind::Function {
                 parameters,

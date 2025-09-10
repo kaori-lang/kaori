@@ -7,10 +7,10 @@ pub fn generate_id() -> usize {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct NodeId(usize);
+pub struct HirId(usize);
 
-impl Default for NodeId {
+impl Default for HirId {
     fn default() -> Self {
-        NodeId(generate_id())
+        HirId(generate_id())
     }
 }

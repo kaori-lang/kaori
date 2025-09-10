@@ -1,11 +1,13 @@
 use crate::frontend::{
     lexer::span::Span,
-    syntax::{binary_op::BinaryOp, node_id::NodeId, unary_op::UnaryOp},
+    syntax::{binary_op::BinaryOp, unary_op::UnaryOp},
 };
+
+use super::hir_id::HirId;
 
 #[derive(Debug)]
 pub struct HirExpr {
-    pub id: NodeId,
+    pub id: HirId,
     pub span: Span,
     pub kind: HirExprKind,
 }
@@ -22,7 +24,10 @@ pub enum HirExprKind {
         operator: UnaryOp,
     },
     Assign(Box<HirExpr>, Box<HirExpr>),
-    Identifier,
+    Variable {
+        offset: usize,
+    },
+    FunctionRef(HirId),
     FunctionCall {
         callee: Box<HirExpr>,
         arguments: Vec<HirExpr>,
@@ -33,15 +38,9 @@ pub enum HirExprKind {
 }
 
 impl HirExpr {
-    pub fn binary(
-        id: NodeId,
-        operator: BinaryOp,
-        left: HirExpr,
-        right: HirExpr,
-        span: Span,
-    ) -> HirExpr {
+    pub fn binary(operator: BinaryOp, left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
         HirExpr {
-            id,
+            id: HirId::default(),
             span,
             kind: HirExprKind::Binary {
                 operator,
@@ -51,9 +50,9 @@ impl HirExpr {
         }
     }
 
-    pub fn unary(id: NodeId, operator: UnaryOp, right: HirExpr, span: Span) -> HirExpr {
+    pub fn unary(operator: UnaryOp, right: HirExpr, span: Span) -> HirExpr {
         HirExpr {
-            id,
+            id: HirId::default(),
             span,
             kind: HirExprKind::Unary {
                 operator,
@@ -62,30 +61,33 @@ impl HirExpr {
         }
     }
 
-    pub fn assign(id: NodeId, left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
+    pub fn assign(left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
         HirExpr {
-            id,
+            id: HirId::default(),
             span,
             kind: HirExprKind::Assign(Box::new(left), Box::new(right)),
         }
     }
 
-    pub fn identifier(id: NodeId, span: Span) -> HirExpr {
+    pub fn variable(offset: usize, span: Span) -> HirExpr {
         HirExpr {
-            id,
+            id: HirId::default(),
             span,
-            kind: HirExprKind::Identifier,
+            kind: HirExprKind::Variable { offset },
         }
     }
 
-    pub fn function_call(
-        id: NodeId,
-        callee: HirExpr,
-        arguments: Vec<HirExpr>,
-        span: Span,
-    ) -> HirExpr {
+    pub fn function_ref(id: HirId, span: Span) -> HirExpr {
         HirExpr {
             id,
+            span,
+            kind: HirExprKind::FunctionRef(id),
+        }
+    }
+
+    pub fn function_call(callee: HirExpr, arguments: Vec<HirExpr>, span: Span) -> HirExpr {
+        HirExpr {
+            id: HirId::default(),
             span,
             kind: HirExprKind::FunctionCall {
                 callee: Box::new(callee),
@@ -94,25 +96,25 @@ impl HirExpr {
         }
     }
 
-    pub fn string_literal(id: NodeId, value: String, span: Span) -> HirExpr {
+    pub fn string_literal(value: String, span: Span) -> HirExpr {
         HirExpr {
-            id,
+            id: HirId::default(),
             span,
             kind: HirExprKind::StringLiteral(value),
         }
     }
 
-    pub fn number_literal(id: NodeId, value: f64, span: Span) -> HirExpr {
+    pub fn number_literal(value: f64, span: Span) -> HirExpr {
         HirExpr {
-            id,
+            id: HirId::default(),
             span,
             kind: HirExprKind::NumberLiteral(value),
         }
     }
 
-    pub fn boolean_literal(id: NodeId, value: bool, span: Span) -> HirExpr {
+    pub fn boolean_literal(value: bool, span: Span) -> HirExpr {
         HirExpr {
-            id,
+            id: HirId::default(),
             span,
             kind: HirExprKind::BooleanLiteral(value),
         }

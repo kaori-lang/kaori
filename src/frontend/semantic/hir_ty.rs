@@ -1,8 +1,10 @@
-use crate::frontend::{lexer::span::Span, syntax::node_id::NodeId};
+use crate::frontend::lexer::span::Span;
+
+use super::hir_id::HirId;
 
 #[derive(Debug)]
 pub struct HirTy {
-    pub id: NodeId,
+    pub id: HirId,
     pub span: Span,
     pub kind: HirTyKind,
 }
@@ -13,20 +15,15 @@ pub enum HirTyKind {
         parameters: Vec<HirTy>,
         return_ty: Option<Box<HirTy>>,
     },
-    Identifier,
+    TypeRef(HirId),
     Number,
     Bool,
 }
 
 impl HirTy {
-    pub fn function(
-        id: NodeId,
-        parameters: Vec<HirTy>,
-        return_ty: Option<HirTy>,
-        span: Span,
-    ) -> HirTy {
+    pub fn function(parameters: Vec<HirTy>, return_ty: Option<HirTy>, span: Span) -> HirTy {
         HirTy {
-            id,
+            id: HirId::default(),
             span,
             kind: HirTyKind::Function {
                 parameters,
@@ -35,27 +32,27 @@ impl HirTy {
         }
     }
 
-    pub fn number(id: NodeId, span: Span) -> HirTy {
+    pub fn number(span: Span) -> HirTy {
         HirTy {
-            id,
+            id: HirId::default(),
             span,
             kind: HirTyKind::Number,
         }
     }
 
-    pub fn bool(id: NodeId, span: Span) -> HirTy {
+    pub fn bool(span: Span) -> HirTy {
         HirTy {
-            id,
+            id: HirId::default(),
             span,
             kind: HirTyKind::Bool,
         }
     }
 
-    pub fn identifier(id: NodeId, span: Span) -> HirTy {
+    pub fn type_ref(id: HirId, span: Span) -> HirTy {
         HirTy {
-            id,
+            id: HirId::default(),
             span,
-            kind: HirTyKind::Identifier,
+            kind: HirTyKind::TypeRef(id),
         }
     }
 }

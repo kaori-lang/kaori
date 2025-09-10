@@ -1,10 +1,7 @@
 use crate::{
     error::kaori_error::KaoriError,
     frontend::{
-        semantic::{
-            resolution_table::{Resolution, ResolutionTable},
-            symbol::SymbolKind,
-        },
+        semantic::symbol::SymbolKind,
         syntax::{
             ast_node::AstNode,
             decl::{Decl, DeclKind},
@@ -21,18 +18,16 @@ use super::{
     hir_stmt::HirStmt, hir_ty::HirTy,
 };
 
-pub struct Resolver<'a> {
+pub struct Resolver {
     environment: Environment,
     active_loops: u8,
-    resolution_table: &'a mut ResolutionTable,
 }
 
-impl<'a> Resolver<'a> {
-    pub fn new(resolution_table: &'a mut ResolutionTable) -> Self {
+impl Resolver {
+    pub fn new() -> Self {
         Self {
             environment: Environment::default(),
             active_loops: 0,
-            resolution_table,
         }
     }
 
@@ -48,8 +43,7 @@ impl<'a> Resolver<'a> {
                         ));
                     }
 
-                    self.environment
-                        .declare_function(declaration.id, name.to_owned());
+                    self.environment.declare_function(name.to_owned());
                 }
                 DeclKind::Struct { name, .. } => {
                     if self.environment.search_current_scope(name).is_some() {
@@ -60,8 +54,7 @@ impl<'a> Resolver<'a> {
                         ));
                     }
 
-                    self.environment
-                        .declare_struct(declaration.id, name.to_owned());
+                    self.environment.declare_struct(name.to_owned());
                 }
                 _ => (),
             };
@@ -70,9 +63,9 @@ impl<'a> Resolver<'a> {
         let declarations = declarations
             .iter()
             .map(|declaration| self.resolve_declaration(declaration))
-            .collect();
+            .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
 
-        declarations
+        Ok(declarations)
     }
 
     fn resolve_node(&mut self, node: &AstNode) -> Result<HirNode, KaoriError> {
@@ -101,16 +94,11 @@ impl<'a> Resolver<'a> {
                     ));
                 };
 
-                let offset = self
-                    .environment
-                    .declare_variable(declaration.id, name.to_owned());
-
-                self.resolution_table
-                    .insert_variable_offset(declaration.id, offset);
+                let offset = self.environment.declare_variable(name.to_owned());
 
                 let ty = self.resolve_type(ty)?;
 
-                HirDecl::parameter(declaration.id, ty, declaration.span)
+                HirDecl::parameter(ty, declaration.span)
             }
             DeclKind::Field { name, ty } => {
                 if self.environment.search_current_scope(name).is_some() {
@@ -121,16 +109,11 @@ impl<'a> Resolver<'a> {
                     ));
                 };
 
-                let offset = self
-                    .environment
-                    .declare_variable(declaration.id, name.to_owned());
-
-                self.resolution_table
-                    .insert_variable_offset(declaration.id, offset);
+                let offset = self.environment.declare_variable(name.to_owned());
 
                 let ty = self.resolve_type(ty)?;
 
-                HirDecl::field(declaration.id, ty, declaration.span)
+                HirDecl::field(ty, declaration.span)
             }
             DeclKind::Variable { name, right, ty } => {
                 let right = self.resolve_expression(right)?;
@@ -143,16 +126,11 @@ impl<'a> Resolver<'a> {
                     ));
                 };
 
-                let offset = self
-                    .environment
-                    .declare_variable(declaration.id, name.to_owned());
-
-                self.resolution_table
-                    .insert_variable_offset(declaration.id, offset);
+                let offset = self.environment.declare_variable(name.to_owned());
 
                 let ty = self.resolve_type(ty)?;
 
-                HirDecl::variable(declaration.id, right, ty, declaration.span)
+                HirDecl::variable(right, ty, declaration.span)
             }
             DeclKind::Function {
                 parameters,
@@ -179,13 +157,7 @@ impl<'a> Resolver<'a> {
 
                 self.environment.exit_scope();
 
-                HirDecl::function(
-                    declaration.id,
-                    parameters,
-                    body,
-                    return_ty,
-                    declaration.span,
-                )
+                HirDecl::function(parameters, body, return_ty, declaration.span)
             }
             DeclKind::Struct { name, fields } => {
                 let fields = fields
@@ -193,7 +165,7 @@ impl<'a> Resolver<'a> {
                     .map(|f| self.resolve_declaration(f))
                     .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
 
-                HirDecl::struct_(declaration.id, fields, declaration.span)
+                HirDecl::struct_(fields, declaration.span)
             }
         };
 
@@ -204,11 +176,13 @@ impl<'a> Resolver<'a> {
         let hir_stmt = match &statement.kind {
             StmtKind::Expression(expression) => {
                 let expr = self.resolve_expression(expression)?;
-                HirStmt::expression(statement.id, expr, statement.span)
+
+                HirStmt::expression(expr, statement.span)
             }
             StmtKind::Print(expression) => {
                 let expr = self.resolve_expression(expression)?;
-                HirStmt::print(statement.id, expr, statement.span)
+
+                HirStmt::print(expr, statement.span)
             }
             StmtKind::Block(nodes) => {
                 self.environment.enter_scope();
@@ -220,7 +194,7 @@ impl<'a> Resolver<'a> {
 
                 self.environment.exit_scope();
 
-                HirStmt::block(statement.id, nodes, statement.span)
+                HirStmt::block(nodes, statement.span)
             }
             StmtKind::If {
                 condition,
@@ -234,20 +208,17 @@ impl<'a> Resolver<'a> {
                     _ => None,
                 };
 
-                HirStmt::branch_(
-                    statement.id,
-                    condition,
-                    then_branch,
-                    else_branch,
-                    statement.span,
-                )
+                HirStmt::branch_(condition, then_branch, else_branch, statement.span)
             }
             StmtKind::WhileLoop { condition, block } => {
                 let init = None;
                 let condition = self.resolve_expression(condition)?;
-                let block = self.resolve_statement(block)?;
 
-                HirStmt::loop_(statement.id, init, condition, block, statement.span)
+                self.active_loops += 1;
+                let block = self.resolve_statement(block)?;
+                self.active_loops -= 1;
+
+                HirStmt::loop_(init, condition, block, statement.span)
             }
             StmtKind::ForLoop {
                 init,
@@ -262,20 +233,28 @@ impl<'a> Resolver<'a> {
                 let increment = HirNode::from(self.resolve_statement(increment)?);
 
                 let mut nodes = match &block.kind {
-                    StmtKind::Block(nodes) => nodes
-                        .iter()
-                        .map(|node| self.resolve_node(node))
-                        .collect::<Result<Vec<HirNode>, KaoriError>>()?,
+                    StmtKind::Block(nodes) => {
+                        self.active_loops += 1;
+
+                        let nodes = nodes
+                            .iter()
+                            .map(|node| self.resolve_node(node))
+                            .collect::<Result<Vec<HirNode>, KaoriError>>()?;
+
+                        self.active_loops -= 1;
+
+                        nodes
+                    }
                     _ => unreachable!(),
                 };
 
                 nodes.push(increment);
 
-                let block = HirStmt::block(block.id, nodes, block.span);
+                let block = HirStmt::block(nodes, block.span);
 
                 self.environment.exit_scope();
 
-                HirStmt::loop_(statement.id, init, condition, block, statement.span)
+                HirStmt::loop_(init, condition, block, statement.span)
             }
             StmtKind::Break => {
                 if self.active_loops == 0 {
@@ -285,7 +264,7 @@ impl<'a> Resolver<'a> {
                     ));
                 }
 
-                HirStmt::break_(statement.id, statement.span)
+                HirStmt::break_(statement.span)
             }
             StmtKind::Continue => {
                 if self.active_loops == 0 {
@@ -295,7 +274,7 @@ impl<'a> Resolver<'a> {
                     ));
                 }
 
-                HirStmt::continue_(statement.id, statement.span)
+                HirStmt::continue_(statement.span)
             }
             StmtKind::Return(expr) => {
                 let expr = match expr {
@@ -303,7 +282,7 @@ impl<'a> Resolver<'a> {
                     _ => None,
                 };
 
-                HirStmt::return_(statement.id, expr, statement.span)
+                HirStmt::return_(expr, statement.span)
             }
         };
 
@@ -316,7 +295,7 @@ impl<'a> Resolver<'a> {
                 let right = self.resolve_expression(right)?;
                 let left = self.resolve_expression(left)?;
 
-                HirExpr::assign(expression.id, left, right, expression.span)
+                HirExpr::assign(left, right, expression.span)
             }
             ExprKind::Binary {
                 left,
@@ -326,12 +305,12 @@ impl<'a> Resolver<'a> {
                 let left = self.resolve_expression(left)?;
                 let right = self.resolve_expression(right)?;
 
-                HirExpr::binary(expression.id, *operator, left, right, expression.span)
+                HirExpr::binary(*operator, left, right, expression.span)
             }
             ExprKind::Unary { right, operator } => {
                 let right = self.resolve_expression(right)?;
 
-                HirExpr::unary(expression.id, *operator, right, expression.span)
+                HirExpr::unary(*operator, right, expression.span)
             }
             ExprKind::FunctionCall { callee, arguments } => {
                 let callee = self.resolve_expression(callee)?;
@@ -340,29 +319,25 @@ impl<'a> Resolver<'a> {
                     .map(|a| self.resolve_expression(a))
                     .collect::<Result<Vec<HirExpr>, KaoriError>>()?;
 
-                HirExpr::function_call(expression.id, callee, arguments, expression.span)
+                HirExpr::function_call(callee, arguments, expression.span)
             }
-            ExprKind::NumberLiteral(value) => {
-                HirExpr::number_literal(expression.id, *value, expression.span)
-            }
-            ExprKind::BooleanLiteral(value) => {
-                HirExpr::boolean_literal(expression.id, *value, expression.span)
-            }
+            ExprKind::NumberLiteral(value) => HirExpr::number_literal(*value, expression.span),
+            ExprKind::BooleanLiteral(value) => HirExpr::boolean_literal(*value, expression.span),
             ExprKind::StringLiteral(value) => {
-                HirExpr::string_literal(expression.id, value.to_owned(), expression.span)
+                HirExpr::string_literal(value.to_owned(), expression.span)
             }
             ExprKind::Identifier(name) => {
                 let Some(symbol) = self.environment.search(name) else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));
                 };
 
-                let resolution = match symbol.kind {
-                    SymbolKind::Variable => Resolution::variable(symbol.id),
-                    SymbolKind::Function => Resolution::function(symbol.id),
-                    SymbolKind::Struct => Resolution::struct_(symbol.id),
-                };
-
-                HirExpr::identifier(expression.id, expression.span)
+                match symbol.kind {
+                    SymbolKind::Function => HirExpr::function_ref(symbol.id, expression.span),
+                    SymbolKind::Variable { offset } => HirExpr::variable(offset, expression.span),
+                    SymbolKind::Struct => {
+                        return Err(kaori_error!(expression.span, "{} is not a value", name));
+                    }
+                }
             }
         };
 
@@ -385,7 +360,7 @@ impl<'a> Resolver<'a> {
                     _ => None,
                 };
 
-                HirTy::function(ty.id, parameters, return_ty, ty.span)
+                HirTy::function(parameters, return_ty, ty.span)
             }
             TyKind::Identifier(name) => {
                 let Some(symbol) = self.environment.search(name) else {
@@ -396,13 +371,10 @@ impl<'a> Resolver<'a> {
                     return Err(kaori_error!(ty.span, "{} is not a valid type", name));
                 };
 
-                self.resolution_table
-                    .insert_name_resolution(ty.id, Resolution::Type(symbol.id));
-
-                HirTy::identifier(ty.id, ty.span)
+                HirTy::type_ref(symbol.id, ty.span)
             }
-            TyKind::Bool => HirTy::bool(ty.id, ty.span),
-            TyKind::Number => HirTy::number(ty.id, ty.span),
+            TyKind::Bool => HirTy::bool(ty.span),
+            TyKind::Number => HirTy::number(ty.span),
         };
 
         Ok(hir_ty)
