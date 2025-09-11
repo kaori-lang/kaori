@@ -12,6 +12,7 @@ pub struct HirDecl {
 #[derive(Debug)]
 pub enum HirDeclKind {
     Variable {
+        offset: usize,
         right: Box<HirExpr>,
         ty: HirTy,
     },
@@ -56,11 +57,12 @@ impl HirDecl {
         }
     }
 
-    pub fn variable(id: HirId, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
+    pub fn variable(id: HirId, offset: usize, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
             kind: HirDeclKind::Variable {
+                offset,
                 right: Box::new(right),
                 ty,
             },

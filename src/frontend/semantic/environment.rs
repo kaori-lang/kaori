@@ -40,23 +40,25 @@ impl Environment {
         }
     }
 
-    pub fn declare_variable(&mut self, name: String) {
+    pub fn declare_variable(&mut self, id: HirId, name: String) -> usize {
         let offset = self.variable_offset;
-        let symbol = Symbol::variable(name, offset);
+        let symbol = Symbol::variable(id, name);
 
         self.variable_offset += 1;
 
         self.symbols.push(symbol);
+
+        offset
     }
 
-    pub fn declare_function(&mut self, name: String) {
-        let symbol = Symbol::function(name);
+    pub fn declare_function(&mut self, id: HirId, name: String) {
+        let symbol = Symbol::function(id, name);
 
         self.symbols.push(symbol);
     }
 
-    pub fn declare_struct(&mut self, name: String) {
-        let symbol = Symbol::struct_(name);
+    pub fn declare_struct(&mut self, id: HirId, name: String) {
+        let symbol = Symbol::struct_(id, name);
 
         self.symbols.push(symbol);
     }
@@ -71,11 +73,5 @@ impl Environment {
 
     pub fn search(&self, name: &str) -> Option<&Symbol> {
         self.symbols.iter().rev().find(|symbol| symbol.name == name)
-    }
-
-    pub fn get_hir_id(&self, name: &str) -> Option<HirId> {
-        let symbol = self.symbols.iter().rev().find(|symbol| symbol.name == name);
-
-        symbol.map(|sym| sym.id)
     }
 }

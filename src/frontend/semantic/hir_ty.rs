@@ -2,14 +2,14 @@ use crate::frontend::lexer::span::Span;
 
 use super::hir_id::HirId;
 
-#[derive(Debug, Hash, Eq, PartialEq)]
+#[derive(Debug)]
 pub struct HirTy {
     pub id: HirId,
     pub span: Span,
     pub kind: HirTyKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum HirTyKind {
     Function {
         parameters: Vec<HirTy>,
@@ -19,6 +19,14 @@ pub enum HirTyKind {
     Number,
     Bool,
 }
+
+impl PartialEq for HirTy {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+    }
+}
+
+impl Eq for HirTy {}
 
 impl HirTy {
     pub fn function(parameters: Vec<HirTy>, return_ty: Option<HirTy>, span: Span) -> HirTy {

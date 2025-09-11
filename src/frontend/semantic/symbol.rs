@@ -9,31 +9,31 @@ pub struct Symbol {
 
 #[derive(Clone)]
 pub enum SymbolKind {
-    Variable { offset: usize },
+    Variable,
     Function,
     Struct,
 }
 
 impl Symbol {
-    pub fn variable(name: String, offset: usize) -> Symbol {
+    pub fn variable(id: HirId, name: String) -> Symbol {
         Symbol {
-            id: HirId::default(),
+            id,
             name,
-            kind: SymbolKind::Variable { offset },
+            kind: SymbolKind::Variable,
         }
     }
 
-    pub fn function(name: String) -> Symbol {
+    pub fn function(id: HirId, name: String) -> Symbol {
         Symbol {
-            id: HirId::default(),
+            id,
             name,
             kind: SymbolKind::Function,
         }
     }
 
-    pub fn struct_(name: String) -> Symbol {
+    pub fn struct_(id: HirId, name: String) -> Symbol {
         Symbol {
-            id: HirId::default(),
+            id,
             name,
             kind: SymbolKind::Struct,
         }

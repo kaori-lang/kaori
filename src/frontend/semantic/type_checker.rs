@@ -178,7 +178,7 @@ impl TypeChecker {
                 callee
             }
             HirExprKind::FunctionRef(id) => {}
-            HirExprKind::VariableOffset(offset) => {}
+            HirExprKind::VariableRef(id) => {}
             HirExprKind::StringLiteral(..) => CheckedTy::String,
             HirExprKind::BooleanLiteral(..) => CheckedTy::Boolean,
             HirExprKind::NumberLiteral(..) => CheckedTy::Number,
@@ -205,15 +205,8 @@ impl TypeChecker {
 
                 CheckedTy::function(parameters, return_ty)
             }
-            HirTyKind::Identifier => {
-                if let Some(Resolution::Struct(id)) =
-                    self.resolution_table.get_name_resolution(&ty.id)
-                {
-                    CheckedTy::Identifier(*id)
-                } else {
-                    unreachable!()
-                }
-            }
+            HirTyKind::TypeRef(id) => {}
+
             HirTyKind::Bool => CheckedTy::Boolean,
             HirTyKind::Number => CheckedTy::Number,
         }

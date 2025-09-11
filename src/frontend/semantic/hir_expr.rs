@@ -24,7 +24,7 @@ pub enum HirExprKind {
         operator: UnaryOp,
     },
     Assign(Box<HirExpr>, Box<HirExpr>),
-    VariableOffset(usize),
+    VariableRef(HirId),
     FunctionRef(HirId),
     FunctionCall {
         callee: Box<HirExpr>,
@@ -67,11 +67,11 @@ impl HirExpr {
         }
     }
 
-    pub fn variable(offset: usize, span: Span) -> HirExpr {
+    pub fn variable_ref(id: HirId, span: Span) -> HirExpr {
         HirExpr {
             id: HirId::default(),
             span,
-            kind: HirExprKind::VariableOffset(offset),
+            kind: HirExprKind::VariableRef(id),
         }
     }
 
