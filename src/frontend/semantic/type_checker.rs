@@ -6,18 +6,18 @@ use std::collections::HashMap;
 use crate::error::kaori_error::KaoriError;
 
 use super::{
-    checked_ty::CheckedTy,
     hir_decl::{HirDecl, HirDeclKind},
     hir_expr::{HirExpr, HirExprKind},
     hir_id::HirId,
     hir_node::HirNode,
     hir_stmt::{HirStmt, HirStmtKind},
     hir_ty::{HirTy, HirTyKind},
+    type_def::TypeDef,
 };
 
 pub struct TypeChecker {
     function_return_ty: Option<HirTy>,
-    type_definitions: HashMap<HirId, HirTy>,
+    type_definitions: HashMap<HirId, TypeDef>,
 }
 
 impl TypeChecker {
@@ -83,7 +83,7 @@ impl TypeChecker {
 
     fn check_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
         match &declaration.kind {
-            HirDeclKind::Variable { right, ty } => {}
+            HirDeclKind::Variable { offset, right, ty } => {}
             HirDeclKind::Parameter { ty } => {}
             HirDeclKind::Field { ty } => {}
             HirDeclKind::Function {
@@ -137,7 +137,7 @@ impl TypeChecker {
             HirStmtKind::Continue => {}
             HirStmtKind::Return(expr) => {
                 if let Some(expr) = expr {
-                    self.check_expression(expr)?;
+                    let ty = self.check_expression(expr)?;
                 }
             }
         };
@@ -145,7 +145,7 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn check_expression(&mut self, expression: &HirExpr) -> Result<CheckedTy, KaoriError> {
+    fn check_expression(&mut self, expression: &HirExpr) -> Result<TypeDef, KaoriError> {
         let ty = match &expression.kind {
             HirExprKind::Assign(left, right) => {
                 let right = self.check_expression(right)?;
@@ -177,17 +177,17 @@ impl TypeChecker {
 
                 callee
             }
-            HirExprKind::FunctionRef(id) => {}
-            HirExprKind::VariableRef(id) => {}
-            HirExprKind::StringLiteral(..) => CheckedTy::String,
-            HirExprKind::BooleanLiteral(..) => CheckedTy::Boolean,
-            HirExprKind::NumberLiteral(..) => CheckedTy::Number,
+            HirExprKind::FunctionRef(id) => self.type_definitions.get(id).unwrap().to_owned(),
+            HirExprKind::VariableRef(id) => self.type_definitions.get(id).unwrap().to_owned(),
+            HirExprKind::StringLiteral(..) => TypeDef::String,
+            HirExprKind::BooleanLiteral(..) => TypeDef::Boolean,
+            HirExprKind::NumberLiteral(..) => TypeDef::Number,
         };
 
         Ok(ty)
     }
 
-    pub fn check_type(&mut self, ty: &HirTy) -> CheckedTy {
+    pub fn check_type(&mut self, ty: &HirTy) -> TypeDef {
         match &ty.kind {
             HirTyKind::Function {
                 parameters,
@@ -200,15 +200,15 @@ impl TypeChecker {
 
                 let return_ty = match return_ty {
                     Some(ty) => self.check_type(ty),
-                    None => CheckedTy::Void,
+                    None => TypeDef::Void,
                 };
 
-                CheckedTy::function(parameters, return_ty)
+                TypeDef::function(parameters, return_ty)
             }
             HirTyKind::TypeRef(id) => {}
 
-            HirTyKind::Bool => CheckedTy::Boolean,
-            HirTyKind::Number => CheckedTy::Number,
+            HirTyKind::Bool => TypeDef::Boolean,
+            HirTyKind::Number => TypeDef::Number,
         }
     }
 }
