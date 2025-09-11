@@ -17,13 +17,13 @@ use crate::{
 };
 
 use super::{
-    environment::Environment, hir_decl::HirDecl, hir_expr::HirExpr, hir_id::HirId,
-    hir_node::HirNode, hir_stmt::HirStmt, hir_ty::HirTy,
+    hir_decl::HirDecl, hir_expr::HirExpr, hir_id::HirId, hir_node::HirNode, hir_stmt::HirStmt,
+    hir_ty::HirTy, symbol_table::SymbolTable,
 };
 
 #[derive(Default)]
 pub struct Resolver {
-    environment: Environment,
+    symbol_table: SymbolTable,
     active_loops: u8,
     global_scope: bool,
     ids: HashMap<AstId, HirId>,
@@ -50,7 +50,7 @@ impl Resolver {
         for declaration in declarations.iter() {
             match &declaration.kind {
                 DeclKind::Function { name, .. } => {
-                    if self.environment.search_current_scope(name).is_some() {
+                    if self.symbol_table.search_current_scope(name).is_some() {
                         return Err(kaori_error!(
                             declaration.span,
                             "{} is already declared",
@@ -60,10 +60,10 @@ impl Resolver {
 
                     let id = self.generate_hir_id(declaration.id);
 
-                    self.environment.declare_function(id, name.to_owned());
+                    self.symbol_table.declare_function(id, name.to_owned());
                 }
                 DeclKind::Struct { name, .. } => {
-                    if self.environment.search_current_scope(name).is_some() {
+                    if self.symbol_table.search_current_scope(name).is_some() {
                         return Err(kaori_error!(
                             declaration.span,
                             "{} is already declared",
@@ -73,7 +73,7 @@ impl Resolver {
 
                     let id = self.generate_hir_id(declaration.id);
 
-                    self.environment.declare_struct(id, name.to_owned());
+                    self.symbol_table.declare_struct(id, name.to_owned());
                 }
                 _ => (),
             };
@@ -105,7 +105,7 @@ impl Resolver {
     fn resolve_declaration(&mut self, declaration: &Decl) -> Result<HirDecl, KaoriError> {
         let hir_decl = match &declaration.kind {
             DeclKind::Parameter { name, ty } => {
-                if self.environment.search_current_scope(name).is_some() {
+                if self.symbol_table.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
                         "function can't have parameters with the same name: {}",
@@ -115,14 +115,14 @@ impl Resolver {
 
                 let id = HirId::default();
 
-                self.environment.declare_variable(id, name.to_owned());
+                let offset = self.symbol_table.declare_variable(id, name.to_owned());
 
                 let ty = self.resolve_type(ty)?;
 
-                HirDecl::parameter(id, ty, declaration.span)
+                HirDecl::parameter(id, offset, ty, declaration.span)
             }
             DeclKind::Field { name, ty } => {
-                if self.environment.search_current_scope(name).is_some() {
+                if self.symbol_table.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
                         "struct can't have fields with the same name: {}",
@@ -132,16 +132,16 @@ impl Resolver {
 
                 let id = HirId::default();
 
-                self.environment.declare_variable(id, name.to_owned());
+                let offset = self.symbol_table.declare_variable(id, name.to_owned());
 
                 let ty = self.resolve_type(ty)?;
 
-                HirDecl::field(id, ty, declaration.span)
+                HirDecl::field(id, offset, ty, declaration.span)
             }
             DeclKind::Variable { name, right, ty } => {
                 let right = self.resolve_expression(right)?;
 
-                if self.environment.search_current_scope(name).is_some() {
+                if self.symbol_table.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
                         "{} is already declared",
@@ -151,7 +151,7 @@ impl Resolver {
 
                 let id = HirId::default();
 
-                let offset = self.environment.declare_variable(id, name.to_owned());
+                let offset = self.symbol_table.declare_variable(id, name.to_owned());
 
                 let ty = self.resolve_type(ty)?;
 
@@ -163,7 +163,7 @@ impl Resolver {
                 name,
                 return_ty,
             } => {
-                self.environment.enter_scope();
+                self.symbol_table.enter_scope();
 
                 let parameters = parameters
                     .iter()
@@ -180,7 +180,7 @@ impl Resolver {
                     _ => None,
                 };
 
-                self.environment.exit_scope();
+                self.symbol_table.exit_scope();
 
                 let id = self.ids.get(&declaration.id).unwrap();
 
@@ -214,14 +214,14 @@ impl Resolver {
                 HirStmt::print(expr, statement.span)
             }
             StmtKind::Block(nodes) => {
-                self.environment.enter_scope();
+                self.symbol_table.enter_scope();
 
                 let nodes = nodes
                     .iter()
                     .map(|node| self.resolve_node(node))
                     .collect::<Result<Vec<HirNode>, KaoriError>>()?;
 
-                self.environment.exit_scope();
+                self.symbol_table.exit_scope();
 
                 HirStmt::block(nodes, statement.span)
             }
@@ -255,20 +255,22 @@ impl Resolver {
                 increment,
                 block,
             } => {
-                self.environment.enter_scope();
+                self.symbol_table.enter_scope();
 
                 let init = Some(self.resolve_declaration(init)?);
                 let condition = self.resolve_expression(condition)?;
                 let increment = HirNode::from(self.resolve_statement(increment)?);
 
-                let mut nodes = match &block.kind {
+                let nodes = match &block.kind {
                     StmtKind::Block(nodes) => {
                         self.active_loops += 1;
 
-                        let nodes = nodes
+                        let mut nodes = nodes
                             .iter()
                             .map(|node| self.resolve_node(node))
                             .collect::<Result<Vec<HirNode>, KaoriError>>()?;
+
+                        nodes.push(increment);
 
                         self.active_loops -= 1;
 
@@ -277,11 +279,9 @@ impl Resolver {
                     _ => unreachable!(),
                 };
 
-                nodes.push(increment);
-
                 let block = HirStmt::block(nodes, block.span);
 
-                self.environment.exit_scope();
+                self.symbol_table.exit_scope();
 
                 HirStmt::loop_(init, condition, block, statement.span)
             }
@@ -356,7 +356,7 @@ impl Resolver {
                 HirExpr::string_literal(value.to_owned(), expression.span)
             }
             ExprKind::Identifier(name) => {
-                let Some(symbol) = self.environment.search(name) else {
+                let Some(symbol) = self.symbol_table.search(name) else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));
                 };
 
@@ -392,7 +392,7 @@ impl Resolver {
                 HirTy::function(parameters, return_ty, ty.span)
             }
             TyKind::Identifier(name) => {
-                let Some(symbol) = self.environment.search(name) else {
+                let Some(symbol) = self.symbol_table.search(name) else {
                     return Err(kaori_error!(ty.span, "{} type is not declared", name));
                 };
 

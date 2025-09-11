@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use crate::error::kaori_error::KaoriError;
+use crate::{error::kaori_error::KaoriError, kaori_error};
 
 use super::{
     hir_decl::{HirDecl, HirDeclKind},
@@ -16,7 +16,7 @@ use super::{
 };
 
 pub struct TypeChecker {
-    function_return_ty: Option<HirTy>,
+    function_return_ty: Option<TypeDef>,
     type_definitions: HashMap<HirId, TypeDef>,
 }
 
@@ -29,17 +29,17 @@ impl TypeChecker {
     }
 
     pub fn check(&mut self, declarations: &[HirDecl]) -> Result<(), KaoriError> {
-        /*   for declaration in declarations.iter() {
+        for declaration in declarations.iter() {
             match &declaration.kind {
                 HirDeclKind::Function {
                     parameters,
                     return_ty,
                     ..
                 } => {}
-                HirDeclKind::Struct { name, .. } => {}
+                HirDeclKind::Struct { fields } => {}
                 _ => (),
             }
-        } */
+        }
 
         for declaration in declarations {
             self.check_declaration(declaration)?;
@@ -83,15 +83,50 @@ impl TypeChecker {
 
     fn check_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
         match &declaration.kind {
-            HirDeclKind::Variable { offset, right, ty } => {}
-            HirDeclKind::Parameter { ty } => {}
-            HirDeclKind::Field { ty } => {}
+            HirDeclKind::Variable { right, ty, .. } => {
+                let right = self.check_expression(right)?;
+                let ty = self.get_type_def(ty);
+
+                if right != ty {
+                    return Err(kaori_error!(
+                        declaration.span,
+                        "expected {:#?} type on variable declaration, but found: {:#?}",
+                        ty,
+                        right
+                    ));
+                }
+            }
+            HirDeclKind::Parameter { .. } => {}
+            HirDeclKind::Field { .. } => {}
             HirDeclKind::Function {
-                parameters,
-                body,
-                return_ty,
-                ..
-            } => {}
+                body, return_ty, ..
+            } => {
+                self.function_return_ty = return_ty.as_ref().map(|ty| self.get_type_def(ty));
+
+                let mut return_count = 0;
+
+                for node in body {
+                    if let HirNode::Statement(statement) = node
+                        && let HirStmtKind::Break = statement.kind
+                    {
+                        return_count += 1;
+                    }
+                }
+
+                if let Some(..) = return_ty
+                    && return_count == 0
+                {
+                    return Err(kaori_error!(
+                        declaration.span,
+                        "expected a return type of {:#?}, but found no return statement",
+                        return_ty
+                    ));
+                }
+
+                for node in body {
+                    self.check_ast_node(node)?;
+                }
+            }
             HirDeclKind::Struct { fields } => {}
         };
 
@@ -187,7 +222,7 @@ impl TypeChecker {
         Ok(ty)
     }
 
-    pub fn check_type(&mut self, ty: &HirTy) -> TypeDef {
+    pub fn get_type_def(&mut self, ty: &HirTy) -> TypeDef {
         match &ty.kind {
             HirTyKind::Function {
                 parameters,
@@ -195,18 +230,17 @@ impl TypeChecker {
             } => {
                 let parameters = parameters
                     .iter()
-                    .map(|param| self.check_type(param))
+                    .map(|param| self.get_type_def(param))
                     .collect();
 
                 let return_ty = match return_ty {
-                    Some(ty) => self.check_type(ty),
+                    Some(ty) => self.get_type_def(ty),
                     None => TypeDef::Void,
                 };
 
                 TypeDef::function(parameters, return_ty)
             }
-            HirTyKind::TypeRef(id) => {}
-
+            HirTyKind::TypeRef(id) => self.type_definitions.get(id).unwrap().to_owned(),
             HirTyKind::Bool => TypeDef::Boolean,
             HirTyKind::Number => TypeDef::Number,
         }

@@ -25,27 +25,29 @@ pub enum HirDeclKind {
         fields: Vec<HirDecl>,
     },
     Parameter {
+        offset: usize,
         ty: HirTy,
     },
     Field {
+        offset: usize,
         ty: HirTy,
     },
 }
 
 impl HirDecl {
-    pub fn parameter(id: HirId, ty: HirTy, span: Span) -> HirDecl {
+    pub fn parameter(id: HirId, offset: usize, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
-            kind: HirDeclKind::Parameter { ty },
+            kind: HirDeclKind::Parameter { offset, ty },
         }
     }
 
-    pub fn field(id: HirId, ty: HirTy, span: Span) -> HirDecl {
+    pub fn field(id: HirId, offset: usize, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
-            kind: HirDeclKind::Field { ty },
+            kind: HirDeclKind::Field { offset, ty },
         }
     }
 

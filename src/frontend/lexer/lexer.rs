@@ -130,7 +130,7 @@ impl<'a> Lexer<'a> {
             let end = self.position;
             let span = Span { start, end };
 
-            return Err(kaori_error!(span, "unfinished string literal"));
+            return Err(kaori_error!(span, "invalid unfinished string literal"));
         }
 
         self.position += 1;

@@ -3,13 +3,13 @@ use super::{
     symbol::{Symbol, SymbolKind},
 };
 
-pub struct Environment {
+pub struct SymbolTable {
     pub symbols: Vec<Symbol>,
     pub scopes_ptr: Vec<usize>,
     pub variable_offset: usize,
 }
 
-impl Default for Environment {
+impl Default for SymbolTable {
     fn default() -> Self {
         Self {
             symbols: Vec::new(),
@@ -19,7 +19,7 @@ impl Default for Environment {
     }
 }
 
-impl Environment {
+impl SymbolTable {
     pub fn enter_scope(&mut self) {
         let ptr = self.symbols.len();
 
@@ -31,7 +31,7 @@ impl Environment {
 
         while self.symbols.len() > ptr {
             if let Some(symbol) = self.symbols.last()
-                && let SymbolKind::Variable { .. } = symbol.kind
+                && let SymbolKind::Variable = symbol.kind
             {
                 self.variable_offset -= 1;
             }

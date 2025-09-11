@@ -75,6 +75,6 @@ def foo() {
         print(a);
     }
 
-
+    print(2 + a);
 }
 
