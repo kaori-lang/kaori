@@ -32,33 +32,33 @@ pub enum HirDeclKind {
 }
 
 impl HirDecl {
-    pub fn parameter(ty: HirTy, span: Span) -> HirDecl {
+    pub fn parameter(id: HirId, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
-            id: HirId::default(),
+            id,
             span,
             kind: HirDeclKind::Parameter { ty },
         }
     }
 
-    pub fn field(ty: HirTy, span: Span) -> HirDecl {
+    pub fn field(id: HirId, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
-            id: HirId::default(),
+            id,
             span,
             kind: HirDeclKind::Field { ty },
         }
     }
 
-    pub fn struct_(fields: Vec<HirDecl>, span: Span) -> HirDecl {
+    pub fn struct_(id: HirId, fields: Vec<HirDecl>, span: Span) -> HirDecl {
         HirDecl {
-            id: HirId::default(),
+            id,
             span,
             kind: HirDeclKind::Struct { fields },
         }
     }
 
-    pub fn variable(right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
+    pub fn variable(id: HirId, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
-            id: HirId::default(),
+            id,
             span,
             kind: HirDeclKind::Variable {
                 right: Box::new(right),
@@ -68,13 +68,14 @@ impl HirDecl {
     }
 
     pub fn function(
+        id: HirId,
         parameters: Vec<HirDecl>,
         body: Vec<HirNode>,
         return_ty: Option<HirTy>,
         span: Span,
     ) -> HirDecl {
         HirDecl {
-            id: HirId::default(),
+            id,
             span,
             kind: HirDeclKind::Function {
                 parameters,

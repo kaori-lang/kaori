@@ -9,4 +9,4 @@ pub mod hir_ty;
 pub mod hir_id;
 pub mod resolver;
 pub mod symbol;
-//pub mod type_checker;
+pub mod type_checker;

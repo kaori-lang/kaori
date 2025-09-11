@@ -1,4 +1,7 @@
-use super::symbol::{Symbol, SymbolKind};
+use super::{
+    hir_id::HirId,
+    symbol::{Symbol, SymbolKind},
+};
 
 pub struct Environment {
     pub symbols: Vec<Symbol>,
@@ -37,15 +40,13 @@ impl Environment {
         }
     }
 
-    pub fn declare_variable(&mut self, name: String) -> usize {
+    pub fn declare_variable(&mut self, name: String) {
         let offset = self.variable_offset;
         let symbol = Symbol::variable(name, offset);
 
         self.variable_offset += 1;
 
         self.symbols.push(symbol);
-
-        offset
     }
 
     pub fn declare_function(&mut self, name: String) {
@@ -70,5 +71,11 @@ impl Environment {
 
     pub fn search(&self, name: &str) -> Option<&Symbol> {
         self.symbols.iter().rev().find(|symbol| symbol.name == name)
+    }
+
+    pub fn get_hir_id(&self, name: &str) -> Option<HirId> {
+        let symbol = self.symbols.iter().rev().find(|symbol| symbol.name == name);
+
+        symbol.map(|sym| sym.id)
     }
 }

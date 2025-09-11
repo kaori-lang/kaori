@@ -19,7 +19,7 @@ pub fn parse_and_analyze(source: String) -> Result<(), KaoriError> {
     let ast = parser.parse()?;
 
     //let mut resolution_table = ResolutionTable::default();
-    let mut resolver = Resolver::new();
+    let mut resolver = Resolver::default();
 
     let hir = resolver.generate_hir(&ast)?;
 

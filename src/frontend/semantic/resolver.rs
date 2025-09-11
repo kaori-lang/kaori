@@ -18,17 +18,20 @@ use super::{
     hir_stmt::HirStmt, hir_ty::HirTy,
 };
 
+#[derive(Default)]
 pub struct Resolver {
     environment: Environment,
     active_loops: u8,
+    global_scope: bool,
 }
 
 impl Resolver {
-    pub fn new() -> Self {
-        Self {
-            environment: Environment::default(),
-            active_loops: 0,
-        }
+    pub fn enter_function(&mut self) {
+        self.global_scope = false;
+    }
+
+    pub fn exit_function(&mut self) {
+        self.global_scope = true;
     }
 
     pub fn generate_hir(&mut self, declarations: &[Decl]) -> Result<Vec<HirDecl>, KaoriError> {
@@ -94,11 +97,13 @@ impl Resolver {
                     ));
                 };
 
-                let offset = self.environment.declare_variable(name.to_owned());
+                self.environment.declare_variable(name.to_owned());
 
                 let ty = self.resolve_type(ty)?;
 
-                HirDecl::parameter(ty, declaration.span)
+                let id = self.environment.get_hir_id(name).unwrap();
+
+                HirDecl::parameter(id, ty, declaration.span)
             }
             DeclKind::Field { name, ty } => {
                 if self.environment.search_current_scope(name).is_some() {
@@ -109,11 +114,12 @@ impl Resolver {
                     ));
                 };
 
-                let offset = self.environment.declare_variable(name.to_owned());
+                self.environment.declare_variable(name.to_owned());
 
                 let ty = self.resolve_type(ty)?;
+                let id = self.environment.get_hir_id(name).unwrap();
 
-                HirDecl::field(ty, declaration.span)
+                HirDecl::field(id, ty, declaration.span)
             }
             DeclKind::Variable { name, right, ty } => {
                 let right = self.resolve_expression(right)?;
@@ -126,11 +132,12 @@ impl Resolver {
                     ));
                 };
 
-                let offset = self.environment.declare_variable(name.to_owned());
+                self.environment.declare_variable(name.to_owned());
 
                 let ty = self.resolve_type(ty)?;
+                let id = self.environment.get_hir_id(name).unwrap();
 
-                HirDecl::variable(right, ty, declaration.span)
+                HirDecl::variable(id, right, ty, declaration.span)
             }
             DeclKind::Function {
                 parameters,
@@ -157,7 +164,9 @@ impl Resolver {
 
                 self.environment.exit_scope();
 
-                HirDecl::function(parameters, body, return_ty, declaration.span)
+                let id = self.environment.get_hir_id(name).unwrap();
+
+                HirDecl::function(id, parameters, body, return_ty, declaration.span)
             }
             DeclKind::Struct { name, fields } => {
                 let fields = fields
@@ -165,7 +174,9 @@ impl Resolver {
                     .map(|f| self.resolve_declaration(f))
                     .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
 
-                HirDecl::struct_(fields, declaration.span)
+                let id = self.environment.get_hir_id(name).unwrap();
+
+                HirDecl::struct_(id, fields, declaration.span)
             }
         };
 

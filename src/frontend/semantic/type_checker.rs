@@ -1,28 +1,30 @@
 #![allow(clippy::new_without_default)]
 #![allow(clippy::only_used_in_recursion)]
 
+use std::collections::HashMap;
+
 use crate::error::kaori_error::KaoriError;
 
 use super::{
     checked_ty::CheckedTy,
     hir_decl::{HirDecl, HirDeclKind},
     hir_expr::{HirExpr, HirExprKind},
+    hir_id::HirId,
     hir_node::HirNode,
     hir_stmt::{HirStmt, HirStmtKind},
     hir_ty::{HirTy, HirTyKind},
-    resolution_table::{Resolution, ResolutionTable},
 };
 
-pub struct TypeChecker<'a> {
+pub struct TypeChecker {
     function_return_ty: Option<HirTy>,
-    resolution_table: &'a mut ResolutionTable,
+    type_definitions: HashMap<HirId, HirTy>,
 }
 
-impl<'a> TypeChecker<'a> {
-    pub fn new(resolution_table: &'a mut ResolutionTable) -> Self {
+impl TypeChecker {
+    pub fn new() -> Self {
         Self {
             function_return_ty: None,
-            resolution_table,
+            type_definitions: HashMap::new(),
         }
     }
 
@@ -175,21 +177,8 @@ impl<'a> TypeChecker<'a> {
 
                 callee
             }
-            HirExprKind::Identifier => {
-                let resolution = self
-                    .resolution_table
-                    .get_name_resolution(&expression.id)
-                    .unwrap();
-
-                match resolution {
-                    Resolution::Variable(id)
-                    | Resolution::Function(id)
-                    | Resolution::Struct(id)
-                    | Resolution::Type(id) => self.resolution_table.get_type_resolution(id),
-                }
-                .unwrap()
-                .clone()
-            }
+            HirExprKind::FunctionRef(id) => {}
+            HirExprKind::VariableOffset(offset) => {}
             HirExprKind::StringLiteral(..) => CheckedTy::String,
             HirExprKind::BooleanLiteral(..) => CheckedTy::Boolean,
             HirExprKind::NumberLiteral(..) => CheckedTy::Number,

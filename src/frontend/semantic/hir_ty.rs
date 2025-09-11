@@ -2,7 +2,7 @@ use crate::frontend::lexer::span::Span;
 
 use super::hir_id::HirId;
 
-#[derive(Debug)]
+#[derive(Debug, Hash, Eq, PartialEq)]
 pub struct HirTy {
     pub id: HirId,
     pub span: Span,
@@ -50,7 +50,7 @@ impl HirTy {
 
     pub fn type_ref(id: HirId, span: Span) -> HirTy {
         HirTy {
-            id: HirId::default(),
+            id,
             span,
             kind: HirTyKind::TypeRef(id),
         }
