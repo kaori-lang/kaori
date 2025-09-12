@@ -390,7 +390,9 @@ impl Resolver {
                 let fields = fields
                     .iter()
                     .map(|field| self.resolve_type(field))
-                    .collect();
+                    .collect::<Result<Vec<HirTy>, KaoriError>>()?;
+
+                HirTy::struct_(fields, ty.span)
             }
             TyKind::Identifier(name) => {
                 let Some(symbol) = self.symbol_table.search(name) else {

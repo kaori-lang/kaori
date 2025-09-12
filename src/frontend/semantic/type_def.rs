@@ -20,4 +20,8 @@ impl TypeDef {
             return_ty: Box::new(return_ty),
         }
     }
+
+    pub fn struct_(fields: Vec<TypeDef>) -> TypeDef {
+        TypeDef::Struct { fields }
+    }
 }
