@@ -13,7 +13,7 @@ def fib(n: number) -> number {
 }
 
 def main() {
-    x: number = 30;
+    var x: number = 30;
 
     if fib(x) != 832040 {
         print(1);
