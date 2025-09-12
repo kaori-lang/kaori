@@ -2,18 +2,21 @@ use crate::frontend::lexer::span::Span;
 
 use super::ast_id::AstId;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ty {
     pub id: AstId,
     pub span: Span,
     pub kind: TyKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TyKind {
     Function {
         parameters: Vec<Ty>,
         return_ty: Option<Box<Ty>>,
+    },
+    Struct {
+        fields: Vec<Ty>,
     },
     Identifier(String),
     Number,
@@ -21,14 +24,22 @@ pub enum TyKind {
 }
 
 impl Ty {
-    pub fn function(parameters: Vec<Ty>, return_ty: Option<Ty>) -> Ty {
+    pub fn function(parameters: Vec<Ty>, return_ty: Option<Ty>, span: Span) -> Ty {
         Ty {
             id: AstId::default(),
-            span: Span::default(),
+            span,
             kind: TyKind::Function {
                 parameters,
                 return_ty: return_ty.map(Box::new),
             },
+        }
+    }
+
+    pub fn struct_(fields: Vec<Ty>, span: Span) -> Ty {
+        Ty {
+            id: AstId::default(),
+            span,
+            kind: TyKind::Struct { fields },
         }
     }
 

@@ -3,7 +3,7 @@ use crate::{
     frontend::lexer::{span::Span, token_kind::TokenKind},
 };
 
-use super::{decl::Decl, parser::Parser};
+use super::{decl::Decl, parser::Parser, ty::Ty};
 
 impl Parser {
     pub fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
@@ -45,6 +45,15 @@ impl Parser {
             return_ty = Some(self.parse_type()?);
         }
 
+        let ty = Ty::function(
+            parameters
+                .iter()
+                .map(|parameter| parameter.ty.to_owned())
+                .collect(),
+            return_ty,
+            Span::default(),
+        );
+
         let mut body = Vec::new();
 
         self.token_stream.consume(TokenKind::LeftBrace)?;
@@ -57,7 +66,7 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Decl::function(name, parameters, body, return_ty, span))
+        Ok(Decl::function(name, parameters, body, ty, span))
     }
 
     pub fn parse_function_parameter(&mut self) -> Result<Decl, KaoriError> {
@@ -105,8 +114,13 @@ impl Parser {
         let fields =
             self.parse_comma_separator(Parser::parse_struct_field, TokenKind::RightBrace)?;
 
+        let ty = Ty::struct_(
+            fields.iter().map(|field| field.ty.to_owned()).collect(),
+            Span::default(),
+        );
+
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Decl::struct_(name, fields, span))
+        Ok(Decl::struct_(name, fields, ty, span))
     }
 }

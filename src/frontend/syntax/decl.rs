@@ -7,20 +7,19 @@ pub struct Decl {
     pub id: AstId,
     pub span: Span,
     pub kind: DeclKind,
+    pub ty: Ty,
 }
 
 #[derive(Debug)]
 pub enum DeclKind {
     Variable {
         name: String,
-        right: Box<Expr>,
-        ty: Ty,
+        right: Expr,
     },
     Function {
         name: String,
         parameters: Vec<Decl>,
         body: Vec<AstNode>,
-        return_ty: Option<Ty>,
     },
     Struct {
         name: String,
@@ -28,19 +27,18 @@ pub enum DeclKind {
     },
     Parameter {
         name: String,
-        ty: Ty,
     },
     Field {
         name: String,
-        ty: Ty,
     },
 }
 
 impl Decl {
-    pub fn struct_(name: String, fields: Vec<Decl>, span: Span) -> Decl {
+    pub fn struct_(name: String, fields: Vec<Decl>, ty: Ty, span: Span) -> Decl {
         Decl {
             id: AstId::default(),
             span,
+            ty,
             kind: DeclKind::Struct { name, fields },
         }
     }
@@ -49,11 +47,8 @@ impl Decl {
         Decl {
             id: AstId::default(),
             span,
-            kind: DeclKind::Variable {
-                name,
-                right: Box::new(right),
-                ty,
-            },
+            ty,
+            kind: DeclKind::Variable { name, right },
         }
     }
 
@@ -61,7 +56,8 @@ impl Decl {
         Decl {
             id: AstId::default(),
             span,
-            kind: DeclKind::Parameter { name, ty },
+            ty,
+            kind: DeclKind::Parameter { name },
         }
     }
 
@@ -69,7 +65,8 @@ impl Decl {
         Decl {
             id: AstId::default(),
             span,
-            kind: DeclKind::Field { name, ty },
+            ty,
+            kind: DeclKind::Field { name },
         }
     }
 
@@ -77,17 +74,17 @@ impl Decl {
         name: String,
         parameters: Vec<Decl>,
         body: Vec<AstNode>,
-        return_ty: Option<Ty>,
+        ty: Ty,
         span: Span,
     ) -> Decl {
         Decl {
             id: AstId::default(),
             span,
+            ty,
             kind: DeclKind::Function {
                 name,
                 parameters,
                 body,
-                return_ty,
             },
         }
     }
