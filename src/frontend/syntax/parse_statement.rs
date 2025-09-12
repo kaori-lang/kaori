@@ -10,13 +10,11 @@ impl Parser {
 
         if self.token_stream.token_kind() == TokenKind::Semicolon {
             let expression = None;
-            self.token_stream.consume(TokenKind::Semicolon)?;
+
             return Ok(Stmt::return_(expression, span));
         }
 
         let expression = Some(self.parse_expression()?);
-
-        self.token_stream.consume(TokenKind::Semicolon)?;
 
         Ok(Stmt::return_(expression, span))
     }
@@ -25,7 +23,6 @@ impl Parser {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::Continue)?;
-        self.token_stream.consume(TokenKind::Semicolon)?;
 
         Ok(Stmt::continue_(span))
     }
@@ -34,7 +31,6 @@ impl Parser {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::Break)?;
-        self.token_stream.consume(TokenKind::Semicolon)?;
 
         Ok(Stmt::break_(span))
     }
@@ -53,7 +49,6 @@ impl Parser {
         self.token_stream.consume(TokenKind::LeftParen)?;
         let expression = self.parse_expression()?;
         self.token_stream.consume(TokenKind::RightParen)?;
-        self.token_stream.consume(TokenKind::Semicolon)?;
 
         Ok(Stmt::print(expression, span))
     }

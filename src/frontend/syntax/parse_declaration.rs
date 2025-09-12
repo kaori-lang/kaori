@@ -8,6 +8,8 @@ use super::{decl::Decl, parser::Parser, ty::Ty};
 impl Parser {
     pub fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
         let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Variable)?;
         let name = self.token_stream.lexeme().to_owned();
 
         self.token_stream.consume(TokenKind::Identifier)?;

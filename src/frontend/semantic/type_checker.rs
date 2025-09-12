@@ -112,20 +112,21 @@ impl TypeChecker {
 
                 self.function_return_ty = return_ty.to_owned();
 
-                let mut return_count = 0;
+                let mut has_return_statement = false;
 
                 for node in body {
                     if let HirNode::Statement(statement) = node
                         && let HirStmtKind::Return(..) = statement.kind
                     {
-                        return_count += 1;
+                        has_return_statement = true;
+                        break;
                     }
                 }
 
-                if return_ty.is_some() && return_count == 0 {
+                if return_ty.is_some() && !has_return_statement {
                     return Err(kaori_error!(
                         declaration.span,
-                        "expected a return statement"
+                        "expected a return statement for this function"
                     ));
                 }
 
@@ -232,7 +233,7 @@ impl TypeChecker {
 
                     (left_ty, Equal | NotEqual, right_ty) if left_ty == right_ty => Boolean,
 
-                    (Number, Greater | GreaterEqual | Less | LessEqual, Number) => Number,
+                    (Number, Greater | GreaterEqual | Less | LessEqual, Number) => Boolean,
                     _ => {
                         return Err(kaori_error!(
                             expression.span,
