@@ -2,14 +2,14 @@ use crate::frontend::lexer::span::Span;
 
 use super::hir_id::HirId;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HirTy {
     pub id: HirId,
     pub span: Span,
     pub kind: HirTyKind,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HirTyKind {
     Function {
         parameters: Vec<HirTy>,
