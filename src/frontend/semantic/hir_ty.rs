@@ -15,6 +15,9 @@ pub enum HirTyKind {
         parameters: Vec<HirTy>,
         return_ty: Option<Box<HirTy>>,
     },
+    Struct {
+        fields: Vec<HirTy>,
+    },
     TypeRef(HirId),
     Number,
     Bool,
@@ -37,6 +40,14 @@ impl HirTy {
                 parameters,
                 return_ty: return_ty.map(Box::new),
             },
+        }
+    }
+
+    pub fn struct_(fields: Vec<HirTy>, span: Span) -> HirTy {
+        HirTy {
+            id: HirId::default(),
+            span,
+            kind: HirTyKind::Struct { fields },
         }
     }
 

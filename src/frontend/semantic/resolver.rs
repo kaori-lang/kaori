@@ -104,7 +104,7 @@ impl Resolver {
 
     fn resolve_declaration(&mut self, declaration: &Decl) -> Result<HirDecl, KaoriError> {
         let hir_decl = match &declaration.kind {
-            DeclKind::Parameter { name, ty } => {
+            DeclKind::Parameter { name } => {
                 if self.symbol_table.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
@@ -117,11 +117,11 @@ impl Resolver {
 
                 let offset = self.symbol_table.declare_variable(id, name.to_owned());
 
-                let ty = self.resolve_type(ty)?;
+                let ty = self.resolve_type(&declaration.ty)?;
 
                 HirDecl::parameter(id, offset, ty, declaration.span)
             }
-            DeclKind::Field { name, ty } => {
+            DeclKind::Field { name } => {
                 if self.symbol_table.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
                         declaration.span,
@@ -134,11 +134,11 @@ impl Resolver {
 
                 let offset = self.symbol_table.declare_variable(id, name.to_owned());
 
-                let ty = self.resolve_type(ty)?;
+                let ty = self.resolve_type(&declaration.ty)?;
 
                 HirDecl::field(id, offset, ty, declaration.span)
             }
-            DeclKind::Variable { name, right, ty } => {
+            DeclKind::Variable { name, right } => {
                 let right = self.resolve_expression(right)?;
 
                 if self.symbol_table.search_current_scope(name).is_some() {
@@ -153,15 +153,12 @@ impl Resolver {
 
                 let offset = self.symbol_table.declare_variable(id, name.to_owned());
 
-                let ty = self.resolve_type(ty)?;
+                let ty = self.resolve_type(&declaration.ty)?;
 
                 HirDecl::variable(id, offset, right, ty, declaration.span)
             }
             DeclKind::Function {
-                parameters,
-                body,
-                name,
-                return_ty,
+                parameters, body, ..
             } => {
                 self.symbol_table.enter_scope();
 
@@ -175,26 +172,24 @@ impl Resolver {
                     .map(|node| self.resolve_node(node))
                     .collect::<Result<Vec<HirNode>, KaoriError>>()?;
 
-                let return_ty = match return_ty {
-                    Some(ty) => Some(self.resolve_type(ty)?),
-                    _ => None,
-                };
+                let ty = self.resolve_type(&declaration.ty)?;
 
                 self.symbol_table.exit_scope();
 
                 let id = self.ids.get(&declaration.id).unwrap();
 
-                HirDecl::function(*id, parameters, body, return_ty, declaration.span)
+                HirDecl::function(*id, parameters, body, ty, declaration.span)
             }
-            DeclKind::Struct { name, fields } => {
+            DeclKind::Struct { fields, .. } => {
                 let fields = fields
                     .iter()
                     .map(|f| self.resolve_declaration(f))
                     .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
 
+                let ty = self.resolve_type(&declaration.ty)?;
                 let id = self.ids.get(&declaration.id).unwrap();
 
-                HirDecl::struct_(*id, fields, declaration.span)
+                HirDecl::struct_(*id, fields, ty, declaration.span)
             }
         };
 
@@ -390,6 +385,12 @@ impl Resolver {
                 };
 
                 HirTy::function(parameters, return_ty, ty.span)
+            }
+            TyKind::Struct { fields } => {
+                let fields = fields
+                    .iter()
+                    .map(|field| self.resolve_type(field))
+                    .collect();
             }
             TyKind::Identifier(name) => {
                 let Some(symbol) = self.symbol_table.search(name) else {
