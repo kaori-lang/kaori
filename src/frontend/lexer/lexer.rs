@@ -151,25 +151,42 @@ impl<'a> Lexer<'a> {
 
         let kind = match curr_char {
             '+' => {
-                if self.look_ahead("++") {
-                    TokenKind::Increment
+                if self.look_ahead("+=") {
+                    TokenKind::AddAssign
                 } else {
                     TokenKind::Plus
                 }
             }
-
             '-' => {
-                if self.look_ahead("--") {
-                    TokenKind::Decrement
+                if self.look_ahead("-=") {
+                    TokenKind::SubtractAssign
                 } else if self.look_ahead("->") {
                     TokenKind::ThinArrow
                 } else {
                     TokenKind::Minus
                 }
             }
-            '*' => TokenKind::Multiply,
-            '/' => TokenKind::Divide,
-            '%' => TokenKind::Modulo,
+            '*' => {
+                if self.look_ahead("*=") {
+                    TokenKind::MultiplyAssign
+                } else {
+                    TokenKind::Multiply
+                }
+            }
+            '/' => {
+                if self.look_ahead("/=") {
+                    TokenKind::DivideAssign
+                } else {
+                    TokenKind::Divide
+                }
+            }
+            '%' => {
+                if self.look_ahead("%=") {
+                    TokenKind::ModuloAssign
+                } else {
+                    TokenKind::Modulo
+                }
+            }
             '&' => {
                 if self.look_ahead("&&") {
                     TokenKind::And

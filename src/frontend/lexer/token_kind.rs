@@ -69,8 +69,12 @@ impl fmt::Display for TokenKind {
             TokenKind::Divide => "/",
             TokenKind::Modulo => "%",
 
-            TokenKind::Increment => "++",
-            TokenKind::Decrement => "--",
+            TokenKind::Assign => "=",
+            TokenKind::AddAssign => "+=",
+            TokenKind::SubtractAssign => "-=",
+            TokenKind::MultiplyAssign => "*=",
+            TokenKind::DivideAssign => "/=",
+            TokenKind::ModuloAssign => "%=",
 
             TokenKind::And => "&&",
             TokenKind::Or => "||",
@@ -82,7 +86,6 @@ impl fmt::Display for TokenKind {
             TokenKind::Less => "<",
             TokenKind::LessEqual => "<=",
 
-            TokenKind::Assign => "=",
             TokenKind::Comma => ",",
             TokenKind::Semicolon => ";",
             TokenKind::Colon => ":",

@@ -10,8 +10,6 @@ pub struct UnaryOp {
 pub enum UnaryOpKind {
     Negate,
     Not,
-    Increment,
-    Decrement,
 }
 
 impl UnaryOp {

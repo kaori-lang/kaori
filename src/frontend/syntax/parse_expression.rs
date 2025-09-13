@@ -50,8 +50,6 @@ impl Parser {
         let kind = match token_kind {
             TokenKind::Minus => UnaryOpKind::Negate,
             TokenKind::Not => UnaryOpKind::Not,
-            TokenKind::Increment => UnaryOpKind::Increment,
-            TokenKind::Decrement => UnaryOpKind::Decrement,
             _ => unreachable!(),
         };
 
@@ -276,7 +274,6 @@ impl Parser {
         let kind = self.token_stream.token_kind();
 
         let operator = match kind {
-            TokenKind::Increment | TokenKind::Decrement => self.build_unary_operator(),
             TokenKind::LeftParen => return self.parse_function_call(identifier),
             _ => return Ok(identifier),
         };
@@ -295,7 +292,7 @@ impl Parser {
 
         let arguments =
             self.parse_comma_separator(Parser::parse_expression, TokenKind::RightParen)?;
-            
+
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::RightParen)?;
