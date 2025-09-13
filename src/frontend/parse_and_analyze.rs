@@ -17,11 +17,11 @@ pub fn parse_and_analyze(source: String) -> Result<(), KaoriError> {
 
     let mut parser = Parser::new(token_stream);
 
-    let ast = parser.parse()?;
+    let mut ast = parser.parse()?;
 
     let mut resolver = Resolver::default();
 
-    let hir = resolver.resolve(&ast)?;
+    let hir = resolver.resolve(&mut ast)?;
 
     let mut type_checker = TypeChecker::new();
 

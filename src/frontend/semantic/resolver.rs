@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::{
     error::kaori_error::KaoriError,
     frontend::{
+        lexer::span::Span,
         semantic::symbol::SymbolKind,
         syntax::{
             assign_op::{AssignOp, AssignOpKind},
@@ -53,7 +54,9 @@ impl Resolver {
         hir_id
     }
 
-    pub fn resolve(&mut self, declarations: &[Decl]) -> Result<Vec<HirDecl>, KaoriError> {
+    pub fn resolve(&mut self, declarations: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
+        self.resolve_main_function(declarations);
+
         for declaration in declarations.iter() {
             match &declaration.kind {
                 DeclKind::Function { name, .. } => {
@@ -92,6 +95,22 @@ impl Resolver {
             .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
 
         Ok(declarations)
+    }
+
+    fn resolve_main_function(&mut self, declarations: &mut [Decl]) -> Result<(), KaoriError> {
+        for (index, declaration) in declarations.iter().enumerate() {
+            if let DeclKind::Function { name, .. } = &declaration.kind
+                && name == "main"
+            {
+                declarations.swap(0, index);
+                return Ok(());
+            }
+        }
+
+        Err(kaori_error!(
+            Span::default(),
+            "main function is not declared"
+        ))
     }
 
     fn resolve_node(&mut self, node: &AstNode) -> Result<HirNode, KaoriError> {

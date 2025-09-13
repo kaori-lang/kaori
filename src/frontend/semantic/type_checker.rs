@@ -52,22 +52,6 @@ impl TypeChecker {
         Ok(())
     }
 
-    /*  fn type_check_main_function(&mut self, declarations: &[Decl]) -> Result<(), KaoriError> {
-           for (index, declaration) in declarations.iter().enumerate() {
-               if let HirDeclKind::Function { name, .. } = &declaration.kind
-                   && name == "main"
-               {
-                   declarations.swap(0, index);
-                   return Ok(());
-               }
-           }
-
-           Err(kaori_error!(
-               Span::default(),
-               "main function is not declared"
-           ))
-       }
-    */
     fn type_check_nodes(&mut self, nodes: &[HirNode]) -> Result<(), KaoriError> {
         for node in nodes {
             self.type_check_ast_node(node)?;
