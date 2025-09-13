@@ -8,6 +8,7 @@ pub struct AssignOp {
 
 #[derive(Debug, Clone, Copy)]
 pub enum AssignOpKind {
+    Assign,
     AddAssign,
     SubtractAssign,
     MultiplyAssign,

@@ -8,8 +8,12 @@ pub enum TokenKind {
     Divide,
     Modulo,
 
-    Increment,
-    Decrement,
+    Assign,
+    AddAssign,
+    SubtractAssign,
+    MultiplyAssign,
+    DivideAssign,
+    ModuloAssign,
 
     And,
     Or,
@@ -21,7 +25,6 @@ pub enum TokenKind {
     Less,
     LessEqual,
 
-    Assign,
     Comma,
     Semicolon,
     Colon,
