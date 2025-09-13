@@ -29,7 +29,7 @@ def test_numbers() -> bool {
     return true;
 }
 
-var a: number = 5;
+
 
 def test_newton() -> bool {
     /* approximate magnitude of the 2-D vector of <x, y> using Newton's Method */
@@ -67,6 +67,8 @@ def main() {
     }
 
     var n: number = foo(1, 2);
+
+  
 }
 
 def foo(a: number, b: number) -> number {

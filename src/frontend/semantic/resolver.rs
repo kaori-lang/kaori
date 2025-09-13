@@ -33,17 +33,19 @@ use super::{
 pub struct Resolver {
     symbol_table: SymbolTable,
     active_loops: u8,
-    global_scope: bool,
+    local_scope: bool,
     ids: HashMap<AstId, HirId>,
 }
 
 impl Resolver {
     pub fn enter_function(&mut self) {
-        self.global_scope = false;
+        self.symbol_table.enter_scope();
+        self.local_scope = true;
     }
 
     pub fn exit_function(&mut self) {
-        self.global_scope = true;
+        self.symbol_table.exit_scope();
+        self.local_scope = false;
     }
 
     pub fn generate_hir_id(&mut self, id: AstId) -> HirId {
@@ -69,6 +71,24 @@ impl Resolver {
             Span::default(),
             "expected a main function to be declared in the program"
         ))
+    }
+
+    fn resolve_declaration_scope(&self, declaration: &Decl) -> Result<(), KaoriError> {
+        let error = match &declaration.kind {
+            DeclKind::Function { .. } if self.local_scope => true,
+            DeclKind::Struct { .. } if self.local_scope => true,
+            DeclKind::Variable { .. } if !self.local_scope => true,
+            _ => false,
+        };
+
+        if error {
+            Err(kaori_error!(
+                declaration.span,
+                "expected declaration to be made in the correct scope"
+            ))
+        } else {
+            Ok(())
+        }
     }
 
     pub fn resolve(&mut self, declarations: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
@@ -130,6 +150,8 @@ impl Resolver {
     }
 
     fn resolve_declaration(&mut self, declaration: &Decl) -> Result<HirDecl, KaoriError> {
+        self.resolve_declaration_scope(declaration)?;
+
         let hir_decl = match &declaration.kind {
             DeclKind::Parameter { name } => {
                 if self.symbol_table.search_current_scope(name).is_some() {
@@ -187,7 +209,7 @@ impl Resolver {
             DeclKind::Function {
                 parameters, body, ..
             } => {
-                self.symbol_table.enter_scope();
+                self.enter_function();
 
                 let parameters = parameters
                     .iter()
@@ -201,7 +223,7 @@ impl Resolver {
 
                 let ty = self.resolve_type(&declaration.ty)?;
 
-                self.symbol_table.exit_scope();
+                self.exit_function();
 
                 let id = self.ids.get(&declaration.id).unwrap();
 
