@@ -53,7 +53,7 @@ impl Resolver {
         hir_id
     }
 
-    pub fn generate_hir(&mut self, declarations: &[Decl]) -> Result<Vec<HirDecl>, KaoriError> {
+    pub fn resolve(&mut self, declarations: &[Decl]) -> Result<Vec<HirDecl>, KaoriError> {
         for declaration in declarations.iter() {
             match &declaration.kind {
                 DeclKind::Function { name, .. } => {

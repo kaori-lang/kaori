@@ -102,8 +102,6 @@ impl TypeChecker {
 
                 self.types.insert(declaration.id, declaration.ty.to_owned());
             }
-            HirDeclKind::Parameter { .. } => {}
-            HirDeclKind::Field { .. } => {}
             HirDeclKind::Function { body, .. } => {
                 let return_ty = match &declaration.ty.kind {
                     HirTyKind::Function { return_ty, .. } => {
@@ -137,6 +135,8 @@ impl TypeChecker {
                 }
             }
             HirDeclKind::Struct { fields } => {}
+            HirDeclKind::Parameter { .. } => {}
+            HirDeclKind::Field { .. } => {}
         };
 
         Ok(())

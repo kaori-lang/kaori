@@ -21,7 +21,7 @@ pub fn parse_and_analyze(source: String) -> Result<(), KaoriError> {
 
     let mut resolver = Resolver::default();
 
-    let hir = resolver.generate_hir(&ast)?;
+    let hir = resolver.resolve(&ast)?;
 
     let mut type_checker = TypeChecker::new();
 
