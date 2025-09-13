@@ -4,7 +4,9 @@
 use std::collections::HashMap;
 
 use crate::{
-    error::kaori_error::KaoriError, frontend::syntax::binary_op::BinaryOpKind, kaori_error,
+    error::kaori_error::KaoriError,
+    frontend::syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
+    kaori_error,
 };
 
 use super::{
@@ -248,7 +250,18 @@ impl TypeChecker {
             HirExprKind::Unary { right, operator } => {
                 let right_ty = self.type_check_expression(right)?;
 
-                right_ty
+                match (operator.kind, &right_ty) {
+                    (UnaryOpKind::Negate, TypeDef::Number) => TypeDef::Number,
+                    (UnaryOpKind::Not, TypeDef::Boolean) => TypeDef::Boolean,
+                    _ => {
+                        return Err(kaori_error!(
+                            expression.span,
+                            "expected valid type for {:#?} operator, but found {:#?}",
+                            operator.kind,
+                            right_ty
+                        ));
+                    }
+                }
             }
             HirExprKind::FunctionCall { callee, arguments } => {
                 let TypeDef::Function {
