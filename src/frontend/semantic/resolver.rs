@@ -5,7 +5,14 @@ use crate::{
     frontend::{
         semantic::symbol::SymbolKind,
         syntax::{
-            ast_id::AstId, ast_node::AstNode, binary_op::{BinaryOp, BinaryOpKind}, decl::{Decl, DeclKind}, expr::{Expr, ExprKind}, stmt::{Stmt, StmtKind}, ty::{Ty, TyKind}, unary_op::UnaryOpKind
+            ast_id::AstId,
+            ast_node::AstNode,
+            binary_op::{BinaryOp, BinaryOpKind},
+            decl::{Decl, DeclKind},
+            expr::{Expr, ExprKind},
+            stmt::{Stmt, StmtKind},
+            ty::{Ty, TyKind},
+            unary_op::UnaryOpKind,
         },
     },
     kaori_error,
@@ -331,15 +338,7 @@ impl Resolver {
             ExprKind::Unary { right, operator } => {
                 let right = self.resolve_expression(right)?;
 
-                match operator.kind {
-                    UnaryOpKind::Decrement => {
-                        let operator = BinaryOp::new(BinaryOpKind::Add, expression.span);
-                        let literal = HirExpr::number_literal(1.0, expression.span);
-                        let binary_expression =  HirExpr::binary(operator, right, literal, expression.span);
-
-                    } 
-                    UnaryOpKind::Increment =>
-                }
+                //match operator.kind {}
 
                 HirExpr::unary(*operator, right, expression.span)
             }

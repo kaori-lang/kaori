@@ -247,8 +247,11 @@ impl<'a> Lexer<'a> {
         }
 
         let size = match kind {
-            TokenKind::Increment
-            | TokenKind::Decrement
+            TokenKind::AddAssign
+            | TokenKind::SubtractAssign
+            | TokenKind::MultiplyAssign
+            | TokenKind::DivideAssign
+            | TokenKind::ModuloAssign
             | TokenKind::And
             | TokenKind::Or
             | TokenKind::NotEqual

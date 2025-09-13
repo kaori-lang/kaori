@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TokenKind {
     Plus,
     Minus,

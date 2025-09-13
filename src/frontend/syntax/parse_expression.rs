@@ -8,17 +8,6 @@ use super::{
 };
 
 impl Parser {
-    pub fn parse_expression(&mut self) -> Result<Expr, KaoriError> {
-        if self
-            .token_stream
-            .look_ahead(&[TokenKind::Identifier, TokenKind::Assign])
-        {
-            return self.parse_assign();
-        }
-
-        self.parse_or()
-    }
-
     pub fn build_binary_operator(&mut self) -> BinaryOp {
         let token_kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
@@ -54,6 +43,17 @@ impl Parser {
         };
 
         UnaryOp::new(kind, span)
+    }
+
+    pub fn parse_expression(&mut self) -> Result<Expr, KaoriError> {
+        if self
+            .token_stream
+            .look_ahead(&[TokenKind::Identifier, TokenKind::Assign])
+        {
+            return self.parse_assign();
+        }
+
+        self.parse_or()
     }
 
     pub fn parse_assign(&mut self) -> Result<Expr, KaoriError> {

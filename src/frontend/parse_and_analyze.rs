@@ -8,6 +8,7 @@ use super::{
 
 pub fn parse_and_analyze(source: String) -> Result<(), KaoriError> {
     let mut tokens = Vec::new();
+
     let mut lexer = Lexer::new(&source, &mut tokens);
 
     lexer.tokenize()?;
