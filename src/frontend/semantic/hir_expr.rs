@@ -5,14 +5,14 @@ use crate::frontend::{
 
 use super::hir_id::HirId;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HirExpr {
     pub id: HirId,
     pub span: Span,
     pub kind: HirExprKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum HirExprKind {
     Binary {
         operator: BinaryOp,

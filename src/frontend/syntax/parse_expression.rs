@@ -1,6 +1,7 @@
 use crate::{error::kaori_error::KaoriError, frontend::lexer::token_kind::TokenKind, kaori_error};
 
 use super::{
+    assign_op::{AssignOp, AssignOpKind},
     binary_op::{BinaryOp, BinaryOpKind},
     expr::Expr,
     parser::Parser,
@@ -46,24 +47,32 @@ impl Parser {
     }
 
     pub fn parse_expression(&mut self) -> Result<Expr, KaoriError> {
-        if self
-            .token_stream
-            .look_ahead(&[TokenKind::Identifier, TokenKind::Assign])
-        {
-            return self.parse_assign();
-        }
-
-        self.parse_or()
+        self.parse_assign()
     }
 
     pub fn parse_assign(&mut self) -> Result<Expr, KaoriError> {
-        let left = self.parse_identifier()?;
+        let left = self.parse_or()?;
 
-        self.token_stream.consume(TokenKind::Assign)?;
+        let kind = self.token_stream.token_kind();
+        let span = self.token_stream.span();
 
-        let right = self.parse_expression()?;
+        let operator = match kind {
+            TokenKind::Assign => AssignOpKind::Assign,
+            TokenKind::AddAssign => AssignOpKind::AddAssign,
+            TokenKind::SubtractAssign => AssignOpKind::SubtractAssign,
+            TokenKind::MultiplyAssign => AssignOpKind::MultiplyAssign,
+            TokenKind::DivideAssign => AssignOpKind::DivideAssign,
+            TokenKind::ModuloAssign => AssignOpKind::ModuloAssign,
+            _ => return Ok(left),
+        };
 
-        Ok(Expr::assign(left, right))
+        let operator = AssignOp::new(operator, span);
+
+        self.token_stream.advance();
+
+        let right = self.parse_or()?;
+
+        Ok(Expr::assign(operator, left, right))
     }
 
     pub fn parse_or(&mut self) -> Result<Expr, KaoriError> {

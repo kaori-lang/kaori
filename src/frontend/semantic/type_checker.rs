@@ -237,7 +237,7 @@ impl TypeChecker {
                     _ => {
                         return Err(kaori_error!(
                             expression.span,
-                            "expected valid left and right operand types for the operator {:#?}, but found {:#?} and {:#?}",
+                            "expected valid types for {:#?} operator, but found {:#?} and {:#?}",
                             operator.kind,
                             left_ty,
                             right_ty

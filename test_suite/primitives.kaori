@@ -39,7 +39,7 @@ def test_newton() -> bool {
     var dist_squ: number = x * x + y * y;
     var guess: number = 7.25;
 
-    for var iter: number = 0; iter < 4; iter++ {
+    for var iter: number = 0; iter < 4; iter += 1 {
         guess = 0.5 * ( guess + dist_squ / guess );
     }
 
@@ -69,7 +69,9 @@ def main() {
     var n: number = foo(1, 2);
 }
 
-def foo(a: number, b: number) {
+def foo(a: number, b: number) -> number {
    var num: number = 7;
-   
+
+   num *= true;
+   return 1;
 }

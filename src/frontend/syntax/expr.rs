@@ -1,6 +1,6 @@
 use crate::frontend::lexer::span::Span;
 
-use super::{ast_id::AstId, binary_op::BinaryOp, unary_op::UnaryOp};
+use super::{assign_op::AssignOp, ast_id::AstId, binary_op::BinaryOp, unary_op::UnaryOp};
 
 #[derive(Debug)]
 pub struct Expr {
@@ -21,6 +21,7 @@ pub enum ExprKind {
         operator: UnaryOp,
     },
     Assign {
+        operator: AssignOp,
         left: Box<Expr>,
         right: Box<Expr>,
     },
@@ -62,13 +63,14 @@ impl Expr {
         }
     }
 
-    pub fn assign(left: Expr, right: Expr) -> Expr {
+    pub fn assign(operator: AssignOp, left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
 
         Expr {
             id: AstId::default(),
             span,
             kind: ExprKind::Assign {
+                operator,
                 left: Box::new(left),
                 right: Box::new(right),
             },

@@ -5,6 +5,7 @@ use crate::{
     frontend::{
         semantic::symbol::SymbolKind,
         syntax::{
+            assign_op::{AssignOp, AssignOpKind},
             ast_id::AstId,
             ast_node::AstNode,
             binary_op::{BinaryOp, BinaryOpKind},
@@ -12,15 +13,19 @@ use crate::{
             expr::{Expr, ExprKind},
             stmt::{Stmt, StmtKind},
             ty::{Ty, TyKind},
-            unary_op::UnaryOpKind,
         },
     },
     kaori_error,
 };
 
 use super::{
-    hir_decl::HirDecl, hir_expr::HirExpr, hir_id::HirId, hir_node::HirNode, hir_stmt::HirStmt,
-    hir_ty::HirTy, symbol_table::SymbolTable,
+    hir_decl::HirDecl,
+    hir_expr::{HirExpr, HirExprKind},
+    hir_id::HirId,
+    hir_node::HirNode,
+    hir_stmt::HirStmt,
+    hir_ty::HirTy,
+    symbol_table::SymbolTable,
 };
 
 #[derive(Default)]
@@ -319,9 +324,34 @@ impl Resolver {
 
     fn resolve_expression(&self, expression: &Expr) -> Result<HirExpr, KaoriError> {
         let hir_expr = match &expression.kind {
-            ExprKind::Assign { left, right } => {
+            ExprKind::Assign {
+                operator,
+                left,
+                right,
+            } => {
                 let right = self.resolve_expression(right)?;
                 let left = self.resolve_expression(left)?;
+
+                let HirExprKind::VariableRef(..) = &left.kind else {
+                    return Err(kaori_error!(
+                        left.span,
+                        "expected a valid left hand side to assign values to"
+                    ));
+                };
+
+                let operator_kind = match &operator.kind {
+                    AssignOpKind::AddAssign => BinaryOpKind::Add,
+                    AssignOpKind::SubtractAssign => BinaryOpKind::Subtract,
+                    AssignOpKind::MultiplyAssign => BinaryOpKind::Multiply,
+                    AssignOpKind::DivideAssign => BinaryOpKind::Divide,
+                    AssignOpKind::ModuloAssign => BinaryOpKind::Modulo,
+                    _ => return Ok(HirExpr::assign(left, right, expression.span)),
+                };
+
+                let operator = BinaryOp::new(operator_kind, operator.span);
+
+                let right =
+                    HirExpr::binary(operator, left.to_owned(), right.to_owned(), right.span);
 
                 HirExpr::assign(left, right, expression.span)
             }
@@ -337,8 +367,6 @@ impl Resolver {
             }
             ExprKind::Unary { right, operator } => {
                 let right = self.resolve_expression(right)?;
-
-                //match operator.kind {}
 
                 HirExpr::unary(*operator, right, expression.span)
             }
