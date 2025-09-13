@@ -299,7 +299,7 @@ impl TypeChecker {
         Ok(ty)
     }
 
-    pub fn get_type_def(&self, ty: &HirTy) -> TypeDef {
+    fn get_type_def(&self, ty: &HirTy) -> TypeDef {
         match &ty.kind {
             HirTyKind::Function {
                 parameters,

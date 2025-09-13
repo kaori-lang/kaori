@@ -9,7 +9,7 @@ use super::{
 };
 
 impl Parser {
-    pub fn build_binary_operator(&mut self) -> BinaryOp {
+    fn build_binary_operator(&mut self) -> BinaryOp {
         let token_kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
 
@@ -33,7 +33,7 @@ impl Parser {
         BinaryOp::new(kind, span)
     }
 
-    pub fn build_unary_operator(&mut self) -> UnaryOp {
+    fn build_unary_operator(&mut self) -> UnaryOp {
         let token_kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
 
@@ -50,7 +50,7 @@ impl Parser {
         self.parse_assign()
     }
 
-    pub fn parse_assign(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_assign(&mut self) -> Result<Expr, KaoriError> {
         let left = self.parse_or()?;
 
         let kind = self.token_stream.token_kind();
@@ -75,7 +75,7 @@ impl Parser {
         Ok(Expr::assign(operator, left, right))
     }
 
-    pub fn parse_or(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_or(&mut self) -> Result<Expr, KaoriError> {
         let mut left = self.parse_and()?;
 
         while !self.token_stream.at_end() {
@@ -96,7 +96,7 @@ impl Parser {
         Ok(left)
     }
 
-    pub fn parse_and(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_and(&mut self) -> Result<Expr, KaoriError> {
         let mut left = self.parse_equality()?;
 
         while !self.token_stream.at_end() {
@@ -116,7 +116,7 @@ impl Parser {
         Ok(left)
     }
 
-    pub fn parse_equality(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_equality(&mut self) -> Result<Expr, KaoriError> {
         let mut left = self.parse_comparison()?;
 
         while !self.token_stream.at_end() {
@@ -136,7 +136,7 @@ impl Parser {
         Ok(left)
     }
 
-    pub fn parse_comparison(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_comparison(&mut self) -> Result<Expr, KaoriError> {
         let mut left = self.parse_term()?;
 
         while !self.token_stream.at_end() {
@@ -159,7 +159,7 @@ impl Parser {
         Ok(left)
     }
 
-    pub fn parse_term(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_term(&mut self) -> Result<Expr, KaoriError> {
         let mut left = self.parse_factor()?;
 
         while !self.token_stream.at_end() {
@@ -179,7 +179,7 @@ impl Parser {
         Ok(left)
     }
 
-    pub fn parse_factor(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_factor(&mut self) -> Result<Expr, KaoriError> {
         let mut left = self.parse_prefix_unary()?;
 
         while !self.token_stream.at_end() {
@@ -201,7 +201,7 @@ impl Parser {
         Ok(left)
     }
 
-    pub fn parse_prefix_unary(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_prefix_unary(&mut self) -> Result<Expr, KaoriError> {
         let kind = self.token_stream.token_kind();
 
         let operator = match kind {
@@ -220,7 +220,7 @@ impl Parser {
         Ok(Expr::unary(operator, right))
     }
 
-    pub fn parse_primary(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_primary(&mut self) -> Result<Expr, KaoriError> {
         let kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
 
@@ -266,7 +266,7 @@ impl Parser {
         })
     }
 
-    pub fn parse_identifier(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_identifier(&mut self) -> Result<Expr, KaoriError> {
         let name = self.token_stream.lexeme().to_owned();
         let span = self.token_stream.span();
 
@@ -277,7 +277,7 @@ impl Parser {
         Ok(identifier)
     }
 
-    pub fn parse_postfix_unary(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_postfix_unary(&mut self) -> Result<Expr, KaoriError> {
         let identifier = self.parse_identifier()?;
 
         let kind = self.token_stream.token_kind();
@@ -292,7 +292,7 @@ impl Parser {
         Ok(Expr::unary(operator, identifier))
     }
 
-    pub fn parse_function_call(&mut self, callee: Expr) -> Result<Expr, KaoriError> {
+    fn parse_function_call(&mut self, callee: Expr) -> Result<Expr, KaoriError> {
         if self.token_stream.token_kind() != TokenKind::LeftParen {
             return Ok(callee);
         }

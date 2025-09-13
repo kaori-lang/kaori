@@ -10,6 +10,7 @@ impl Parser {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::Variable)?;
+
         let name = self.token_stream.lexeme().to_owned();
 
         self.token_stream.consume(TokenKind::Identifier)?;

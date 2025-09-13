@@ -93,7 +93,7 @@ impl Parser {
                 self.token_stream.consume(TokenKind::Semicolon)?;
             }
             _ => (),
-        }
+        };
 
         Ok(statement)
     }

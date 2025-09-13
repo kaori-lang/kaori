@@ -54,6 +54,23 @@ impl Resolver {
         hir_id
     }
 
+    fn resolve_main_function(&mut self, declarations: &mut [Decl]) -> Result<(), KaoriError> {
+        for (index, declaration) in declarations.iter().enumerate() {
+            if let DeclKind::Function { name, .. } = &declaration.kind
+                && name == "main"
+            {
+                declarations.swap(0, index);
+
+                return Ok(());
+            }
+        }
+
+        Err(kaori_error!(
+            Span::default(),
+            "expected a main function to be declared in the program"
+        ))
+    }
+
     pub fn resolve(&mut self, declarations: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
         self.resolve_main_function(declarations)?;
 
@@ -95,23 +112,6 @@ impl Resolver {
             .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
 
         Ok(declarations)
-    }
-
-    fn resolve_main_function(&mut self, declarations: &mut [Decl]) -> Result<(), KaoriError> {
-        for (index, declaration) in declarations.iter().enumerate() {
-            if let DeclKind::Function { name, .. } = &declaration.kind
-                && name == "main"
-            {
-                declarations.swap(0, index);
-
-                return Ok(());
-            }
-        }
-
-        Err(kaori_error!(
-            Span::default(),
-            "expected a main function to be declared in the program"
-        ))
     }
 
     fn resolve_node(&mut self, node: &AstNode) -> Result<HirNode, KaoriError> {
