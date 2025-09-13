@@ -56,8 +56,9 @@ impl Parser {
             _ => None,
         };
 
+        #[allow(clippy::single_match)]
         match token_kind {
-            TokenKind::Variable | TokenKind::Invalid => {
+            TokenKind::Variable => {
                 self.token_stream.consume(TokenKind::Semicolon)?;
             }
             _ => (),

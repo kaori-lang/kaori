@@ -55,7 +55,7 @@ impl Resolver {
     }
 
     pub fn resolve(&mut self, declarations: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
-        self.resolve_main_function(declarations);
+        self.resolve_main_function(declarations)?;
 
         for declaration in declarations.iter() {
             match &declaration.kind {
@@ -103,13 +103,14 @@ impl Resolver {
                 && name == "main"
             {
                 declarations.swap(0, index);
+
                 return Ok(());
             }
         }
 
         Err(kaori_error!(
             Span::default(),
-            "main function is not declared"
+            "expected a main function to be declared in the program"
         ))
     }
 

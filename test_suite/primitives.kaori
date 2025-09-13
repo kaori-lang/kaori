@@ -72,6 +72,6 @@ def main() {
 def foo(a: number, b: number) -> number {
    var num: number = 7;
 
-    print(2 -- true);
+
    return 1;
 }
