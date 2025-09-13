@@ -22,7 +22,7 @@ pub enum StmtKind {
         block: Box<Stmt>,
     },
     ForLoop {
-        init: Decl,
+        init: Box<Decl>,
         condition: Expr,
         increment: Box<Stmt>,
         block: Box<Stmt>,
@@ -71,7 +71,7 @@ impl Stmt {
             id: AstId::default(),
             span,
             kind: StmtKind::ForLoop {
-                init,
+                init: Box::new(init),
                 condition,
                 increment: Box::new(increment),
                 block: Box::new(block),

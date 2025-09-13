@@ -251,13 +251,38 @@ impl TypeChecker {
                 right_ty
             }
             HirExprKind::FunctionCall { callee, arguments } => {
-                let callee = self.type_check_expression(callee)?;
+                let TypeDef::Function {
+                    parameters,
+                    return_ty,
+                } = self.type_check_expression(callee)?
+                else {
+                    return Err(kaori_error!(
+                        callee.span,
+                        "expected a valid callable in that function call",
+                    ));
+                };
 
-                for argument in arguments {
-                    self.type_check_expression(argument)?;
+                if arguments.len() != parameters.len() {
+                    return Err(kaori_error!(
+                        expression.span,
+                        "expected the same number of arguments and parameters for this function call",
+                    ));
                 }
 
-                callee
+                for (argument, parameter) in arguments.iter().zip(parameters) {
+                    let argument = self.type_check_expression(argument)?;
+
+                    if argument != parameter {
+                        return Err(kaori_error!(
+                            expression.span,
+                            "expected argument and parameter of the same type, but found: {:#?} and {:#?}",
+                            argument,
+                            parameter
+                        ));
+                    }
+                }
+
+                *return_ty
             }
             HirExprKind::FunctionRef(id) => {
                 let hir_ty = self.types.get(id).unwrap().to_owned();

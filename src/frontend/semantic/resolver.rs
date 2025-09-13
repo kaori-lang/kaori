@@ -5,12 +5,7 @@ use crate::{
     frontend::{
         semantic::symbol::SymbolKind,
         syntax::{
-            ast_id::AstId,
-            ast_node::AstNode,
-            decl::{Decl, DeclKind},
-            expr::{Expr, ExprKind},
-            stmt::{Stmt, StmtKind},
-            ty::{Ty, TyKind},
+            ast_id::AstId, ast_node::AstNode, binary_op::{BinaryOp, BinaryOpKind}, decl::{Decl, DeclKind}, expr::{Expr, ExprKind}, stmt::{Stmt, StmtKind}, ty::{Ty, TyKind}, unary_op::UnaryOpKind
         },
     },
     kaori_error,
@@ -254,7 +249,7 @@ impl Resolver {
 
                 let init = Some(self.resolve_declaration(init)?);
                 let condition = self.resolve_expression(condition)?;
-                let increment = HirNode::from(self.resolve_statement(increment)?);
+                let increment = self.resolve_statement(increment)?;
 
                 let nodes = match &block.kind {
                     StmtKind::Block(nodes) => {
@@ -264,6 +259,8 @@ impl Resolver {
                             .iter()
                             .map(|node| self.resolve_node(node))
                             .collect::<Result<Vec<HirNode>, KaoriError>>()?;
+
+                        let increment = HirNode::from(increment);
 
                         nodes.push(increment);
 
@@ -333,6 +330,16 @@ impl Resolver {
             }
             ExprKind::Unary { right, operator } => {
                 let right = self.resolve_expression(right)?;
+
+                match operator.kind {
+                    UnaryOpKind::Decrement => {
+                        let operator = BinaryOp::new(BinaryOpKind::Add, expression.span);
+                        let literal = HirExpr::number_literal(1.0, expression.span);
+                        let binary_expression =  HirExpr::binary(operator, right, literal, expression.span);
+
+                    } 
+                    UnaryOpKind::Increment =>
+                }
 
                 HirExpr::unary(*operator, right, expression.span)
             }

@@ -65,8 +65,11 @@ def main() {
     if !test_newton() {
         print(1);
     }
+
+    var n: number = foo(1, 2);
 }
 
-def foo() {
-  
+def foo(a: number, b: number) {
+   var num: number = 7;
+   
 }
