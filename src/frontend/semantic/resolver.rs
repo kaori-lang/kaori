@@ -6,7 +6,7 @@ use crate::{
         lexer::span::Span,
         semantic::symbol::SymbolKind,
         syntax::{
-            assign_op::{AssignOp, AssignOpKind},
+            assign_op::AssignOpKind,
             ast_id::AstId,
             ast_node::AstNode,
             binary_op::{BinaryOp, BinaryOpKind},
@@ -74,14 +74,14 @@ impl Resolver {
     }
 
     fn resolve_declaration_scope(&self, declaration: &Decl) -> Result<(), KaoriError> {
-        let error = match &declaration.kind {
+        let has_error = match &declaration.kind {
             DeclKind::Function { .. } if self.local_scope => true,
             DeclKind::Struct { .. } if self.local_scope => true,
             DeclKind::Variable { .. } if !self.local_scope => true,
             _ => false,
         };
 
-        if error {
+        if has_error {
             Err(kaori_error!(
                 declaration.span,
                 "expected declaration to be made in the correct scope"
@@ -213,7 +213,7 @@ impl Resolver {
 
                 let parameters = parameters
                     .iter()
-                    .map(|p| self.resolve_declaration(p))
+                    .map(|parameter| self.resolve_declaration(parameter))
                     .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
 
                 let body = body
@@ -232,7 +232,7 @@ impl Resolver {
             DeclKind::Struct { fields, .. } => {
                 let fields = fields
                     .iter()
-                    .map(|f| self.resolve_declaration(f))
+                    .map(|field| self.resolve_declaration(field))
                     .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
 
                 let ty = self.resolve_type(&declaration.ty)?;
@@ -416,7 +416,7 @@ impl Resolver {
                 let callee = self.resolve_expression(callee)?;
                 let arguments = arguments
                     .iter()
-                    .map(|a| self.resolve_expression(a))
+                    .map(|argument| self.resolve_expression(argument))
                     .collect::<Result<Vec<HirExpr>, KaoriError>>()?;
 
                 HirExpr::function_call(callee, arguments, expression.span)
@@ -452,7 +452,7 @@ impl Resolver {
             } => {
                 let parameters = parameters
                     .iter()
-                    .map(|p| self.resolve_type(p))
+                    .map(|parameter| self.resolve_type(parameter))
                     .collect::<Result<Vec<HirTy>, KaoriError>>()?;
 
                 let return_ty = match return_ty {

@@ -1,6 +1,3 @@
-#![allow(clippy::new_without_default)]
-#![allow(clippy::only_used_in_recursion)]
-
 use std::collections::HashMap;
 
 use crate::{
@@ -209,17 +206,28 @@ impl TypeChecker {
                 let left_ty = self.type_check_expression(left)?;
                 let right_ty = self.type_check_expression(right)?;
 
-                use BinaryOpKind::*;
-                use TypeDef::*;
+                use BinaryOpKind as Op;
+                use TypeDef as Ty;
 
                 match (&left_ty, operator.kind, &right_ty) {
-                    (Number, Add | Subtract | Multiply | Divide | Modulo, Number) => Number,
+                    (
+                        Ty::Number,
+                        Op::Add | Op::Subtract | Op::Multiply | Op::Divide | Op::Modulo,
+                        Ty::Number,
+                    ) => Ty::Number,
 
-                    (Boolean, And | Or, Boolean) => Boolean,
+                    (Ty::Boolean, Op::And | Op::Or, Ty::Boolean) => Ty::Boolean,
 
-                    (left_ty, Equal | NotEqual, right_ty) if left_ty == right_ty => Boolean,
+                    (left_ty, Op::Equal | Op::NotEqual, right_ty) if left_ty == right_ty => {
+                        Ty::Boolean
+                    }
 
-                    (Number, Greater | GreaterEqual | Less | LessEqual, Number) => Boolean,
+                    (
+                        Ty::Number,
+                        Op::Greater | Op::GreaterEqual | Op::Less | Op::LessEqual,
+                        Ty::Number,
+                    ) => Ty::Boolean,
+
                     _ => {
                         return Err(kaori_error!(
                             expression.span,
@@ -307,7 +315,7 @@ impl TypeChecker {
             } => {
                 let parameters = parameters
                     .iter()
-                    .map(|param| self.get_type_def(param))
+                    .map(|parameter| self.get_type_def(parameter))
                     .collect();
 
                 let return_ty = match return_ty {

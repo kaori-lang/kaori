@@ -1,3 +1,4 @@
+pub mod cfgir;
 pub mod lexer;
 pub mod parse_and_analyze;
 pub mod semantic;

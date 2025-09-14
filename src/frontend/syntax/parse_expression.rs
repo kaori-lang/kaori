@@ -282,14 +282,10 @@ impl Parser {
 
         let kind = self.token_stream.token_kind();
 
-        let operator = match kind {
-            TokenKind::LeftParen => return self.parse_function_call(identifier),
-            _ => return Ok(identifier),
-        };
-
-        self.token_stream.advance();
-
-        Ok(Expr::unary(operator, identifier))
+        Ok(match kind {
+            TokenKind::LeftParen => self.parse_function_call(identifier)?,
+            _ => identifier,
+        })
     }
 
     fn parse_function_call(&mut self, callee: Expr) -> Result<Expr, KaoriError> {
