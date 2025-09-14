@@ -13,7 +13,6 @@ pub struct HirDecl {
 #[derive(Debug)]
 pub enum HirDeclKind {
     Variable {
-        offset: usize,
         right: Box<HirExpr>,
     },
     Function {
@@ -23,30 +22,26 @@ pub enum HirDeclKind {
     Struct {
         fields: Vec<HirDecl>,
     },
-    Parameter {
-        offset: usize,
-    },
-    Field {
-        offset: usize,
-    },
+    Parameter,
+    Field,
 }
 
 impl HirDecl {
-    pub fn parameter(id: HirId, offset: usize, ty: HirTy, span: Span) -> HirDecl {
+    pub fn parameter(id: HirId, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
             ty,
-            kind: HirDeclKind::Parameter { offset },
+            kind: HirDeclKind::Parameter,
         }
     }
 
-    pub fn field(id: HirId, offset: usize, ty: HirTy, span: Span) -> HirDecl {
+    pub fn field(id: HirId, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
             ty,
-            kind: HirDeclKind::Field { offset },
+            kind: HirDeclKind::Field,
         }
     }
 
@@ -59,13 +54,12 @@ impl HirDecl {
         }
     }
 
-    pub fn variable(id: HirId, offset: usize, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
+    pub fn variable(id: HirId, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
             ty,
             kind: HirDeclKind::Variable {
-                offset,
                 right: Box::new(right),
             },
         }

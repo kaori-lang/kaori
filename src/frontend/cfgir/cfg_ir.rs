@@ -13,7 +13,7 @@ use super::basic_block::BasicBlock;
 pub struct CfgIr {
     blocks: Vec<BasicBlock>,
     register_stack: Vec<u8>,
-    node_register: HashMap<HirId, u8>,
+    nodes_register: HashMap<HirId, u8>,
 }
 
 impl CfgIr {

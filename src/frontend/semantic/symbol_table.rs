@@ -1,12 +1,8 @@
-use super::{
-    hir_id::HirId,
-    symbol::{Symbol, SymbolKind},
-};
+use super::{hir_id::HirId, symbol::Symbol};
 
 pub struct SymbolTable {
     pub symbols: Vec<Symbol>,
     pub scopes_ptr: Vec<usize>,
-    pub variable_offset: usize,
 }
 
 impl Default for SymbolTable {
@@ -14,7 +10,6 @@ impl Default for SymbolTable {
         Self {
             symbols: Vec::new(),
             scopes_ptr: vec![0],
-            variable_offset: 0,
         }
     }
 }
@@ -30,25 +25,14 @@ impl SymbolTable {
         let ptr = self.scopes_ptr.pop().unwrap();
 
         while self.symbols.len() > ptr {
-            if let Some(symbol) = self.symbols.last()
-                && let SymbolKind::Variable = symbol.kind
-            {
-                self.variable_offset -= 1;
-            }
-
             self.symbols.pop();
         }
     }
 
-    pub fn declare_variable(&mut self, id: HirId, name: String) -> usize {
-        let offset = self.variable_offset;
+    pub fn declare_variable(&mut self, id: HirId, name: String) {
         let symbol = Symbol::variable(id, name);
 
-        self.variable_offset += 1;
-
         self.symbols.push(symbol);
-
-        offset
     }
 
     pub fn declare_function(&mut self, id: HirId, name: String) {

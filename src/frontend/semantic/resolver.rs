@@ -164,11 +164,11 @@ impl Resolver {
 
                 let id = HirId::default();
 
-                let offset = self.symbol_table.declare_variable(id, name.to_owned());
+                self.symbol_table.declare_variable(id, name.to_owned());
 
                 let ty = self.resolve_type(&declaration.ty)?;
 
-                HirDecl::parameter(id, offset, ty, declaration.span)
+                HirDecl::parameter(id, ty, declaration.span)
             }
             DeclKind::Field { name } => {
                 if self.symbol_table.search_current_scope(name).is_some() {
@@ -181,11 +181,11 @@ impl Resolver {
 
                 let id = HirId::default();
 
-                let offset = self.symbol_table.declare_variable(id, name.to_owned());
+                self.symbol_table.declare_variable(id, name.to_owned());
 
                 let ty = self.resolve_type(&declaration.ty)?;
 
-                HirDecl::field(id, offset, ty, declaration.span)
+                HirDecl::field(id, ty, declaration.span)
             }
             DeclKind::Variable { name, right } => {
                 let right = self.resolve_expression(right)?;
@@ -200,11 +200,11 @@ impl Resolver {
 
                 let id = HirId::default();
 
-                let offset = self.symbol_table.declare_variable(id, name.to_owned());
+                self.symbol_table.declare_variable(id, name.to_owned());
 
                 let ty = self.resolve_type(&declaration.ty)?;
 
-                HirDecl::variable(id, offset, right, ty, declaration.span)
+                HirDecl::variable(id, right, ty, declaration.span)
             }
             DeclKind::Function {
                 parameters, body, ..
