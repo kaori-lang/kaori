@@ -116,8 +116,8 @@ impl TypeChecker {
                 }
             }
             HirDeclKind::Struct { fields } => {}
-            HirDeclKind::Parameter { .. } => {}
-            HirDeclKind::Field { .. } => {}
+            HirDeclKind::Parameter => {}
+            HirDeclKind::Field => {}
         };
 
         Ok(())

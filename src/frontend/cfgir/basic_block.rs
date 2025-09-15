@@ -17,10 +17,8 @@ impl BasicBlock {
 }
 
 pub enum Terminator {
-    Conditional {
-        then_block: usize,
-        else_block: usize,
-    },
-    Jump(usize),
+    Conditional { then_bb: BlockId, else_bb: BlockId },
+    Jump(BlockId),
+    JumIfFalse(BlockId),
     None,
 }

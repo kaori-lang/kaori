@@ -12,15 +12,12 @@ use crate::frontend::{
 };
 
 use super::{
-    basic_block::{BasicBlock, Terminator},
-    block_id::BlockId,
-    cfg_instruction::CfgInstruction,
+    basic_block::Terminator, basic_block_stream::BasicBlockStream, cfg_instruction::CfgInstruction,
     register::Register,
 };
 
 pub struct CfgIr {
-    basic_blocks: Vec<BasicBlock>,
-    current_basic_block: usize,
+    basic_blocks: BasicBlockStream,
     register_stack: Vec<u8>,
     nodes_register: HashMap<HirId, Register>,
 }
@@ -29,8 +26,8 @@ impl CfgIr {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            basic_blocks: Vec::new(),
-            current_basic_block: 0,
+            basic_blocks: BasicBlockStream::default(),
+
             register_stack: vec![0],
             nodes_register: HashMap::new(),
         }
@@ -61,23 +58,6 @@ impl CfgIr {
         Register::new(register)
     }
 
-    pub fn emit_instruction(&mut self, instruction: CfgInstruction) {
-        let block = &mut self.basic_blocks[self.current_basic_block];
-
-        block.add_instruction(instruction);
-    }
-
-    pub fn create_basic_block(&mut self) -> usize {
-        let index = self.basic_blocks.len();
-
-        let id = BlockId(index);
-        let block = BasicBlock::new(id);
-
-        self.basic_blocks.push(block);
-
-        index
-    }
-
     pub fn check(&mut self, declarations: &[HirDecl]) {
         for declaration in declarations {
             self.visit_declaration(declaration);
@@ -105,7 +85,7 @@ impl CfgIr {
 
                 let instruction = CfgInstruction::LoadLocal { dst, r1 };
 
-                self.emit_instruction(instruction);
+                self.basic_blocks.emit_instruction(instruction);
             }
 
             HirDeclKind::Function { body, parameters } => {
@@ -144,46 +124,62 @@ impl CfgIr {
                 then_branch,
                 else_branch,
             } => {
-                let condition_block = self.basic_blocks.len() - 1;
-
                 self.visit_expression(condition);
 
-                let then_block = self.create_basic_block();
+                let condition_bb = self.basic_blocks.current_basic_block;
+                let then_bb = self.basic_blocks.create_basic_block();
+                let else_bb = self.basic_blocks.create_basic_block();
 
-                let else_block = self.create_basic_block();
-
-                self.current_basic_block = then_block;
+                self.basic_blocks.set_current(then_bb);
 
                 self.visit_statement(then_branch);
 
                 if let Some(branch) = else_branch {
-                    self.current_basic_block = else_block;
+                    self.basic_blocks.set_current(else_bb);
                     self.visit_statement(branch);
                 }
 
-                let terminator_block = self.create_basic_block();
+                let terminator_block = self.basic_blocks.create_basic_block();
 
-                self.basic_blocks.get_mut(then_block).unwrap().terminator =
+                self.basic_blocks.get_basic_block(then_bb).terminator =
                     Terminator::Jump(terminator_block);
 
-                self.basic_blocks.get_mut(else_block).unwrap().terminator =
+                self.basic_blocks.get_basic_block(else_bb).terminator =
                     Terminator::Jump(terminator_block);
 
-                self.basic_blocks
-                    .get_mut(condition_block)
-                    .unwrap()
-                    .terminator = Terminator::Conditional {
-                    then_block,
-                    else_block,
-                };
+                self.basic_blocks.get_basic_block(condition_bb).terminator =
+                    Terminator::Conditional { then_bb, else_bb };
 
-                self.current_basic_block = terminator_block;
+                self.basic_blocks.set_current(terminator_block);
             }
             HirStmtKind::Loop {
                 init,
                 condition,
                 block,
-            } => {}
+            } => {
+                if let Some(init) = init {
+                    self.visit_declaration(init);
+                }
+
+                let condition_bb = self.basic_blocks.create_basic_block();
+                let block_bb = self.basic_blocks.create_basic_block();
+
+                self.basic_blocks.current_basic_block = condition_bb;
+                self.visit_expression(condition);
+
+                self.basic_blocks.current_basic_block = block_bb;
+                self.visit_statement(block);
+
+                let terminator_bb = self.basic_blocks.create_basic_block();
+
+                self.basic_blocks.get_basic_block(condition_bb).terminator =
+                    Terminator::JumIfFalse(terminator_bb);
+
+                self.basic_blocks.get_basic_block(block_bb).terminator =
+                    Terminator::Jump(condition_bb);
+
+                self.basic_blocks.current_basic_block = terminator_bb;
+            }
             HirStmtKind::Break => {}
             HirStmtKind::Continue => {}
             HirStmtKind::Return(expr) => {
@@ -201,7 +197,7 @@ impl CfgIr {
                 let r1 = self.visit_expression(right);
 
                 let instruction = CfgInstruction::StoreLocal { dst, r1 };
-                self.emit_instruction(instruction);
+                self.basic_blocks.emit_instruction(instruction);
 
                 dst
             }
@@ -228,12 +224,12 @@ impl CfgIr {
                     BinaryOpKind::Less => CfgInstruction::Less { dst, r1, r2 },
                     BinaryOpKind::LessEqual => CfgInstruction::LessEqual { dst, r1, r2 },
 
-                    // be changed
+                    // gonna be changed
                     BinaryOpKind::And => CfgInstruction::And { dst, r1, r2 },
                     BinaryOpKind::Or => CfgInstruction::Or { dst, r1, r2 },
                 };
 
-                self.emit_instruction(instruction);
+                self.basic_blocks.emit_instruction(instruction);
 
                 dst
             }
@@ -246,7 +242,7 @@ impl CfgIr {
                     UnaryOpKind::Not => CfgInstruction::Not { dst, r1 },
                 };
 
-                self.emit_instruction(instruction);
+                self.basic_blocks.emit_instruction(instruction);
 
                 dst
             }
@@ -257,7 +253,7 @@ impl CfgIr {
                 let dst = self.create_register();
                 let instruction = CfgInstruction::LoadLocal { dst, r1 };
 
-                self.emit_instruction(instruction);
+                self.basic_blocks.emit_instruction(instruction);
 
                 dst
             }
@@ -269,7 +265,7 @@ impl CfgIr {
                     value: value.to_owned(),
                 };
 
-                self.emit_instruction(instruction);
+                self.basic_blocks.emit_instruction(instruction);
 
                 dst
             }
@@ -278,7 +274,7 @@ impl CfgIr {
 
                 let instruction = CfgInstruction::BooleanConst { dst, value: *value };
 
-                self.emit_instruction(instruction);
+                self.basic_blocks.emit_instruction(instruction);
 
                 dst
             }
@@ -287,7 +283,7 @@ impl CfgIr {
 
                 let instruction = CfgInstruction::NumberConst { dst, value: *value };
 
-                self.emit_instruction(instruction);
+                self.basic_blocks.emit_instruction(instruction);
 
                 dst
             }
