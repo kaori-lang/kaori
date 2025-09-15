@@ -14,9 +14,6 @@ impl BasicBlock {
             terminator: Terminator::None,
         }
     }
-    pub fn add_instruction(&mut self, instruction: CfgInstruction) {
-        self.instructions.push(instruction);
-    }
 }
 
 pub enum Terminator {
