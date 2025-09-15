@@ -14,8 +14,8 @@ impl BasicBlock {
 
 pub enum Terminator {
     Conditional {
-        then_branch: usize,
-        else_branch: Option<usize>,
+        then_block: usize,
+        else_block: usize,
     },
     Jump(usize),
     None,

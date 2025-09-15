@@ -11,10 +11,15 @@ use crate::frontend::{
     syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
 };
 
-use super::{basic_block::BasicBlock, cfg_instruction::CfgInstruction, register::Register};
+use super::{
+    basic_block::{BasicBlock, Terminator},
+    cfg_instruction::CfgInstruction,
+    register::Register,
+};
 
 pub struct CfgIr {
-    blocks: Vec<BasicBlock>,
+    basic_blocks: Vec<BasicBlock>,
+    current_basic_block: usize,
     register_stack: Vec<u8>,
     nodes_register: HashMap<HirId, Register>,
 }
@@ -23,7 +28,8 @@ impl CfgIr {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            blocks: Vec::new(),
+            basic_blocks: Vec::new(),
+            current_basic_block: 0,
             register_stack: vec![0],
             nodes_register: HashMap::new(),
         }
@@ -51,13 +57,21 @@ impl CfgIr {
     pub fn create_register(&mut self) -> Register {
         let register = *self.register_stack.last().unwrap();
 
-        register
+        Register::new(register)
     }
 
     pub fn emit_instruction(&mut self, instruction: CfgInstruction) {
-        let block = self.blocks.last_mut().unwrap();
+        let block = &mut self.basic_blocks[self.current_basic_block];
 
         block.add_instruction(instruction);
+    }
+
+    pub fn create_basic_block(&mut self) -> usize {
+        let block = BasicBlock::default();
+        let index = self.basic_blocks.len();
+        self.basic_blocks.push(block);
+
+        index
     }
 
     pub fn check(&mut self, declarations: &[HirDecl]) {
@@ -125,7 +139,40 @@ impl CfgIr {
                 condition,
                 then_branch,
                 else_branch,
-            } => {}
+            } => {
+                let condition_block = self.basic_blocks.len() - 1;
+
+                self.visit_expression(condition);
+
+                let then_block = self.create_basic_block();
+
+                let else_block = self.create_basic_block();
+
+                self.current_basic_block = then_block;
+
+                self.visit_statement(then_branch);
+
+                if let Some(branch) = else_branch {
+                    self.current_basic_block = else_block;
+                    self.visit_statement(branch);
+                }
+
+                let terminator_block = self.create_basic_block();
+
+                self.basic_blocks.get_mut(then_block).unwrap().terminator =
+                    Terminator::Jump(terminator_block);
+
+                self.basic_blocks.get_mut(else_block).unwrap().terminator =
+                    Terminator::Jump(terminator_block);
+
+                self.basic_blocks
+                    .get_mut(condition_block)
+                    .unwrap()
+                    .terminator = Terminator::Conditional {
+                    then_block,
+                    else_block,
+                };
+            }
             HirStmtKind::Loop {
                 init,
                 condition,
@@ -182,7 +229,7 @@ impl CfgIr {
 
                 self.emit_instruction(instruction);
 
-                r1
+                dst
             }
             HirExprKind::Unary { right, operator } => {
                 let r1 = self.visit_expression(right);
@@ -198,7 +245,7 @@ impl CfgIr {
                 dst
             }
             HirExprKind::FunctionCall { callee, arguments } => Register::new(0),
-            HirExprKind::FunctionRef(id) => 1,
+            HirExprKind::FunctionRef(id) => Register::new(0),
             HirExprKind::VariableRef(id) => {
                 let r1 = *self.nodes_register.get(id).unwrap();
                 let dst = self.create_register();
