@@ -1,12 +1,19 @@
-use super::cfg_instruction::CfgInstruction;
+use super::{block_id::BlockId, cfg_instruction::CfgInstruction};
 
-#[derive(Default)]
 pub struct BasicBlock {
+    pub id: BlockId,
     pub instructions: Vec<CfgInstruction>,
     pub terminator: Terminator,
 }
 
 impl BasicBlock {
+    pub fn new(id: BlockId) -> Self {
+        Self {
+            id,
+            instructions: Vec::new(),
+            terminator: Terminator::None,
+        }
+    }
     pub fn add_instruction(&mut self, instruction: CfgInstruction) {
         self.instructions.push(instruction);
     }
@@ -19,10 +26,4 @@ pub enum Terminator {
     },
     Jump(usize),
     None,
-}
-
-impl Default for Terminator {
-    fn default() -> Self {
-        Self::None
-    }
 }

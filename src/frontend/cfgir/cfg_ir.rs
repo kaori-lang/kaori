@@ -13,6 +13,7 @@ use crate::frontend::{
 
 use super::{
     basic_block::{BasicBlock, Terminator},
+    block_id::BlockId,
     cfg_instruction::CfgInstruction,
     register::Register,
 };
@@ -67,8 +68,11 @@ impl CfgIr {
     }
 
     pub fn create_basic_block(&mut self) -> usize {
-        let block = BasicBlock::default();
         let index = self.basic_blocks.len();
+
+        let id = BlockId(index);
+        let block = BasicBlock::new(id);
+
         self.basic_blocks.push(block);
 
         index
@@ -172,6 +176,8 @@ impl CfgIr {
                     then_block,
                     else_block,
                 };
+
+                self.current_basic_block = terminator_block;
             }
             HirStmtKind::Loop {
                 init,
