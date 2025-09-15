@@ -8,7 +8,7 @@ use crate::frontend::semantic::{
     hir_stmt::{HirStmt, HirStmtKind},
 };
 
-use super::basic_block::{BasicBlock, CfgInstruction};
+use super::{basic_block::BasicBlock, cfg_instruction::CfgInstruction};
 
 pub struct CfgIr {
     blocks: Vec<BasicBlock>,
@@ -39,6 +39,10 @@ impl CfgIr {
         let register = 0;
 
         self.register_stack.push(register);
+    }
+
+    pub fn exit_function(&mut self) {
+        self.register_stack.pop();
     }
 
     pub fn create_register(&mut self) -> u8 {
@@ -74,16 +78,31 @@ impl CfgIr {
 
     fn visit_declaration(&mut self, declaration: &HirDecl) {
         match &declaration.kind {
-            HirDeclKind::Variable { right, .. } => {
+            HirDeclKind::Variable { right } => {
                 let r1 = self.visit_expression(right);
-                let 
+                let dst = self.create_register();
 
+                let instruction = CfgInstruction::LoadLocal { dst, r1 };
+
+                self.emit_instruction(instruction);
             }
 
-            HirDeclKind::Function { body, .. } => {}
+            HirDeclKind::Function { body, parameters } => {
+                self.enter_function();
+
+                for (register, parameter) in parameters.iter().enumerate() {
+                    self.nodes_register.insert(parameter.id, register as u8);
+                }
+
+                for node in body {
+                    self.visit_ast_node(node);
+                }
+
+                self.exit_function();
+            }
             HirDeclKind::Struct { fields } => {}
-            HirDeclKind::Parameter { .. } => {}
-            HirDeclKind::Field { .. } => {}
+            HirDeclKind::Parameter => {}
+            HirDeclKind::Field => {}
         }
     }
 
@@ -110,15 +129,22 @@ impl CfgIr {
             } => {}
             HirStmtKind::Break => {}
             HirStmtKind::Continue => {}
-            HirStmtKind::Return(expr) => {}
+            HirStmtKind::Return(expr) => {
+                if let Some(expr) = expr {
+                    self.visit_expression(expr);
+                }
+            }
         };
     }
 
-    fn visit_expression(&self, expression: &HirExpr) -> u8 {
+    fn visit_expression(&mut self, expression: &HirExpr) -> u8 {
         let register = match &expression.kind {
             HirExprKind::Assign(left, right) => {
                 let dst = self.visit_expression(left);
                 let r1 = self.visit_expression(right);
+
+                let instruction = CfgInstruction::StoreLocal { dst, r1 };
+                self.emit_instruction(instruction);
 
                 dst
             }
@@ -126,10 +152,19 @@ impl CfgIr {
                 operator,
                 left,
                 right,
-            } => {}
-            HirExprKind::Unary { right, operator } => {}
-            HirExprKind::FunctionCall { callee, arguments } => {}
-            HirExprKind::FunctionRef(id) => {}
+            } => {
+                let r1 = self.visit_expression(left);
+                let r2 = self.visit_expression(right);
+
+                r1
+            }
+            HirExprKind::Unary { right, operator } => {
+                let r1 = self.visit_expression(right);
+
+                r1
+            }
+            HirExprKind::FunctionCall { callee, arguments } => 1,
+            HirExprKind::FunctionRef(id) => 1,
             HirExprKind::VariableRef(id) => {
                 let r1 = *self.nodes_register.get(id).unwrap();
                 let dst = self.create_register();
@@ -139,10 +174,35 @@ impl CfgIr {
 
                 dst
             }
-            HirExprKind::StringLiteral(..) => {}
-            HirExprKind::BooleanLiteral(..) => {}
-            HirExprKind::NumberLiteral(..) => {
-                let register = self.create_register();
+            HirExprKind::StringLiteral(value) => {
+                let dst = self.create_register();
+
+                let instruction = CfgInstruction::StringConst {
+                    dst,
+                    value: value.to_owned(),
+                };
+
+                self.emit_instruction(instruction);
+
+                dst
+            }
+            HirExprKind::BooleanLiteral(value) => {
+                let dst = self.create_register();
+
+                let instruction = CfgInstruction::BooleanConst { dst, value: *value };
+
+                self.emit_instruction(instruction);
+
+                dst
+            }
+            HirExprKind::NumberLiteral(value) => {
+                let dst = self.create_register();
+
+                let instruction = CfgInstruction::NumberConst { dst, value: *value };
+
+                self.emit_instruction(instruction);
+
+                dst
             }
         };
 

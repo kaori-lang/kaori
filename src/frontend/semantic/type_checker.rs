@@ -68,7 +68,7 @@ impl TypeChecker {
 
     fn type_check_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
         match &declaration.kind {
-            HirDeclKind::Variable { right, .. } => {
+            HirDeclKind::Variable { right } => {
                 let right = self.type_check_expression(right)?;
                 let ty = self.get_type_def(&declaration.ty);
 
