@@ -23,7 +23,10 @@ pub enum HirExprKind {
         right: Box<HirExpr>,
         operator: UnaryOp,
     },
-    Assign(Box<HirExpr>, Box<HirExpr>),
+    Assign {
+        left: Box<HirExpr>,
+        right: Box<HirExpr>,
+    },
     VariableRef(HirId),
     FunctionRef(HirId),
     FunctionCall {
@@ -63,7 +66,10 @@ impl HirExpr {
         HirExpr {
             id: HirId::default(),
             span,
-            kind: HirExprKind::Assign(Box::new(left), Box::new(right)),
+            kind: HirExprKind::Assign {
+                left: Box::new(left),
+                right: Box::new(right),
+            },
         }
     }
 

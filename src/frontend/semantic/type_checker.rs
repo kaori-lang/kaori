@@ -183,7 +183,7 @@ impl TypeChecker {
 
     fn type_check_expression(&self, expression: &HirExpr) -> Result<TypeDef, KaoriError> {
         let ty = match &expression.kind {
-            HirExprKind::Assign(left, right) => {
+            HirExprKind::Assign { left, right } => {
                 let right_ty = self.type_check_expression(right)?;
                 let left_ty = self.type_check_expression(left)?;
 

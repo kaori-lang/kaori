@@ -1,25 +1,96 @@
-#[derive(Debug, Clone)]
+use super::register::Register;
+
+#[derive(Debug)]
 pub enum CfgInstruction {
-    Add { dst: u8, r1: u8, r2: u8 },
-    Subtract { dst: u8, r1: u8, r2: u8 },
-    Multiply { dst: u8, r1: u8, r2: u8 },
-    Divide { dst: u8, r1: u8, r2: u8 },
-    Modulo { dst: u8, r1: u8, r2: u8 },
-    Equal { dst: u8, r1: u8, r2: u8 },
-    NotEqual { dst: u8, r1: u8, r2: u8 },
-    Greater { dst: u8, r1: u8, r2: u8 },
-    GreaterEqual { dst: u8, r1: u8, r2: u8 },
-    Less { dst: u8, r1: u8, r2: u8 },
-    LessEqual { dst: u8, r1: u8, r2: u8 },
+    Add {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    Subtract {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    Multiply {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    Divide {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    Modulo {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    Equal {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    NotEqual {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    Greater {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    GreaterEqual {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    Less {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    LessEqual {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    Negate {
+        dst: Register,
+        r1: Register,
+    },
+    Not {
+        dst: Register,
+        r1: Register,
+    },
+    StringConst {
+        dst: Register,
+        value: String,
+    },
+    NumberConst {
+        dst: Register,
+        value: f64,
+    },
+    BooleanConst {
+        dst: Register,
+        value: bool,
+    },
 
-    StringConst { dst: u8, value: String },
-    NumberConst { dst: u8, value: f64 },
-    BooleanConst { dst: u8, value: bool },
-
-    LoadLocal { dst: u8, r1: u8 },
-    StoreLocal { dst: u8, r1: u8 },
+    LoadLocal {
+        dst: Register,
+        r1: Register,
+    },
+    StoreLocal {
+        dst: Register,
+        r1: Register,
+    },
 
     Call,
-    Return { dst: u8, r1: u8 },
+    Return {
+        dst: Register,
+        r1: Register,
+    },
     Print,
 }

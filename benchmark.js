@@ -7,7 +7,7 @@ function fib(n) {
 	return fib(n - 1) + fib(n - 2);
 }
 
-console.log(fib(40));
+console.log(fib(30));
 
 const endTime = performance.now();
 const executionTime = (endTime - startTime) / 1000; // convert ms to seconds

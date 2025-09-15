@@ -1,19 +1,22 @@
 use std::collections::HashMap;
 
-use crate::frontend::semantic::{
-    hir_decl::{HirDecl, HirDeclKind},
-    hir_expr::{HirExpr, HirExprKind},
-    hir_id::HirId,
-    hir_node::HirNode,
-    hir_stmt::{HirStmt, HirStmtKind},
+use crate::frontend::{
+    semantic::{
+        hir_decl::{HirDecl, HirDeclKind},
+        hir_expr::{HirExpr, HirExprKind},
+        hir_id::HirId,
+        hir_node::HirNode,
+        hir_stmt::{HirStmt, HirStmtKind},
+    },
+    syntax::unary_op::UnaryOpKind,
 };
 
-use super::{basic_block::BasicBlock, cfg_instruction::CfgInstruction};
+use super::{basic_block::BasicBlock, cfg_instruction::CfgInstruction, register::Register};
 
 pub struct CfgIr {
     blocks: Vec<BasicBlock>,
-    register_stack: Vec<u8>,
-    nodes_register: HashMap<HirId, u8>,
+    register_stack: Vec<Register>,
+    nodes_register: HashMap<HirId, Register>,
 }
 
 impl CfgIr {
@@ -36,7 +39,7 @@ impl CfgIr {
     }
 
     pub fn enter_function(&mut self) {
-        let register = 0;
+        let register = Register::new(0);
 
         self.register_stack.push(register);
     }
@@ -45,10 +48,10 @@ impl CfgIr {
         self.register_stack.pop();
     }
 
-    pub fn create_register(&mut self) -> u8 {
-        let register = self.register_stack.last().unwrap();
+    pub fn create_register(&mut self) -> Register {
+        let register = *self.register_stack.last().unwrap();
 
-        *register
+        register
     }
 
     pub fn emit_instruction(&mut self, instruction: CfgInstruction) {
@@ -90,8 +93,9 @@ impl CfgIr {
             HirDeclKind::Function { body, parameters } => {
                 self.enter_function();
 
-                for (register, parameter) in parameters.iter().enumerate() {
-                    self.nodes_register.insert(parameter.id, register as u8);
+                for (index, parameter) in parameters.iter().enumerate() {
+                    let register = Register::new(index as u8);
+                    self.nodes_register.insert(parameter.id, register);
                 }
 
                 for node in body {
@@ -138,8 +142,8 @@ impl CfgIr {
     }
 
     fn visit_expression(&mut self, expression: &HirExpr) -> u8 {
-        let register = match &expression.kind {
-            HirExprKind::Assign(left, right) => {
+        match &expression.kind {
+            HirExprKind::Assign { left, right } => {
                 let dst = self.visit_expression(left);
                 let r1 = self.visit_expression(right);
 
@@ -160,8 +164,16 @@ impl CfgIr {
             }
             HirExprKind::Unary { right, operator } => {
                 let r1 = self.visit_expression(right);
+                let dst = self.create_register();
 
-                r1
+                let instruction = match operator.kind {
+                    UnaryOpKind::Negate => CfgInstruction::Negate { dst, r1 },
+                    UnaryOpKind::Not => CfgInstruction::Not { dst, r1 },
+                };
+
+                self.emit_instruction(instruction);
+
+                dst
             }
             HirExprKind::FunctionCall { callee, arguments } => 1,
             HirExprKind::FunctionRef(id) => 1,
@@ -204,8 +216,6 @@ impl CfgIr {
 
                 dst
             }
-        };
-
-        register
+        }
     }
 }
