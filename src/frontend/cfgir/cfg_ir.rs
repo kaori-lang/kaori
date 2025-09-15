@@ -8,14 +8,14 @@ use crate::frontend::{
         hir_node::HirNode,
         hir_stmt::{HirStmt, HirStmtKind},
     },
-    syntax::unary_op::UnaryOpKind,
+    syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
 };
 
 use super::{basic_block::BasicBlock, cfg_instruction::CfgInstruction, register::Register};
 
 pub struct CfgIr {
     blocks: Vec<BasicBlock>,
-    register_stack: Vec<Register>,
+    register_stack: Vec<u8>,
     nodes_register: HashMap<HirId, Register>,
 }
 
@@ -39,7 +39,7 @@ impl CfgIr {
     }
 
     pub fn enter_function(&mut self) {
-        let register = Register::new(0);
+        let register = 0;
 
         self.register_stack.push(register);
     }
@@ -141,7 +141,7 @@ impl CfgIr {
         };
     }
 
-    fn visit_expression(&mut self, expression: &HirExpr) -> u8 {
+    fn visit_expression(&mut self, expression: &HirExpr) -> Register {
         match &expression.kind {
             HirExprKind::Assign { left, right } => {
                 let dst = self.visit_expression(left);
@@ -159,6 +159,28 @@ impl CfgIr {
             } => {
                 let r1 = self.visit_expression(left);
                 let r2 = self.visit_expression(right);
+                let dst = self.create_register();
+
+                let instruction = match operator.kind {
+                    BinaryOpKind::Add => CfgInstruction::Add { dst, r1, r2 },
+                    BinaryOpKind::Subtract => CfgInstruction::Subtract { dst, r1, r2 },
+                    BinaryOpKind::Multiply => CfgInstruction::Multiply { dst, r1, r2 },
+                    BinaryOpKind::Divide => CfgInstruction::Divide { dst, r1, r2 },
+                    BinaryOpKind::Modulo => CfgInstruction::Modulo { dst, r1, r2 },
+
+                    BinaryOpKind::Equal => CfgInstruction::Equal { dst, r1, r2 },
+                    BinaryOpKind::NotEqual => CfgInstruction::NotEqual { dst, r1, r2 },
+                    BinaryOpKind::Greater => CfgInstruction::Greater { dst, r1, r2 },
+                    BinaryOpKind::GreaterEqual => CfgInstruction::GreaterEqual { dst, r1, r2 },
+                    BinaryOpKind::Less => CfgInstruction::Less { dst, r1, r2 },
+                    BinaryOpKind::LessEqual => CfgInstruction::LessEqual { dst, r1, r2 },
+
+                    // be changed
+                    BinaryOpKind::And => CfgInstruction::And { dst, r1, r2 },
+                    BinaryOpKind::Or => CfgInstruction::Or { dst, r1, r2 },
+                };
+
+                self.emit_instruction(instruction);
 
                 r1
             }
@@ -175,7 +197,7 @@ impl CfgIr {
 
                 dst
             }
-            HirExprKind::FunctionCall { callee, arguments } => 1,
+            HirExprKind::FunctionCall { callee, arguments } => Register::new(0),
             HirExprKind::FunctionRef(id) => 1,
             HirExprKind::VariableRef(id) => {
                 let r1 = *self.nodes_register.get(id).unwrap();

@@ -57,6 +57,16 @@ pub enum CfgInstruction {
         r1: Register,
         r2: Register,
     },
+    And {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
+    Or {
+        dst: Register,
+        r1: Register,
+        r2: Register,
+    },
     Negate {
         dst: Register,
         r1: Register,
@@ -86,7 +96,6 @@ pub enum CfgInstruction {
         dst: Register,
         r1: Register,
     },
-
     Call,
     Return {
         dst: Register,
