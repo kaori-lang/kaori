@@ -1,7 +1,13 @@
 #[derive(Default)]
 pub struct BasicBlock {
-    pub instructions: Vec<CfgInst>,
+    pub instructions: Vec<CfgInstruction>,
     pub terminator: Terminator,
+}
+
+impl BasicBlock {
+    pub fn add_instruction(&mut self, instruction: CfgInstruction) {
+        self.instructions.push(instruction);
+    }
 }
 
 pub enum Terminator {
@@ -20,7 +26,7 @@ impl Default for Terminator {
 }
 
 #[derive(Debug, Clone)]
-pub enum CfgInst {
+pub enum CfgInstruction {
     Add { dst: u8, r1: u8, r2: u8 },
     Subtract { dst: u8, r1: u8, r2: u8 },
     Multiply { dst: u8, r1: u8, r2: u8 },
@@ -32,4 +38,16 @@ pub enum CfgInst {
     GreaterEqual { dst: u8, r1: u8, r2: u8 },
     Less { dst: u8, r1: u8, r2: u8 },
     LessEqual { dst: u8, r1: u8, r2: u8 },
+
+    StringConst { dst: u8, value: String },
+    NumberConst { dst: u8, value: f64 },
+    BooleanConst { dst: u8, value: bool },
+
+    LoadLocal { dst: u8, r1: u8 },
+    StoreLocal { dst: u8, r1: u8 },
+
+    Call,
+    Return,
+    Pop,
+    Print,
 }
