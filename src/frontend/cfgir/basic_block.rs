@@ -21,4 +21,5 @@ pub enum Terminator {
     Jump(BlockId),
     JumIfFalse(BlockId),
     None,
+    Return,
 }

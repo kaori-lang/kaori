@@ -186,6 +186,9 @@ impl CfgIr {
                 if let Some(expr) = expr {
                     self.visit_expression(expr);
                 }
+                let current_bb = self.basic_blocks.current_basic_block;
+
+                self.basic_blocks.get_basic_block(current_bb).terminator = Terminator::Return;
             }
         };
     }
@@ -247,7 +250,10 @@ impl CfgIr {
                 dst
             }
             HirExprKind::FunctionCall { callee, arguments } => Register::new(0),
-            HirExprKind::FunctionRef(id) => Register::new(0),
+            HirExprKind::FunctionRef(id) => {
+                let r1 = *self.nodes_register.get(id).unwrap();
+                let dst = self.create_register();
+            }
             HirExprKind::VariableRef(id) => {
                 let r1 = *self.nodes_register.get(id).unwrap();
                 let dst = self.create_register();
