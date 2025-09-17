@@ -2,32 +2,35 @@ use super::register::Register;
 
 #[derive(Debug, Default)]
 pub struct RegisterAllocator {
-    register_stack: Vec<Register>,
+    frame_stack: Vec<Register>,
 }
 
 impl RegisterAllocator {
-    pub fn enter_scope(&mut self) {
-        let register = self.register_stack.last().unwrap();
-        self.register_stack.push(*register);
+    pub fn push_scope(&mut self) {
+        let cursor = self.frame_stack.last().unwrap();
+
+        self.frame_stack.push(*cursor);
     }
 
-    pub fn exit_scope(&mut self) {
-        self.register_stack.pop();
+    pub fn pop_scope(&mut self) {
+        self.frame_stack.pop();
     }
 
-    pub fn enter_function(&mut self) {
-        let register = Register::new(0);
-
-        self.register_stack.push(register);
+    pub fn enter_frame(&mut self) {
+        let cursor = Register::new(0);
+        self.frame_stack.push(cursor);
     }
 
-    pub fn exit_function(&mut self) {
-        self.register_stack.pop();
+    pub fn exit_frame(&mut self) {
+        self.frame_stack.pop();
     }
 
-    pub fn create_register(&mut self) -> Register {
-        let register = self.register_stack.last().unwrap();
+    pub fn alloc_register(&mut self) -> Register {
+        let register = self.frame_stack.last_mut().unwrap();
+        let allocated = *register;
 
-        *register
+        register.increment();
+
+        allocated
     }
 }

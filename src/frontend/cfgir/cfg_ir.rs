@@ -68,7 +68,7 @@ impl CfgIr {
         match &declaration.kind {
             HirDeclKind::Variable { right } => {
                 let r1 = self.visit_expression(right);
-                let dst = self.register_allocator.create_register();
+                let dst = self.register_allocator.alloc_register();
 
                 let instruction = CfgInstruction::LoadLocal { dst, r1 };
 
@@ -76,7 +76,7 @@ impl CfgIr {
             }
 
             HirDeclKind::Function { body, parameters } => {
-                self.register_allocator.enter_function();
+                self.register_allocator.enter_frame();
 
                 for (index, parameter) in parameters.iter().enumerate() {
                     let register = Register::new(index as u8);
@@ -91,7 +91,7 @@ impl CfgIr {
                     self.visit_ast_node(node);
                 }
 
-                self.register_allocator.exit_function();
+                self.register_allocator.exit_frame();
             }
             HirDeclKind::Struct { fields } => {}
             HirDeclKind::Parameter => {}
@@ -210,7 +210,7 @@ impl CfgIr {
             } => {
                 let r1 = self.visit_expression(left);
                 let r2 = self.visit_expression(right);
-                let dst = self.register_allocator.create_register();
+                let dst = self.register_allocator.alloc_register();
 
                 let instruction = match operator.kind {
                     BinaryOpKind::Add => CfgInstruction::Add { dst, r1, r2 },
@@ -237,7 +237,7 @@ impl CfgIr {
             }
             HirExprKind::Unary { right, operator } => {
                 let r1 = self.visit_expression(right);
-                let dst = self.register_allocator.create_register();
+                let dst = self.register_allocator.alloc_register();
 
                 let instruction = match operator.kind {
                     UnaryOpKind::Negate => CfgInstruction::Negate { dst, r1 },
@@ -262,7 +262,7 @@ impl CfgIr {
 
             HirExprKind::VariableRef(id) => {
                 let r1 = *self.nodes_register.get(id).unwrap();
-                let dst = self.register_allocator.create_register();
+                let dst = self.register_allocator.alloc_register();
 
                 let instruction = CfgInstruction::LoadLocal { dst, r1 };
 
@@ -271,7 +271,7 @@ impl CfgIr {
                 dst
             }
             HirExprKind::FunctionRef(id) => {
-                let dst = self.register_allocator.create_register();
+                let dst = self.register_allocator.alloc_register();
 
                 let function_bb = *self.nodes_bb.get(id).unwrap();
 
@@ -285,7 +285,7 @@ impl CfgIr {
                 dst
             }
             HirExprKind::StringLiteral(value) => {
-                let dst = self.register_allocator.create_register();
+                let dst = self.register_allocator.alloc_register();
 
                 let instruction = CfgInstruction::StringConst {
                     dst,
@@ -297,7 +297,7 @@ impl CfgIr {
                 dst
             }
             HirExprKind::BooleanLiteral(value) => {
-                let dst = self.register_allocator.create_register();
+                let dst = self.register_allocator.alloc_register();
 
                 let instruction = CfgInstruction::BooleanConst { dst, value: *value };
 
@@ -306,7 +306,7 @@ impl CfgIr {
                 dst
             }
             HirExprKind::NumberLiteral(value) => {
-                let dst = self.register_allocator.create_register();
+                let dst = self.register_allocator.alloc_register();
 
                 let instruction = CfgInstruction::NumberConst { dst, value: *value };
 
