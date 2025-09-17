@@ -1,5 +1,6 @@
 use super::{block_id::BlockId, cfg_instruction::CfgInstruction};
 
+#[derive(Debug)]
 pub struct BasicBlock {
     pub id: BlockId,
     pub instructions: Vec<CfgInstruction>,
@@ -16,10 +17,11 @@ impl BasicBlock {
     }
 }
 
+#[derive(Debug)]
 pub enum Terminator {
     Conditional { then_bb: BlockId, else_bb: BlockId },
     Jump(BlockId),
-    JumIfFalse(BlockId),
+    JumpIfFalse(BlockId),
     None,
     Return,
 }

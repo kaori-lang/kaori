@@ -12,24 +12,26 @@ use crate::frontend::{
 };
 
 use super::{
-    basic_block::Terminator, basic_block_stream::BasicBlockStream, cfg_instruction::CfgInstruction,
-    register::Register,
+    basic_block::Terminator, basic_block_stream::BasicBlockStream, block_id::BlockId,
+    cfg_instruction::CfgInstruction, register::Register,
 };
 
 pub struct CfgIr {
-    basic_blocks: BasicBlockStream,
+    basic_block_stream: BasicBlockStream,
     register_stack: Vec<u8>,
     nodes_register: HashMap<HirId, Register>,
+    nodes_bb: HashMap<HirId, BlockId>,
 }
 
 impl CfgIr {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            basic_blocks: BasicBlockStream::default(),
+            basic_block_stream: BasicBlockStream::default(),
 
             register_stack: vec![0],
             nodes_register: HashMap::new(),
+            nodes_bb: HashMap::new(),
         }
     }
 
@@ -60,6 +62,17 @@ impl CfgIr {
 
     pub fn check(&mut self, declarations: &[HirDecl]) {
         for declaration in declarations {
+            match &declaration.kind {
+                HirDeclKind::Function { .. } => {
+                    let bb_id = self.basic_block_stream.create_basic_block();
+
+                    self.nodes_bb.insert(declaration.id, bb_id);
+                }
+                _ => {}
+            }
+        }
+
+        for declaration in declarations {
             self.visit_declaration(declaration);
         }
     }
@@ -85,7 +98,7 @@ impl CfgIr {
 
                 let instruction = CfgInstruction::LoadLocal { dst, r1 };
 
-                self.basic_blocks.emit_instruction(instruction);
+                self.basic_block_stream.emit_instruction(instruction);
             }
 
             HirDeclKind::Function { body, parameters } => {
@@ -95,6 +108,10 @@ impl CfgIr {
                     let register = Register::new(index as u8);
                     self.nodes_register.insert(parameter.id, register);
                 }
+
+                let function_bb = *self.nodes_bb.get(&declaration.id).unwrap();
+
+                self.basic_block_stream.current_basic_block = function_bb;
 
                 for node in body {
                     self.visit_ast_node(node);
@@ -126,31 +143,32 @@ impl CfgIr {
             } => {
                 self.visit_expression(condition);
 
-                let condition_bb = self.basic_blocks.current_basic_block;
-                let then_bb = self.basic_blocks.create_basic_block();
-                let else_bb = self.basic_blocks.create_basic_block();
+                let condition_bb = self.basic_block_stream.current_basic_block;
+                let then_bb = self.basic_block_stream.create_basic_block();
+                let else_bb = self.basic_block_stream.create_basic_block();
 
-                self.basic_blocks.set_current(then_bb);
+                self.basic_block_stream.set_current(then_bb);
 
                 self.visit_statement(then_branch);
 
                 if let Some(branch) = else_branch {
-                    self.basic_blocks.set_current(else_bb);
+                    self.basic_block_stream.set_current(else_bb);
                     self.visit_statement(branch);
                 }
 
-                let terminator_block = self.basic_blocks.create_basic_block();
+                let terminator_block = self.basic_block_stream.create_basic_block();
 
-                self.basic_blocks.get_basic_block(then_bb).terminator =
+                self.basic_block_stream.get_basic_block(then_bb).terminator =
                     Terminator::Jump(terminator_block);
 
-                self.basic_blocks.get_basic_block(else_bb).terminator =
+                self.basic_block_stream.get_basic_block(else_bb).terminator =
                     Terminator::Jump(terminator_block);
 
-                self.basic_blocks.get_basic_block(condition_bb).terminator =
-                    Terminator::Conditional { then_bb, else_bb };
+                self.basic_block_stream
+                    .get_basic_block(condition_bb)
+                    .terminator = Terminator::Conditional { then_bb, else_bb };
 
-                self.basic_blocks.set_current(terminator_block);
+                self.basic_block_stream.set_current(terminator_block);
             }
             HirStmtKind::Loop {
                 init,
@@ -161,24 +179,25 @@ impl CfgIr {
                     self.visit_declaration(init);
                 }
 
-                let condition_bb = self.basic_blocks.create_basic_block();
-                let block_bb = self.basic_blocks.create_basic_block();
+                let condition_bb = self.basic_block_stream.create_basic_block();
+                let block_bb = self.basic_block_stream.create_basic_block();
 
-                self.basic_blocks.current_basic_block = condition_bb;
+                self.basic_block_stream.current_basic_block = condition_bb;
                 self.visit_expression(condition);
 
-                self.basic_blocks.current_basic_block = block_bb;
+                self.basic_block_stream.current_basic_block = block_bb;
                 self.visit_statement(block);
 
-                let terminator_bb = self.basic_blocks.create_basic_block();
+                let terminator_bb = self.basic_block_stream.create_basic_block();
 
-                self.basic_blocks.get_basic_block(condition_bb).terminator =
-                    Terminator::JumIfFalse(terminator_bb);
+                self.basic_block_stream
+                    .get_basic_block(condition_bb)
+                    .terminator = Terminator::JumpIfFalse(terminator_bb);
 
-                self.basic_blocks.get_basic_block(block_bb).terminator =
+                self.basic_block_stream.get_basic_block(block_bb).terminator =
                     Terminator::Jump(condition_bb);
 
-                self.basic_blocks.current_basic_block = terminator_bb;
+                self.basic_block_stream.current_basic_block = terminator_bb;
             }
             HirStmtKind::Break => {}
             HirStmtKind::Continue => {}
@@ -186,9 +205,15 @@ impl CfgIr {
                 if let Some(expr) = expr {
                     self.visit_expression(expr);
                 }
-                let current_bb = self.basic_blocks.current_basic_block;
+                let current_bb = self.basic_block_stream.current_basic_block;
 
-                self.basic_blocks.get_basic_block(current_bb).terminator = Terminator::Return;
+                self.basic_block_stream
+                    .get_basic_block(current_bb)
+                    .terminator = Terminator::Return;
+
+                let bb = self.basic_block_stream.create_basic_block();
+
+                self.basic_block_stream.current_basic_block = bb;
             }
         };
     }
@@ -200,7 +225,7 @@ impl CfgIr {
                 let r1 = self.visit_expression(right);
 
                 let instruction = CfgInstruction::StoreLocal { dst, r1 };
-                self.basic_blocks.emit_instruction(instruction);
+                self.basic_block_stream.emit_instruction(instruction);
 
                 dst
             }
@@ -232,7 +257,7 @@ impl CfgIr {
                     BinaryOpKind::Or => CfgInstruction::Or { dst, r1, r2 },
                 };
 
-                self.basic_blocks.emit_instruction(instruction);
+                self.basic_block_stream.emit_instruction(instruction);
 
                 dst
             }
@@ -245,21 +270,39 @@ impl CfgIr {
                     UnaryOpKind::Not => CfgInstruction::Not { dst, r1 },
                 };
 
-                self.basic_blocks.emit_instruction(instruction);
+                self.basic_block_stream.emit_instruction(instruction);
 
                 dst
             }
-            HirExprKind::FunctionCall { callee, arguments } => Register::new(0),
-            HirExprKind::FunctionRef(id) => {
-                let r1 = *self.nodes_register.get(id).unwrap();
-                let dst = self.create_register();
+            HirExprKind::FunctionCall { callee, arguments } => {
+                let call_instruction = CfgInstruction::Call(0);
+                self.basic_block_stream.emit_instruction(call_instruction);
+
+                for (dst, argument) in arguments.iter().enumerate() {
+                    let r1 = self.visit_expression(argument);
+                }
+
+                1
             }
+
             HirExprKind::VariableRef(id) => {
                 let r1 = *self.nodes_register.get(id).unwrap();
                 let dst = self.create_register();
                 let instruction = CfgInstruction::LoadLocal { dst, r1 };
 
-                self.basic_blocks.emit_instruction(instruction);
+                self.basic_block_stream.emit_instruction(instruction);
+
+                dst
+            }
+            HirExprKind::FunctionRef(id) => {
+                let dst = self.create_register();
+                let function_bb = *self.nodes_bb.get(id).unwrap();
+                let instruction = CfgInstruction::FunctionConst {
+                    dst,
+                    value: function_bb,
+                };
+
+                self.basic_block_stream.emit_instruction(instruction);
 
                 dst
             }
@@ -271,7 +314,7 @@ impl CfgIr {
                     value: value.to_owned(),
                 };
 
-                self.basic_blocks.emit_instruction(instruction);
+                self.basic_block_stream.emit_instruction(instruction);
 
                 dst
             }
@@ -280,7 +323,7 @@ impl CfgIr {
 
                 let instruction = CfgInstruction::BooleanConst { dst, value: *value };
 
-                self.basic_blocks.emit_instruction(instruction);
+                self.basic_block_stream.emit_instruction(instruction);
 
                 dst
             }
@@ -289,7 +332,7 @@ impl CfgIr {
 
                 let instruction = CfgInstruction::NumberConst { dst, value: *value };
 
-                self.basic_blocks.emit_instruction(instruction);
+                self.basic_block_stream.emit_instruction(instruction);
 
                 dst
             }

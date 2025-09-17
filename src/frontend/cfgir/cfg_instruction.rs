@@ -1,4 +1,4 @@
-use super::register::Register;
+use super::{block_id::BlockId, register::Register};
 
 #[derive(Debug)]
 pub enum CfgInstruction {
@@ -87,7 +87,14 @@ pub enum CfgInstruction {
         dst: Register,
         value: bool,
     },
-
+    FunctionConst {
+        dst: Register,
+        value: BlockId,
+    },
+    LoadConst {
+        dst: Register,
+        r1: Register,
+    },
     LoadLocal {
         dst: Register,
         r1: Register,
@@ -96,7 +103,7 @@ pub enum CfgInstruction {
         dst: Register,
         r1: Register,
     },
-    Call,
+    Call(u8),
     Return {
         dst: Register,
         r1: Register,
