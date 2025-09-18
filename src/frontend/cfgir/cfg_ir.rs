@@ -28,7 +28,7 @@ impl CfgIr {
     pub fn new() -> Self {
         Self {
             basic_block_stream: BasicBlockStream::default(),
-            register_allocator: RegisterAllocator::default(),
+            register_allocator: RegisterAllocator::new(),
             nodes_register: HashMap::new(),
             nodes_bb: HashMap::new(),
         }
@@ -42,6 +42,7 @@ impl CfgIr {
 
                     self.nodes_bb.insert(declaration.id, bb_id);
                 }
+                HirDeclKind::Struct { fields } => {}
                 _ => {}
             }
         }
@@ -76,10 +77,8 @@ impl CfgIr {
             }
 
             HirDeclKind::Function { body, parameters } => {
-                self.register_allocator.enter_frame();
-
-                for (index, parameter) in parameters.iter().enumerate() {
-                    let register = Register::new(index as u8);
+                for parameter in parameters {
+                    let register = self.register_allocator.alloc_register();
                     self.nodes_register.insert(parameter.id, register);
                 }
 
@@ -91,7 +90,7 @@ impl CfgIr {
                     self.visit_ast_node(node);
                 }
 
-                self.register_allocator.exit_frame();
+                self.register_allocator.free_all_registers();
             }
             HirDeclKind::Struct { fields } => {}
             HirDeclKind::Parameter => {}
@@ -201,6 +200,7 @@ impl CfgIr {
                 let instruction = CfgInstruction::StoreLocal { dst, r1 };
                 self.basic_block_stream.emit_instruction(instruction);
 
+                self.register_allocator.free_register(r1);
                 dst
             }
             HirExprKind::Binary {
@@ -233,6 +233,9 @@ impl CfgIr {
 
                 self.basic_block_stream.emit_instruction(instruction);
 
+                self.register_allocator.free_register(r1);
+                self.register_allocator.free_register(r2);
+
                 dst
             }
             HirExprKind::Unary { right, operator } => {
@@ -245,12 +248,11 @@ impl CfgIr {
                 };
 
                 self.basic_block_stream.emit_instruction(instruction);
+                self.register_allocator.free_register(r1);
 
                 dst
             }
             HirExprKind::FunctionCall { callee, arguments } => {
-                let dst = self.register_allocator.alloc_register();
-
                 let call_instruction = CfgInstruction::Call(0);
 
                 self.basic_block_stream.emit_instruction(call_instruction);
@@ -265,6 +267,8 @@ impl CfgIr {
                 }
 
                 let callee = self.visit_expression(callee);
+
+                let dst = self.register_allocator.alloc_register();
 
                 dst
             }
@@ -282,12 +286,9 @@ impl CfgIr {
             HirExprKind::FunctionRef(id) => {
                 let dst = self.register_allocator.alloc_register();
 
-                let function_bb = *self.nodes_bb.get(id).unwrap();
+                let value = *self.nodes_bb.get(id).unwrap();
 
-                let instruction = CfgInstruction::FunctionConst {
-                    dst,
-                    value: function_bb,
-                };
+                let instruction = CfgInstruction::FunctionConst { dst, value };
 
                 self.basic_block_stream.emit_instruction(instruction);
 

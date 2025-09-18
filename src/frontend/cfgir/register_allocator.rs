@@ -3,24 +3,14 @@ use super::register::Register;
 #[derive(Debug)]
 pub struct RegisterAllocator {
     registers: [bool; 256],
-    frame_stack: Vec<Register>,
 }
 
 impl RegisterAllocator {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             registers: [true; 256],
-            frame_stack: Vec::new(),
         }
-    }
-    pub fn push_scope(&mut self) {
-        let cursor = self.frame_stack.last().unwrap();
-
-        self.frame_stack.push(*cursor);
-    }
-
-    pub fn pop_scope(&mut self) {
-        self.frame_stack.pop();
     }
 
     pub fn free_all_registers(&mut self) {
@@ -30,7 +20,7 @@ impl RegisterAllocator {
     }
 
     pub fn is_register_free(&self, register: usize) -> bool {
-        self.registers[register] == true
+        self.registers[register]
     }
 
     pub fn free_register(&mut self, register: Register) {

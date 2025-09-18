@@ -16,19 +16,13 @@ use super::{
     type_def::TypeDef,
 };
 
+#[derive(Debug, Default)]
 pub struct TypeChecker {
     function_return_ty: Option<TypeDef>,
     types: HashMap<HirId, HirTy>,
 }
 
 impl TypeChecker {
-    pub fn new() -> Self {
-        Self {
-            function_return_ty: None,
-            types: HashMap::new(),
-        }
-    }
-
     pub fn check(&mut self, declarations: &[HirDecl]) -> Result<(), KaoriError> {
         for declaration in declarations.iter() {
             match &declaration.kind {
@@ -115,7 +109,7 @@ impl TypeChecker {
                     self.type_check_ast_node(node)?;
                 }
             }
-            HirDeclKind::Struct { fields } => {}
+            HirDeclKind::Struct { .. } => {}
             HirDeclKind::Parameter => {}
             HirDeclKind::Field => {}
         };
