@@ -1,4 +1,4 @@
-use crate::frontend::lexer::span::Span;
+use crate::lexer::span::Span;
 
 use super::ast_id::AstId;
 

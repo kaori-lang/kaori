@@ -2,21 +2,18 @@ use std::collections::HashMap;
 
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::{
-        lexer::span::Span,
-        semantic::symbol::SymbolKind,
-        syntax::{
-            assign_op::AssignOpKind,
-            ast_id::AstId,
-            ast_node::AstNode,
-            binary_op::{BinaryOp, BinaryOpKind},
-            decl::{Decl, DeclKind},
-            expr::{Expr, ExprKind},
-            stmt::{Stmt, StmtKind},
-            ty::{Ty, TyKind},
-        },
-    },
     kaori_error,
+    lexer::span::Span,
+    syntax::{
+        assign_op::AssignOpKind,
+        ast_id::AstId,
+        ast_node::AstNode,
+        binary_op::{BinaryOp, BinaryOpKind},
+        decl::{Decl, DeclKind},
+        expr::{Expr, ExprKind},
+        stmt::{Stmt, StmtKind},
+        ty::{Ty, TyKind},
+    },
 };
 
 use super::{
@@ -26,6 +23,7 @@ use super::{
     hir_node::HirNode,
     hir_stmt::HirStmt,
     hir_ty::HirTy,
+    symbol::SymbolKind,
     symbol_table::SymbolTable,
 };
 

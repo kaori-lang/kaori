@@ -1,4 +1,4 @@
-use crate::frontend::lexer::span::Span;
+use crate::lexer::span::Span;
 
 #[derive(Debug, Clone, Copy)]
 pub struct AssignOp {

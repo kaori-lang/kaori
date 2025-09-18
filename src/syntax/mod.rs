@@ -1,14 +1,12 @@
-pub mod ast_node;
-
 pub mod expr;
 pub mod parser;
-
-pub mod decl;
 
 pub mod binary_op;
 
 pub mod assign_op;
 pub mod ast_id;
+pub mod ast_node;
+pub mod decl;
 pub mod parse_declaration;
 pub mod parse_expression;
 pub mod parse_statement;

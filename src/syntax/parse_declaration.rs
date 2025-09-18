@@ -1,6 +1,6 @@
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::lexer::{span::Span, token_kind::TokenKind},
+    lexer::{span::Span, token_kind::TokenKind},
 };
 
 use super::{decl::Decl, parser::Parser, ty::Ty};

@@ -1,4 +1,4 @@
-use crate::frontend::lexer::span::Span;
+use crate::lexer::span::Span;
 
 use super::{assign_op::AssignOp, ast_id::AstId, binary_op::BinaryOp, unary_op::UnaryOp};
 

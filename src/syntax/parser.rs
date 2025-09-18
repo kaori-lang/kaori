@@ -1,7 +1,7 @@
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::lexer::{token_kind::TokenKind, token_stream::TokenStream},
     kaori_error,
+    lexer::{token_kind::TokenKind, token_stream::TokenStream},
 };
 
 use super::{ast_node::AstNode, decl::Decl, stmt::Stmt};

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::frontend::{
+use crate::{
     semantic::{
         hir_decl::{HirDecl, HirDeclKind},
         hir_expr::{HirExpr, HirExprKind},

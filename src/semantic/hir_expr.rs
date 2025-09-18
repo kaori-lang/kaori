@@ -1,4 +1,4 @@
-use crate::frontend::{
+use crate::{
     lexer::span::Span,
     syntax::{binary_op::BinaryOp, unary_op::UnaryOp},
 };

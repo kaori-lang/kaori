@@ -1,11 +1,9 @@
 use crate::{
+    cfgir::{basic_block_stream::BasicBlockStream, cfg_builder::CfgBuilder},
     error::kaori_error::KaoriError,
-    frontend::{
-        cfgir::{basic_block_stream::BasicBlockStream, cfg_builder::CfgBuilder},
-        lexer::{lexer::Lexer, token_stream::TokenStream},
-        semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},
-        syntax::{decl::Decl, parser::Parser},
-    },
+    lexer::{lexer::Lexer, token_stream::TokenStream},
+    semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},
+    syntax::{decl::Decl, parser::Parser},
 };
 
 fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {

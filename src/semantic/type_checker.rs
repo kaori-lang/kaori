@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     error::kaori_error::KaoriError,
-    frontend::syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
     kaori_error,
+    syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
 };
 
 use super::{

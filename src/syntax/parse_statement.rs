@@ -1,4 +1,4 @@
-use crate::{error::kaori_error::KaoriError, frontend::lexer::token_kind::TokenKind};
+use crate::{error::kaori_error::KaoriError, lexer::token_kind::TokenKind};
 
 use super::{parser::Parser, stmt::Stmt};
 

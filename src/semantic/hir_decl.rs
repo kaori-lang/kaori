@@ -1,4 +1,4 @@
-use crate::frontend::lexer::span::Span;
+use crate::lexer::span::Span;
 
 use super::{hir_expr::HirExpr, hir_id::HirId, hir_node::HirNode, hir_ty::HirTy};
 
