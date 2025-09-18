@@ -97,6 +97,4 @@ pub enum Instruction {
     JumpIfFalse(u16),
     Pop,
     Print,
-
-    Nothing,
 }

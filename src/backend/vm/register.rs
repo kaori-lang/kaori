@@ -1,6 +1,7 @@
 #![allow(clippy::missing_safety_doc)]
 use super::value::Value;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Register {
     registers: [Value; 1024],
 }

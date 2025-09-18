@@ -1,12 +1,13 @@
-use crate::error::kaori_error::KaoriError;
-
-use super::{
-    lexer::{lexer::Lexer, token_stream::TokenStream},
-    semantic::{resolver::Resolver, type_checker::TypeChecker},
-    syntax::parser::Parser,
+use crate::{
+    error::kaori_error::KaoriError,
+    frontend::{
+        lexer::{lexer::Lexer, token_stream::TokenStream},
+        semantic::{resolver::Resolver, type_checker::TypeChecker},
+        syntax::parser::Parser,
+    },
 };
 
-pub fn parse_and_analyze(source: String) -> Result<(), KaoriError> {
+pub fn compiler(source: String) -> Result<(), KaoriError> {
     let mut tokens = Vec::new();
 
     let mut lexer = Lexer::new(&source, &mut tokens);
