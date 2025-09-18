@@ -35,10 +35,4 @@ impl BasicBlockStream {
 
         &mut self.basic_blocks[index]
     }
-
-    pub fn last(&self) -> BlockId {
-        let index = self.basic_blocks.len() - 1;
-
-        BlockId(index)
-    }
 }

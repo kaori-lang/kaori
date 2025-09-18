@@ -249,15 +249,24 @@ impl CfgIr {
                 dst
             }
             HirExprKind::FunctionCall { callee, arguments } => {
+                let dst = self.register_allocator.alloc_register();
+
                 let call_instruction = CfgInstruction::Call(0);
 
                 self.basic_block_stream.emit_instruction(call_instruction);
 
                 for (dst, argument) in arguments.iter().enumerate() {
                     let r1 = self.visit_expression(argument);
+                    let dst = Register::new(dst as u8);
+
+                    let instruction = CfgInstruction::StoreLocal { dst, r1 };
+
+                    self.basic_block_stream.emit_instruction(instruction);
                 }
 
-                r1
+                let callee = self.visit_expression(callee);
+
+                dst
             }
 
             HirExprKind::VariableRef(id) => {
