@@ -50,6 +50,6 @@ pub fn compile_source_code(source: String) -> Result<(), KaoriError> {
     let mut ast = run_syntax_analysis(token_stream)?;
     let hir = run_semantic_analysis(&mut ast)?;
     let cfg_ir = build_cfg_ir(&hir);
-
+    println!("{:#?}", cfg_ir);
     Ok(())
 }

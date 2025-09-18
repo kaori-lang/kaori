@@ -1,0 +1,4 @@
+def main() {
+    var a: number = 5;
+    var b: number = 5;
+}

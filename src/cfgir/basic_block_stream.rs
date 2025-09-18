@@ -1,6 +1,6 @@
 use super::{basic_block::BasicBlock, block_id::BlockId, cfg_instruction::CfgInstruction};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct BasicBlockStream {
     pub basic_blocks: Vec<BasicBlock>,
     pub current_basic_block: BlockId,

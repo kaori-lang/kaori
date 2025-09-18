@@ -9,8 +9,8 @@ from subprocess import run
 from pathlib import Path
 
 ALL_TEST_SOURCES = [
-    'primitives.kaori',
-    'fib_recur.kaori',
+    'primitives.kr',
+    'fib_recur.kr',
 ]
 
 def try_kaori_tests(test_sources: list[str]) -> bool:
