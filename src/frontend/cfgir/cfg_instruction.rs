@@ -104,7 +104,7 @@ pub enum CfgInstruction {
         r1: Register,
     },
     Call {
-        frame_size: u8,
+        registers: u8,
     },
     Return {
         r1: Register,

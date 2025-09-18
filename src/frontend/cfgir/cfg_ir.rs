@@ -257,7 +257,11 @@ impl CfgIr {
                 dst
             }
             HirExprKind::FunctionCall { callee, arguments } => {
-                let call_instruction = CfgInstruction::Call { frame_size: 8 };
+                let dst = self.register_allocator.alloc_register();
+
+                // Number of registers being used by current frame
+                let registers = self.register_allocator.max_allocated_register() + 1;
+                let call_instruction = CfgInstruction::Call { registers };
 
                 self.basic_block_stream.emit_instruction(call_instruction);
 
@@ -270,9 +274,9 @@ impl CfgIr {
                     self.basic_block_stream.emit_instruction(instruction);
                 }
 
-                let callee = self.visit_expression(callee);
+                let callee_register = self.visit_expression(callee);
 
-                self.register_allocator.alloc_register()
+                dst
             }
 
             HirExprKind::VariableRef(id) => {

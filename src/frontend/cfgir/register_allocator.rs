@@ -15,7 +15,7 @@ impl RegisterAllocator {
 
     pub fn free_all_registers(&mut self) {
         for i in 0..self.registers.len() {
-            self.registers[i] = false;
+            self.registers[i] = true;
         }
     }
 
@@ -39,7 +39,7 @@ impl RegisterAllocator {
         unreachable!()
     }
 
-    pub fn max_allocated_register(&self) -> usize {
+    pub fn max_allocated_register(&self) -> u8 {
         let mut max_register = 0;
 
         for i in (0..self.registers.len()).rev() {
@@ -49,6 +49,6 @@ impl RegisterAllocator {
             }
         }
 
-        max_register
+        max_register as u8
     }
 }
