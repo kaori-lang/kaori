@@ -38,4 +38,17 @@ impl RegisterAllocator {
 
         unreachable!()
     }
+
+    pub fn max_allocated_register(&self) -> usize {
+        let mut max_register = 0;
+
+        for i in (0..self.registers.len()).rev() {
+            if !self.is_register_free(i) {
+                max_register = i;
+                break;
+            }
+        }
+
+        max_register
+    }
 }

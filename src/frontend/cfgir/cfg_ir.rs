@@ -176,7 +176,11 @@ impl CfgIr {
             HirStmtKind::Continue => {}
             HirStmtKind::Return(expr) => {
                 if let Some(expr) = expr {
-                    self.visit_expression(expr);
+                    let r1 = self.visit_expression(expr);
+
+                    let instruction = CfgInstruction::Return { r1 };
+
+                    self.basic_block_stream.emit_instruction(instruction);
                 }
                 let current_bb = self.basic_block_stream.current_basic_block;
 
@@ -253,7 +257,7 @@ impl CfgIr {
                 dst
             }
             HirExprKind::FunctionCall { callee, arguments } => {
-                let call_instruction = CfgInstruction::Call(0);
+                let call_instruction = CfgInstruction::Call { frame_size: 8 };
 
                 self.basic_block_stream.emit_instruction(call_instruction);
 
@@ -268,9 +272,7 @@ impl CfgIr {
 
                 let callee = self.visit_expression(callee);
 
-                let dst = self.register_allocator.alloc_register();
-
-                dst
+                self.register_allocator.alloc_register()
             }
 
             HirExprKind::VariableRef(id) => {

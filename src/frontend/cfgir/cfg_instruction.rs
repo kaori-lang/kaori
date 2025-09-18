@@ -103,9 +103,10 @@ pub enum CfgInstruction {
         dst: Register,
         r1: Register,
     },
-    Call(u8),
+    Call {
+        frame_size: u8,
+    },
     Return {
-        dst: Register,
         r1: Register,
     },
     Print,
