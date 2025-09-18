@@ -1,11 +1,7 @@
 use crate::{
     error::kaori_error::KaoriError,
     frontend::{
-        cfgir::{
-            basic_block::BasicBlock,
-            basic_block_stream::{self, BasicBlockStream},
-            cfg_builder::{CfgBuilder, CfgIr},
-        },
+        cfgir::{basic_block_stream::BasicBlockStream, cfg_builder::CfgBuilder},
         lexer::{lexer::Lexer, token_stream::TokenStream},
         semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},
         syntax::{decl::Decl, parser::Parser},
@@ -42,16 +38,20 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
 }
 
 fn build_cfg_ir(hir: &[HirDecl]) -> BasicBlockStream {
-    let basic_block_stream = BasicBlockStream::default();
+    let mut basic_block_stream = BasicBlockStream::default();
 
-    let cfg_builder = CfgBuilder::new(basic_block_stream);
+    let mut cfg_builder = CfgBuilder::new(&mut basic_block_stream);
+
+    cfg_builder.build_ir(hir);
+
+    basic_block_stream
 }
 
 pub fn compile_source_code(source: String) -> Result<(), KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
     let hir = run_semantic_analysis(&mut ast)?;
-    let cfg_ir = build_cfg_ir();
+    let cfg_ir = build_cfg_ir(&hir);
 
     Ok(())
 }

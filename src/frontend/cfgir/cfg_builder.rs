@@ -24,7 +24,6 @@ pub struct CfgBuilder<'a> {
 }
 
 impl<'a> CfgBuilder<'a> {
-    #[allow(clippy::new_without_default)]
     pub fn new(basic_block_stream: &'a mut BasicBlockStream) -> Self {
         Self {
             basic_block_stream,
