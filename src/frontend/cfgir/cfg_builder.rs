@@ -70,6 +70,8 @@ impl<'a> CfgBuilder<'a> {
                 let r1 = self.visit_expression(right);
                 let dst = self.register_allocator.alloc_register();
 
+                self.nodes_register.insert(declaration.id, dst);
+
                 let instruction = CfgInstruction::LoadLocal { dst, r1 };
 
                 self.basic_block_stream.emit_instruction(instruction);
