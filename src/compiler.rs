@@ -1,32 +1,41 @@
 use crate::{
     error::kaori_error::KaoriError,
     frontend::{
-        lexer::{lexer::Lexer, token_stream::TokenStream},
+        lexer::{lexer::Lexer, token::Token, token_stream::TokenStream},
         semantic::{resolver::Resolver, type_checker::TypeChecker},
         syntax::parser::Parser,
     },
 };
 
-pub fn compiler(source: String) -> Result<(), KaoriError> {
-    let mut tokens = Vec::new();
+struct Compiler {
+    source: String,
+}
 
-    let mut lexer = Lexer::new(&source, &mut tokens);
+impl Compiler {
+    fn run_lexer(&self) -> Result<TokenStream, KaoriError> {
+        let mut tokens = Vec::new();
+        let mut lexer = Lexer::new(&self.source, &mut tokens);
+        lexer.tokenize()?;
 
-    lexer.tokenize()?;
+        let token_stream = TokenStream::new(self.source.to_string(), tokens);
+        Ok(token_stream)
+    }
 
-    let token_stream = TokenStream::new(source, tokens);
+    pub fn compile(&mut self) -> Result<(), KaoriError> {
+        let token_stream = self.run_lexer()?;
 
-    let mut parser = Parser::new(token_stream);
+        let mut parser = Parser::new(token_stream);
 
-    let mut ast = parser.parse()?;
+        let mut ast = parser.parse()?;
 
-    let mut resolver = Resolver::default();
+        let mut resolver = Resolver::default();
 
-    let hir = resolver.resolve(&mut ast)?;
+        let hir = resolver.resolve(&mut ast)?;
 
-    let mut type_checker = TypeChecker::default();
+        let mut type_checker = TypeChecker::default();
 
-    type_checker.check(&hir)?;
+        type_checker.check(&hir)?;
 
-    Ok(())
+        Ok(())
+    }
 }
