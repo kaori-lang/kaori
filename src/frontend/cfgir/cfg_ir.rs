@@ -252,6 +252,7 @@ impl CfgIr {
                 };
 
                 self.basic_block_stream.emit_instruction(instruction);
+
                 self.register_allocator.free_register(r1);
 
                 dst

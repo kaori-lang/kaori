@@ -91,10 +91,6 @@ pub enum CfgInstruction {
         dst: Register,
         value: BlockId,
     },
-    LoadConst {
-        dst: Register,
-        r1: Register,
-    },
     LoadLocal {
         dst: Register,
         r1: Register,
