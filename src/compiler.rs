@@ -1,41 +1,57 @@
 use crate::{
     error::kaori_error::KaoriError,
     frontend::{
-        lexer::{lexer::Lexer, token::Token, token_stream::TokenStream},
-        semantic::{resolver::Resolver, type_checker::TypeChecker},
-        syntax::parser::Parser,
+        cfgir::{
+            basic_block::BasicBlock,
+            basic_block_stream::{self, BasicBlockStream},
+            cfg_builder::{CfgBuilder, CfgIr},
+        },
+        lexer::{lexer::Lexer, token_stream::TokenStream},
+        semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},
+        syntax::{decl::Decl, parser::Parser},
     },
 };
 
-struct Compiler {
-    source: String,
+fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {
+    let mut tokens = Vec::new();
+    let mut lexer = Lexer::new(&source, &mut tokens);
+    lexer.tokenize()?;
+
+    let token_stream = TokenStream::new(source, tokens);
+    Ok(token_stream)
 }
 
-impl Compiler {
-    fn run_lexer(&self) -> Result<TokenStream, KaoriError> {
-        let mut tokens = Vec::new();
-        let mut lexer = Lexer::new(&self.source, &mut tokens);
-        lexer.tokenize()?;
+fn run_syntax_analysis(token_stream: TokenStream) -> Result<Vec<Decl>, KaoriError> {
+    let mut parser = Parser::new(token_stream);
 
-        let token_stream = TokenStream::new(self.source.to_string(), tokens);
-        Ok(token_stream)
-    }
+    let ast = parser.parse()?;
 
-    pub fn compile(&mut self) -> Result<(), KaoriError> {
-        let token_stream = self.run_lexer()?;
+    Ok(ast)
+}
 
-        let mut parser = Parser::new(token_stream);
+fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
+    let mut resolver = Resolver::default();
 
-        let mut ast = parser.parse()?;
+    let hir = resolver.resolve(ast)?;
 
-        let mut resolver = Resolver::default();
+    let mut type_checker = TypeChecker::default();
 
-        let hir = resolver.resolve(&mut ast)?;
+    type_checker.type_check(&hir)?;
 
-        let mut type_checker = TypeChecker::default();
+    Ok(hir)
+}
 
-        type_checker.check(&hir)?;
+fn build_cfg_ir(hir: &[HirDecl]) -> BasicBlockStream {
+    let basic_block_stream = BasicBlockStream::default();
 
-        Ok(())
-    }
+    let cfg_builder = CfgBuilder::new(basic_block_stream);
+}
+
+pub fn compile_source_code(source: String) -> Result<(), KaoriError> {
+    let token_stream = run_lexical_analysis(source)?;
+    let mut ast = run_syntax_analysis(token_stream)?;
+    let hir = run_semantic_analysis(&mut ast)?;
+    let cfg_ir = build_cfg_ir();
+
+    Ok(())
 }

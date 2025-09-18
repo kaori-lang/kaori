@@ -23,7 +23,7 @@ pub struct TypeChecker {
 }
 
 impl TypeChecker {
-    pub fn check(&mut self, declarations: &[HirDecl]) -> Result<(), KaoriError> {
+    pub fn type_check(&mut self, declarations: &[HirDecl]) -> Result<(), KaoriError> {
         for declaration in declarations.iter() {
             match &declaration.kind {
                 HirDeclKind::Function { .. } => {

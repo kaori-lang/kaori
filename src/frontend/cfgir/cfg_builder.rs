@@ -16,25 +16,25 @@ use super::{
     cfg_instruction::CfgInstruction, register::Register, register_allocator::RegisterAllocator,
 };
 
-pub struct CfgIr {
-    basic_block_stream: BasicBlockStream,
+pub struct CfgBuilder<'a> {
+    basic_block_stream: &'a mut BasicBlockStream,
     register_allocator: RegisterAllocator,
     nodes_register: HashMap<HirId, Register>,
     nodes_bb: HashMap<HirId, BlockId>,
 }
 
-impl CfgIr {
+impl<'a> CfgBuilder<'a> {
     #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn new(basic_block_stream: &'a mut BasicBlockStream) -> Self {
         Self {
-            basic_block_stream: BasicBlockStream::default(),
+            basic_block_stream,
             register_allocator: RegisterAllocator::new(),
             nodes_register: HashMap::new(),
             nodes_bb: HashMap::new(),
         }
     }
 
-    pub fn check(&mut self, declarations: &[HirDecl]) {
+    pub fn build_ir(&mut self, declarations: &[HirDecl]) {
         for declaration in declarations {
             match &declaration.kind {
                 HirDeclKind::Function { .. } => {

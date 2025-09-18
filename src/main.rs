@@ -5,7 +5,7 @@ use std::process::ExitCode;
 #[allow(unused_imports)]
 use std::{fs, time::Instant};
 
-use kaori::{error::kaori_error::KaoriError, frontend::parse_and_analyze::parse_and_analyze};
+use kaori::{compiler::compile_source_code, error::kaori_error::KaoriError};
 
 fn main() -> ExitCode {
     let source_to_run = Some("test_suite/primitives.kaori".to_owned()); // Debug purposes
@@ -34,8 +34,7 @@ fn main() -> ExitCode {
 // TODO: remove the lint suppressions after using unused variables.
 #[allow(unused_variables)]
 pub fn run_program(source: String) -> Result<(), KaoriError> {
-    #[allow(clippy::let_unit_value)]
-    let resolved_declarations = parse_and_analyze(source)?;
+    let compilation = compile_source_code(source)?;
 
     /*  let mut bytecode = Bytecode::default();
 
