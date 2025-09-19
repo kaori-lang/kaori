@@ -1,4 +1,4 @@
-use super::{basic_block::BasicBlock, block_id::BlockId, cfg_instruction::CfgInstruction};
+use super::{basic_block::BasicBlock, block_id::BlockId, virtual_reg_inst::VirtualRegInst};
 
 #[derive(Default, Debug)]
 pub struct BasicBlockStream {
@@ -7,7 +7,7 @@ pub struct BasicBlockStream {
 }
 
 impl BasicBlockStream {
-    pub fn emit_instruction(&mut self, instruction: CfgInstruction) {
+    pub fn emit_instruction(&mut self, instruction: VirtualRegInst) {
         let index = self.current_basic_block.0;
         let basic_block = &mut self.basic_blocks[index];
 

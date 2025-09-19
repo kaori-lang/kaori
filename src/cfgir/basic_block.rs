@@ -1,9 +1,9 @@
-use super::{block_id::BlockId, cfg_instruction::CfgInstruction};
+use super::{block_id::BlockId, virtual_reg_inst::VirtualRegInst};
 
 #[derive(Debug)]
 pub struct BasicBlock {
     pub id: BlockId,
-    pub instructions: Vec<CfgInstruction>,
+    pub instructions: Vec<VirtualRegInst>,
     pub terminator: Terminator,
 }
 

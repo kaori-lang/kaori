@@ -13,21 +13,21 @@ use crate::{
 
 use super::{
     basic_block::Terminator, basic_block_stream::BasicBlockStream, block_id::BlockId,
-    cfg_instruction::CfgInstruction, register::Register, register_allocator::RegisterAllocator,
+    register::Register, virtual_reg_inst::VirtualRegInst,
 };
 
 pub struct CfgBuilder<'a> {
     basic_block_stream: &'a mut BasicBlockStream,
-    register_allocator: RegisterAllocator,
-    nodes_register: HashMap<HirId, Register>,
+    nodes_register: HashMap<HirId, usize>,
     nodes_bb: HashMap<HirId, BlockId>,
+    register: usize,
 }
 
 impl<'a> CfgBuilder<'a> {
     pub fn new(basic_block_stream: &'a mut BasicBlockStream) -> Self {
         Self {
             basic_block_stream,
-            register_allocator: RegisterAllocator::new(),
+            register: 0,
             nodes_register: HashMap::new(),
             nodes_bb: HashMap::new(),
         }
@@ -57,6 +57,14 @@ impl<'a> CfgBuilder<'a> {
         }
     }
 
+    fn allocate_register(&mut self) -> usize {
+        let register = self.register;
+
+        self.register += 1;
+
+        register
+    }
+
     fn visit_ast_node(&mut self, node: &HirNode) {
         match node {
             HirNode::Declaration(declaration) => self.visit_declaration(declaration),
@@ -68,18 +76,18 @@ impl<'a> CfgBuilder<'a> {
         match &declaration.kind {
             HirDeclKind::Variable { right } => {
                 let r1 = self.visit_expression(right);
-                let dst = self.register_allocator.alloc_register();
+                let dst = self.allocate_register();
 
                 self.nodes_register.insert(declaration.id, dst);
 
-                let instruction = CfgInstruction::LoadLocal { dst, r1 };
+                let instruction = VirtualRegInst::LoadLocal { dst, r1 };
 
                 self.basic_block_stream.emit_instruction(instruction);
             }
 
             HirDeclKind::Function { body, parameters } => {
                 for parameter in parameters {
-                    let register = self.register_allocator.alloc_register();
+                    let register = self.allocate_register();
                     self.nodes_register.insert(parameter.id, register);
                 }
 
@@ -90,8 +98,6 @@ impl<'a> CfgBuilder<'a> {
                 for node in body {
                     self.visit_ast_node(node);
                 }
-
-                self.register_allocator.free_all_registers();
             }
             HirDeclKind::Struct { fields } => {}
             HirDeclKind::Parameter => {}
@@ -183,7 +189,7 @@ impl<'a> CfgBuilder<'a> {
                 if let Some(expr) = expr {
                     let r1 = self.visit_expression(expr);
 
-                    let instruction = CfgInstruction::Return { r1 };
+                    let instruction = VirtualRegInst::Return { r1 };
 
                     self.basic_block_stream.emit_instruction(instruction);
                 }
@@ -202,7 +208,7 @@ impl<'a> CfgBuilder<'a> {
                 let dst = self.visit_expression(left);
                 let r1 = self.visit_expression(right);
 
-                let instruction = CfgInstruction::StoreLocal { dst, r1 };
+                let instruction = VirtualRegInst::StoreLocal { dst, r1 };
                 self.basic_block_stream.emit_instruction(instruction);
 
                 self.register_allocator.free_register(r1);
@@ -216,25 +222,25 @@ impl<'a> CfgBuilder<'a> {
             } => {
                 let r1 = self.visit_expression(left);
                 let r2 = self.visit_expression(right);
-                let dst = self.register_allocator.alloc_register();
+                let dst = self.allocate_register();
 
                 let instruction = match operator.kind {
-                    BinaryOpKind::Add => CfgInstruction::Add { dst, r1, r2 },
-                    BinaryOpKind::Subtract => CfgInstruction::Subtract { dst, r1, r2 },
-                    BinaryOpKind::Multiply => CfgInstruction::Multiply { dst, r1, r2 },
-                    BinaryOpKind::Divide => CfgInstruction::Divide { dst, r1, r2 },
-                    BinaryOpKind::Modulo => CfgInstruction::Modulo { dst, r1, r2 },
+                    BinaryOpKind::Add => VirtualRegInst::Add { dst, r1, r2 },
+                    BinaryOpKind::Subtract => VirtualRegInst::Subtract { dst, r1, r2 },
+                    BinaryOpKind::Multiply => VirtualRegInst::Multiply { dst, r1, r2 },
+                    BinaryOpKind::Divide => VirtualRegInst::Divide { dst, r1, r2 },
+                    BinaryOpKind::Modulo => VirtualRegInst::Modulo { dst, r1, r2 },
 
-                    BinaryOpKind::Equal => CfgInstruction::Equal { dst, r1, r2 },
-                    BinaryOpKind::NotEqual => CfgInstruction::NotEqual { dst, r1, r2 },
-                    BinaryOpKind::Greater => CfgInstruction::Greater { dst, r1, r2 },
-                    BinaryOpKind::GreaterEqual => CfgInstruction::GreaterEqual { dst, r1, r2 },
-                    BinaryOpKind::Less => CfgInstruction::Less { dst, r1, r2 },
-                    BinaryOpKind::LessEqual => CfgInstruction::LessEqual { dst, r1, r2 },
+                    BinaryOpKind::Equal => VirtualRegInst::Equal { dst, r1, r2 },
+                    BinaryOpKind::NotEqual => VirtualRegInst::NotEqual { dst, r1, r2 },
+                    BinaryOpKind::Greater => VirtualRegInst::Greater { dst, r1, r2 },
+                    BinaryOpKind::GreaterEqual => VirtualRegInst::GreaterEqual { dst, r1, r2 },
+                    BinaryOpKind::Less => VirtualRegInst::Less { dst, r1, r2 },
+                    BinaryOpKind::LessEqual => VirtualRegInst::LessEqual { dst, r1, r2 },
 
                     // gonna be changed
-                    BinaryOpKind::And => CfgInstruction::And { dst, r1, r2 },
-                    BinaryOpKind::Or => CfgInstruction::Or { dst, r1, r2 },
+                    BinaryOpKind::And => VirtualRegInst::And { dst, r1, r2 },
+                    BinaryOpKind::Or => VirtualRegInst::Or { dst, r1, r2 },
                 };
 
                 self.basic_block_stream.emit_instruction(instruction);
@@ -246,11 +252,11 @@ impl<'a> CfgBuilder<'a> {
             }
             HirExprKind::Unary { right, operator } => {
                 let r1 = self.visit_expression(right);
-                let dst = self.register_allocator.alloc_register();
+                let dst = self.allocate_register();
 
                 let instruction = match operator.kind {
-                    UnaryOpKind::Negate => CfgInstruction::Negate { dst, r1 },
-                    UnaryOpKind::Not => CfgInstruction::Not { dst, r1 },
+                    UnaryOpKind::Negate => VirtualRegInst::Negate { dst, r1 },
+                    UnaryOpKind::Not => VirtualRegInst::Not { dst, r1 },
                 };
 
                 self.basic_block_stream.emit_instruction(instruction);
@@ -260,11 +266,11 @@ impl<'a> CfgBuilder<'a> {
                 dst
             }
             HirExprKind::FunctionCall { callee, arguments } => {
-                let dst = self.register_allocator.alloc_register();
+                let dst = self.allocate_register();
 
                 // Number of registers being used by current frame
                 let registers = self.register_allocator.max_allocated_register() + 1;
-                let call_instruction = CfgInstruction::Call { registers };
+                let call_instruction = VirtualRegInst::Call { registers };
 
                 self.basic_block_stream.emit_instruction(call_instruction);
 
@@ -272,7 +278,7 @@ impl<'a> CfgBuilder<'a> {
                     let r1 = self.visit_expression(argument);
                     let dst = Register::new(dst as u8);
 
-                    let instruction = CfgInstruction::StoreLocal { dst, r1 };
+                    let instruction = VirtualRegInst::StoreLocal { dst, r1 };
 
                     self.basic_block_stream.emit_instruction(instruction);
                 }
@@ -284,29 +290,29 @@ impl<'a> CfgBuilder<'a> {
 
             HirExprKind::VariableRef(id) => {
                 let r1 = *self.nodes_register.get(id).unwrap();
-                let dst = self.register_allocator.alloc_register();
+                let dst = self.allocate_register();
 
-                let instruction = CfgInstruction::LoadLocal { dst, r1 };
+                let instruction = VirtualRegInst::LoadLocal { dst, r1 };
 
                 self.basic_block_stream.emit_instruction(instruction);
 
                 dst
             }
             HirExprKind::FunctionRef(id) => {
-                let dst = self.register_allocator.alloc_register();
+                let dst = self.allocate_register();
 
                 let value = *self.nodes_bb.get(id).unwrap();
 
-                let instruction = CfgInstruction::FunctionConst { dst, value };
+                let instruction = VirtualRegInst::FunctionConst { dst, value };
 
                 self.basic_block_stream.emit_instruction(instruction);
 
                 dst
             }
             HirExprKind::StringLiteral(value) => {
-                let dst = self.register_allocator.alloc_register();
+                let dst = self.allocate_register();
 
-                let instruction = CfgInstruction::StringConst {
+                let instruction = VirtualRegInst::StringConst {
                     dst,
                     value: value.to_owned(),
                 };
@@ -316,18 +322,18 @@ impl<'a> CfgBuilder<'a> {
                 dst
             }
             HirExprKind::BooleanLiteral(value) => {
-                let dst = self.register_allocator.alloc_register();
+                let dst = self.allocate_register();
 
-                let instruction = CfgInstruction::BooleanConst { dst, value: *value };
+                let instruction = VirtualRegInst::BooleanConst { dst, value: *value };
 
                 self.basic_block_stream.emit_instruction(instruction);
 
                 dst
             }
             HirExprKind::NumberLiteral(value) => {
-                let dst = self.register_allocator.alloc_register();
+                let dst = self.allocate_register();
 
-                let instruction = CfgInstruction::NumberConst { dst, value: *value };
+                let instruction = VirtualRegInst::NumberConst { dst, value: *value };
 
                 self.basic_block_stream.emit_instruction(instruction);
 
