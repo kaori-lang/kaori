@@ -12,16 +12,14 @@ impl BasicBlock {
         Self {
             id,
             instructions: Vec::new(),
-            terminator: Terminator::None,
+            terminator: Terminator::Return,
         }
     }
 }
 
 #[derive(Debug)]
 pub enum Terminator {
-    Conditional { then_bb: BlockId, else_bb: BlockId },
-    Jump(BlockId),
-    JumpIfFalse(BlockId),
-    None,
+    CondGoto { r#true: BlockId, r#false: BlockId },
+    Goto(BlockId),
     Return,
 }

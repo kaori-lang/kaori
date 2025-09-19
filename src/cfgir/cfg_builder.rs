@@ -115,14 +115,21 @@ impl<'a> CfgBuilder<'a> {
                 then_branch,
                 else_branch,
             } => {
-                self.visit_expression(condition);
+                let previous_bb = self.basic_block_stream.current_basic_block;
 
-                let condition_bb = self.basic_block_stream.current_basic_block;
+                let condition_bb = self.basic_block_stream.create_basic_block();
+
+                self.basic_block_stream
+                    .get_basic_block(previous_bb)
+                    .terminator = Terminator::Goto(condition_bb);
+
                 let then_bb = self.basic_block_stream.create_basic_block();
                 let else_bb = self.basic_block_stream.create_basic_block();
 
-                self.basic_block_stream.set_current(then_bb);
+                self.basic_block_stream.set_current(condition_bb);
+                self.visit_expression(condition);
 
+                self.basic_block_stream.set_current(then_bb);
                 self.visit_statement(then_branch);
 
                 if let Some(branch) = else_branch {
@@ -132,15 +139,18 @@ impl<'a> CfgBuilder<'a> {
 
                 let terminator_block = self.basic_block_stream.create_basic_block();
 
-                self.basic_block_stream.get_basic_block(then_bb).terminator =
-                    Terminator::Jump(terminator_block);
-
-                self.basic_block_stream.get_basic_block(else_bb).terminator =
-                    Terminator::Jump(terminator_block);
-
                 self.basic_block_stream
                     .get_basic_block(condition_bb)
-                    .terminator = Terminator::Conditional { then_bb, else_bb };
+                    .terminator = Terminator::CondGoto {
+                    r#true: then_bb,
+                    r#false: else_bb,
+                };
+
+                self.basic_block_stream.get_basic_block(then_bb).terminator =
+                    Terminator::Goto(terminator_block);
+
+                self.basic_block_stream.get_basic_block(else_bb).terminator =
+                    Terminator::Goto(terminator_block);
 
                 self.basic_block_stream.set_current(terminator_block);
             }
@@ -206,6 +216,7 @@ impl<'a> CfgBuilder<'a> {
                 self.basic_block_stream.emit_instruction(instruction);
 
                 self.register_allocator.free_register(r1);
+
                 dst
             }
             HirExprKind::Binary {
