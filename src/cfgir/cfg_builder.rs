@@ -115,19 +115,11 @@ impl<'a> CfgBuilder<'a> {
                 then_branch,
                 else_branch,
             } => {
-                let previous_bb = self.basic_block_stream.current_basic_block;
+                self.visit_expression(condition);
 
-                let condition_bb = self.basic_block_stream.create_basic_block();
-
-                self.basic_block_stream
-                    .get_basic_block(previous_bb)
-                    .terminator = Terminator::Goto(condition_bb);
-
+                let condition_bb = self.basic_block_stream.current_basic_block;
                 let then_bb = self.basic_block_stream.create_basic_block();
                 let else_bb = self.basic_block_stream.create_basic_block();
-
-                self.basic_block_stream.set_current(condition_bb);
-                self.visit_expression(condition);
 
                 self.basic_block_stream.set_current(then_bb);
                 self.visit_statement(then_branch);
@@ -163,18 +155,10 @@ impl<'a> CfgBuilder<'a> {
                     self.visit_declaration(init);
                 }
 
-                let previous_bb = self.basic_block_stream.current_basic_block;
-
-                let condition_bb = self.basic_block_stream.create_basic_block();
-
-                self.basic_block_stream
-                    .get_basic_block(previous_bb)
-                    .terminator = Terminator::Goto(condition_bb);
-
-                let block_bb = self.basic_block_stream.create_basic_block();
-
-                self.basic_block_stream.current_basic_block = condition_bb;
                 self.visit_expression(condition);
+
+                let condition_bb = self.basic_block_stream.current_basic_block;
+                let block_bb = self.basic_block_stream.create_basic_block();
 
                 self.basic_block_stream.current_basic_block = block_bb;
                 self.visit_statement(block);
