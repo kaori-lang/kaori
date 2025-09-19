@@ -163,7 +163,14 @@ impl<'a> CfgBuilder<'a> {
                     self.visit_declaration(init);
                 }
 
+                let previous_bb = self.basic_block_stream.current_basic_block;
+
                 let condition_bb = self.basic_block_stream.create_basic_block();
+
+                self.basic_block_stream
+                    .get_basic_block(previous_bb)
+                    .terminator = Terminator::Goto(condition_bb);
+
                 let block_bb = self.basic_block_stream.create_basic_block();
 
                 self.basic_block_stream.current_basic_block = condition_bb;
@@ -176,10 +183,13 @@ impl<'a> CfgBuilder<'a> {
 
                 self.basic_block_stream
                     .get_basic_block(condition_bb)
-                    .terminator = Terminator::JumpIfFalse(terminator_bb);
+                    .terminator = Terminator::CondGoto {
+                    r#true: block_bb,
+                    r#false: terminator_bb,
+                };
 
                 self.basic_block_stream.get_basic_block(block_bb).terminator =
-                    Terminator::Jump(condition_bb);
+                    Terminator::Goto(condition_bb);
 
                 self.basic_block_stream.current_basic_block = terminator_bb;
             }
