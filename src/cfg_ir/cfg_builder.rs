@@ -13,7 +13,7 @@ use crate::{
 
 use super::{
     basic_block::Terminator, basic_block_stream::BasicBlockStream, block_id::BlockId,
-    register::Register, virtual_reg_inst::VirtualRegInst,
+    virtual_reg_inst::VirtualRegInst,
 };
 
 pub struct CfgBuilder<'a> {
@@ -80,7 +80,7 @@ impl<'a> CfgBuilder<'a> {
 
                 self.nodes_register.insert(declaration.id, dst);
 
-                let instruction = VirtualRegInst::LoadLocal { dst, r1 };
+                let instruction = VirtualRegInst::Move { dst, r1 };
 
                 self.basic_block_stream.emit_instruction(instruction);
             }
@@ -202,16 +202,15 @@ impl<'a> CfgBuilder<'a> {
         };
     }
 
-    fn visit_expression(&mut self, expression: &HirExpr) -> Register {
+    fn visit_expression(&mut self, expression: &HirExpr) -> usize {
         match &expression.kind {
             HirExprKind::Assign { left, right } => {
                 let dst = self.visit_expression(left);
                 let r1 = self.visit_expression(right);
 
-                let instruction = VirtualRegInst::StoreLocal { dst, r1 };
-                self.basic_block_stream.emit_instruction(instruction);
+                let instruction = VirtualRegInst::Move { dst, r1 };
 
-                self.register_allocator.free_register(r1);
+                self.basic_block_stream.emit_instruction(instruction);
 
                 dst
             }
@@ -245,9 +244,6 @@ impl<'a> CfgBuilder<'a> {
 
                 self.basic_block_stream.emit_instruction(instruction);
 
-                self.register_allocator.free_register(r1);
-                self.register_allocator.free_register(r2);
-
                 dst
             }
             HirExprKind::Unary { right, operator } => {
@@ -261,24 +257,19 @@ impl<'a> CfgBuilder<'a> {
 
                 self.basic_block_stream.emit_instruction(instruction);
 
-                self.register_allocator.free_register(r1);
-
                 dst
             }
             HirExprKind::FunctionCall { callee, arguments } => {
                 let dst = self.allocate_register();
 
-                // Number of registers being used by current frame
-                let registers = self.register_allocator.max_allocated_register() + 1;
-                let call_instruction = VirtualRegInst::Call { registers };
+                let call_instruction = VirtualRegInst::Call;
 
                 self.basic_block_stream.emit_instruction(call_instruction);
 
                 for (dst, argument) in arguments.iter().enumerate() {
                     let r1 = self.visit_expression(argument);
-                    let dst = Register::new(dst as u8);
 
-                    let instruction = VirtualRegInst::StoreLocal { dst, r1 };
+                    let instruction = VirtualRegInst::Move { dst, r1 };
 
                     self.basic_block_stream.emit_instruction(instruction);
                 }
@@ -289,12 +280,7 @@ impl<'a> CfgBuilder<'a> {
             }
 
             HirExprKind::VariableRef(id) => {
-                let r1 = *self.nodes_register.get(id).unwrap();
-                let dst = self.allocate_register();
-
-                let instruction = VirtualRegInst::LoadLocal { dst, r1 };
-
-                self.basic_block_stream.emit_instruction(instruction);
+                let dst = *self.nodes_register.get(id).unwrap();
 
                 dst
             }

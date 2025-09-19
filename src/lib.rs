@@ -1,4 +1,4 @@
-pub mod cfgir;
+pub mod cfg_ir;
 pub mod compiler;
 pub mod error;
 pub mod lexer;

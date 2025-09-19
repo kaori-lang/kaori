@@ -8,7 +8,7 @@ use std::{fs, time::Instant};
 use kaori::{compiler::compile_source_code, error::kaori_error::KaoriError};
 
 fn main() -> ExitCode {
-    let source_to_run = Some("test_suite/fib_recur.kr".to_owned()); // Debug purposes
+    let source_to_run = Some("test_suite/test.kr".to_owned()); // Debug purposes
     //let source_to_run = args().nth(1);
 
     if source_to_run.is_none() {

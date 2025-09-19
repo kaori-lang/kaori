@@ -21,9 +21,8 @@ pub enum VirtualRegInst {
     NumberConst { dst: usize, value: f64 },
     BooleanConst { dst: usize, value: bool },
     FunctionConst { dst: usize, value: BlockId },
-    LoadLocal { dst: usize, r1: usize },
-    StoreLocal { dst: usize, r1: usize },
-    Call { usizes: u8 },
+    Move { dst: usize, r1: usize },
+    Call,
     Return { r1: usize },
     Print,
 }
