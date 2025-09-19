@@ -133,7 +133,7 @@ impl<'a> CfgBuilder<'a> {
 
                 self.basic_block_stream
                     .get_basic_block(condition_bb)
-                    .terminator = Terminator::CondGoto {
+                    .terminator = Terminator::Branch {
                     r#true: then_bb,
                     r#false: else_bb,
                 };
@@ -167,7 +167,7 @@ impl<'a> CfgBuilder<'a> {
 
                 self.basic_block_stream
                     .get_basic_block(condition_bb)
-                    .terminator = Terminator::CondGoto {
+                    .terminator = Terminator::Branch {
                     r#true: block_bb,
                     r#false: terminator_bb,
                 };
@@ -192,10 +192,6 @@ impl<'a> CfgBuilder<'a> {
                 self.basic_block_stream
                     .get_basic_block(current_bb)
                     .terminator = Terminator::Return;
-
-                let bb = self.basic_block_stream.create_basic_block();
-
-                self.basic_block_stream.current_basic_block = bb;
             }
         };
     }

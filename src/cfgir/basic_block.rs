@@ -19,7 +19,7 @@ impl BasicBlock {
 
 #[derive(Debug)]
 pub enum Terminator {
-    CondGoto { r#true: BlockId, r#false: BlockId },
+    Branch { r#true: BlockId, r#false: BlockId },
     Goto(BlockId),
     Return,
 }

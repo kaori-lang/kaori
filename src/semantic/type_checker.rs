@@ -77,7 +77,7 @@ impl TypeChecker {
 
                 self.types.insert(declaration.id, declaration.ty.to_owned());
             }
-            HirDeclKind::Function { body, .. } => {
+            HirDeclKind::Function { body, parameters } => {
                 let return_ty = match &declaration.ty.kind {
                     HirTyKind::Function { return_ty, .. } => {
                         return_ty.as_ref().map(|ty| self.get_type_def(ty))
@@ -105,12 +105,18 @@ impl TypeChecker {
                     ));
                 }
 
+                for parameter in parameters {
+                    self.type_check_declaration(parameter)?;
+                }
+
                 for node in body {
                     self.type_check_ast_node(node)?;
                 }
             }
             HirDeclKind::Struct { .. } => {}
-            HirDeclKind::Parameter => {}
+            HirDeclKind::Parameter => {
+                self.types.insert(declaration.id, declaration.ty.to_owned());
+            }
             HirDeclKind::Field => {}
         };
 
