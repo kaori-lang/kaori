@@ -2,27 +2,102 @@ use super::block_id::BlockId;
 
 #[derive(Debug)]
 pub enum VirtualRegInst {
-    Add { dst: usize, r1: usize, r2: usize },
-    Subtract { dst: usize, r1: usize, r2: usize },
-    Multiply { dst: usize, r1: usize, r2: usize },
-    Divide { dst: usize, r1: usize, r2: usize },
-    Modulo { dst: usize, r1: usize, r2: usize },
-    Equal { dst: usize, r1: usize, r2: usize },
-    NotEqual { dst: usize, r1: usize, r2: usize },
-    Greater { dst: usize, r1: usize, r2: usize },
-    GreaterEqual { dst: usize, r1: usize, r2: usize },
-    Less { dst: usize, r1: usize, r2: usize },
-    LessEqual { dst: usize, r1: usize, r2: usize },
-    And { dst: usize, r1: usize, r2: usize },
-    Or { dst: usize, r1: usize, r2: usize },
-    Negate { dst: usize, r1: usize },
-    Not { dst: usize, r1: usize },
-    StringConst { dst: usize, value: String },
-    NumberConst { dst: usize, value: f64 },
-    BooleanConst { dst: usize, value: bool },
-    FunctionConst { dst: usize, value: BlockId },
-    Move { dst: usize, r1: usize },
+    Add {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    Subtract {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    Multiply {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    Divide {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    Modulo {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    Equal {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    NotEqual {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    Greater {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    GreaterEqual {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    Less {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    LessEqual {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    And {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    Or {
+        dest: usize,
+        src1: usize,
+        src2: usize,
+    },
+    Negate {
+        dest: usize,
+        src1: usize,
+    },
+    Not {
+        dest: usize,
+        src1: usize,
+    },
+    StringConst {
+        dest: usize,
+        value: String,
+    },
+    NumberConst {
+        dest: usize,
+        value: f64,
+    },
+    BooleanConst {
+        dest: usize,
+        value: bool,
+    },
+    FunctionConst {
+        dest: usize,
+        value: BlockId,
+    },
+    Move {
+        dest: usize,
+        src1: usize,
+    },
     Call,
-    Return { r1: usize },
+    Return {
+        source: usize,
+    },
     Print,
 }

@@ -31,9 +31,9 @@ impl Parser {
         let span = self.token_stream.span();
         let name = self.token_stream.lexeme().to_owned();
 
-        let identifier = Ty::identifier(name, span);
-
         self.token_stream.consume(TokenKind::Identifier)?;
+
+        let identifier = Ty::identifier(name, span);
 
         Ok(identifier)
     }

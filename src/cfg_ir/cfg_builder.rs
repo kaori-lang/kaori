@@ -37,7 +37,7 @@ impl<'a> CfgBuilder<'a> {
         for declaration in declarations {
             match &declaration.kind {
                 HirDeclKind::Function { .. } => {
-                    let bb_id = self.basic_block_stream.create_basic_block();
+                    let bb_id = self.basic_block_stream.create_bb();
 
                     self.nodes_bb.insert(declaration.id, bb_id);
                 }
@@ -75,12 +75,12 @@ impl<'a> CfgBuilder<'a> {
     fn visit_declaration(&mut self, declaration: &HirDecl) {
         match &declaration.kind {
             HirDeclKind::Variable { right } => {
-                let r1 = self.visit_expression(right);
-                let dst = self.allocate_register();
+                let src1 = self.visit_expression(right);
+                let dest = self.allocate_register();
 
-                self.nodes_register.insert(declaration.id, dst);
+                self.nodes_register.insert(declaration.id, dest);
 
-                let instruction = VirtualRegInst::Move { dst, r1 };
+                let instruction = VirtualRegInst::Move { dest, src1 };
 
                 self.basic_block_stream.emit_instruction(instruction);
             }
@@ -93,7 +93,7 @@ impl<'a> CfgBuilder<'a> {
 
                 let function_bb = *self.nodes_bb.get(&declaration.id).unwrap();
 
-                self.basic_block_stream.current_basic_block = function_bb;
+                self.basic_block_stream.current_bb = function_bb;
 
                 for node in body {
                     self.visit_ast_node(node);
@@ -123,34 +123,31 @@ impl<'a> CfgBuilder<'a> {
             } => {
                 self.visit_expression(condition);
 
-                let condition_bb = self.basic_block_stream.current_basic_block;
-                let then_bb = self.basic_block_stream.create_basic_block();
-                let else_bb = self.basic_block_stream.create_basic_block();
+                let condition_bb = self.basic_block_stream.current_bb;
+                let then_bb = self.basic_block_stream.create_bb();
+                let else_bb = self.basic_block_stream.create_bb();
+                let terminator_block = self.basic_block_stream.create_bb();
 
-                self.basic_block_stream.set_current(then_bb);
+                self.basic_block_stream.set_current_bb(then_bb);
                 self.visit_statement(then_branch);
 
                 if let Some(branch) = else_branch {
-                    self.basic_block_stream.set_current(else_bb);
+                    self.basic_block_stream.set_current_bb(else_bb);
                     self.visit_statement(branch);
                 }
 
-                let terminator_block = self.basic_block_stream.create_basic_block();
-
-                self.basic_block_stream
-                    .get_basic_block(condition_bb)
-                    .terminator = Terminator::Branch {
+                self.basic_block_stream.get_bb(condition_bb).terminator = Terminator::Branch {
                     r#true: then_bb,
                     r#false: else_bb,
                 };
 
-                self.basic_block_stream.get_basic_block(then_bb).terminator =
+                self.basic_block_stream.get_bb(then_bb).terminator =
                     Terminator::Goto(terminator_block);
 
-                self.basic_block_stream.get_basic_block(else_bb).terminator =
+                self.basic_block_stream.get_bb(else_bb).terminator =
                     Terminator::Goto(terminator_block);
 
-                self.basic_block_stream.set_current(terminator_block);
+                self.basic_block_stream.set_current_bb(terminator_block);
             }
             HirStmtKind::Loop {
                 init,
@@ -160,44 +157,43 @@ impl<'a> CfgBuilder<'a> {
                 if let Some(init) = init {
                     self.visit_declaration(init);
                 }
+                let previous_bb = self.basic_block_stream.current_bb;
+                let condition_bb = self.basic_block_stream.create_bb();
+                let block_bb = self.basic_block_stream.create_bb();
+                let terminator_bb = self.basic_block_stream.create_bb();
 
+                self.basic_block_stream.current_bb = condition_bb;
                 self.visit_expression(condition);
 
-                let condition_bb = self.basic_block_stream.current_basic_block;
-                let block_bb = self.basic_block_stream.create_basic_block();
-
-                self.basic_block_stream.current_basic_block = block_bb;
+                self.basic_block_stream.current_bb = block_bb;
                 self.visit_statement(block);
 
-                let terminator_bb = self.basic_block_stream.create_basic_block();
+                self.basic_block_stream.get_bb(previous_bb).terminator =
+                    Terminator::Goto(condition_bb);
 
-                self.basic_block_stream
-                    .get_basic_block(condition_bb)
-                    .terminator = Terminator::Branch {
+                self.basic_block_stream.get_bb(condition_bb).terminator = Terminator::Branch {
                     r#true: block_bb,
                     r#false: terminator_bb,
                 };
 
-                self.basic_block_stream.get_basic_block(block_bb).terminator =
+                self.basic_block_stream.get_bb(block_bb).terminator =
                     Terminator::Goto(condition_bb);
 
-                self.basic_block_stream.current_basic_block = terminator_bb;
+                self.basic_block_stream.current_bb = terminator_bb;
             }
             HirStmtKind::Break => {}
             HirStmtKind::Continue => {}
             HirStmtKind::Return(expr) => {
                 if let Some(expr) = expr {
-                    let r1 = self.visit_expression(expr);
+                    let source = self.visit_expression(expr);
 
-                    let instruction = VirtualRegInst::Return { r1 };
+                    let instruction = VirtualRegInst::Return { source };
 
                     self.basic_block_stream.emit_instruction(instruction);
                 }
-                let current_bb = self.basic_block_stream.current_basic_block;
+                let current_bb = self.basic_block_stream.current_bb;
 
-                self.basic_block_stream
-                    .get_basic_block(current_bb)
-                    .terminator = Terminator::Return;
+                self.basic_block_stream.get_bb(current_bb).terminator = Terminator::Return;
             }
         };
     }
@@ -205,125 +201,127 @@ impl<'a> CfgBuilder<'a> {
     fn visit_expression(&mut self, expression: &HirExpr) -> usize {
         match &expression.kind {
             HirExprKind::Assign { left, right } => {
-                let dst = self.visit_expression(left);
-                let r1 = self.visit_expression(right);
+                let dest = self.visit_expression(left);
+                let src1 = self.visit_expression(right);
 
-                let instruction = VirtualRegInst::Move { dst, r1 };
+                let instruction = VirtualRegInst::Move { dest, src1 };
 
                 self.basic_block_stream.emit_instruction(instruction);
 
-                dst
+                dest
             }
             HirExprKind::Binary {
                 operator,
                 left,
                 right,
             } => {
-                let r1 = self.visit_expression(left);
-                let r2 = self.visit_expression(right);
-                let dst = self.allocate_register();
+                let src1 = self.visit_expression(left);
+                let src2 = self.visit_expression(right);
+                let dest = self.allocate_register();
 
                 let instruction = match operator.kind {
-                    BinaryOpKind::Add => VirtualRegInst::Add { dst, r1, r2 },
-                    BinaryOpKind::Subtract => VirtualRegInst::Subtract { dst, r1, r2 },
-                    BinaryOpKind::Multiply => VirtualRegInst::Multiply { dst, r1, r2 },
-                    BinaryOpKind::Divide => VirtualRegInst::Divide { dst, r1, r2 },
-                    BinaryOpKind::Modulo => VirtualRegInst::Modulo { dst, r1, r2 },
+                    BinaryOpKind::Add => VirtualRegInst::Add { dest, src1, src2 },
+                    BinaryOpKind::Subtract => VirtualRegInst::Subtract { dest, src1, src2 },
+                    BinaryOpKind::Multiply => VirtualRegInst::Multiply { dest, src1, src2 },
+                    BinaryOpKind::Divide => VirtualRegInst::Divide { dest, src1, src2 },
+                    BinaryOpKind::Modulo => VirtualRegInst::Modulo { dest, src1, src2 },
 
-                    BinaryOpKind::Equal => VirtualRegInst::Equal { dst, r1, r2 },
-                    BinaryOpKind::NotEqual => VirtualRegInst::NotEqual { dst, r1, r2 },
-                    BinaryOpKind::Greater => VirtualRegInst::Greater { dst, r1, r2 },
-                    BinaryOpKind::GreaterEqual => VirtualRegInst::GreaterEqual { dst, r1, r2 },
-                    BinaryOpKind::Less => VirtualRegInst::Less { dst, r1, r2 },
-                    BinaryOpKind::LessEqual => VirtualRegInst::LessEqual { dst, r1, r2 },
+                    BinaryOpKind::Equal => VirtualRegInst::Equal { dest, src1, src2 },
+                    BinaryOpKind::NotEqual => VirtualRegInst::NotEqual { dest, src1, src2 },
+                    BinaryOpKind::Greater => VirtualRegInst::Greater { dest, src1, src2 },
+                    BinaryOpKind::GreaterEqual => VirtualRegInst::GreaterEqual { dest, src1, src2 },
+                    BinaryOpKind::Less => VirtualRegInst::Less { dest, src1, src2 },
+                    BinaryOpKind::LessEqual => VirtualRegInst::LessEqual { dest, src1, src2 },
 
                     // gonna be changed
-                    BinaryOpKind::And => VirtualRegInst::And { dst, r1, r2 },
-                    BinaryOpKind::Or => VirtualRegInst::Or { dst, r1, r2 },
+                    BinaryOpKind::And => VirtualRegInst::And { dest, src1, src2 },
+                    BinaryOpKind::Or => VirtualRegInst::Or { dest, src1, src2 },
                 };
 
                 self.basic_block_stream.emit_instruction(instruction);
 
-                dst
+                dest
             }
             HirExprKind::Unary { right, operator } => {
-                let r1 = self.visit_expression(right);
-                let dst = self.allocate_register();
+                let src1 = self.visit_expression(right);
+                let dest = self.allocate_register();
 
                 let instruction = match operator.kind {
-                    UnaryOpKind::Negate => VirtualRegInst::Negate { dst, r1 },
-                    UnaryOpKind::Not => VirtualRegInst::Not { dst, r1 },
+                    UnaryOpKind::Negate => VirtualRegInst::Negate { dest, src1 },
+                    UnaryOpKind::Not => VirtualRegInst::Not { dest, src1 },
                 };
 
                 self.basic_block_stream.emit_instruction(instruction);
 
-                dst
+                dest
             }
             HirExprKind::FunctionCall { callee, arguments } => {
-                let dst = self.allocate_register();
+                let dest = self.allocate_register();
 
                 let call_instruction = VirtualRegInst::Call;
 
                 self.basic_block_stream.emit_instruction(call_instruction);
 
-                for (dst, argument) in arguments.iter().enumerate() {
-                    let r1 = self.visit_expression(argument);
+                for (dest, argument) in arguments.iter().enumerate() {
+                    let src1 = self.visit_expression(argument);
 
-                    let instruction = VirtualRegInst::Move { dst, r1 };
+                    let instruction = VirtualRegInst::Move { dest, src1 };
 
                     self.basic_block_stream.emit_instruction(instruction);
                 }
 
                 let callee_register = self.visit_expression(callee);
 
-                dst
+                dest
             }
 
-            HirExprKind::VariableRef(id) => {
-                let dst = *self.nodes_register.get(id).unwrap();
-
-                dst
-            }
+            HirExprKind::VariableRef(id) => *self.nodes_register.get(id).unwrap(),
             HirExprKind::FunctionRef(id) => {
-                let dst = self.allocate_register();
+                let dest = self.allocate_register();
 
                 let value = *self.nodes_bb.get(id).unwrap();
 
-                let instruction = VirtualRegInst::FunctionConst { dst, value };
+                let instruction = VirtualRegInst::FunctionConst { dest, value };
 
                 self.basic_block_stream.emit_instruction(instruction);
 
-                dst
+                dest
             }
             HirExprKind::StringLiteral(value) => {
-                let dst = self.allocate_register();
+                let dest = self.allocate_register();
 
                 let instruction = VirtualRegInst::StringConst {
-                    dst,
+                    dest,
                     value: value.to_owned(),
                 };
 
                 self.basic_block_stream.emit_instruction(instruction);
 
-                dst
+                dest
             }
             HirExprKind::BooleanLiteral(value) => {
-                let dst = self.allocate_register();
+                let dest = self.allocate_register();
 
-                let instruction = VirtualRegInst::BooleanConst { dst, value: *value };
+                let instruction = VirtualRegInst::BooleanConst {
+                    dest,
+                    value: *value,
+                };
 
                 self.basic_block_stream.emit_instruction(instruction);
 
-                dst
+                dest
             }
             HirExprKind::NumberLiteral(value) => {
-                let dst = self.allocate_register();
+                let dest = self.allocate_register();
 
-                let instruction = VirtualRegInst::NumberConst { dst, value: *value };
+                let instruction = VirtualRegInst::NumberConst {
+                    dest,
+                    value: *value,
+                };
 
                 self.basic_block_stream.emit_instruction(instruction);
 
-                dst
+                dest
             }
         }
     }

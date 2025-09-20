@@ -3,18 +3,18 @@ use super::{basic_block::BasicBlock, block_id::BlockId, virtual_reg_inst::Virtua
 #[derive(Default, Debug)]
 pub struct BasicBlockStream {
     pub basic_blocks: Vec<BasicBlock>,
-    pub current_basic_block: BlockId,
+    pub current_bb: BlockId,
 }
 
 impl BasicBlockStream {
     pub fn emit_instruction(&mut self, instruction: VirtualRegInst) {
-        let index = self.current_basic_block.0;
+        let index = self.current_bb.0;
         let basic_block = &mut self.basic_blocks[index];
 
         basic_block.instructions.push(instruction);
     }
 
-    pub fn create_basic_block(&mut self) -> BlockId {
+    pub fn create_bb(&mut self) -> BlockId {
         let index = self.basic_blocks.len();
 
         let id = BlockId(index);
@@ -26,11 +26,11 @@ impl BasicBlockStream {
         id
     }
 
-    pub fn set_current(&mut self, id: BlockId) {
-        self.current_basic_block = id;
+    pub fn set_current_bb(&mut self, id: BlockId) {
+        self.current_bb = id;
     }
 
-    pub fn get_basic_block(&mut self, id: BlockId) -> &mut BasicBlock {
+    pub fn get_bb(&mut self, id: BlockId) -> &mut BasicBlock {
         let index = id.0;
 
         &mut self.basic_blocks[index]
