@@ -12,19 +12,20 @@ use crate::{
 };
 
 use super::{
-    basic_block::Terminator, basic_block_stream::BasicBlockStream, block_id::BlockId,
+    basic_block::{BlockId, Terminator},
+    cfg::Cfg,
     virtual_reg_inst::VirtualRegInst,
 };
 
 pub struct CfgBuilder<'a> {
-    basic_block_stream: &'a mut BasicBlockStream,
+    basic_block_stream: &'a mut [Cfg],
     nodes_register: HashMap<HirId, usize>,
     nodes_bb: HashMap<HirId, BlockId>,
     register: usize,
 }
 
 impl<'a> CfgBuilder<'a> {
-    pub fn new(basic_block_stream: &'a mut BasicBlockStream) -> Self {
+    pub fn new(basic_block_stream: &'a mut [Cfg]) -> Self {
         Self {
             basic_block_stream,
             register: 0,

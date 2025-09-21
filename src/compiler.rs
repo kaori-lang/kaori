@@ -35,10 +35,10 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
     Ok(hir)
 }
 
-fn build_cfg_ir(hir: &[HirDecl]) -> BasicBlockStream {
-    let mut basic_block_stream = BasicBlockStream::default();
+fn build_cfg_ir(hir: &[HirDecl]) -> Vec<BasicBlockStream> {
+    let mut cfgs = Vec::new();
 
-    let mut cfg_builder = CfgBuilder::new(&mut basic_block_stream);
+    let mut cfg_builder = CfgBuilder::new(&mut cfgs);
 
     cfg_builder.build_ir(hir);
 

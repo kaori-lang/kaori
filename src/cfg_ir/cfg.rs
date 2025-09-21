@@ -1,12 +1,15 @@
-use super::{basic_block::BasicBlock, block_id::BlockId, virtual_reg_inst::VirtualRegInst};
+use super::{
+    basic_block::{BasicBlock, BlockId},
+    virtual_reg_inst::VirtualRegInst,
+};
 
 #[derive(Default, Debug)]
-pub struct BasicBlockStream {
+pub struct Cfg {
     pub basic_blocks: Vec<BasicBlock>,
     pub current_bb: BlockId,
 }
 
-impl BasicBlockStream {
+impl Cfg {
     pub fn emit_instruction(&mut self, instruction: VirtualRegInst) {
         let index = self.current_bb.0;
         let basic_block = &mut self.basic_blocks[index];

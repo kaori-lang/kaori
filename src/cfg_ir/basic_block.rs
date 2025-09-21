@@ -1,4 +1,7 @@
-use super::{block_id::BlockId, virtual_reg_inst::VirtualRegInst};
+use super::virtual_reg_inst::VirtualRegInst;
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct BlockId(pub usize);
 
 #[derive(Debug)]
 pub struct BasicBlock {
