@@ -1,6 +1,8 @@
+pub type CfgInstructionId = usize;
+
 #[derive(Debug)]
 pub struct CfgInstruction {
-    pub id: usize,
+    pub id: CfgInstructionId,
     pub kind: CfgInstructionKind,
 }
 
@@ -73,11 +75,11 @@ pub enum CfgInstructionKind {
     },
     Negate {
         dest: usize,
-        src1: usize,
+        src: usize,
     },
     Not {
         dest: usize,
-        src1: usize,
+        src: usize,
     },
     StringConst {
         dest: usize,
@@ -97,11 +99,11 @@ pub enum CfgInstructionKind {
     },
     Move {
         dest: usize,
-        src1: usize,
+        src: usize,
     },
     Call,
     Return {
-        source: usize,
+        src: usize,
     },
     Print,
 }

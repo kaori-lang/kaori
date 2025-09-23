@@ -1,22 +1,30 @@
 use super::{
     basic_block::{BasicBlock, BlockId, Terminator},
-    cfg_instruction::CfgInstructionKind,
+    cfg_instruction::{CfgInstruction, CfgInstructionId, CfgInstructionKind},
 };
 
 #[derive(Debug, Default)]
 pub struct Cfg {
     pub basic_blocks: Vec<BasicBlock>,
     pub current_bb: BlockId,
+    pub instruction_id: CfgInstructionId,
 }
 
 impl Cfg {
-    pub fn emit_instruction(&mut self, instruction: CfgInstructionKind) {
+    pub fn emit_instruction(&mut self, kind: CfgInstructionKind) {
         let index = self.current_bb;
         let basic_block = &mut self.basic_blocks[index];
 
         if let Terminator::Return = basic_block.terminator {
             return;
         }
+
+        let instruction = CfgInstruction {
+            id: self.instruction_id,
+            kind,
+        };
+
+        self.instruction_id += 1;
 
         basic_block.instructions.push(instruction);
     }

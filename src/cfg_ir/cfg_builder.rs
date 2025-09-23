@@ -38,6 +38,10 @@ impl<'a> CfgBuilder<'a> {
         register
     }
 
+    fn free_all_registers(&mut self) {
+        self.register = 0;
+    }
+
     fn current_cfg(&mut self) -> &mut Cfg {
         self.cfgs.last_mut().unwrap()
     }
@@ -68,12 +72,12 @@ impl<'a> CfgBuilder<'a> {
     fn visit_declaration(&mut self, declaration: &HirDecl) {
         match &declaration.kind {
             HirDeclKind::Variable { right } => {
-                let src1 = self.visit_expression(right);
+                let src = self.visit_expression(right);
                 let dest = self.allocate_register();
 
                 self.nodes_register.insert(declaration.id, dest);
 
-                let instruction = CfgInstructionKind::Move { dest, src1 };
+                let instruction = CfgInstructionKind::Move { dest, src };
 
                 self.current_cfg().emit_instruction(instruction);
             }
@@ -96,6 +100,8 @@ impl<'a> CfgBuilder<'a> {
                 let last_bb = self.current_cfg().current_bb;
 
                 self.current_cfg().get_bb(last_bb).terminator = Terminator::Return;
+
+                self.free_all_registers();
             }
             HirDeclKind::Struct { fields } => {}
             HirDeclKind::Parameter => {}
@@ -179,9 +185,9 @@ impl<'a> CfgBuilder<'a> {
             HirStmtKind::Continue => {}
             HirStmtKind::Return(expr) => {
                 if let Some(expr) = expr {
-                    let source = self.visit_expression(expr);
+                    let src = self.visit_expression(expr);
 
-                    let instruction = CfgInstructionKind::Return { source };
+                    let instruction = CfgInstructionKind::Return { src };
 
                     self.current_cfg().emit_instruction(instruction);
                 }
@@ -196,9 +202,9 @@ impl<'a> CfgBuilder<'a> {
         match &expression.kind {
             HirExprKind::Assign { left, right } => {
                 let dest = self.visit_expression(left);
-                let src1 = self.visit_expression(right);
+                let src = self.visit_expression(right);
 
-                let instruction = CfgInstructionKind::Move { dest, src1 };
+                let instruction = CfgInstructionKind::Move { dest, src };
 
                 self.current_cfg().emit_instruction(instruction);
 
@@ -239,12 +245,12 @@ impl<'a> CfgBuilder<'a> {
                 dest
             }
             HirExprKind::Unary { right, operator } => {
-                let src1 = self.visit_expression(right);
+                let src = self.visit_expression(right);
                 let dest = self.allocate_register();
 
                 let instruction = match operator.kind {
-                    UnaryOpKind::Negate => CfgInstructionKind::Negate { dest, src1 },
-                    UnaryOpKind::Not => CfgInstructionKind::Not { dest, src1 },
+                    UnaryOpKind::Negate => CfgInstructionKind::Negate { dest, src },
+                    UnaryOpKind::Not => CfgInstructionKind::Not { dest, src },
                 };
 
                 self.current_cfg().emit_instruction(instruction);
@@ -259,9 +265,9 @@ impl<'a> CfgBuilder<'a> {
                 self.current_cfg().emit_instruction(call_instruction);
 
                 for (dest, argument) in arguments.iter().enumerate() {
-                    let src1 = self.visit_expression(argument);
+                    let src = self.visit_expression(argument);
 
-                    let instruction = CfgInstructionKind::Move { dest, src1 };
+                    let instruction = CfgInstructionKind::Move { dest, src };
 
                     self.current_cfg().emit_instruction(instruction);
                 }
