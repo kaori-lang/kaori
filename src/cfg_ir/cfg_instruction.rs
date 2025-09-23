@@ -1,3 +1,5 @@
+use super::basic_block::BlockId;
+
 pub type CfgInstructionId = usize;
 
 #[derive(Debug)]
@@ -95,7 +97,7 @@ pub enum CfgInstructionKind {
     },
     FunctionConst {
         dest: usize,
-        value: usize,
+        value: BlockId,
     },
     Move {
         dest: usize,

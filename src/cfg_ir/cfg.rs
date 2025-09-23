@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::{
     basic_block::{BasicBlock, BlockId, Terminator},
     cfg_instruction::{CfgInstruction, CfgInstructionId, CfgInstructionKind},
@@ -5,7 +7,7 @@ use super::{
 
 #[derive(Debug, Default)]
 pub struct Cfg {
-    pub basic_blocks: Vec<BasicBlock>,
+    pub basic_blocks: HashMap<BlockId, BasicBlock>,
     pub current_bb: BlockId,
     pub instruction_id: CfgInstructionId,
 }
