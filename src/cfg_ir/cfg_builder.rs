@@ -11,7 +11,7 @@ use crate::{
     syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
 };
 
-use super::{basic_block::Terminator, cfg::Cfg, virtual_reg_inst::VirtualRegInst};
+use super::{basic_block::Terminator, cfg::Cfg, cfg_instruction::CfgInstructionKind};
 
 pub struct CfgBuilder<'a> {
     cfgs: &'a mut Vec<Cfg>,
@@ -73,7 +73,7 @@ impl<'a> CfgBuilder<'a> {
 
                 self.nodes_register.insert(declaration.id, dest);
 
-                let instruction = VirtualRegInst::Move { dest, src1 };
+                let instruction = CfgInstructionKind::Move { dest, src1 };
 
                 self.current_cfg().emit_instruction(instruction);
             }
@@ -181,7 +181,7 @@ impl<'a> CfgBuilder<'a> {
                 if let Some(expr) = expr {
                     let source = self.visit_expression(expr);
 
-                    let instruction = VirtualRegInst::Return { source };
+                    let instruction = CfgInstructionKind::Return { source };
 
                     self.current_cfg().emit_instruction(instruction);
                 }
@@ -198,7 +198,7 @@ impl<'a> CfgBuilder<'a> {
                 let dest = self.visit_expression(left);
                 let src1 = self.visit_expression(right);
 
-                let instruction = VirtualRegInst::Move { dest, src1 };
+                let instruction = CfgInstructionKind::Move { dest, src1 };
 
                 self.current_cfg().emit_instruction(instruction);
 
@@ -214,22 +214,24 @@ impl<'a> CfgBuilder<'a> {
                 let dest = self.allocate_register();
 
                 let instruction = match operator.kind {
-                    BinaryOpKind::Add => VirtualRegInst::Add { dest, src1, src2 },
-                    BinaryOpKind::Subtract => VirtualRegInst::Subtract { dest, src1, src2 },
-                    BinaryOpKind::Multiply => VirtualRegInst::Multiply { dest, src1, src2 },
-                    BinaryOpKind::Divide => VirtualRegInst::Divide { dest, src1, src2 },
-                    BinaryOpKind::Modulo => VirtualRegInst::Modulo { dest, src1, src2 },
+                    BinaryOpKind::Add => CfgInstructionKind::Add { dest, src1, src2 },
+                    BinaryOpKind::Subtract => CfgInstructionKind::Subtract { dest, src1, src2 },
+                    BinaryOpKind::Multiply => CfgInstructionKind::Multiply { dest, src1, src2 },
+                    BinaryOpKind::Divide => CfgInstructionKind::Divide { dest, src1, src2 },
+                    BinaryOpKind::Modulo => CfgInstructionKind::Modulo { dest, src1, src2 },
 
-                    BinaryOpKind::Equal => VirtualRegInst::Equal { dest, src1, src2 },
-                    BinaryOpKind::NotEqual => VirtualRegInst::NotEqual { dest, src1, src2 },
-                    BinaryOpKind::Greater => VirtualRegInst::Greater { dest, src1, src2 },
-                    BinaryOpKind::GreaterEqual => VirtualRegInst::GreaterEqual { dest, src1, src2 },
-                    BinaryOpKind::Less => VirtualRegInst::Less { dest, src1, src2 },
-                    BinaryOpKind::LessEqual => VirtualRegInst::LessEqual { dest, src1, src2 },
+                    BinaryOpKind::Equal => CfgInstructionKind::Equal { dest, src1, src2 },
+                    BinaryOpKind::NotEqual => CfgInstructionKind::NotEqual { dest, src1, src2 },
+                    BinaryOpKind::Greater => CfgInstructionKind::Greater { dest, src1, src2 },
+                    BinaryOpKind::GreaterEqual => {
+                        CfgInstructionKind::GreaterEqual { dest, src1, src2 }
+                    }
+                    BinaryOpKind::Less => CfgInstructionKind::Less { dest, src1, src2 },
+                    BinaryOpKind::LessEqual => CfgInstructionKind::LessEqual { dest, src1, src2 },
 
                     // gonna be changed
-                    BinaryOpKind::And => VirtualRegInst::And { dest, src1, src2 },
-                    BinaryOpKind::Or => VirtualRegInst::Or { dest, src1, src2 },
+                    BinaryOpKind::And => CfgInstructionKind::And { dest, src1, src2 },
+                    BinaryOpKind::Or => CfgInstructionKind::Or { dest, src1, src2 },
                 };
 
                 self.current_cfg().emit_instruction(instruction);
@@ -241,8 +243,8 @@ impl<'a> CfgBuilder<'a> {
                 let dest = self.allocate_register();
 
                 let instruction = match operator.kind {
-                    UnaryOpKind::Negate => VirtualRegInst::Negate { dest, src1 },
-                    UnaryOpKind::Not => VirtualRegInst::Not { dest, src1 },
+                    UnaryOpKind::Negate => CfgInstructionKind::Negate { dest, src1 },
+                    UnaryOpKind::Not => CfgInstructionKind::Not { dest, src1 },
                 };
 
                 self.current_cfg().emit_instruction(instruction);
@@ -252,14 +254,14 @@ impl<'a> CfgBuilder<'a> {
             HirExprKind::FunctionCall { callee, arguments } => {
                 let dest = self.allocate_register();
 
-                let call_instruction = VirtualRegInst::Call;
+                let call_instruction = CfgInstructionKind::Call;
 
                 self.current_cfg().emit_instruction(call_instruction);
 
                 for (dest, argument) in arguments.iter().enumerate() {
                     let src1 = self.visit_expression(argument);
 
-                    let instruction = VirtualRegInst::Move { dest, src1 };
+                    let instruction = CfgInstructionKind::Move { dest, src1 };
 
                     self.current_cfg().emit_instruction(instruction);
                 }
@@ -275,7 +277,7 @@ impl<'a> CfgBuilder<'a> {
 
                 let value = *self.functions_cfg_index.get(id).unwrap();
 
-                let instruction = VirtualRegInst::FunctionConst { dest, value };
+                let instruction = CfgInstructionKind::FunctionConst { dest, value };
 
                 self.current_cfg().emit_instruction(instruction);
 
@@ -284,7 +286,7 @@ impl<'a> CfgBuilder<'a> {
             HirExprKind::StringLiteral(value) => {
                 let dest = self.allocate_register();
 
-                let instruction = VirtualRegInst::StringConst {
+                let instruction = CfgInstructionKind::StringConst {
                     dest,
                     value: value.to_owned(),
                 };
@@ -296,7 +298,7 @@ impl<'a> CfgBuilder<'a> {
             HirExprKind::BooleanLiteral(value) => {
                 let dest = self.allocate_register();
 
-                let instruction = VirtualRegInst::BooleanConst {
+                let instruction = CfgInstructionKind::BooleanConst {
                     dest,
                     value: *value,
                 };
@@ -308,7 +310,7 @@ impl<'a> CfgBuilder<'a> {
             HirExprKind::NumberLiteral(value) => {
                 let dest = self.allocate_register();
 
-                let instruction = VirtualRegInst::NumberConst {
+                let instruction = CfgInstructionKind::NumberConst {
                     dest,
                     value: *value,
                 };

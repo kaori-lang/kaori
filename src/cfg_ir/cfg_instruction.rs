@@ -1,5 +1,11 @@
 #[derive(Debug)]
-pub enum VirtualRegInst {
+pub struct CfgInstruction {
+    pub id: usize,
+    pub kind: CfgInstructionKind,
+}
+
+#[derive(Debug)]
+pub enum CfgInstructionKind {
     Add {
         dest: usize,
         src1: usize,

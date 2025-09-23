@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use super::{
     basic_block::{BasicBlock, Terminator},
     cfg::Cfg,
+    cfg_instruction::CfgInstruction,
 };
 
 pub struct LivenessAnalysis<'a> {
@@ -38,4 +39,6 @@ impl<'a> LivenessAnalysis<'a> {
             _ => unreachable!(),
         }
     }
+
+    pub fn analyze_instructions(&self, instructions: &[CfgInstruction]) {}
 }

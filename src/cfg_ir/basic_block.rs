@@ -1,11 +1,11 @@
-use super::virtual_reg_inst::VirtualRegInst;
+use super::cfg_instruction::CfgInstruction;
 
 pub type BlockId = usize;
 
 #[derive(Debug)]
 pub struct BasicBlock {
     pub id: BlockId,
-    pub instructions: Vec<VirtualRegInst>,
+    pub instructions: Vec<CfgInstruction>,
     pub terminator: Terminator,
 }
 

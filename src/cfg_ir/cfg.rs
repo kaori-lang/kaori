@@ -1,6 +1,6 @@
 use super::{
     basic_block::{BasicBlock, BlockId, Terminator},
-    virtual_reg_inst::VirtualRegInst,
+    cfg_instruction::CfgInstructionKind,
 };
 
 #[derive(Debug, Default)]
@@ -10,7 +10,7 @@ pub struct Cfg {
 }
 
 impl Cfg {
-    pub fn emit_instruction(&mut self, instruction: VirtualRegInst) {
+    pub fn emit_instruction(&mut self, instruction: CfgInstructionKind) {
         let index = self.current_bb;
         let basic_block = &mut self.basic_blocks[index];
 
