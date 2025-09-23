@@ -2,50 +2,46 @@ use std::collections::HashMap;
 
 use super::{
     basic_block::{BasicBlock, Terminator},
-    cfg::Cfg,
+    block_id::BlockId,
     cfg_instruction::{CfgInstruction, CfgInstructionId, CfgInstructionKind},
+    cfg_stream::CfgStream,
 };
 
 pub struct LivenessAnalysis<'a> {
-    cfgs: &'a [Cfg],
+    cfg_stream: &'a CfgStream,
     register_lifetime: HashMap<usize, CfgInstructionId>,
+    pos_order: Vec<BlockId>,
 }
 
 impl<'a> LivenessAnalysis<'a> {
-    pub fn new(cfgs: &'a [Cfg]) -> Self {
+    pub fn new(cfg_stream: &'a CfgStream) -> Self {
         Self {
-            cfgs,
+            cfg_stream,
             register_lifetime: HashMap::new(),
+            pos_order: Vec::new(),
         }
     }
 
-    pub fn analyze_cfgs(&mut self) {
-        for cfg in self.cfgs {
-            let bb = cfg
-            let basic_blocks = &cfg.basic_blocks;
+    pub fn analyze_cfgs(&mut self) {}
 
-            //self.analyze_basic_block(basic_blocks, bb);
-        }
-    }
-
-    pub fn analyze_basic_block(&mut self, basic_blocks: &[BasicBlock], bb: &BasicBlock) {
-        self.analyze_instructions(&bb.instructions);
-
+    pub fn dfs_postorder(&mut self, bb: &BasicBlock) {
         match &bb.terminator {
             Terminator::Branch { r#true, r#false } => {
-                let left_bb = &basic_blocks[*r#true];
-                let right_bb = &basic_blocks[*r#false];
+                let left_bb = self.cfg_stream.basic_blocks.get(r#true).unwrap();
+                let right_bb = self.cfg_stream.basic_blocks.get(r#false).unwrap();
 
-                self.analyze_basic_block(basic_blocks, left_bb);
-                self.analyze_basic_block(basic_blocks, right_bb);
+                self.dfs_postorder(right_bb);
+                self.dfs_postorder(left_bb);
             }
             Terminator::Goto(target) => {
-                let bb = &basic_blocks[*target];
+                let bb = self.cfg_stream.basic_blocks.get(target).unwrap();
 
-                self.analyze_basic_block(basic_blocks, bb);
+                self.dfs_postorder(bb);
             }
             _ => {}
-        }
+        };
+
+        self.pos_order.push(bb.id);
     }
 
     pub fn analyze_instructions(&mut self, instructions: &[CfgInstruction]) {

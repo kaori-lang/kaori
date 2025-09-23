@@ -7,7 +7,7 @@ use super::{
 };
 
 #[derive(Debug, Default)]
-pub struct CfgStrean {
+pub struct CfgStream {
     pub roots: Vec<BlockId>,
     pub basic_blocks: HashMap<BlockId, BasicBlock>,
     pub current_bb: BlockId,
@@ -18,7 +18,7 @@ impl CfgStream {
         Self {
             roots: Vec::new(),
             basic_blocks: HashMap::new(),
-            current_bb: ,
+            current_bb: BlockId(0),
         }
     }
 
@@ -30,9 +30,7 @@ impl CfgStream {
             return;
         }
 
-        let instruction = CfgInstruction { kind };
-
-      
+        let instruction = CfgInstruction::new(kind);
 
         basic_block.instructions.push(instruction);
     }
@@ -41,6 +39,16 @@ impl CfgStream {
         let id = BlockId::default();
         let basic_block = BasicBlock::new(id);
 
+        self.basic_blocks.insert(id, basic_block);
+
+        id
+    }
+
+    pub fn create_cfg(&mut self) -> BlockId {
+        let id = BlockId::default();
+        let basic_block = BasicBlock::new(id);
+
+        self.roots.push(id);
         self.basic_blocks.insert(id, basic_block);
 
         id

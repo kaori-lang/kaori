@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct BlockId(usize);
+pub struct BlockId(pub usize);
 
 impl Default for BlockId {
     fn default() -> Self {

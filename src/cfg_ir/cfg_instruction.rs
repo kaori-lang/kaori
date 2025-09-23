@@ -1,5 +1,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use super::block_id::BlockId;
+
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CfgInstructionId(usize);
 
@@ -114,7 +116,7 @@ pub enum CfgInstructionKind {
     },
     FunctionConst {
         dest: usize,
-        value: CfgInstructionId,
+        value: BlockId,
     },
     Move {
         dest: usize,
