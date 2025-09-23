@@ -21,10 +21,10 @@ impl<'a> LivenessAnalysis<'a> {
 
     pub fn analyze_cfgs(&mut self) {
         for cfg in self.cfgs {
-            let bb = cfg.basic_blocks.first().unwrap();
+            let bb = cfg
             let basic_blocks = &cfg.basic_blocks;
 
-            self.analyze_basic_block(basic_blocks, bb);
+            //self.analyze_basic_block(basic_blocks, bb);
         }
     }
 

@@ -1,11 +1,28 @@
-use super::basic_block::BlockId;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub type CfgInstructionId = usize;
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CfgInstructionId(usize);
+
+impl Default for CfgInstructionId {
+    fn default() -> Self {
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        Self(COUNTER.fetch_add(1, Ordering::Relaxed))
+    }
+}
 
 #[derive(Debug)]
 pub struct CfgInstruction {
     pub id: CfgInstructionId,
     pub kind: CfgInstructionKind,
+}
+
+impl CfgInstruction {
+    pub fn new(kind: CfgInstructionKind) -> Self {
+        Self {
+            id: CfgInstructionId::default(),
+            kind,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -97,7 +114,7 @@ pub enum CfgInstructionKind {
     },
     FunctionConst {
         dest: usize,
-        value: BlockId,
+        value: CfgInstructionId,
     },
     Move {
         dest: usize,

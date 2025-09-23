@@ -11,13 +11,16 @@ use crate::{
     syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
 };
 
-use super::{basic_block::Terminator, cfg::Cfg, cfg_instruction::CfgInstructionKind};
+use super::{
+    basic_block::Terminator, block_id::BlockId, cfg::Cfg, cfg_instruction::CfgInstructionKind,
+};
 
 pub struct CfgBuilder<'a> {
     cfgs: &'a mut Vec<Cfg>,
-    nodes_register: HashMap<HirId, usize>,
-    functions_cfg_index: HashMap<HirId, usize>,
     register: usize,
+    nodes_register: HashMap<HirId, usize>,
+    nodes_block: HashMap<HirId, BlockId>,
+    current_cfg_index: usize,
 }
 
 impl<'a> CfgBuilder<'a> {
@@ -26,7 +29,8 @@ impl<'a> CfgBuilder<'a> {
             cfgs,
             register: 0,
             nodes_register: HashMap::new(),
-            functions_cfg_index: HashMap::new(),
+            nodes_block: HashMap::new(),
+            current_cfg_index: 0,
         }
     }
 
@@ -43,12 +47,16 @@ impl<'a> CfgBuilder<'a> {
     }
 
     fn current_cfg(&mut self) -> &mut Cfg {
-        self.cfgs.last_mut().unwrap()
+        &mut self.cfgs[self.current_cfg_index]
     }
 
     pub fn build_ir(&mut self, declarations: &[HirDecl]) {
         for (index, declaration) in declarations.iter().enumerate() {
-            self.functions_cfg_index.insert(declaration.id, index);
+            let cfg = Cfg::new();
+
+            self.nodes_block.insert(declaration.id, cfg.root);
+
+            self.cfgs.push(cfg);
         }
 
         for declaration in declarations {
@@ -83,11 +91,6 @@ impl<'a> CfgBuilder<'a> {
             }
 
             HirDeclKind::Function { body, parameters } => {
-                let mut cfg = Cfg::default();
-                cfg.create_bb();
-
-                self.cfgs.push(cfg);
-
                 for parameter in parameters {
                     let register = self.allocate_register();
                     self.nodes_register.insert(parameter.id, register);
@@ -102,6 +105,7 @@ impl<'a> CfgBuilder<'a> {
                 self.current_cfg().get_bb(last_bb).terminator = Terminator::Return;
 
                 self.free_all_registers();
+                self.current_cfg_index += 1;
             }
             HirDeclKind::Struct { fields } => {}
             HirDeclKind::Parameter => {}
@@ -281,7 +285,7 @@ impl<'a> CfgBuilder<'a> {
             HirExprKind::FunctionRef(id) => {
                 let dest = self.allocate_register();
 
-                let value = *self.functions_cfg_index.get(id).unwrap();
+                let value = *self.nodes_block.get(id).unwrap();
 
                 let instruction = CfgInstructionKind::FunctionConst { dest, value };
 

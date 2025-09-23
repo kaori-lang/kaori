@@ -1,6 +1,4 @@
-use super::cfg_instruction::CfgInstruction;
-
-pub type BlockId = usize;
+use super::{block_id::BlockId, cfg_instruction::CfgInstruction};
 
 #[derive(Debug)]
 pub struct BasicBlock {
