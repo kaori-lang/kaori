@@ -89,7 +89,7 @@ pub enum VirtualRegInst {
     },
     FunctionConst {
         dest: usize,
-        value: BlockId,
+        value: usize,
     },
     Move {
         dest: usize,

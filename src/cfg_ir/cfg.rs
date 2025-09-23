@@ -1,5 +1,5 @@
 use super::{
-    basic_block::{BasicBlock, BlockId},
+    basic_block::{BasicBlock, BlockId, Terminator},
     virtual_reg_inst::VirtualRegInst,
 };
 
@@ -10,9 +10,23 @@ pub struct Cfg {
 }
 
 impl Cfg {
+    pub fn new() -> Self {
+        let id = BlockId(0);
+        let basic_block = BasicBlock::new(id);
+
+        Self {
+            basic_blocks: vec![basic_block],
+            current_bb: id,
+        }
+    }
+
     pub fn emit_instruction(&mut self, instruction: VirtualRegInst) {
         let index = self.current_bb.0;
         let basic_block = &mut self.basic_blocks[index];
+
+        if let Terminator::Return = basic_block.terminator {
+            return;
+        }
 
         basic_block.instructions.push(instruction);
     }
@@ -27,10 +41,6 @@ impl Cfg {
         self.basic_blocks.push(basic_block);
 
         id
-    }
-
-    pub fn set_current_bb(&mut self, id: BlockId) {
-        self.current_bb = id;
     }
 
     pub fn get_bb(&mut self, id: BlockId) -> &mut BasicBlock {

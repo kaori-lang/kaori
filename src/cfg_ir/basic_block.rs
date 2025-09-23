@@ -15,7 +15,7 @@ impl BasicBlock {
         Self {
             id,
             instructions: Vec::new(),
-            terminator: Terminator::Return,
+            terminator: Terminator::None,
         }
     }
 }
@@ -25,4 +25,5 @@ pub enum Terminator {
     Branch { r#true: BlockId, r#false: BlockId },
     Goto(BlockId),
     Return,
+    None,
 }
