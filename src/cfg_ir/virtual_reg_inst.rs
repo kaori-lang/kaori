@@ -1,5 +1,3 @@
-use super::basic_block::BlockId;
-
 #[derive(Debug)]
 pub enum VirtualRegInst {
     Add {

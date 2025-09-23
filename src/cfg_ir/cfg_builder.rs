@@ -16,7 +16,7 @@ use super::{basic_block::Terminator, cfg::Cfg, virtual_reg_inst::VirtualRegInst}
 pub struct CfgBuilder<'a> {
     cfgs: &'a mut Vec<Cfg>,
     nodes_register: HashMap<HirId, usize>,
-    functions: HashMap<HirId, usize>,
+    functions_cfg_index: HashMap<HirId, usize>,
     register: usize,
 }
 
@@ -26,7 +26,7 @@ impl<'a> CfgBuilder<'a> {
             cfgs,
             register: 0,
             nodes_register: HashMap::new(),
-            functions: HashMap::new(),
+            functions_cfg_index: HashMap::new(),
         }
     }
 
@@ -43,6 +43,10 @@ impl<'a> CfgBuilder<'a> {
     }
 
     pub fn build_ir(&mut self, declarations: &[HirDecl]) {
+        for (index, declaration) in declarations.iter().enumerate() {
+            self.functions_cfg_index.insert(declaration.id, index);
+        }
+
         for declaration in declarations {
             self.visit_declaration(declaration);
         }
@@ -75,8 +79,6 @@ impl<'a> CfgBuilder<'a> {
             }
 
             HirDeclKind::Function { body, parameters } => {
-                self.functions.insert(declaration.id, self.cfgs.len());
-
                 let cfg = Cfg::new();
 
                 self.cfgs.push(cfg);
@@ -266,7 +268,7 @@ impl<'a> CfgBuilder<'a> {
             HirExprKind::FunctionRef(id) => {
                 let dest = self.allocate_register();
 
-                let value = *self.functions.get(id).unwrap();
+                let value = *self.functions_cfg_index.get(id).unwrap();
 
                 let instruction = VirtualRegInst::FunctionConst { dest, value };
 

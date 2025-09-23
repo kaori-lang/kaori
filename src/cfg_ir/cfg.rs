@@ -11,12 +11,12 @@ pub struct Cfg {
 
 impl Cfg {
     pub fn new() -> Self {
-        let id = BlockId(0);
-        let basic_block = BasicBlock::new(id);
+        let basic_block = BasicBlock::new();
+        let current_bb = basic_block.id;
 
         Self {
             basic_blocks: vec![basic_block],
-            current_bb: id,
+            current_bb,
         }
     }
 
@@ -32,11 +32,8 @@ impl Cfg {
     }
 
     pub fn create_bb(&mut self) -> BlockId {
-        let index = self.basic_blocks.len();
-
-        let id = BlockId(index);
-
-        let basic_block = BasicBlock::new(id);
+        let basic_block = BasicBlock::new();
+        let id = basic_block.id;
 
         self.basic_blocks.push(basic_block);
 
