@@ -10,7 +10,7 @@ use super::{
 pub struct LivenessAnalysis<'a> {
     cfg_stream: &'a CfgStream,
     register_lifetime: HashMap<usize, CfgInstructionId>,
-    pos_order: Vec<BlockId>,
+    post_order: Vec<BlockId>,
 }
 
 impl<'a> LivenessAnalysis<'a> {
@@ -18,11 +18,9 @@ impl<'a> LivenessAnalysis<'a> {
         Self {
             cfg_stream,
             register_lifetime: HashMap::new(),
-            pos_order: Vec::new(),
+            post_order: Vec::new(),
         }
     }
-
-    pub fn analyze_cfgs(&mut self) {}
 
     pub fn dfs_postorder(&mut self, bb: &BasicBlock) {
         match &bb.terminator {
@@ -41,7 +39,20 @@ impl<'a> LivenessAnalysis<'a> {
             _ => {}
         };
 
-        self.pos_order.push(bb.id);
+        self.post_order.push(bb.id);
+    }
+
+    pub fn analyze_cfgs(&mut self) {
+        for root in &self.cfg_stream.roots {
+            let bb = self.cfg_stream.basic_blocks.get(root).unwrap();
+            self.dfs_postorder(bb);
+
+            while let Some(id) = self.post_order.pop() {
+                let bb = self.cfg_stream.basic_blocks.get(&id).unwrap();
+
+                self.analyze_instructions(&bb.instructions);
+            }
+        }
     }
 
     pub fn analyze_instructions(&mut self, instructions: &[CfgInstruction]) {
