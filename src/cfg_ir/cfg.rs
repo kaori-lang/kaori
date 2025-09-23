@@ -11,7 +11,7 @@ pub struct Cfg {
 
 impl Cfg {
     pub fn emit_instruction(&mut self, instruction: VirtualRegInst) {
-        let index = self.current_bb.0;
+        let index = self.current_bb;
         let basic_block = &mut self.basic_blocks[index];
 
         if let Terminator::Return = basic_block.terminator {
@@ -22,9 +22,8 @@ impl Cfg {
     }
 
     pub fn create_bb(&mut self) -> BlockId {
-        let id = BlockId(self.basic_blocks.len());
+        let id = self.basic_blocks.len();
         let basic_block = BasicBlock::new(id);
-        let id = basic_block.id;
 
         self.basic_blocks.push(basic_block);
 
@@ -32,8 +31,6 @@ impl Cfg {
     }
 
     pub fn get_bb(&mut self, id: BlockId) -> &mut BasicBlock {
-        let index = id.0;
-
-        &mut self.basic_blocks[index]
+        &mut self.basic_blocks[id]
     }
 }

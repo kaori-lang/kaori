@@ -1,7 +1,6 @@
 use super::virtual_reg_inst::VirtualRegInst;
 
-#[derive(Debug, Clone, Copy, Default)]
-pub struct BlockId(pub usize);
+pub type BlockId = usize;
 
 #[derive(Debug)]
 pub struct BasicBlock {
