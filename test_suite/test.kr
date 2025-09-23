@@ -1,4 +1,18 @@
 def main() {
     var a: number = 5;
     var b: number = 5;
+
+    
+}
+
+
+def foo() -> number {
+    var a: number = 5;
+    var b: number = 5;
+
+    if a > 2 {
+        return 1;
+    }
+
+    return 1;
 }

@@ -5,8 +5,4 @@ impl Register {
     pub fn new(value: u8) -> Self {
         Self(value)
     }
-
-    pub fn increment(&mut self) {
-        self.0 += 1;
-    }
 }

@@ -79,7 +79,8 @@ impl<'a> CfgBuilder<'a> {
             }
 
             HirDeclKind::Function { body, parameters } => {
-                let cfg = Cfg::new();
+                let mut cfg = Cfg::default();
+                cfg.create_bb();
 
                 self.cfgs.push(cfg);
 
@@ -91,6 +92,10 @@ impl<'a> CfgBuilder<'a> {
                 for node in body {
                     self.visit_ast_node(node);
                 }
+
+                let last_bb = self.current_cfg().current_bb;
+
+                self.current_cfg().get_bb(last_bb).terminator = Terminator::Return;
             }
             HirDeclKind::Struct { fields } => {}
             HirDeclKind::Parameter => {}

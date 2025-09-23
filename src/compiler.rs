@@ -1,5 +1,5 @@
 use crate::{
-    cfg_ir::cfg_builder::CfgBuilder,
+    cfg_ir::{cfg::Cfg, cfg_builder::CfgBuilder},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},
@@ -35,7 +35,7 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
     Ok(hir)
 }
 
-fn build_cfg_ir(hir: &[HirDecl]) -> CfgStream {
+fn build_cfg_ir(hir: &[HirDecl]) -> Vec<Cfg> {
     let mut cfgs = Vec::new();
 
     let mut cfg_builder = CfgBuilder::new(&mut cfgs);
@@ -51,5 +51,6 @@ pub fn compile_source_code(source: String) -> Result<(), KaoriError> {
     let hir = run_semantic_analysis(&mut ast)?;
     let cfg_ir = build_cfg_ir(&hir);
 
+    print!("{cfg_ir:#?}");
     Ok(())
 }

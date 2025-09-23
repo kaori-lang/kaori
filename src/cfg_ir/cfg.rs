@@ -3,23 +3,13 @@ use super::{
     virtual_reg_inst::VirtualRegInst,
 };
 
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 pub struct Cfg {
     pub basic_blocks: Vec<BasicBlock>,
     pub current_bb: BlockId,
 }
 
 impl Cfg {
-    pub fn new() -> Self {
-        let basic_block = BasicBlock::new();
-        let current_bb = basic_block.id;
-
-        Self {
-            basic_blocks: vec![basic_block],
-            current_bb,
-        }
-    }
-
     pub fn emit_instruction(&mut self, instruction: VirtualRegInst) {
         let index = self.current_bb.0;
         let basic_block = &mut self.basic_blocks[index];
@@ -32,7 +22,8 @@ impl Cfg {
     }
 
     pub fn create_bb(&mut self) -> BlockId {
-        let basic_block = BasicBlock::new();
+        let id = BlockId(self.basic_blocks.len());
+        let basic_block = BasicBlock::new(id);
         let id = basic_block.id;
 
         self.basic_blocks.push(basic_block);
