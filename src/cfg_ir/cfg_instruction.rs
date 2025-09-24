@@ -13,7 +13,6 @@ impl Default for CfgInstructionId {
     }
 }
 
-#[derive(Debug)]
 pub struct CfgInstruction {
     pub id: CfgInstructionId,
     pub kind: CfgInstructionKind,

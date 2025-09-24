@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::{
     basic_block::{BasicBlock, Terminator},
@@ -11,6 +11,7 @@ pub struct LivenessAnalysis<'a> {
     cfg_stream: &'a CfgStream,
     register_lifetime: HashMap<usize, CfgInstructionId>,
     post_order: Vec<BlockId>,
+    visited: HashSet<BlockId>,
 }
 
 impl<'a> LivenessAnalysis<'a> {
@@ -19,22 +20,26 @@ impl<'a> LivenessAnalysis<'a> {
             cfg_stream,
             register_lifetime: HashMap::new(),
             post_order: Vec::new(),
+            visited: HashSet::new(),
         }
     }
 
-    pub fn dfs_postorder(&mut self, bb: &BasicBlock) {
+    pub fn dfs_postorder(&mut self, id: BlockId) {
+        if self.visited.contains(&id) {
+            return;
+        }
+
+        self.visited.insert(id);
+
+        let bb = self.cfg_stream.basic_blocks.get(&id).unwrap();
+
         match &bb.terminator {
             Terminator::Branch { r#true, r#false } => {
-                let left_bb = self.cfg_stream.basic_blocks.get(r#true).unwrap();
-                let right_bb = self.cfg_stream.basic_blocks.get(r#false).unwrap();
-
-                self.dfs_postorder(right_bb);
-                self.dfs_postorder(left_bb);
+                self.dfs_postorder(*r#true);
+                self.dfs_postorder(*r#false);
             }
             Terminator::Goto(target) => {
-                let bb = self.cfg_stream.basic_blocks.get(target).unwrap();
-
-                self.dfs_postorder(bb);
+                self.dfs_postorder(*target);
             }
             _ => {}
         };
@@ -52,6 +57,10 @@ impl<'a> LivenessAnalysis<'a> {
 
                 self.analyze_instructions(&bb.instructions);
             }
+
+            println!("\n");
+
+            self.register_lifetime.clear();
         }
     }
 
@@ -91,6 +100,8 @@ impl<'a> LivenessAnalysis<'a> {
                 CfgInstructionKind::Return { .. } => {}
                 CfgInstructionKind::Print => {}
             }
+
+            println!(" {instruction}");
         }
     }
 }

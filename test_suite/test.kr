@@ -1,17 +1,20 @@
 def main() {
+  
     var a: number = 5;
-    var b: number = 5;
+    var b: number = 7;
 
     
 }
 
 
 def foo() -> number {
-    var a: number = 5;
-    var b: number = 5;
+    var a: number = 8;
+    var b: number = 5.7;
 
     if a > 2 {
-        return 1;
+        return 0;
+    } else {
+        return 3;
     }
 
     return 1;

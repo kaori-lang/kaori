@@ -7,3 +7,4 @@ pub mod cfg_instruction;
 pub mod liveness_analysis;
 pub mod register;
 pub mod register_allocator;
+pub mod traversal;

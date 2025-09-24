@@ -6,7 +6,6 @@ use super::{
     cfg_instruction::{CfgInstruction, CfgInstructionKind},
 };
 
-#[derive(Debug, Default)]
 pub struct CfgStream {
     pub roots: Vec<BlockId>,
     pub basic_blocks: HashMap<BlockId, BasicBlock>,
