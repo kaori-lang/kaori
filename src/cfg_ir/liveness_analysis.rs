@@ -1,10 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::cfg_ir::traversal::Postorder;
 
 use super::{
-    basic_block::{BasicBlock, Terminator},
-    block_id::BlockId,
     cfg_instruction::{CfgInstruction, CfgInstructionId, CfgInstructionKind},
     cfg_stream::CfgStream,
 };
@@ -12,25 +10,27 @@ use super::{
 pub struct LivenessAnalysis<'a> {
     cfg_stream: &'a CfgStream,
     register_lifetime: HashMap<usize, CfgInstructionId>,
-    post_order: Vec<BlockId>,
-    visited: HashSet<BlockId>,
+    traversal: Postorder<'a>,
 }
 
 impl<'a> LivenessAnalysis<'a> {
     pub fn new(cfg_stream: &'a CfgStream) -> Self {
+        let traversal = Postorder::new(&cfg_stream.basic_blocks);
+
         Self {
             cfg_stream,
             register_lifetime: HashMap::new(),
-            post_order: Vec::new(),
-            visited: HashSet::new(),
+            traversal,
         }
     }
 
     pub fn analyze_cfgs(&mut self) {
         for root in &self.cfg_stream.roots {
-            let traversal = Postorder::new(&self.cfg_stream.basic_blocks);
+            for block_id in self.traversal.reversed_postorder(root) {
+                let bb = self.cfg_stream.basic_blocks.get(&block_id).unwrap();
 
-            self.analyze_instructions(&bb.instructions);
+                self.analyze_instructions(&bb.instructions);
+            }
 
             println!("\n");
 

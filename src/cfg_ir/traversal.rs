@@ -20,28 +20,31 @@ impl<'a> Postorder<'a> {
         }
     }
 
-    fn reversed_postorder(&mut self, id: &BlockId) -> Vec<BlockId> {
+    pub fn reversed_postorder(&mut self, id: &BlockId) -> Vec<BlockId> {
         self.traverse(id);
+
         let mut reversed = Vec::new();
 
         while let Some(block_id) = self.postorder.pop() {
             reversed.push(block_id);
         }
 
+        self.visited.clear();
+
         reversed
     }
 
     fn traverse(&mut self, id: &BlockId) {
-        if self.visited.contains(&id) {
+        if self.visited.contains(id) {
             return;
         }
 
-        let bb = self.basic_blocks.get(&id).unwrap();
+        let bb = self.basic_blocks.get(id).unwrap();
 
         match &bb.terminator {
             Terminator::Branch { r#true, r#false } => {
-                self.traverse(r#true);
                 self.traverse(r#false);
+                self.traverse(r#true);
             }
             Terminator::Goto(target) => {
                 self.traverse(target);
