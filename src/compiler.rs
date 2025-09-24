@@ -1,5 +1,5 @@
 use crate::{
-    cfg_ir::{cfg_builder::CfgBuilder, cfg_stream::CfgStream, liveness_analysis::LivenessAnalysis},
+    cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr, liveness_analysis::LivenessAnalysis},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},
@@ -35,17 +35,17 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
     Ok(hir)
 }
 
-fn build_cfg_ir(hir: &[HirDecl]) -> CfgStream {
-    let mut cfg_stream = CfgStream::new();
+fn build_cfg_ir(hir: &[HirDecl]) -> CfgIr {
+    let mut cfg_ir = CfgIr::default();
 
-    let mut cfg_builder = CfgBuilder::new(&mut cfg_stream);
+    let mut cfg_builder = CfgBuilder::new(&mut cfg_ir);
 
     cfg_builder.build_ir(hir);
 
-    cfg_stream
+    cfg_ir
 }
 
-fn run_lifetime_analyis(cfg_stream: &CfgStream) {
+fn run_lifetime_analyis(cfg_stream: &CfgIr) {
     let mut a = LivenessAnalysis::new(cfg_stream);
 
     a.analyze_cfgs();

@@ -1,20 +1,20 @@
 use std::collections::HashMap;
 
-use crate::cfg_ir::traversal::Postorder;
+use crate::cfg_ir::graph_traversal::Postorder;
 
 use super::{
     cfg_instruction::{CfgInstruction, CfgInstructionId, CfgInstructionKind},
-    cfg_stream::CfgStream,
+    cfg_ir::CfgIr,
 };
 
 pub struct LivenessAnalysis<'a> {
-    cfg_stream: &'a CfgStream,
+    cfg_stream: &'a CfgIr,
     register_lifetime: HashMap<usize, CfgInstructionId>,
     traversal: Postorder<'a>,
 }
 
 impl<'a> LivenessAnalysis<'a> {
-    pub fn new(cfg_stream: &'a CfgStream) -> Self {
+    pub fn new(cfg_stream: &'a CfgIr) -> Self {
         let traversal = Postorder::new(&cfg_stream.basic_blocks);
 
         Self {

@@ -12,25 +12,63 @@ use crate::{
 };
 
 use super::{
-    basic_block::Terminator, block_id::BlockId, cfg_instruction::CfgInstructionKind,
-    cfg_stream::CfgStream,
+    basic_block::{BasicBlock, Terminator},
+    block_id::BlockId,
+    cfg_instruction::{CfgInstruction, CfgInstructionKind},
+    cfg_ir::CfgIr,
 };
 
 pub struct CfgBuilder<'a> {
-    cfg_stream: &'a mut CfgStream,
+    cfg_ir: &'a mut CfgIr,
+    current_bb: BlockId,
     register: usize,
     nodes_register: HashMap<HirId, usize>,
     nodes_block: HashMap<HirId, BlockId>,
 }
 
 impl<'a> CfgBuilder<'a> {
-    pub fn new(cfg_stream: &'a mut CfgStream) -> Self {
+    pub fn new(cfg_ir: &'a mut CfgIr) -> Self {
         Self {
-            cfg_stream,
+            cfg_ir,
+            current_bb: BlockId::default(),
             register: 0,
             nodes_register: HashMap::new(),
             nodes_block: HashMap::new(),
         }
+    }
+
+    pub fn emit_instruction(&mut self, kind: CfgInstructionKind) {
+        let id = self.current_bb;
+        let basic_block = self.cfg_ir.basic_blocks.get_mut(&id).unwrap();
+
+        if let Terminator::Return = basic_block.terminator {
+            return;
+        }
+
+        let instruction = CfgInstruction::new(kind);
+
+        basic_block.instructions.push(instruction);
+    }
+
+    pub fn create_bb(&mut self) -> BlockId {
+        let id = BlockId::default();
+        let basic_block = BasicBlock::new(id);
+
+        self.cfg_ir.basic_blocks.insert(id, basic_block);
+
+        id
+    }
+
+    pub fn create_cfg(&mut self) -> BlockId {
+        let basic_block = self.create_bb();
+
+        self.cfg_ir.roots.push(basic_block);
+
+        basic_block
+    }
+
+    pub fn get_bb(&mut self, id: BlockId) -> &mut BasicBlock {
+        self.cfg_ir.basic_blocks.get_mut(&id).unwrap()
     }
 
     fn allocate_register(&mut self) -> usize {
@@ -47,7 +85,7 @@ impl<'a> CfgBuilder<'a> {
 
     pub fn build_ir(&mut self, declarations: &[HirDecl]) {
         for declaration in declarations {
-            let cfg_root = self.cfg_stream.create_cfg();
+            let cfg_root = self.create_cfg();
 
             self.nodes_block.insert(declaration.id, cfg_root);
         }
@@ -80,11 +118,11 @@ impl<'a> CfgBuilder<'a> {
 
                 let instruction = CfgInstructionKind::Move { dest, src };
 
-                self.cfg_stream.emit_instruction(instruction);
+                self.emit_instruction(instruction);
             }
 
             HirDeclKind::Function { body, parameters } => {
-                self.cfg_stream.current_bb = *self.nodes_block.get(&declaration.id).unwrap();
+                self.current_bb = *self.nodes_block.get(&declaration.id).unwrap();
 
                 for parameter in parameters {
                     let register = self.allocate_register();
@@ -95,9 +133,9 @@ impl<'a> CfgBuilder<'a> {
                     self.visit_ast_node(node);
                 }
 
-                let last_bb = self.cfg_stream.current_bb;
+                let last_bb = self.current_bb;
 
-                self.cfg_stream.get_bb(last_bb).terminator = Terminator::Return;
+                self.get_bb(last_bb).terminator = Terminator::Return;
 
                 self.free_all_registers();
             }
@@ -125,29 +163,29 @@ impl<'a> CfgBuilder<'a> {
             } => {
                 self.visit_expression(condition);
 
-                let condition_bb = self.cfg_stream.current_bb;
-                let then_bb = self.cfg_stream.create_bb();
-                let else_bb = self.cfg_stream.create_bb();
-                let terminator_block = self.cfg_stream.create_bb();
+                let condition_bb = self.current_bb;
+                let then_bb = self.create_bb();
+                let else_bb = self.create_bb();
+                let terminator_block = self.create_bb();
 
-                self.cfg_stream.current_bb = then_bb;
+                self.current_bb = then_bb;
                 self.visit_statement(then_branch);
 
                 if let Some(branch) = else_branch {
-                    self.cfg_stream.current_bb = else_bb;
+                    self.current_bb = else_bb;
                     self.visit_statement(branch);
                 }
 
-                self.cfg_stream.get_bb(condition_bb).terminator = Terminator::Branch {
+                self.get_bb(condition_bb).terminator = Terminator::Branch {
                     r#true: then_bb,
                     r#false: else_bb,
                 };
 
-                self.cfg_stream.get_bb(then_bb).terminator = Terminator::Goto(terminator_block);
+                self.get_bb(then_bb).terminator = Terminator::Goto(terminator_block);
 
-                self.cfg_stream.get_bb(else_bb).terminator = Terminator::Goto(terminator_block);
+                self.get_bb(else_bb).terminator = Terminator::Goto(terminator_block);
 
-                self.cfg_stream.current_bb = terminator_block;
+                self.current_bb = terminator_block;
             }
             HirStmtKind::Loop {
                 init,
@@ -157,27 +195,27 @@ impl<'a> CfgBuilder<'a> {
                 if let Some(init) = init {
                     self.visit_declaration(init);
                 }
-                let previous_bb = self.cfg_stream.current_bb;
-                let condition_bb = self.cfg_stream.create_bb();
-                let block_bb = self.cfg_stream.create_bb();
-                let terminator_bb = self.cfg_stream.create_bb();
+                let previous_bb = self.current_bb;
+                let condition_bb = self.create_bb();
+                let block_bb = self.create_bb();
+                let terminator_bb = self.create_bb();
 
-                self.cfg_stream.current_bb = condition_bb;
+                self.current_bb = condition_bb;
                 self.visit_expression(condition);
 
-                self.cfg_stream.current_bb = block_bb;
+                self.current_bb = block_bb;
                 self.visit_statement(block);
 
-                self.cfg_stream.get_bb(previous_bb).terminator = Terminator::Goto(condition_bb);
+                self.get_bb(previous_bb).terminator = Terminator::Goto(condition_bb);
 
-                self.cfg_stream.get_bb(condition_bb).terminator = Terminator::Branch {
+                self.get_bb(condition_bb).terminator = Terminator::Branch {
                     r#true: block_bb,
                     r#false: terminator_bb,
                 };
 
-                self.cfg_stream.get_bb(block_bb).terminator = Terminator::Goto(condition_bb);
+                self.get_bb(block_bb).terminator = Terminator::Goto(condition_bb);
 
-                self.cfg_stream.current_bb = terminator_bb;
+                self.current_bb = terminator_bb;
             }
             HirStmtKind::Break => {}
             HirStmtKind::Continue => {}
@@ -187,11 +225,11 @@ impl<'a> CfgBuilder<'a> {
 
                     let instruction = CfgInstructionKind::Return { src };
 
-                    self.cfg_stream.emit_instruction(instruction);
+                    self.emit_instruction(instruction);
                 }
-                let current_bb = self.cfg_stream.current_bb;
+                let current_bb = self.current_bb;
 
-                self.cfg_stream.get_bb(current_bb).terminator = Terminator::Return;
+                self.get_bb(current_bb).terminator = Terminator::Return;
             }
         };
     }
@@ -204,7 +242,7 @@ impl<'a> CfgBuilder<'a> {
 
                 let instruction = CfgInstructionKind::Move { dest, src };
 
-                self.cfg_stream.emit_instruction(instruction);
+                self.emit_instruction(instruction);
 
                 dest
             }
@@ -238,7 +276,7 @@ impl<'a> CfgBuilder<'a> {
                     BinaryOpKind::Or => CfgInstructionKind::Or { dest, src1, src2 },
                 };
 
-                self.cfg_stream.emit_instruction(instruction);
+                self.emit_instruction(instruction);
 
                 dest
             }
@@ -251,7 +289,7 @@ impl<'a> CfgBuilder<'a> {
                     UnaryOpKind::Not => CfgInstructionKind::Not { dest, src },
                 };
 
-                self.cfg_stream.emit_instruction(instruction);
+                self.emit_instruction(instruction);
 
                 dest
             }
@@ -260,14 +298,14 @@ impl<'a> CfgBuilder<'a> {
 
                 let call_instruction = CfgInstructionKind::Call;
 
-                self.cfg_stream.emit_instruction(call_instruction);
+                self.emit_instruction(call_instruction);
 
                 for (dest, argument) in arguments.iter().enumerate() {
                     let src = self.visit_expression(argument);
 
                     let instruction = CfgInstructionKind::Move { dest, src };
 
-                    self.cfg_stream.emit_instruction(instruction);
+                    self.emit_instruction(instruction);
                 }
 
                 let callee_register = self.visit_expression(callee);
@@ -283,7 +321,7 @@ impl<'a> CfgBuilder<'a> {
 
                 let instruction = CfgInstructionKind::FunctionConst { dest, value };
 
-                self.cfg_stream.emit_instruction(instruction);
+                self.emit_instruction(instruction);
 
                 dest
             }
@@ -295,7 +333,7 @@ impl<'a> CfgBuilder<'a> {
                     value: value.to_owned(),
                 };
 
-                self.cfg_stream.emit_instruction(instruction);
+                self.emit_instruction(instruction);
 
                 dest
             }
@@ -307,7 +345,7 @@ impl<'a> CfgBuilder<'a> {
                     value: *value,
                 };
 
-                self.cfg_stream.emit_instruction(instruction);
+                self.emit_instruction(instruction);
 
                 dest
             }
@@ -319,7 +357,7 @@ impl<'a> CfgBuilder<'a> {
                     value: *value,
                 };
 
-                self.cfg_stream.emit_instruction(instruction);
+                self.emit_instruction(instruction);
 
                 dest
             }
