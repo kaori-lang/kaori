@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
+use crate::cfg_ir::traversal::Postorder;
+
 use super::{
     basic_block::{BasicBlock, Terminator},
     block_id::BlockId,
@@ -24,39 +26,11 @@ impl<'a> LivenessAnalysis<'a> {
         }
     }
 
-    pub fn dfs_postorder(&mut self, id: BlockId) {
-        if self.visited.contains(&id) {
-            return;
-        }
-
-        self.visited.insert(id);
-
-        let bb = self.cfg_stream.basic_blocks.get(&id).unwrap();
-
-        match &bb.terminator {
-            Terminator::Branch { r#true, r#false } => {
-                self.dfs_postorder(*r#true);
-                self.dfs_postorder(*r#false);
-            }
-            Terminator::Goto(target) => {
-                self.dfs_postorder(*target);
-            }
-            _ => {}
-        };
-
-        self.post_order.push(bb.id);
-    }
-
     pub fn analyze_cfgs(&mut self) {
         for root in &self.cfg_stream.roots {
-            let bb = self.cfg_stream.basic_blocks.get(root).unwrap();
-            self.dfs_postorder(bb);
+            let traversal = Postorder::new(&self.cfg_stream.basic_blocks);
 
-            while let Some(id) = self.post_order.pop() {
-                let bb = self.cfg_stream.basic_blocks.get(&id).unwrap();
-
-                self.analyze_instructions(&bb.instructions);
-            }
+            self.analyze_instructions(&bb.instructions);
 
             println!("\n");
 
