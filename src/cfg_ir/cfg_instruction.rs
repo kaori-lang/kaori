@@ -1,3 +1,4 @@
+use core::fmt;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::block_id::BlockId;
@@ -127,4 +128,62 @@ pub enum CfgInstructionKind {
         src: usize,
     },
     Print,
+}
+
+impl fmt::Display for CfgInstruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.kind {
+            CfgInstructionKind::Add { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} + r{src2}")
+            }
+            CfgInstructionKind::Subtract { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} - r{src2}")
+            }
+            CfgInstructionKind::Multiply { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} * r{src2}")
+            }
+            CfgInstructionKind::Divide { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} / r{src2}")
+            }
+            CfgInstructionKind::Modulo { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} % r{src2}")
+            }
+            CfgInstructionKind::Equal { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} == r{src2}")
+            }
+            CfgInstructionKind::NotEqual { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} != r{src2}")
+            }
+            CfgInstructionKind::Greater { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} > r{src2}")
+            }
+            CfgInstructionKind::GreaterEqual { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} >= r{src2}")
+            }
+            CfgInstructionKind::Less { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} < r{src2}")
+            }
+            CfgInstructionKind::LessEqual { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} <= r{src2}")
+            }
+            CfgInstructionKind::And { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} && r{src2}")
+            }
+            CfgInstructionKind::Or { dest, src1, src2 } => {
+                write!(f, "r{dest} = r{src1} || r{src2}")
+            }
+            CfgInstructionKind::Negate { dest, src } => write!(f, "r{dest} = -r{src}"),
+            CfgInstructionKind::Not { dest, src } => write!(f, "r{dest} = !r{src}"),
+            CfgInstructionKind::StringConst { dest, value } => write!(f, "r{dest} = \"{value}\""),
+            CfgInstructionKind::NumberConst { dest, value } => write!(f, "r{dest} = {value}"),
+            CfgInstructionKind::BooleanConst { dest, value } => write!(f, "r{dest} = {value}"),
+            CfgInstructionKind::FunctionConst { dest, value } => {
+                write!(f, "r{dest} = fn({value:?})")
+            }
+            CfgInstructionKind::Move { dest, src } => write!(f, "r{dest} = r{src}"),
+            CfgInstructionKind::Call => write!(f, "call"),
+            CfgInstructionKind::Return { src } => write!(f, "return r{src}"),
+            CfgInstructionKind::Print => write!(f, "print"),
+        }
+    }
 }

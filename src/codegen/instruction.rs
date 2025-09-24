@@ -1,5 +1,3 @@
-use crate::frontend::cfgir::register::Register;
-
 #[derive(Debug, Clone)]
 pub enum Instruction {
     Add {
