@@ -67,8 +67,8 @@ impl<'a> CfgBuilder<'a> {
         basic_block
     }
 
-    pub fn get_bb(&mut self, id: BlockId) -> &mut BasicBlock {
-        self.cfg_ir.basic_blocks.get_mut(&id).unwrap()
+    pub fn set_terminator(&mut self, id: BlockId, terminator: Terminator) {
+        self.cfg_ir.basic_blocks.get_mut(&id).unwrap().terminator = terminator;
     }
 
     fn allocate_register(&mut self) -> usize {
@@ -135,7 +135,7 @@ impl<'a> CfgBuilder<'a> {
 
                 let last_bb = self.current_bb;
 
-                self.get_bb(last_bb).terminator = Terminator::Return;
+                self.set_terminator(last_bb, Terminator::Return);
 
                 self.free_all_registers();
             }
@@ -176,14 +176,17 @@ impl<'a> CfgBuilder<'a> {
                     self.visit_statement(branch);
                 }
 
-                self.get_bb(condition_bb).terminator = Terminator::Branch {
-                    r#true: then_bb,
-                    r#false: else_bb,
-                };
+                self.set_terminator(
+                    condition_bb,
+                    Terminator::Branch {
+                        r#true: then_bb,
+                        r#false: else_bb,
+                    },
+                );
 
-                self.get_bb(then_bb).terminator = Terminator::Goto(terminator_block);
+                self.set_terminator(then_bb, Terminator::Goto(terminator_block));
 
-                self.get_bb(else_bb).terminator = Terminator::Goto(terminator_block);
+                self.set_terminator(else_bb, Terminator::Goto(terminator_block));
 
                 self.current_bb = terminator_block;
             }
@@ -206,14 +209,17 @@ impl<'a> CfgBuilder<'a> {
                 self.current_bb = block_bb;
                 self.visit_statement(block);
 
-                self.get_bb(previous_bb).terminator = Terminator::Goto(condition_bb);
+                self.set_terminator(previous_bb, Terminator::Goto(condition_bb));
 
-                self.get_bb(condition_bb).terminator = Terminator::Branch {
-                    r#true: block_bb,
-                    r#false: terminator_bb,
-                };
+                self.set_terminator(
+                    condition_bb,
+                    Terminator::Branch {
+                        r#true: block_bb,
+                        r#false: terminator_bb,
+                    },
+                );
 
-                self.get_bb(block_bb).terminator = Terminator::Goto(condition_bb);
+                self.set_terminator(block_bb, Terminator::Goto(condition_bb));
 
                 self.current_bb = terminator_bb;
             }
@@ -229,7 +235,7 @@ impl<'a> CfgBuilder<'a> {
                 }
                 let current_bb = self.current_bb;
 
-                self.get_bb(current_bb).terminator = Terminator::Return;
+                self.set_terminator(current_bb, Terminator::Return);
             }
         };
     }
