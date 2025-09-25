@@ -5,29 +5,32 @@ use crate::cfg_ir::graph_traversal::Postorder;
 use super::{
     cfg_instruction::{CfgInstruction, CfgInstructionId, CfgInstructionKind},
     cfg_ir::CfgIr,
+    register_allocator::RegisterAllocator,
 };
 
 pub struct LivenessAnalysis<'a> {
-    cfg_stream: &'a CfgIr,
+    cfg_ir: &'a CfgIr,
     register_lifetime: HashMap<usize, CfgInstructionId>,
     traversal: Postorder<'a>,
+    register_allocator: RegisterAllocator,
 }
 
 impl<'a> LivenessAnalysis<'a> {
-    pub fn new(cfg_stream: &'a CfgIr) -> Self {
-        let traversal = Postorder::new(&cfg_stream.basic_blocks);
+    pub fn new(cfg_ir: &'a CfgIr) -> Self {
+        let traversal = Postorder::new(&cfg_ir.basic_blocks);
 
         Self {
-            cfg_stream,
+            cfg_ir,
             register_lifetime: HashMap::new(),
             traversal,
+            register_allocator: RegisterAllocator::new(),
         }
     }
 
     pub fn analyze_cfgs(&mut self) {
-        for root in &self.cfg_stream.roots {
-            for block_id in self.traversal.reversed_postorder(root) {
-                let bb = self.cfg_stream.basic_blocks.get(&block_id).unwrap();
+        for cfg in &self.cfg_ir.cfgs {
+            for block_id in self.traversal.reversed_postorder(cfg) {
+                let bb = self.cfg_ir.basic_blocks.get(&block_id).unwrap();
 
                 self.analyze_instructions(&bb.instructions);
             }
@@ -35,6 +38,14 @@ impl<'a> LivenessAnalysis<'a> {
             println!("\n");
 
             self.register_lifetime.clear();
+        }
+    }
+
+    fn try_to_free(&mut self, register: usize, instruction: CfgInstructionId) {
+        let register_last_instruction = *self.register_lifetime.get(&register).unwrap();
+
+        if instruction == register_last_instruction {
+            self.register_allocator.free_register(register);
         }
     }
 

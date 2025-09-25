@@ -1,5 +1,3 @@
-use super::register::Register;
-
 #[derive(Debug)]
 pub struct RegisterAllocator {
     registers: [bool; 256],
@@ -23,23 +21,23 @@ impl RegisterAllocator {
         self.registers[register]
     }
 
-    pub fn free_register(&mut self, register: Register) {
-        self.registers[register.0 as usize] = true;
+    pub fn free_register(&mut self, register: usize) {
+        self.registers[register] = true;
     }
 
-    pub fn alloc_register(&mut self) -> Register {
+    pub fn alloc_register(&mut self) -> usize {
         for i in 0..self.registers.len() {
             if self.is_register_free(i) {
                 self.registers[i] = false;
 
-                return Register::new(i as u8);
+                return i;
             }
         }
 
         unreachable!()
     }
 
-    pub fn max_allocated_register(&self) -> u8 {
+    pub fn max_allocated_register(&self) -> usize {
         let mut max_register = 0;
 
         for i in (0..self.registers.len()).rev() {
@@ -49,6 +47,6 @@ impl RegisterAllocator {
             }
         }
 
-        max_register as u8
+        max_register
     }
 }

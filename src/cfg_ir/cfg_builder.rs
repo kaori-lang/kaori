@@ -62,7 +62,7 @@ impl<'a> CfgBuilder<'a> {
     pub fn create_cfg(&mut self) -> BlockId {
         let basic_block = self.create_bb();
 
-        self.cfg_ir.roots.push(basic_block);
+        self.cfg_ir.cfgs.push(basic_block);
 
         basic_block
     }
