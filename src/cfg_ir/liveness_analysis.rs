@@ -3,42 +3,45 @@ use std::collections::HashMap;
 use crate::cfg_ir::graph_traversal::Postorder;
 
 use super::{
+    block_id::BlockId,
     cfg_instruction::{CfgInstruction, CfgInstructionId, CfgInstructionKind},
     cfg_ir::CfgIr,
     register_allocator::RegisterAllocator,
 };
 
 pub struct LivenessAnalysis<'a> {
-    cfg_ir: &'a CfgIr,
+    cfg_ir: &'a mut CfgIr,
     register_lifetime: HashMap<usize, CfgInstructionId>,
-    traversal: Postorder<'a>,
     register_allocator: RegisterAllocator,
 }
 
 impl<'a> LivenessAnalysis<'a> {
-    pub fn new(cfg_ir: &'a CfgIr) -> Self {
-        let traversal = Postorder::new(&cfg_ir.basic_blocks);
-
+    pub fn new(cfg_ir: &'a mut CfgIr) -> Self {
         Self {
             cfg_ir,
             register_lifetime: HashMap::new(),
-            traversal,
             register_allocator: RegisterAllocator::new(),
         }
     }
 
     pub fn analyze_cfgs(&mut self) {
-        for cfg in &self.cfg_ir.cfgs {
-            for block_id in self.traversal.reversed_postorder(cfg) {
-                let bb = self.cfg_ir.basic_blocks.get(&block_id).unwrap();
+        /* for cfg in self.cfg_ir.cfgs.as_ref() {
+            self.analyze_cfg(cfg);
+        } */
+    }
 
-                self.analyze_instructions(&bb.instructions);
-            }
+    pub fn analyze_cfg(&mut self, cfg: BlockId) {
+        let mut traversal = Postorder::new(&self.cfg_ir.basic_blocks);
 
-            println!("\n");
+        for block_id in traversal.reversed_postorder(&cfg) {
+            let bb = self.cfg_ir.basic_blocks.get(&block_id).unwrap();
 
-            self.register_lifetime.clear();
+            //self.analyze_instructions(&bb.instructions);
         }
+
+        println!("\n");
+
+        self.register_lifetime.clear();
     }
 
     fn try_to_free(&mut self, register: usize, instruction: CfgInstructionId) {
@@ -49,7 +52,7 @@ impl<'a> LivenessAnalysis<'a> {
         }
     }
 
-    pub fn analyze_instructions(&mut self, instructions: &[CfgInstruction]) {
+    fn analyze_instructions(&mut self, instructions: &[CfgInstruction]) {
         for instruction in instructions {
             match &instruction.kind {
                 CfgInstructionKind::Add { dest, src1, src2 }
@@ -88,5 +91,45 @@ impl<'a> LivenessAnalysis<'a> {
 
             println!(" {instruction}");
         }
+    }
+
+    fn allocate_register(&mut self, instruction: &mut CfgInstruction) {
+        match &mut instruction.kind {
+            CfgInstructionKind::Add { dest, src1, src2 }
+            | CfgInstructionKind::Subtract { dest, src1, src2 }
+            | CfgInstructionKind::Multiply { dest, src1, src2 }
+            | CfgInstructionKind::Divide { dest, src1, src2 }
+            | CfgInstructionKind::Modulo { dest, src1, src2 }
+            | CfgInstructionKind::Equal { dest, src1, src2 }
+            | CfgInstructionKind::NotEqual { dest, src1, src2 }
+            | CfgInstructionKind::Greater { dest, src1, src2 }
+            | CfgInstructionKind::GreaterEqual { dest, src1, src2 }
+            | CfgInstructionKind::Less { dest, src1, src2 }
+            | CfgInstructionKind::LessEqual { dest, src1, src2 }
+            | CfgInstructionKind::And { dest, src1, src2 }
+            | CfgInstructionKind::Or { dest, src1, src2 } => {
+                *dest = 1;
+                self.register_lifetime.insert(*dest, instruction.id);
+                self.register_lifetime.insert(*src1, instruction.id);
+                self.register_lifetime.insert(*src2, instruction.id);
+            }
+            CfgInstructionKind::Negate { dest, src }
+            | CfgInstructionKind::Not { dest, src }
+            | CfgInstructionKind::Move { dest, src } => {
+                self.register_lifetime.insert(*dest, instruction.id);
+                self.register_lifetime.insert(*src, instruction.id);
+            }
+            CfgInstructionKind::StringConst { dest, .. }
+            | CfgInstructionKind::NumberConst { dest, .. }
+            | CfgInstructionKind::BooleanConst { dest, .. }
+            | CfgInstructionKind::FunctionConst { dest, .. } => {
+                self.register_lifetime.insert(*dest, instruction.id);
+            }
+            CfgInstructionKind::Call => {}
+            CfgInstructionKind::Return { .. } => {}
+            CfgInstructionKind::Print => {}
+        }
+
+        println!(" {instruction}");
     }
 }

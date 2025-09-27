@@ -18,18 +18,18 @@ use super::{
     cfg_ir::CfgIr,
 };
 
-pub struct CfgBuilder<'a> {
-    cfg_ir: &'a mut CfgIr,
+pub struct CfgBuilder {
+    pub cfg_ir: CfgIr,
     current_bb: BlockId,
     register: usize,
     nodes_register: HashMap<HirId, usize>,
     nodes_block: HashMap<HirId, BlockId>,
 }
 
-impl<'a> CfgBuilder<'a> {
-    pub fn new(cfg_ir: &'a mut CfgIr) -> Self {
+impl CfgBuilder {
+    pub fn new() -> Self {
         Self {
-            cfg_ir,
+            cfg_ir: CfgIr::default(),
             current_bb: BlockId::default(),
             register: 0,
             nodes_register: HashMap::new(),
@@ -37,7 +37,7 @@ impl<'a> CfgBuilder<'a> {
         }
     }
 
-    pub fn emit_instruction(&mut self, kind: CfgInstructionKind) {
+    fn emit_instruction(&mut self, kind: CfgInstructionKind) {
         let id = self.current_bb;
         let basic_block = self.cfg_ir.basic_blocks.get_mut(&id).unwrap();
 
@@ -50,7 +50,7 @@ impl<'a> CfgBuilder<'a> {
         basic_block.instructions.push(instruction);
     }
 
-    pub fn create_bb(&mut self) -> BlockId {
+    fn create_bb(&mut self) -> BlockId {
         let id = BlockId::default();
         let basic_block = BasicBlock::new(id);
 
@@ -59,7 +59,7 @@ impl<'a> CfgBuilder<'a> {
         id
     }
 
-    pub fn create_cfg(&mut self) -> BlockId {
+    fn create_cfg(&mut self) -> BlockId {
         let basic_block = self.create_bb();
 
         self.cfg_ir.cfgs.push(basic_block);
@@ -67,7 +67,7 @@ impl<'a> CfgBuilder<'a> {
         basic_block
     }
 
-    pub fn set_terminator(&mut self, id: BlockId, terminator: Terminator) {
+    fn set_terminator(&mut self, id: BlockId, terminator: Terminator) {
         self.cfg_ir.basic_blocks.get_mut(&id).unwrap().terminator = terminator;
     }
 

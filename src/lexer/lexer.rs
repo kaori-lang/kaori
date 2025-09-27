@@ -2,28 +2,28 @@ use crate::{error::kaori_error::KaoriError, kaori_error};
 
 use super::{span::Span, token::Token, token_kind::TokenKind};
 
-pub struct Lexer<'a> {
+pub struct Lexer {
     source: Vec<char>,
-    position: usize,
-    tokens: &'a mut Vec<Token>,
+    index: usize,
+    pub tokens: Vec<Token>,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(source: &str, tokens: &'a mut Vec<Token>) -> Self {
+impl Lexer {
+    pub fn new(source: &str) -> Self {
         Self {
             source: source.chars().collect(),
-            position: 0,
-            tokens,
+            index: 0,
+            tokens: Vec::new(),
         }
     }
 
     fn at_end(&mut self) -> bool {
-        self.position >= self.source.len()
+        self.index >= self.source.len()
     }
 
     fn look_ahead(&mut self, expected: &str) -> bool {
         for (i, expected) in expected.chars().enumerate() {
-            let j = self.position + i;
+            let j = self.index + i;
 
             if Some(&expected) != self.source.get(j) {
                 return false;
@@ -34,44 +34,44 @@ impl<'a> Lexer<'a> {
     }
 
     fn white_space(&mut self) {
-        while !self.at_end() && self.source[self.position].is_whitespace() {
-            self.position += 1;
+        while !self.at_end() && self.source[self.index].is_whitespace() {
+            self.index += 1;
         }
     }
 
     fn multiline_comment(&mut self) {
-        self.position += 2;
+        self.index += 2;
 
         while !self.at_end() && !self.look_ahead("*/") {
-            self.position += 1;
+            self.index += 1;
         }
 
-        self.position += 2;
+        self.index += 2;
     }
 
     fn line_comment(&mut self) {
-        self.position += 2;
+        self.index += 2;
 
         while !self.at_end() && !self.look_ahead("\n") {
-            self.position += 1;
+            self.index += 1;
         }
 
-        self.position += 1;
+        self.index += 1;
     }
 
     fn identifier_or_keyword(&mut self) {
-        let start = self.position;
+        let start = self.index;
 
-        while !self.at_end() && self.source[self.position].is_alphabetic() {
-            self.position += 1;
+        while !self.at_end() && self.source[self.index].is_alphabetic() {
+            self.index += 1;
         }
 
         while !self.at_end()
-            && (self.source[self.position].is_alphanumeric() || self.source[self.position] == '_')
+            && (self.source[self.index].is_alphanumeric() || self.source[self.index] == '_')
         {
-            self.position += 1;
+            self.index += 1;
         }
-        let sub: String = self.source[start..self.position].iter().collect();
+        let sub: String = self.source[start..self.index].iter().collect();
 
         let kind = match sub.as_str() {
             "if" => TokenKind::If,
@@ -92,51 +92,51 @@ impl<'a> Lexer<'a> {
             _ => TokenKind::Identifier,
         };
 
-        let end = self.position;
+        let end = self.index;
         let token = Token::new(kind, start, end);
         self.tokens.push(token);
     }
 
     fn number_literal(&mut self) {
-        let start = self.position;
+        let start = self.index;
 
-        while !self.at_end() && self.source[self.position].is_ascii_digit() {
-            self.position += 1;
+        while !self.at_end() && self.source[self.index].is_ascii_digit() {
+            self.index += 1;
         }
 
-        if !self.at_end() && self.source[self.position] == '.' {
-            self.position += 1;
+        if !self.at_end() && self.source[self.index] == '.' {
+            self.index += 1;
         }
 
-        while !self.at_end() && self.source[self.position].is_ascii_digit() {
-            self.position += 1;
+        while !self.at_end() && self.source[self.index].is_ascii_digit() {
+            self.index += 1;
         }
 
-        let end = self.position;
+        let end = self.index;
         let token = Token::new(TokenKind::NumberLiteral, start, end);
 
         self.tokens.push(token);
     }
 
     fn string_literal(&mut self) -> Result<(), KaoriError> {
-        let start = self.position;
+        let start = self.index;
 
-        self.position += 1;
+        self.index += 1;
 
-        while !self.at_end() && self.source[self.position] != '"' {
-            self.position += 1;
+        while !self.at_end() && self.source[self.index] != '"' {
+            self.index += 1;
         }
 
         if self.at_end() {
-            let end = self.position;
+            let end = self.index;
             let span = Span { start, end };
 
             return Err(kaori_error!(span, "invalid unfinished string literal"));
         }
 
-        self.position += 1;
+        self.index += 1;
 
-        let end = self.position;
+        let end = self.index;
         let token = Token::new(TokenKind::StringLiteral, start, end);
 
         self.tokens.push(token);
@@ -145,9 +145,9 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn symbol(&mut self) -> Result<(), KaoriError> {
-        let start = self.position;
+        let start = self.index;
 
-        let curr_char = self.source[self.position];
+        let curr_char = self.source[self.index];
 
         let kind = match curr_char {
             '+' => {
@@ -240,7 +240,7 @@ impl<'a> Lexer<'a> {
         };
 
         if kind == TokenKind::Invalid {
-            let end = self.position;
+            let end = self.index;
             let span = Span { start, end };
 
             return Err(kaori_error!(span, "{} is not a valid token", curr_char));
@@ -262,9 +262,9 @@ impl<'a> Lexer<'a> {
             _ => 1,
         };
 
-        self.position += size;
+        self.index += size;
 
-        let end = self.position;
+        let end = self.index;
         let token = Token::new(kind, start, end);
 
         self.tokens.push(token);
@@ -272,7 +272,7 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn get_next_token(&mut self) -> Result<(), KaoriError> {
-        let c = self.source[self.position];
+        let c = self.source[self.index];
         match c {
             '"' => self.string_literal()?,
             '/' if self.look_ahead("/*") => self.multiline_comment(),
@@ -291,8 +291,8 @@ impl<'a> Lexer<'a> {
         }
 
         let span = Span {
-            start: self.position - 1,
-            end: self.position - 1,
+            start: self.index - 1,
+            end: self.index - 1,
         };
 
         let token = Token {

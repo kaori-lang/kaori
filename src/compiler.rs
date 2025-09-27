@@ -7,11 +7,10 @@ use crate::{
 };
 
 fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {
-    let mut tokens = Vec::new();
-    let mut lexer = Lexer::new(&source, &mut tokens);
+    let mut lexer = Lexer::new(&source);
     lexer.tokenize()?;
 
-    let token_stream = TokenStream::new(source, tokens);
+    let token_stream = TokenStream::new(source, lexer.tokens);
     Ok(token_stream)
 }
 
@@ -36,19 +35,17 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
 }
 
 fn build_cfg_ir(hir: &[HirDecl]) -> CfgIr {
-    let mut cfg_ir = CfgIr::default();
-
-    let mut cfg_builder = CfgBuilder::new(&mut cfg_ir);
+    let mut cfg_builder = CfgBuilder::new();
 
     cfg_builder.build_ir(hir);
 
-    cfg_ir
+    cfg_builder.cfg_ir
 }
 
 fn run_lifetime_analyis(cfg_stream: &CfgIr) {
-    let mut a = LivenessAnalysis::new(cfg_stream);
+    /*  let mut a = LivenessAnalysis::new(cfg_stream);
 
-    a.analyze_cfgs();
+    a.analyze_cfgs(); */
 }
 
 pub fn compile_source_code(source: String) -> Result<(), KaoriError> {

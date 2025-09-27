@@ -2,24 +2,14 @@
 
 use crate::error::kaori_error::KaoriError;
 
-pub struct BytecodeGenerator<'a> {
-    bytecode: &'a mut Bytecode,
-}
+pub struct BytecodeGenerator {}
 
-impl<'a> BytecodeGenerator<'a> {
-    pub fn new(bytecode: &'a mut Bytecode) -> Self {
-        Self {
-            bytecode,
-            list_true: Vec::new(),
-            list_false: Vec::new(),
-        }
+impl BytecodeGenerator {
+    pub fn new() -> Self {
+        Self {}
     }
 
-    pub fn generate(&mut self, declarations: &[ResolvedDecl]) -> Result<(), KaoriError> {
-        for declaration in declarations {
-            self.visit_declaration(declaration)?;
-        }
-
+    pub fn generate(&mut self) -> Result<(), KaoriError> {
         Ok(())
     }
 }
