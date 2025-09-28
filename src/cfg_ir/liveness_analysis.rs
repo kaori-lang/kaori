@@ -4,16 +4,19 @@ use crate::cfg_ir::graph_traversal::Postorder;
 
 use super::{
     block_id::BlockId,
-    cfg_instruction::{CfgInstruction, CfgInstructionId, CfgInstructionKind},
+    cfg_instruction::CfgInstruction,
     cfg_ir::CfgIr,
     operand::{Operand, Variable},
     register_allocator::RegisterAllocator,
 };
 
+type Instruction = usize;
+
 pub struct LivenessAnalysis<'a> {
     cfg_ir: &'a mut CfgIr,
-    variable_lifetime: HashMap<Variable, CfgInstructionId>,
+    variable_lifetime: HashMap<Variable, Instruction>,
     register_allocator: RegisterAllocator,
+    current_instruction: Instruction,
 }
 
 impl<'a> LivenessAnalysis<'a> {
@@ -22,6 +25,7 @@ impl<'a> LivenessAnalysis<'a> {
             cfg_ir,
             variable_lifetime: HashMap::new(),
             register_allocator: RegisterAllocator::new(),
+            current_instruction: 0,
         }
     }
 
@@ -37,7 +41,7 @@ impl<'a> LivenessAnalysis<'a> {
         self.variable_lifetime.clear();
     }
 
-    fn try_to_free(&mut self, register: usize, instruction: CfgInstructionId) {
+    fn try_to_free(&mut self, register: usize) {
         /*   let register_last_instruction = *self.variable_lifetime.get(&register).unwrap();
 
         if instruction == register_last_instruction {
@@ -45,87 +49,92 @@ impl<'a> LivenessAnalysis<'a> {
         } */
     }
 
-    fn update_variable_lifetime(&mut self, operand: Operand, instruction_id: CfgInstructionId) {
+    fn update_variable_lifetime(&mut self, operand: Operand) {
         if let Operand::Variable(variable) = operand {
-            self.variable_lifetime.insert(variable, instruction_id);
+            self.variable_lifetime
+                .insert(variable, self.current_instruction);
         }
     }
 
     fn analyze_instructions(&mut self, instructions: &[CfgInstruction]) {
         for instruction in instructions {
-            match &instruction.kind {
-                CfgInstructionKind::Add { dest, src1, src2 }
-                | CfgInstructionKind::Subtract { dest, src1, src2 }
-                | CfgInstructionKind::Multiply { dest, src1, src2 }
-                | CfgInstructionKind::Divide { dest, src1, src2 }
-                | CfgInstructionKind::Modulo { dest, src1, src2 }
-                | CfgInstructionKind::Equal { dest, src1, src2 }
-                | CfgInstructionKind::NotEqual { dest, src1, src2 }
-                | CfgInstructionKind::Greater { dest, src1, src2 }
-                | CfgInstructionKind::GreaterEqual { dest, src1, src2 }
-                | CfgInstructionKind::Less { dest, src1, src2 }
-                | CfgInstructionKind::LessEqual { dest, src1, src2 }
-                | CfgInstructionKind::And { dest, src1, src2 }
-                | CfgInstructionKind::Or { dest, src1, src2 } => {
-                    self.update_variable_lifetime(*dest, instruction.id);
-                    self.update_variable_lifetime(*src1, instruction.id);
-                    self.update_variable_lifetime(*src2, instruction.id);
-                }
-                CfgInstructionKind::Negate { dest, src }
-                | CfgInstructionKind::Not { dest, src }
-                | CfgInstructionKind::Move { dest, src } => {
-                    self.update_variable_lifetime(*dest, instruction.id);
-                    self.update_variable_lifetime(*src, instruction.id);
-                }
-                CfgInstructionKind::StringConst { dest, .. }
-                | CfgInstructionKind::NumberConst { dest, .. }
-                | CfgInstructionKind::BooleanConst { dest, .. }
-                | CfgInstructionKind::FunctionConst { dest, .. } => {
-                    self.update_variable_lifetime(*dest, instruction.id);
-                }
-                CfgInstructionKind::Call => {}
-                CfgInstructionKind::Return { .. } => {}
-                CfgInstructionKind::Print => {}
-            }
+            self.analyze_instruction(instruction);
 
-            //println!(" {instruction}");
+            self.current_instruction += 1;
+        }
+    }
+
+    fn analyze_instruction(&mut self, instruction: &CfgInstruction) {
+        match instruction {
+            CfgInstruction::Add { dest, src1, src2 }
+            | CfgInstruction::Subtract { dest, src1, src2 }
+            | CfgInstruction::Multiply { dest, src1, src2 }
+            | CfgInstruction::Divide { dest, src1, src2 }
+            | CfgInstruction::Modulo { dest, src1, src2 }
+            | CfgInstruction::Equal { dest, src1, src2 }
+            | CfgInstruction::NotEqual { dest, src1, src2 }
+            | CfgInstruction::Greater { dest, src1, src2 }
+            | CfgInstruction::GreaterEqual { dest, src1, src2 }
+            | CfgInstruction::Less { dest, src1, src2 }
+            | CfgInstruction::LessEqual { dest, src1, src2 }
+            | CfgInstruction::And { dest, src1, src2 }
+            | CfgInstruction::Or { dest, src1, src2 } => {
+                self.update_variable_lifetime(*dest);
+                self.update_variable_lifetime(*src1);
+                self.update_variable_lifetime(*src2);
+            }
+            CfgInstruction::Negate { dest, src }
+            | CfgInstruction::Not { dest, src }
+            | CfgInstruction::Move { dest, src } => {
+                self.update_variable_lifetime(*dest);
+                self.update_variable_lifetime(*src);
+            }
+            CfgInstruction::StringConst { dest, .. }
+            | CfgInstruction::NumberConst { dest, .. }
+            | CfgInstruction::BooleanConst { dest, .. }
+            | CfgInstruction::FunctionConst { dest, .. } => {
+                self.update_variable_lifetime(*dest);
+            }
+            CfgInstruction::Call => {}
+            CfgInstruction::Return { .. } => {}
+            CfgInstruction::Print => {}
         }
     }
 
     fn allocate_register(&mut self, instruction: &mut CfgInstruction) {
-        match &mut instruction.kind {
-            CfgInstructionKind::Add { dest, src1, src2 }
-            | CfgInstructionKind::Subtract { dest, src1, src2 }
-            | CfgInstructionKind::Multiply { dest, src1, src2 }
-            | CfgInstructionKind::Divide { dest, src1, src2 }
-            | CfgInstructionKind::Modulo { dest, src1, src2 }
-            | CfgInstructionKind::Equal { dest, src1, src2 }
-            | CfgInstructionKind::NotEqual { dest, src1, src2 }
-            | CfgInstructionKind::Greater { dest, src1, src2 }
-            | CfgInstructionKind::GreaterEqual { dest, src1, src2 }
-            | CfgInstructionKind::Less { dest, src1, src2 }
-            | CfgInstructionKind::LessEqual { dest, src1, src2 }
-            | CfgInstructionKind::And { dest, src1, src2 }
-            | CfgInstructionKind::Or { dest, src1, src2 } => {
-                self.update_variable_lifetime(*dest, instruction.id);
-                self.update_variable_lifetime(*src1, instruction.id);
-                self.update_variable_lifetime(*src2, instruction.id);
+        match instruction {
+            CfgInstruction::Add { dest, src1, src2 }
+            | CfgInstruction::Subtract { dest, src1, src2 }
+            | CfgInstruction::Multiply { dest, src1, src2 }
+            | CfgInstruction::Divide { dest, src1, src2 }
+            | CfgInstruction::Modulo { dest, src1, src2 }
+            | CfgInstruction::Equal { dest, src1, src2 }
+            | CfgInstruction::NotEqual { dest, src1, src2 }
+            | CfgInstruction::Greater { dest, src1, src2 }
+            | CfgInstruction::GreaterEqual { dest, src1, src2 }
+            | CfgInstruction::Less { dest, src1, src2 }
+            | CfgInstruction::LessEqual { dest, src1, src2 }
+            | CfgInstruction::And { dest, src1, src2 }
+            | CfgInstruction::Or { dest, src1, src2 } => {
+                self.update_variable_lifetime(*dest);
+                self.update_variable_lifetime(*src1);
+                self.update_variable_lifetime(*src2);
             }
-            CfgInstructionKind::Negate { dest, src }
-            | CfgInstructionKind::Not { dest, src }
-            | CfgInstructionKind::Move { dest, src } => {
-                self.update_variable_lifetime(*dest, instruction.id);
-                self.update_variable_lifetime(*src, instruction.id);
+            CfgInstruction::Negate { dest, src }
+            | CfgInstruction::Not { dest, src }
+            | CfgInstruction::Move { dest, src } => {
+                self.update_variable_lifetime(*dest);
+                self.update_variable_lifetime(*src);
             }
-            CfgInstructionKind::StringConst { dest, .. }
-            | CfgInstructionKind::NumberConst { dest, .. }
-            | CfgInstructionKind::BooleanConst { dest, .. }
-            | CfgInstructionKind::FunctionConst { dest, .. } => {
-                self.update_variable_lifetime(*dest, instruction.id);
+            CfgInstruction::StringConst { dest, .. }
+            | CfgInstruction::NumberConst { dest, .. }
+            | CfgInstruction::BooleanConst { dest, .. }
+            | CfgInstruction::FunctionConst { dest, .. } => {
+                self.update_variable_lifetime(*dest);
             }
-            CfgInstructionKind::Call => {}
-            CfgInstructionKind::Return { .. } => {}
-            CfgInstructionKind::Print => {}
+            CfgInstruction::Call => {}
+            CfgInstruction::Return { .. } => {}
+            CfgInstruction::Print => {}
         }
 
         //println!(" {instruction}");

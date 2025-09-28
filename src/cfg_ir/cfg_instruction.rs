@@ -1,34 +1,7 @@
-use core::fmt;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
 use super::{block_id::BlockId, operand::Operand};
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct CfgInstructionId(usize);
-
-impl Default for CfgInstructionId {
-    fn default() -> Self {
-        static COUNTER: AtomicUsize = AtomicUsize::new(0);
-        Self(COUNTER.fetch_add(1, Ordering::Relaxed))
-    }
-}
-
-pub struct CfgInstruction {
-    pub id: CfgInstructionId,
-    pub kind: CfgInstructionKind,
-}
-
-impl CfgInstruction {
-    pub fn new(kind: CfgInstructionKind) -> Self {
-        Self {
-            id: CfgInstructionId::default(),
-            kind,
-        }
-    }
-}
-
 #[derive(Debug)]
-pub enum CfgInstructionKind {
+pub enum CfgInstruction {
     Add {
         dest: Operand,
         src1: Operand,
@@ -129,7 +102,7 @@ pub enum CfgInstructionKind {
     Print,
 }
 
-impl CfgInstructionKind {
+impl CfgInstruction {
     pub fn add(
         dest: impl Into<Operand>,
         src1: impl Into<Operand>,
