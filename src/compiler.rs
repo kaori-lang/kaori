@@ -42,7 +42,7 @@ fn build_cfg_ir(hir: &[HirDecl]) -> CfgIr {
     cfg_builder.cfg_ir
 }
 
-fn run_lifetime_analyis(cfg_stream: &CfgIr) {
+fn run_lifetime_analyis(cfg_ir: &CfgIr) {
     /*  let mut a = LivenessAnalysis::new(cfg_stream);
 
     a.analyze_cfgs(); */

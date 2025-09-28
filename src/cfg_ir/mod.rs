@@ -6,5 +6,5 @@ pub mod block_id;
 pub mod cfg_instruction;
 pub mod graph_traversal;
 pub mod liveness_analysis;
-pub mod register;
+pub mod operand;
 pub mod register_allocator;

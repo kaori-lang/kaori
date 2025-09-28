@@ -30,159 +30,101 @@ impl CfgInstruction {
 #[derive(Debug)]
 pub enum CfgInstructionKind {
     Add {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Subtract {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Multiply {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Divide {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Modulo {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Equal {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     NotEqual {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Greater {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     GreaterEqual {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Less {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     LessEqual {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     And {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Or {
-        dest: usize,
-        src1: usize,
-        src2: usize,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Negate {
-        dest: usize,
-        src: usize,
+        dest: Operand,
+        src: Operand,
     },
     Not {
-        dest: usize,
-        src: usize,
+        dest: Operand,
+        src: Operand,
     },
     StringConst {
-        dest: usize,
+        dest: Operand,
         value: String,
     },
     NumberConst {
-        dest: usize,
+        dest: Operand,
         value: f64,
     },
     BooleanConst {
-        dest: usize,
+        dest: Operand,
         value: bool,
     },
     FunctionConst {
-        dest: usize,
+        dest: Operand,
         value: BlockId,
     },
     Move {
-        dest: usize,
-        src: usize,
+        dest: Operand,
+        src: Operand,
     },
     Call,
     Return {
-        src: usize,
+        src: Operand,
     },
     Print,
-}
-
-impl fmt::Display for CfgInstruction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.kind {
-            CfgInstructionKind::Add { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} + r{src2}")
-            }
-            CfgInstructionKind::Subtract { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} - r{src2}")
-            }
-            CfgInstructionKind::Multiply { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} * r{src2}")
-            }
-            CfgInstructionKind::Divide { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} / r{src2}")
-            }
-            CfgInstructionKind::Modulo { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} % r{src2}")
-            }
-            CfgInstructionKind::Equal { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} == r{src2}")
-            }
-            CfgInstructionKind::NotEqual { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} != r{src2}")
-            }
-            CfgInstructionKind::Greater { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} > r{src2}")
-            }
-            CfgInstructionKind::GreaterEqual { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} >= r{src2}")
-            }
-            CfgInstructionKind::Less { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} < r{src2}")
-            }
-            CfgInstructionKind::LessEqual { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} <= r{src2}")
-            }
-            CfgInstructionKind::And { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} && r{src2}")
-            }
-            CfgInstructionKind::Or { dest, src1, src2 } => {
-                write!(f, "r{dest} = r{src1} || r{src2}")
-            }
-            CfgInstructionKind::Negate { dest, src } => write!(f, "r{dest} = -r{src}"),
-            CfgInstructionKind::Not { dest, src } => write!(f, "r{dest} = !r{src}"),
-            CfgInstructionKind::StringConst { dest, value } => write!(f, "r{dest} = \"{value}\""),
-            CfgInstructionKind::NumberConst { dest, value } => write!(f, "r{dest} = {value}"),
-            CfgInstructionKind::BooleanConst { dest, value } => write!(f, "r{dest} = {value}"),
-            CfgInstructionKind::FunctionConst { dest, value } => {
-                write!(f, "r{dest} = fn({value:?})")
-            }
-            CfgInstructionKind::Move { dest, src } => write!(f, "r{dest} = r{src}"),
-            CfgInstructionKind::Call => write!(f, "call"),
-            CfgInstructionKind::Return { src } => write!(f, "return r{src}"),
-            CfgInstructionKind::Print => write!(f, "print"),
-        }
-    }
 }

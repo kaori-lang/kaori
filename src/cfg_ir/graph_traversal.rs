@@ -5,23 +5,25 @@ use super::{
     block_id::BlockId,
 };
 
-pub struct Postorder<'a> {
-    basic_blocks: &'a HashMap<BlockId, BasicBlock>,
+pub struct Postorder {
     visited: HashSet<BlockId>,
     postorder: Vec<BlockId>,
 }
 
-impl<'a> Postorder<'a> {
-    pub fn new(basic_blocks: &'a HashMap<BlockId, BasicBlock>) -> Self {
+impl Postorder {
+    pub fn new() -> Self {
         Self {
-            basic_blocks,
             visited: HashSet::new(),
             postorder: Vec::new(),
         }
     }
 
-    pub fn reversed_postorder(&mut self, id: &BlockId) -> Vec<BlockId> {
-        self.traverse(id);
+    pub fn reversed_postorder(
+        &mut self,
+        id: &BlockId,
+        basic_blocks: &HashMap<BlockId, BasicBlock>,
+    ) -> Vec<BlockId> {
+        self.traverse(id, basic_blocks);
 
         let mut reversed = Vec::new();
 
@@ -34,20 +36,20 @@ impl<'a> Postorder<'a> {
         reversed
     }
 
-    fn traverse(&mut self, id: &BlockId) {
+    fn traverse(&mut self, id: &BlockId, basic_blocks: &HashMap<BlockId, BasicBlock>) {
         if self.visited.contains(id) {
             return;
         }
 
-        let bb = self.basic_blocks.get(id).unwrap();
+        let bb = basic_blocks.get(id).unwrap();
 
         match &bb.terminator {
             Terminator::Branch { r#true, r#false } => {
-                self.traverse(r#false);
-                self.traverse(r#true);
+                self.traverse(r#false, basic_blocks);
+                self.traverse(r#true, basic_blocks);
             }
             Terminator::Goto(target) => {
-                self.traverse(target);
+                self.traverse(target, basic_blocks);
             }
             _ => {}
         };

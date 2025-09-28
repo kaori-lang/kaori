@@ -31,14 +31,6 @@ impl<'a> LivenessAnalysis<'a> {
     }
 
     pub fn analyze_cfg(&mut self, cfg: BlockId) {
-        let mut traversal = Postorder::new(&self.cfg_ir.basic_blocks);
-
-        for block_id in traversal.reversed_postorder(&cfg) {
-            let bb = self.cfg_ir.basic_blocks.get(&block_id).unwrap();
-
-            //self.analyze_instructions(&bb.instructions);
-        }
-
         println!("\n");
 
         self.register_lifetime.clear();

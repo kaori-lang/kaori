@@ -21,8 +21,8 @@ use super::{
 pub struct CfgBuilder {
     pub cfg_ir: CfgIr,
     current_bb: BlockId,
-    register: usize,
-    nodes_register: HashMap<HirId, usize>,
+    variable: usize,
+    nodes_variable: HashMap<HirId, usize>,
     nodes_block: HashMap<HirId, BlockId>,
 }
 
@@ -31,8 +31,8 @@ impl CfgBuilder {
         Self {
             cfg_ir: CfgIr::default(),
             current_bb: BlockId::default(),
-            register: 0,
-            nodes_register: HashMap::new(),
+            variable: 0,
+            nodes_variable: HashMap::new(),
             nodes_block: HashMap::new(),
         }
     }
@@ -71,16 +71,16 @@ impl CfgBuilder {
         self.cfg_ir.basic_blocks.get_mut(&id).unwrap().terminator = terminator;
     }
 
-    fn allocate_register(&mut self) -> usize {
-        let register = self.register;
+    fn allocate_variable(&mut self) -> usize {
+        let variable = self.variable;
 
-        self.register += 1;
+        self.variable += 1;
 
-        register
+        variable
     }
 
-    fn free_all_registers(&mut self) {
-        self.register = 0;
+    fn free_all_variables(&mut self) {
+        self.variable = 0;
     }
 
     pub fn build_ir(&mut self, declarations: &[HirDecl]) {
@@ -112,9 +112,9 @@ impl CfgBuilder {
         match &declaration.kind {
             HirDeclKind::Variable { right } => {
                 let src = self.visit_expression(right);
-                let dest = self.allocate_register();
+                let dest = self.allocate_variable();
 
-                self.nodes_register.insert(declaration.id, dest);
+                self.nodes_variable.insert(declaration.id, dest);
 
                 let instruction = CfgInstructionKind::Move { dest, src };
 
@@ -125,8 +125,8 @@ impl CfgBuilder {
                 self.current_bb = *self.nodes_block.get(&declaration.id).unwrap();
 
                 for parameter in parameters {
-                    let register = self.allocate_register();
-                    self.nodes_register.insert(parameter.id, register);
+                    let variable = self.allocate_variable();
+                    self.nodes_variable.insert(parameter.id, variable);
                 }
 
                 for node in body {
@@ -137,7 +137,7 @@ impl CfgBuilder {
 
                 self.set_terminator(last_bb, Terminator::Return);
 
-                self.free_all_registers();
+                self.free_all_variables();
             }
             HirDeclKind::Struct { fields } => {}
             HirDeclKind::Parameter => {}
@@ -259,7 +259,7 @@ impl CfgBuilder {
             } => {
                 let src1 = self.visit_expression(left);
                 let src2 = self.visit_expression(right);
-                let dest = self.allocate_register();
+                let dest = self.allocate_variable();
 
                 let instruction = match operator.kind {
                     BinaryOpKind::Add => CfgInstructionKind::Add { dest, src1, src2 },
@@ -288,7 +288,7 @@ impl CfgBuilder {
             }
             HirExprKind::Unary { right, operator } => {
                 let src = self.visit_expression(right);
-                let dest = self.allocate_register();
+                let dest = self.allocate_variable();
 
                 let instruction = match operator.kind {
                     UnaryOpKind::Negate => CfgInstructionKind::Negate { dest, src },
@@ -300,7 +300,7 @@ impl CfgBuilder {
                 dest
             }
             HirExprKind::FunctionCall { callee, arguments } => {
-                let dest = self.allocate_register();
+                let dest = self.allocate_variable();
 
                 let call_instruction = CfgInstructionKind::Call;
 
@@ -314,14 +314,14 @@ impl CfgBuilder {
                     self.emit_instruction(instruction);
                 }
 
-                let callee_register = self.visit_expression(callee);
+                let callee_variable = self.visit_expression(callee);
 
                 dest
             }
 
-            HirExprKind::VariableRef(id) => *self.nodes_register.get(id).unwrap(),
+            HirExprKind::VariableRef(id) => *self.nodes_variable.get(id).unwrap(),
             HirExprKind::FunctionRef(id) => {
-                let dest = self.allocate_register();
+                let dest = self.allocate_variable();
 
                 let value = *self.nodes_block.get(id).unwrap();
 
@@ -332,7 +332,7 @@ impl CfgBuilder {
                 dest
             }
             HirExprKind::StringLiteral(value) => {
-                let dest = self.allocate_register();
+                let dest = self.allocate_variable();
 
                 let instruction = CfgInstructionKind::StringConst {
                     dest,
@@ -344,7 +344,7 @@ impl CfgBuilder {
                 dest
             }
             HirExprKind::BooleanLiteral(value) => {
-                let dest = self.allocate_register();
+                let dest = self.allocate_variable();
 
                 let instruction = CfgInstructionKind::BooleanConst {
                     dest,
@@ -356,7 +356,7 @@ impl CfgBuilder {
                 dest
             }
             HirExprKind::NumberLiteral(value) => {
-                let dest = self.allocate_register();
+                let dest = self.allocate_variable();
 
                 let instruction = CfgInstructionKind::NumberConst {
                     dest,
