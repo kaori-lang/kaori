@@ -1,7 +1,7 @@
 use core::fmt;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use super::block_id::BlockId;
+use super::{block_id::BlockId, operand::Operand};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CfgInstructionId(usize);
@@ -127,4 +127,223 @@ pub enum CfgInstructionKind {
         src: Operand,
     },
     Print,
+}
+
+impl CfgInstructionKind {
+    pub fn add(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::Add {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn subtract(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::Subtract {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn multiply(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::Multiply {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn divide(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::Divide {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn modulo(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::Modulo {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn equal(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::Equal {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn not_equal(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::NotEqual {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn greater(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::Greater {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn greater_equal(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::GreaterEqual {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn less(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::Less {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn less_equal(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::LessEqual {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn and(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::And {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn or(
+        dest: impl Into<Operand>,
+        src1: impl Into<Operand>,
+        src2: impl Into<Operand>,
+    ) -> Self {
+        Self::Or {
+            dest: dest.into(),
+            src1: src1.into(),
+            src2: src2.into(),
+        }
+    }
+
+    pub fn negate(dest: impl Into<Operand>, src: impl Into<Operand>) -> Self {
+        Self::Negate {
+            dest: dest.into(),
+            src: src.into(),
+        }
+    }
+
+    pub fn not(dest: impl Into<Operand>, src: impl Into<Operand>) -> Self {
+        Self::Not {
+            dest: dest.into(),
+            src: src.into(),
+        }
+    }
+
+    pub fn string_const(dest: impl Into<Operand>, value: impl Into<String>) -> Self {
+        Self::StringConst {
+            dest: dest.into(),
+            value: value.into(),
+        }
+    }
+
+    pub fn number_const(dest: impl Into<Operand>, value: f64) -> Self {
+        Self::NumberConst {
+            dest: dest.into(),
+            value,
+        }
+    }
+
+    pub fn boolean_const(dest: impl Into<Operand>, value: bool) -> Self {
+        Self::BooleanConst {
+            dest: dest.into(),
+            value,
+        }
+    }
+
+    pub fn function_const(dest: impl Into<Operand>, value: BlockId) -> Self {
+        Self::FunctionConst {
+            dest: dest.into(),
+            value,
+        }
+    }
+
+    pub fn move_(dest: impl Into<Operand>, src: impl Into<Operand>) -> Self {
+        Self::Move {
+            dest: dest.into(),
+            src: src.into(),
+        }
+    }
+
+    pub fn call() -> Self {
+        Self::Call
+    }
+
+    pub fn return_(src: impl Into<Operand>) -> Self {
+        Self::Return { src: src.into() }
+    }
+
+    pub fn print() -> Self {
+        Self::Print
+    }
 }

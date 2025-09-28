@@ -6,12 +6,13 @@ use super::{
     block_id::BlockId,
     cfg_instruction::{CfgInstruction, CfgInstructionId, CfgInstructionKind},
     cfg_ir::CfgIr,
+    operand::{Operand, Variable},
     register_allocator::RegisterAllocator,
 };
 
 pub struct LivenessAnalysis<'a> {
     cfg_ir: &'a mut CfgIr,
-    register_lifetime: HashMap<usize, CfgInstructionId>,
+    variable_lifetime: HashMap<Variable, CfgInstructionId>,
     register_allocator: RegisterAllocator,
 }
 
@@ -19,7 +20,7 @@ impl<'a> LivenessAnalysis<'a> {
     pub fn new(cfg_ir: &'a mut CfgIr) -> Self {
         Self {
             cfg_ir,
-            register_lifetime: HashMap::new(),
+            variable_lifetime: HashMap::new(),
             register_allocator: RegisterAllocator::new(),
         }
     }
@@ -33,14 +34,20 @@ impl<'a> LivenessAnalysis<'a> {
     pub fn analyze_cfg(&mut self, cfg: BlockId) {
         println!("\n");
 
-        self.register_lifetime.clear();
+        self.variable_lifetime.clear();
     }
 
     fn try_to_free(&mut self, register: usize, instruction: CfgInstructionId) {
-        let register_last_instruction = *self.register_lifetime.get(&register).unwrap();
+        /*   let register_last_instruction = *self.variable_lifetime.get(&register).unwrap();
 
         if instruction == register_last_instruction {
             self.register_allocator.free_register(register);
+        } */
+    }
+
+    fn update_variable_lifetime(&mut self, operand: Operand, instruction_id: CfgInstructionId) {
+        if let Operand::Variable(variable) = operand {
+            self.variable_lifetime.insert(variable, instruction_id);
         }
     }
 
@@ -60,28 +67,28 @@ impl<'a> LivenessAnalysis<'a> {
                 | CfgInstructionKind::LessEqual { dest, src1, src2 }
                 | CfgInstructionKind::And { dest, src1, src2 }
                 | CfgInstructionKind::Or { dest, src1, src2 } => {
-                    self.register_lifetime.insert(*dest, instruction.id);
-                    self.register_lifetime.insert(*src1, instruction.id);
-                    self.register_lifetime.insert(*src2, instruction.id);
+                    self.update_variable_lifetime(*dest, instruction.id);
+                    self.update_variable_lifetime(*src1, instruction.id);
+                    self.update_variable_lifetime(*src2, instruction.id);
                 }
                 CfgInstructionKind::Negate { dest, src }
                 | CfgInstructionKind::Not { dest, src }
                 | CfgInstructionKind::Move { dest, src } => {
-                    self.register_lifetime.insert(*dest, instruction.id);
-                    self.register_lifetime.insert(*src, instruction.id);
+                    self.update_variable_lifetime(*dest, instruction.id);
+                    self.update_variable_lifetime(*src, instruction.id);
                 }
                 CfgInstructionKind::StringConst { dest, .. }
                 | CfgInstructionKind::NumberConst { dest, .. }
                 | CfgInstructionKind::BooleanConst { dest, .. }
                 | CfgInstructionKind::FunctionConst { dest, .. } => {
-                    self.register_lifetime.insert(*dest, instruction.id);
+                    self.update_variable_lifetime(*dest, instruction.id);
                 }
                 CfgInstructionKind::Call => {}
                 CfgInstructionKind::Return { .. } => {}
                 CfgInstructionKind::Print => {}
             }
 
-            println!(" {instruction}");
+            //println!(" {instruction}");
         }
     }
 
@@ -100,28 +107,27 @@ impl<'a> LivenessAnalysis<'a> {
             | CfgInstructionKind::LessEqual { dest, src1, src2 }
             | CfgInstructionKind::And { dest, src1, src2 }
             | CfgInstructionKind::Or { dest, src1, src2 } => {
-                *dest = 1;
-                self.register_lifetime.insert(*dest, instruction.id);
-                self.register_lifetime.insert(*src1, instruction.id);
-                self.register_lifetime.insert(*src2, instruction.id);
+                self.update_variable_lifetime(*dest, instruction.id);
+                self.update_variable_lifetime(*src1, instruction.id);
+                self.update_variable_lifetime(*src2, instruction.id);
             }
             CfgInstructionKind::Negate { dest, src }
             | CfgInstructionKind::Not { dest, src }
             | CfgInstructionKind::Move { dest, src } => {
-                self.register_lifetime.insert(*dest, instruction.id);
-                self.register_lifetime.insert(*src, instruction.id);
+                self.update_variable_lifetime(*dest, instruction.id);
+                self.update_variable_lifetime(*src, instruction.id);
             }
             CfgInstructionKind::StringConst { dest, .. }
             | CfgInstructionKind::NumberConst { dest, .. }
             | CfgInstructionKind::BooleanConst { dest, .. }
             | CfgInstructionKind::FunctionConst { dest, .. } => {
-                self.register_lifetime.insert(*dest, instruction.id);
+                self.update_variable_lifetime(*dest, instruction.id);
             }
             CfgInstructionKind::Call => {}
             CfgInstructionKind::Return { .. } => {}
             CfgInstructionKind::Print => {}
         }
 
-        println!(" {instruction}");
+        //println!(" {instruction}");
     }
 }

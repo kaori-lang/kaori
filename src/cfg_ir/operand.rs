@@ -1,22 +1,23 @@
+#[derive(Debug, Clone, Copy)]
 pub enum Operand {
     Register(Register),
     Variable(Variable),
 }
 
+impl From<Register> for Operand {
+    fn from(value: Register) -> Self {
+        Self::Register(value)
+    }
+}
+
+impl From<Variable> for Operand {
+    fn from(value: Variable) -> Self {
+        Self::Variable(value)
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Register(pub u8);
 
-impl Register {
-    pub fn new(value: u8) -> Self {
-        Self(value)
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Variable(pub usize);
-
-impl Variable {
-    pub fn new(value: usize) -> Self {
-        Self(value)
-    }
-}

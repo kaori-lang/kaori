@@ -16,13 +16,14 @@ use super::{
     block_id::BlockId,
     cfg_instruction::{CfgInstruction, CfgInstructionKind},
     cfg_ir::CfgIr,
+    operand::Variable,
 };
 
 pub struct CfgBuilder {
     pub cfg_ir: CfgIr,
     current_bb: BlockId,
     variable: usize,
-    nodes_variable: HashMap<HirId, usize>,
+    nodes_variable: HashMap<HirId, Variable>,
     nodes_block: HashMap<HirId, BlockId>,
 }
 
@@ -71,8 +72,8 @@ impl CfgBuilder {
         self.cfg_ir.basic_blocks.get_mut(&id).unwrap().terminator = terminator;
     }
 
-    fn allocate_variable(&mut self) -> usize {
-        let variable = self.variable;
+    fn create_variable(&mut self) -> Variable {
+        let variable = Variable(self.variable);
 
         self.variable += 1;
 
@@ -112,7 +113,7 @@ impl CfgBuilder {
         match &declaration.kind {
             HirDeclKind::Variable { right } => {
                 let src = self.visit_expression(right);
-                let dest = self.allocate_variable();
+                let dest = self.create_variable();
 
                 self.nodes_variable.insert(declaration.id, dest);
 
@@ -125,7 +126,7 @@ impl CfgBuilder {
                 self.current_bb = *self.nodes_block.get(&declaration.id).unwrap();
 
                 for parameter in parameters {
-                    let variable = self.allocate_variable();
+                    let variable = self.create_variable();
                     self.nodes_variable.insert(parameter.id, variable);
                 }
 
@@ -229,7 +230,7 @@ impl CfgBuilder {
                 if let Some(expr) = expr {
                     let src = self.visit_expression(expr);
 
-                    let instruction = CfgInstructionKind::Return { src };
+                    let instruction = CfgInstructionKind::ret(src);
 
                     self.emit_instruction(instruction);
                 }
@@ -240,7 +241,7 @@ impl CfgBuilder {
         };
     }
 
-    fn visit_expression(&mut self, expression: &HirExpr) -> usize {
+    fn visit_expression(&mut self, expression: &HirExpr) -> Variable {
         match &expression.kind {
             HirExprKind::Assign { left, right } => {
                 let dest = self.visit_expression(left);
@@ -259,27 +260,27 @@ impl CfgBuilder {
             } => {
                 let src1 = self.visit_expression(left);
                 let src2 = self.visit_expression(right);
-                let dest = self.allocate_variable();
+                let dest = self.create_variable();
 
                 let instruction = match operator.kind {
-                    BinaryOpKind::Add => CfgInstructionKind::Add { dest, src1, src2 },
-                    BinaryOpKind::Subtract => CfgInstructionKind::Subtract { dest, src1, src2 },
-                    BinaryOpKind::Multiply => CfgInstructionKind::Multiply { dest, src1, src2 },
-                    BinaryOpKind::Divide => CfgInstructionKind::Divide { dest, src1, src2 },
-                    BinaryOpKind::Modulo => CfgInstructionKind::Modulo { dest, src1, src2 },
+                    BinaryOpKind::Add => CfgInstructionKind::add(dest, src1, src2),
+                    BinaryOpKind::Subtract => CfgInstructionKind::subtract(dest, src1, src2),
+                    BinaryOpKind::Multiply => CfgInstructionKind::multiply(dest, src1, src2),
+                    BinaryOpKind::Divide => CfgInstructionKind::divide(dest, src1, src2),
+                    BinaryOpKind::Modulo => CfgInstructionKind::modulo(dest, src1, src2),
 
-                    BinaryOpKind::Equal => CfgInstructionKind::Equal { dest, src1, src2 },
-                    BinaryOpKind::NotEqual => CfgInstructionKind::NotEqual { dest, src1, src2 },
-                    BinaryOpKind::Greater => CfgInstructionKind::Greater { dest, src1, src2 },
+                    BinaryOpKind::Equal => CfgInstructionKind::equal(dest, src1, src2),
+                    BinaryOpKind::NotEqual => CfgInstructionKind::not_equal(dest, src1, src2),
+                    BinaryOpKind::Greater => CfgInstructionKind::greater(dest, src1, src2),
                     BinaryOpKind::GreaterEqual => {
-                        CfgInstructionKind::GreaterEqual { dest, src1, src2 }
+                        CfgInstructionKind::greater_equal(dest, src1, src2)
                     }
-                    BinaryOpKind::Less => CfgInstructionKind::Less { dest, src1, src2 },
-                    BinaryOpKind::LessEqual => CfgInstructionKind::LessEqual { dest, src1, src2 },
 
-                    // gonna be changed
-                    BinaryOpKind::And => CfgInstructionKind::And { dest, src1, src2 },
-                    BinaryOpKind::Or => CfgInstructionKind::Or { dest, src1, src2 },
+                    BinaryOpKind::Less => CfgInstructionKind::less(dest, src1, src2),
+                    BinaryOpKind::LessEqual => CfgInstructionKind::less_equal(dest, src1, src2),
+
+                    BinaryOpKind::And => CfgInstructionKind::and(dest, src1, src2),
+                    BinaryOpKind::Or => CfgInstructionKind::or(dest, src1, src2),
                 };
 
                 self.emit_instruction(instruction);
@@ -288,7 +289,7 @@ impl CfgBuilder {
             }
             HirExprKind::Unary { right, operator } => {
                 let src = self.visit_expression(right);
-                let dest = self.allocate_variable();
+                let dest = self.create_variable();
 
                 let instruction = match operator.kind {
                     UnaryOpKind::Negate => CfgInstructionKind::Negate { dest, src },
@@ -300,7 +301,7 @@ impl CfgBuilder {
                 dest
             }
             HirExprKind::FunctionCall { callee, arguments } => {
-                let dest = self.allocate_variable();
+                let dest = self.create_variable();
 
                 let call_instruction = CfgInstructionKind::Call;
 
@@ -309,9 +310,9 @@ impl CfgBuilder {
                 for (dest, argument) in arguments.iter().enumerate() {
                     let src = self.visit_expression(argument);
 
-                    let instruction = CfgInstructionKind::Move { dest, src };
+                    /*   let instruction = CfgInstructionKind::Move { dest, src };
 
-                    self.emit_instruction(instruction);
+                    self.emit_instruction(instruction); */
                 }
 
                 let callee_variable = self.visit_expression(callee);
@@ -321,7 +322,7 @@ impl CfgBuilder {
 
             HirExprKind::VariableRef(id) => *self.nodes_variable.get(id).unwrap(),
             HirExprKind::FunctionRef(id) => {
-                let dest = self.allocate_variable();
+                let dest = self.create_variable();
 
                 let value = *self.nodes_block.get(id).unwrap();
 
@@ -332,7 +333,7 @@ impl CfgBuilder {
                 dest
             }
             HirExprKind::StringLiteral(value) => {
-                let dest = self.allocate_variable();
+                let dest = self.create_variable();
 
                 let instruction = CfgInstructionKind::StringConst {
                     dest,
@@ -344,7 +345,7 @@ impl CfgBuilder {
                 dest
             }
             HirExprKind::BooleanLiteral(value) => {
-                let dest = self.allocate_variable();
+                let dest = self.create_variable();
 
                 let instruction = CfgInstructionKind::BooleanConst {
                     dest,
@@ -356,7 +357,7 @@ impl CfgBuilder {
                 dest
             }
             HirExprKind::NumberLiteral(value) => {
-                let dest = self.allocate_variable();
+                let dest = self.create_variable();
 
                 let instruction = CfgInstructionKind::NumberConst {
                     dest,
