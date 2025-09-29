@@ -1,3 +1,5 @@
+use core::fmt;
+
 #[derive(Debug, Clone, Copy)]
 pub enum Operand {
     Register(Register),
@@ -30,3 +32,9 @@ pub struct Register(pub u8);
 
 #[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Variable(pub usize);
+
+impl fmt::Display for Register {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "r{}", self.0)
+    }
+}

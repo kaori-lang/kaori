@@ -1,8 +1,12 @@
 #![allow(clippy::new_without_default)]
 
+use std::collections::HashMap;
+
 use crate::{
     cfg_ir::{
-        basic_block::BlockId, cfg_instruction::CfgInstruction, cfg_ir::CfgIr,
+        basic_block::{BasicBlock, BlockId, Terminator},
+        cfg_instruction::CfgInstruction,
+        cfg_ir::CfgIr,
         graph_traversal::reversed_postorder,
     },
     virtual_machine::value::Value,
@@ -10,51 +14,82 @@ use crate::{
 
 use super::instruction::Instruction;
 
+type InstructionIndex = usize;
 pub struct BytecodeGenerator {
     pub instructions: Vec<Instruction>,
     pub constant_pool: Vec<Value>,
-    pub cfg_ir: CfgIr,
-
-    pub current_instruction: usize,
+    pub instruction_index: InstructionIndex,
+    pub pending_backpatch: Vec<(InstructionIndex, BlockId)>,
+    pub basic_blocks: HashMap<BlockId, InstructionIndex>,
 }
 
 impl BytecodeGenerator {
-    pub fn new(cfg_ir: CfgIr) -> Self {
+    pub fn new() -> Self {
         Self {
             instructions: Vec::new(),
             constant_pool: Vec::new(),
-            cfg_ir,
-            current_instruction: 0,
+            instruction_index: 0,
+            pending_backpatch: Vec::new(),
+            basic_blocks: HashMap::new(),
         }
     }
 
-    pub fn generate(&mut self) {
-        for i in 0..self.cfg_ir.cfgs.len() {
-            let cfg = self.cfg_ir.cfgs[i];
+    pub fn generate(&mut self, cfg_ir: &CfgIr) {
+        for cfg in &cfg_ir.cfgs {
+            self.visit_cfg(*cfg, &cfg_ir.basic_blocks);
+        }
 
-            self.visit_cfg(cfg);
+        self.backpatch_instructions();
+
+        for instruction in &self.instructions {
+            println!("{instruction}");
         }
     }
 
     fn emit_instruction(&mut self, instruction: Instruction) {
         self.instructions.push(instruction);
 
-        self.current_instruction += 1;
+        self.instruction_index += 1;
     }
 
-    fn visit_cfg(&mut self, cfg: BlockId) {
-        let blocks = reversed_postorder(&cfg, &self.cfg_ir.basic_blocks);
+    fn visit_cfg(&mut self, cfg: BlockId, basic_blocks: &[BasicBlock]) {
+        let blocks = reversed_postorder(cfg, basic_blocks);
 
-        for block_id in blocks {
-            self.visit_block(block_id);
+        for id in blocks {
+            let basic_block = &basic_blocks[id.0];
+            self.visit_block(basic_block);
         }
     }
 
-    fn visit_block(&mut self, id: BlockId) {
-        let instructions = &self.cfg_ir.basic_blocks.get(&id).unwrap().instructions;
+    fn visit_block(&mut self, basic_block: &BasicBlock) {
+        self.basic_blocks
+            .insert(basic_block.id, self.instruction_index);
 
-        for instruction in instructions {
+        for instruction in &basic_block.instructions {
             let instruction = self.visit_instruction(instruction);
+
+            self.emit_instruction(instruction);
+        }
+
+        match basic_block.terminator {
+            Terminator::Branch { r#true, r#false } => {
+                let backpatch = (self.instruction_index, r#false);
+                self.pending_backpatch.push(backpatch);
+
+                let instruction = Instruction::jump_false(0);
+
+                self.emit_instruction(instruction);
+            }
+            Terminator::Goto(target) => {
+                let backpatch = (self.instruction_index, target);
+                self.pending_backpatch.push(backpatch);
+
+                let instruction = Instruction::jump(0);
+
+                self.emit_instruction(instruction);
+            }
+            Terminator::Return => {}
+            _ => {}
         }
     }
 
@@ -98,6 +133,28 @@ impl BytecodeGenerator {
             CfgInstruction::Call => Instruction::call(),
             CfgInstruction::Return { src } => Instruction::return_(*src),
             CfgInstruction::Print => Instruction::print(),
+        }
+    }
+
+    fn backpatch_instructions(&mut self) {
+        for (instruction_index, block_id) in &self.pending_backpatch {
+            let block_index = self.basic_blocks.get(block_id).unwrap();
+
+            let instruction = match &self.instructions[*instruction_index] {
+                Instruction::Jump(..) => {
+                    let offset = *block_index as i16 - *instruction_index as i16;
+
+                    Instruction::jump(offset)
+                }
+                Instruction::JumpFalse(..) => {
+                    let offset = *block_index as i16 - *instruction_index as i16;
+
+                    Instruction::jump_false(offset)
+                }
+                _ => unreachable!(),
+            };
+
+            self.instructions[*instruction_index] = instruction;
         }
     }
 }

@@ -30,7 +30,7 @@ impl CfgBuilder {
     pub fn new() -> Self {
         Self {
             cfg_ir: CfgIr::default(),
-            current_bb: BlockId::default(),
+            current_bb: BlockId(0),
             variable: 0,
             nodes_variable: HashMap::new(),
             nodes_block: HashMap::new(),
@@ -39,7 +39,7 @@ impl CfgBuilder {
 
     fn emit_instruction(&mut self, instruction: CfgInstruction) {
         let id = self.current_bb;
-        let basic_block = self.cfg_ir.basic_blocks.get_mut(&id).unwrap();
+        let basic_block = self.cfg_ir.basic_blocks.get_mut(id.0).unwrap();
 
         if let Terminator::Return = basic_block.terminator {
             return;
@@ -49,10 +49,13 @@ impl CfgBuilder {
     }
 
     fn create_bb(&mut self) -> BlockId {
-        let id = BlockId::default();
+        let size = self.cfg_ir.basic_blocks.len();
+
+        let id = BlockId(size);
+
         let basic_block = BasicBlock::new(id);
 
-        self.cfg_ir.basic_blocks.insert(id, basic_block);
+        self.cfg_ir.basic_blocks.push(basic_block);
 
         id
     }
@@ -66,7 +69,7 @@ impl CfgBuilder {
     }
 
     fn set_terminator(&mut self, id: BlockId, terminator: Terminator) {
-        self.cfg_ir.basic_blocks.get_mut(&id).unwrap().terminator = terminator;
+        self.cfg_ir.basic_blocks.get_mut(id.0).unwrap().terminator = terminator;
     }
 
     fn create_variable(&mut self) -> Variable {

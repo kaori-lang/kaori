@@ -1,5 +1,5 @@
+pub mod bytecode;
 pub mod cfg_ir;
-pub mod codegen;
 pub mod compiler;
 pub mod error;
 pub mod lexer;

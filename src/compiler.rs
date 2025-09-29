@@ -1,4 +1,5 @@
 use crate::{
+    bytecode::bytecode_generator::BytecodeGenerator,
     cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr, liveness_analysis::LivenessAnalysis},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
@@ -48,13 +49,19 @@ fn run_lifetime_analyis(cfg_ir: &CfgIr) {
     a.analyze_cfgs(); */
 }
 
+fn generate_bytecode(cfg_ir: &CfgIr) {
+    let mut generator = BytecodeGenerator::new();
+
+    generator.generate(cfg_ir);
+}
+
 pub fn compile_source_code(source: String) -> Result<(), KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
     let hir = run_semantic_analysis(&mut ast)?;
     let cfg_ir = build_cfg_ir(&hir);
 
-    run_lifetime_analyis(&cfg_ir);
-
+    //run_lifetime_analyis(&cfg_ir);
+    generate_bytecode(&cfg_ir);
     Ok(())
 }

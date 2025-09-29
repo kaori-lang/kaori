@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use crate::cfg_ir::graph_traversal::Postorder;
-
 use super::{
     basic_block::BlockId,
     cfg_instruction::CfgInstruction,

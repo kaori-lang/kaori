@@ -226,3 +226,60 @@ impl Instruction {
         Instruction::Print
     }
 }
+
+use std::fmt;
+
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Instruction::Add { dest, src1, src2 } => {
+                write!(f, "Add {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::Subtract { dest, src1, src2 } => {
+                write!(f, "Subtract {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::Multiply { dest, src1, src2 } => {
+                write!(f, "Multiply {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::Divide { dest, src1, src2 } => {
+                write!(f, "Divide {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::Modulo { dest, src1, src2 } => {
+                write!(f, "Modulo {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::Equal { dest, src1, src2 } => {
+                write!(f, "Equal {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::NotEqual { dest, src1, src2 } => {
+                write!(f, "NotEqual {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::Greater { dest, src1, src2 } => {
+                write!(f, "Greater {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::GreaterEqual { dest, src1, src2 } => {
+                write!(f, "GreaterEqual {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::Less { dest, src1, src2 } => {
+                write!(f, "Less {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::LessEqual { dest, src1, src2 } => {
+                write!(f, "LessEqual {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::And { dest, src1, src2 } => {
+                write!(f, "And {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::Or { dest, src1, src2 } => {
+                write!(f, "Or {}, {}, {}", dest, src1, src2)
+            }
+            Instruction::Negate { dest, src } => write!(f, "Negate {}, {}", dest, src),
+            Instruction::Not { dest, src } => write!(f, "Not {}, {}", dest, src),
+            Instruction::LoadConst { dest, src } => write!(f, "LoadConst {}, {}", dest, src),
+            Instruction::Move { dest, src } => write!(f, "Move {}, {}", dest, src),
+            Instruction::Call => write!(f, "Call"),
+            Instruction::Return { src } => write!(f, "Return {}", src),
+            Instruction::Jump(offset) => write!(f, "Jump {}", offset),
+            Instruction::JumpFalse(offset) => write!(f, "JumpFalse {}", offset),
+            Instruction::Print => write!(f, "Print"),
+        }
+    }
+}
