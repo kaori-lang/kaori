@@ -95,7 +95,7 @@ impl<'a> LivenessAnalysis<'a> {
             }
             CfgInstruction::Call => {}
             CfgInstruction::Return { .. } => {}
-            CfgInstruction::Print => {}
+            CfgInstruction::Print { src } => {}
         }
     }
 
@@ -132,7 +132,7 @@ impl<'a> LivenessAnalysis<'a> {
             }
             CfgInstruction::Call => {}
             CfgInstruction::Return { .. } => {}
-            CfgInstruction::Print => {}
+            CfgInstruction::Print { src } => {}
         }
 
         //println!(" {instruction}");

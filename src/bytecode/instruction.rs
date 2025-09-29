@@ -89,7 +89,9 @@ pub enum Instruction {
     },
     Jump(i16),
     JumpFalse(i16),
-    Print,
+    Print {
+        src: Register,
+    },
 }
 
 impl Instruction {
@@ -222,8 +224,10 @@ impl Instruction {
     pub fn jump_false(offset: i16) -> Self {
         Instruction::JumpFalse(offset)
     }
-    pub fn print() -> Self {
-        Instruction::Print
+    pub fn print(src: Operand) -> Self {
+        Instruction::Print {
+            src: src.to_register(),
+        }
     }
 }
 
@@ -279,7 +283,7 @@ impl fmt::Display for Instruction {
             Instruction::Return { src } => write!(f, "Return {}", src),
             Instruction::Jump(offset) => write!(f, "Jump {}", offset),
             Instruction::JumpFalse(offset) => write!(f, "JumpFalse {}", offset),
-            Instruction::Print => write!(f, "Print"),
+            Instruction::Print { src } => write!(f, "Print {}", src),
         }
     }
 }

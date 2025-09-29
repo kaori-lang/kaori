@@ -132,7 +132,7 @@ impl BytecodeGenerator {
 
             CfgInstruction::Call => Instruction::call(),
             CfgInstruction::Return { src } => Instruction::return_(*src),
-            CfgInstruction::Print => Instruction::print(),
+            CfgInstruction::Print { src } => Instruction::print(*src),
         }
     }
 
