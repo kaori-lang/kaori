@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::cfg_ir::graph_traversal::Postorder;
 
 use super::{
-    block_id::BlockId,
+    basic_block::BlockId,
     cfg_instruction::CfgInstruction,
     cfg_ir::CfgIr,
     operand::{Operand, Variable},

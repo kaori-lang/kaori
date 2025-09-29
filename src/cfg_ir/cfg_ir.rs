@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::{basic_block::BasicBlock, block_id::BlockId};
+use super::basic_block::{BasicBlock, BlockId};
 
 #[derive(Default)]
 pub struct CfgIr {

@@ -1,60 +1,44 @@
 use std::collections::{HashMap, HashSet};
 
-use super::{
-    basic_block::{BasicBlock, Terminator},
-    block_id::BlockId,
-};
+use super::basic_block::{BasicBlock, BlockId, Terminator};
 
-pub struct Postorder {
-    visited: HashSet<BlockId>,
-    postorder: Vec<BlockId>,
+pub fn reversed_postorder(
+    id: &BlockId,
+    basic_blocks: &HashMap<BlockId, BasicBlock>,
+) -> Vec<BlockId> {
+    let mut visited = HashSet::new();
+    let mut postorder = Vec::new();
+
+    traverse(id, basic_blocks, &mut visited, &mut postorder);
+
+    postorder.reverse();
+
+    postorder
 }
 
-impl Postorder {
-    pub fn new() -> Self {
-        Self {
-            visited: HashSet::new(),
-            postorder: Vec::new(),
-        }
+fn traverse(
+    id: &BlockId,
+    basic_blocks: &HashMap<BlockId, BasicBlock>,
+    visited: &mut HashSet<BlockId>,
+    postorder: &mut Vec<BlockId>,
+) {
+    if visited.contains(id) {
+        return;
     }
 
-    pub fn reversed_postorder(
-        &mut self,
-        id: &BlockId,
-        basic_blocks: &HashMap<BlockId, BasicBlock>,
-    ) -> Vec<BlockId> {
-        self.traverse(id, basic_blocks);
+    let bb = basic_blocks.get(id).unwrap();
 
-        let mut reversed = Vec::new();
-
-        while let Some(block_id) = self.postorder.pop() {
-            reversed.push(block_id);
+    match &bb.terminator {
+        Terminator::Branch { r#true, r#false } => {
+            traverse(r#false, basic_blocks, visited, postorder);
+            traverse(r#true, basic_blocks, visited, postorder);
         }
-
-        self.visited.clear();
-
-        reversed
-    }
-
-    fn traverse(&mut self, id: &BlockId, basic_blocks: &HashMap<BlockId, BasicBlock>) {
-        if self.visited.contains(id) {
-            return;
+        Terminator::Goto(target) => {
+            traverse(target, basic_blocks, visited, postorder);
         }
+        _ => {}
+    };
 
-        let bb = basic_blocks.get(id).unwrap();
-
-        match &bb.terminator {
-            Terminator::Branch { r#true, r#false } => {
-                self.traverse(r#false, basic_blocks);
-                self.traverse(r#true, basic_blocks);
-            }
-            Terminator::Goto(target) => {
-                self.traverse(target, basic_blocks);
-            }
-            _ => {}
-        };
-
-        self.visited.insert(*id);
-        self.postorder.push(*id);
-    }
+    visited.insert(*id);
+    postorder.push(*id);
 }

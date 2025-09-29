@@ -16,6 +16,15 @@ impl From<Variable> for Operand {
     }
 }
 
+impl Operand {
+    pub fn to_register(self) -> Register {
+        match self {
+            Self::Register(register) => register,
+            Self::Variable(Variable(value)) => Register(value as u8),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Register(pub u8);
 

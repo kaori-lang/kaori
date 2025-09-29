@@ -1,6 +1,6 @@
-use super::{block_id::BlockId, operand::Operand};
+use super::{basic_block::BlockId, operand::Operand};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CfgInstruction {
     Add {
         dest: Operand,

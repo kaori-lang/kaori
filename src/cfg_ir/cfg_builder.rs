@@ -12,8 +12,7 @@ use crate::{
 };
 
 use super::{
-    basic_block::{BasicBlock, Terminator},
-    block_id::BlockId,
+    basic_block::{BasicBlock, BlockId, Terminator},
     cfg_instruction::CfgInstruction,
     cfg_ir::CfgIr,
     operand::Variable,
