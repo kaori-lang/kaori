@@ -25,7 +25,7 @@ impl ConstantPool {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct ConstantIndex(u16);
+pub struct ConstantIndex(pub u16);
 
 impl fmt::Display for ConstantIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

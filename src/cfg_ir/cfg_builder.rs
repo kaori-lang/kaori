@@ -162,7 +162,7 @@ impl CfgBuilder {
                 then_branch,
                 else_branch,
             } => {
-                self.visit_expression(condition);
+                let src = self.visit_expression(condition);
 
                 let condition_bb = self.current_bb;
                 let then_bb = self.create_bb();
@@ -180,6 +180,7 @@ impl CfgBuilder {
                 self.set_terminator(
                     condition_bb,
                     Terminator::Branch {
+                        src: src.into(),
                         r#true: then_bb,
                         r#false: else_bb,
                     },
@@ -205,7 +206,7 @@ impl CfgBuilder {
                 let terminator_bb = self.create_bb();
 
                 self.current_bb = condition_bb;
-                self.visit_expression(condition);
+                let src = self.visit_expression(condition);
 
                 self.current_bb = block_bb;
                 self.visit_statement(block);
@@ -215,6 +216,7 @@ impl CfgBuilder {
                 self.set_terminator(
                     condition_bb,
                     Terminator::Branch {
+                        src: src.into(),
                         r#true: block_bb,
                         r#false: terminator_bb,
                     },

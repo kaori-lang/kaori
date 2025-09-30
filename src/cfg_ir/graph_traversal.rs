@@ -26,7 +26,9 @@ fn traverse(
     let bb = &basic_blocks[id.0];
 
     match bb.terminator {
-        Terminator::Branch { r#true, r#false } => {
+        Terminator::Branch {
+            r#true, r#false, ..
+        } => {
             traverse(r#false, basic_blocks, visited, postorder);
             traverse(r#true, basic_blocks, visited, postorder);
         }

@@ -43,10 +43,10 @@ impl BytecodeGenerator {
                 instruction_index += bb.instructions.len();
 
                 match bb.terminator {
-                    Terminator::Branch { r#true, r#false } => {
+                    Terminator::Branch { .. } => {
                         instruction_index += 1;
                     }
-                    Terminator::Goto(target) => {
+                    Terminator::Goto(..) => {
                         instruction_index += 1;
                     }
                     Terminator::Return => {}
@@ -57,6 +57,8 @@ impl BytecodeGenerator {
     }
 
     pub fn generate(&mut self, cfg_ir: &CfgIr) {
+        self.update_bb_instruction_index(cfg_ir);
+
         for cfg in &cfg_ir.cfgs {
             self.visit_cfg(*cfg, &cfg_ir.basic_blocks);
         }
@@ -92,13 +94,23 @@ impl BytecodeGenerator {
         }
 
         match basic_block.terminator {
-            Terminator::Branch { r#true, r#false } => {
-                let instruction = Instruction::jump_false(0);
+            Terminator::Branch {
+                src,
+                r#true,
+                r#false,
+            } => {
+                let offset = *self.basic_blocks.get(&r#false).unwrap() as i16
+                    - self.instruction_index as i16;
+
+                let instruction = Instruction::jump_false(src, offset);
 
                 self.emit_instruction(instruction);
             }
             Terminator::Goto(target) => {
-                let instruction = Instruction::jump(0);
+                let offset =
+                    *self.basic_blocks.get(&target).unwrap() as i16 - self.instruction_index as i16;
+
+                let instruction = Instruction::jump(offset);
 
                 self.emit_instruction(instruction);
             }
@@ -137,13 +149,13 @@ impl BytecodeGenerator {
             CfgInstruction::Not { dest, src } => Instruction::not(dest, src),
             CfgInstruction::Move { dest, src } => Instruction::mov(dest, src),
 
-            CfgInstruction::StringConst { dest, value } => {
+            /*   CfgInstruction::StringConst { dest, value } => {
                 let value = Value::boolean(false);
 
                 let constant_index = self.constant_pool.insert_value(value);
 
                 Instruction::load_const(dest, constant_index)
-            }
+            } */
             CfgInstruction::NumberConst { dest, value } => {
                 let value = Value::number(value);
 
@@ -158,11 +170,20 @@ impl BytecodeGenerator {
 
                 Instruction::load_const(dest, constant_index)
             }
-            CfgInstruction::FunctionConst { dest, value } => Instruction::load_const(dest, 0),
+            CfgInstruction::FunctionConst { dest, value } => {
+                let instruction_index = *self.basic_blocks.get(&value).unwrap();
+
+                let value = Value::instruction_index(instruction_index);
+
+                let constant_index = self.constant_pool.insert_value(value);
+
+                Instruction::load_const(dest, constant_index)
+            }
 
             CfgInstruction::Call => Instruction::call(),
             CfgInstruction::Return { src } => Instruction::return_(src),
             CfgInstruction::Print { src } => Instruction::print(src),
+            _ => unreachable!(),
         }
     }
 }

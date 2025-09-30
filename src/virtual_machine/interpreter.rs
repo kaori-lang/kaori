@@ -1,7 +1,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 use crate::{
-    bytecode::{instruction::Instruction, value::Value},
+    bytecode::{constant_pool::ConstantPool, instruction::Instruction, value::Value},
     error::kaori_error::KaoriError,
 };
 
@@ -10,7 +10,7 @@ use super::registers::Registers;
 pub struct Interpreter {
     instruction_index: usize,
     instructions: Vec<Instruction>,
-    constant_pool: Vec<Value>,
+    constant_pool: ConstantPool,
     registers: Registers,
     function_frames: Vec<FunctionFrame>,
 }
@@ -32,7 +32,7 @@ impl FunctionFrame {
 }
 
 impl Interpreter {
-    pub fn new(instructions: Vec<Instruction>, constant_pool: Vec<Value>) -> Self {
+    pub fn new(instructions: Vec<Instruction>, constant_pool: ConstantPool) -> Self {
         let main_frame = FunctionFrame::new(0, instructions.len());
 
         Self {
@@ -74,7 +74,7 @@ impl Interpreter {
                 Instruction::Negate { dest, src } => todo!(),
                 Instruction::Not { dest, src } => todo!(),
                 Instruction::LoadConst { dest, src } => {
-                    let value = self.constant_pool[usize::from(src)];
+                    let value = self.constant_pool.get_value(src);
 
                     self.registers.set_value(dest, value);
                 }
@@ -89,8 +89,8 @@ impl Interpreter {
 
                     self.instruction_index = frame.return_address;
                 }
-                Instruction::Jump(offset) => todo!(),
-                Instruction::JumpFalse(offset) => todo!(),
+                Instruction::Jump { offset } => todo!(),
+                Instruction::JumpFalse { src, offset } => todo!(),
                 Instruction::Print { src } => {
                     let value = self.registers.get_value(src);
 
