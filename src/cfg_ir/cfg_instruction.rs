@@ -102,6 +102,9 @@ pub enum CfgInstruction {
         src: Operand,
         target: BlockId,
     },
+    Return {
+        src: Option<Operand>,
+    },
     Call,
     Print {
         src: Operand,
@@ -322,6 +325,12 @@ impl CfgInstruction {
         Self::JumpFalse {
             src: src.into(),
             target,
+        }
+    }
+
+    pub fn return_(src: Option<impl Into<Operand>>) -> Self {
+        Self::Return {
+            src: src.map(|src| src.into()),
         }
     }
 

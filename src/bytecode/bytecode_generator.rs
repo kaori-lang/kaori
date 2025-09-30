@@ -9,7 +9,11 @@ use crate::cfg_ir::{
     graph_traversal::reversed_postorder,
 };
 
-use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
+use super::{
+    bytecode::Bytecode,
+    instruction::{self, Instruction},
+    value::Value,
+};
 
 type InstructionIndex = usize;
 pub struct BytecodeGenerator {
@@ -21,30 +25,26 @@ pub struct BytecodeGenerator {
 impl BytecodeGenerator {
     pub fn new() -> Self {
         Self {
+            cfg_instructions: Vec::new(),
             bytecode: Bytecode::default(),
-            instruction_index: 0,
             basic_blocks: HashMap::new(),
         }
     }
 
     pub fn generate(&mut self, cfg_ir: &CfgIr) {
-        self.update_bb_instruction_index(cfg_ir);
+        self.flatten_cfg(cfg_ir);
 
-        for cfg in &cfg_ir.cfgs {
-            self.visit_cfg(*cfg, &cfg_ir.basic_blocks);
+        for index in 0..self.cfg_instructions.len() {
+            let instruction = self.convert_instruction(index);
+
+            println!("{instruction}");
         }
     }
 
-    fn calculate_offset(&self, id: BlockId) -> i16 {
-        let block_index = *self.basic_blocks.get(&id).unwrap() as i16;
-
-        block_index - self.instruction_index as i16
-    }
-
-    fn emit_instruction(&mut self, instruction: Instruction) {
-        self.bytecode.instructions.push(instruction);
-
-        self.instruction_index += 1;
+    fn flatten_cfg(&mut self, cfg_ir: &CfgIr) {
+        for cfg in &cfg_ir.cfgs {
+            self.visit_cfg(*cfg, &cfg_ir.basic_blocks);
+        }
     }
 
     fn visit_cfg(&mut self, cfg: BlockId, basic_blocks: &[BasicBlock]) {
@@ -52,18 +52,17 @@ impl BytecodeGenerator {
 
         for id in blocks {
             let basic_block = &basic_blocks[id.0];
+
             self.visit_block(basic_block);
         }
     }
 
     fn visit_block(&mut self, basic_block: &BasicBlock) {
         self.basic_blocks
-            .insert(basic_block.id, self.instruction_index);
+            .insert(basic_block.id, self.cfg_instructions.len());
 
         for instruction in &basic_block.instructions {
-            let instruction = self.visit_instruction(instruction);
-
-            self.emit_instruction(instruction);
+            self.cfg_instructions.push(instruction.to_owned());
         }
 
         match basic_block.terminator {
@@ -72,30 +71,26 @@ impl BytecodeGenerator {
                 r#true,
                 r#false,
             } => {
-                let offset = self.calculate_offset(r#false);
+                let instruction = CfgInstruction::jump_false(src, r#false);
 
-                let instruction = Instruction::jump_false(src, offset);
-
-                self.emit_instruction(instruction);
+                self.cfg_instructions.push(instruction);
             }
             Terminator::Goto(target) => {
-                let offset = self.calculate_offset(target);
+                let instruction = CfgInstruction::jump(target);
 
-                let instruction = Instruction::jump(offset);
-
-                self.emit_instruction(instruction);
+                self.cfg_instructions.push(instruction);
             }
             Terminator::Return { src } => {
-                let instruction = Instruction::return_(src.unwrap());
+                let instruction = CfgInstruction::return_(src);
 
-                self.emit_instruction(instruction);
+                self.cfg_instructions.push(instruction);
             }
             _ => {}
         }
     }
 
-    fn visit_instruction(&mut self, instruction: &CfgInstruction) -> Instruction {
-        match *instruction {
+    fn convert_instruction(&mut self, index: InstructionIndex) -> Instruction {
+        match self.cfg_instructions[index] {
             CfgInstruction::Add { dest, src1, src2 } => Instruction::add(dest, src1, src2),
             CfgInstruction::Subtract { dest, src1, src2 } => {
                 Instruction::subtract(dest, src1, src2)
@@ -157,7 +152,17 @@ impl BytecodeGenerator {
 
             CfgInstruction::Call => Instruction::call(),
             CfgInstruction::Print { src } => Instruction::print(src),
-            _ => unreachable!(),
+            CfgInstruction::Jump { target } => {
+                let offset = *self.basic_blocks.get(&target).unwrap() as i16 - index as i16;
+                Instruction::jump(offset)
+            }
+            CfgInstruction::JumpFalse { src, target } => {
+                let offset = *self.basic_blocks.get(&target).unwrap() as i16 - index as i16;
+
+                Instruction::jump_false(src, offset)
+            }
+            CfgInstruction::Return { src } => Instruction::return_(src.unwrap()),
+            _ => todo!(),
         }
     }
 }
