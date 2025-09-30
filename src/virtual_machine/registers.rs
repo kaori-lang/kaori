@@ -1,6 +1,4 @@
-use crate::cfg_ir::operand::Register;
-
-use super::value::Value;
+use crate::{bytecode::value::Value, cfg_ir::operand::Register};
 
 pub struct Registers {
     registers: [Value; 1024],

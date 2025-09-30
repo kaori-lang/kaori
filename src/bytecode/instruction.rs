@@ -77,7 +77,7 @@ pub enum Instruction {
     },
     LoadConst {
         dest: Register,
-        src: u16,
+        src: ConstantIndex,
     },
     Move {
         dest: Register,
@@ -232,6 +232,8 @@ impl Instruction {
 }
 
 use std::fmt;
+
+use super::constant_pool::ConstantIndex;
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

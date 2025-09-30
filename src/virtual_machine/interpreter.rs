@@ -1,8 +1,11 @@
 #![allow(clippy::missing_safety_doc)]
 
-use crate::{bytecode::instruction::Instruction, error::kaori_error::KaoriError};
+use crate::{
+    bytecode::{instruction::Instruction, value::Value},
+    error::kaori_error::KaoriError,
+};
 
-use super::{registers::Registers, value::Value};
+use super::registers::Registers;
 
 pub struct Interpreter {
     instruction_index: usize,

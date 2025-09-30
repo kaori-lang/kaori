@@ -5,7 +5,7 @@ use std::hint::unreachable_unchecked;
 pub enum Value {
     Number(f64),
     Bool(bool),
-    InstructionPtr(usize),
+    InstructionIndex(usize),
 }
 
 impl Value {
@@ -17,8 +17,8 @@ impl Value {
         Value::Bool(value)
     }
 
-    pub fn instruction_ptr(instruction_ptr: usize) -> Value {
-        Value::InstructionPtr(instruction_ptr)
+    pub fn instruction_index(instruction_index: usize) -> Value {
+        Value::InstructionIndex(instruction_index)
     }
 
     pub unsafe fn as_number(self) -> f64 {
@@ -35,9 +35,9 @@ impl Value {
         }
     }
 
-    pub unsafe fn as_instruction_ptr(self) -> usize {
+    pub unsafe fn as_instruction_index(self) -> usize {
         match self {
-            Value::InstructionPtr(value) => value,
+            Value::InstructionIndex(value) => value,
             _ => unsafe { unreachable_unchecked() },
         }
     }
