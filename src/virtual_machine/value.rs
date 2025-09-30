@@ -5,8 +5,6 @@ use std::hint::unreachable_unchecked;
 pub enum Value {
     Number(f64),
     Bool(bool),
-
-    Null,
     InstructionPtr(usize),
 }
 

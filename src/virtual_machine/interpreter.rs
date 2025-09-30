@@ -2,25 +2,27 @@
 
 use crate::{bytecode::instruction::Instruction, error::kaori_error::KaoriError};
 
-use super::value::Value;
+use super::{registers::Registers, value::Value};
 
 pub struct Interpreter {
-    instruction_ptr: usize,
+    instruction_index: usize,
     instructions: Vec<Instruction>,
     constant_pool: Vec<Value>,
-    registers: Vec<Value>,
+    registers: Registers,
     function_frames: Vec<FunctionFrame>,
 }
 
+type InstructionIndex = usize;
+type RegisterIndex = usize;
 pub struct FunctionFrame {
-    pub base_ptr: usize,
-    pub return_address: usize,
+    pub base_address: RegisterIndex,
+    pub return_address: InstructionIndex,
 }
 
 impl FunctionFrame {
-    fn new(base_ptr: usize, return_address: usize) -> Self {
+    fn new(base_address: RegisterIndex, return_address: InstructionIndex) -> Self {
         Self {
-            base_ptr,
+            base_address,
             return_address,
         }
     }
@@ -31,10 +33,10 @@ impl Interpreter {
         let main_frame = FunctionFrame::new(0, instructions.len());
 
         Self {
-            instruction_ptr: 0,
+            instruction_index: 0,
             instructions,
             constant_pool,
-            registers: Vec::with_capacity(1024),
+            registers: Registers::new(),
             function_frames: vec![main_frame],
         }
     }
@@ -42,18 +44,17 @@ impl Interpreter {
     pub fn execute_instructions(&mut self) -> Result<(), KaoriError> {
         let size = self.instructions.len();
 
-        while self.instruction_ptr < size {
-            let instruction = unsafe { self.instructions.get_unchecked(self.instruction_ptr) };
+        while self.instruction_index < size {
+            let instruction = self.instructions.get(self.instruction_index).unwrap();
 
-            match instruction {
+            match *instruction {
                 Instruction::Add { dest, src1, src2 } => {
-                    let lhs = self.registers[src1.0 as usize];
-                    let rhs = self.registers[src2.0 as usize];
+                    let lhs = self.registers.get_value(src1);
+                    let rhs = self.registers.get_value(src2);
 
-                    unsafe {
-                        self.registers[dest.0 as usize] =
-                            Value::number(lhs.as_number() + rhs.as_number());
-                    }
+                    let value = unsafe { Value::number(lhs.as_number() + rhs.as_number()) };
+
+                    self.registers.set_value(dest, value);
                 }
                 Instruction::Subtract { dest, src1, src2 } => todo!(),
                 Instruction::Multiply { dest, src1, src2 } => todo!(),
@@ -69,103 +70,34 @@ impl Interpreter {
                 Instruction::Or { dest, src1, src2 } => todo!(),
                 Instruction::Negate { dest, src } => todo!(),
                 Instruction::Not { dest, src } => todo!(),
-                Instruction::LoadConst { dest, src } => todo!(),
-                Instruction::Move { dest, src } => todo!(),
+                Instruction::LoadConst { dest, src } => {
+                    let value = self.constant_pool[usize::from(src)];
+
+                    self.registers.set_value(dest, value);
+                }
+                Instruction::Move { dest, src } => {
+                    let value = self.registers.get_value(src);
+
+                    self.registers.set_value(dest, value);
+                }
                 Instruction::Call => todo!(),
-                Instruction::Return { src } => todo!(),
+                Instruction::Return { src } => {
+                    let frame = self.function_frames.pop().unwrap();
+
+                    self.instruction_index = frame.return_address;
+                }
                 Instruction::Jump(offset) => todo!(),
                 Instruction::JumpFalse(offset) => todo!(),
                 Instruction::Print { src } => {
-                    let value = self.registers[src.0 as usize];
+                    let value = self.registers.get_value(src);
 
                     println!("{value:#?}");
                 }
             }
 
-            self.instruction_ptr += 1;
+            self.instruction_index += 1;
         }
 
         Ok(())
-    }
-
-    pub unsafe fn op_add(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_subtract(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_multiply(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_divide(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_modulo(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_and(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_or(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_not_equal(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_equal(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_greater(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_greater_equal(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_less(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_less_equal(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_negate(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_not(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_load_const(&mut self, index: usize) {
-        unsafe {}
-    }
-
-    #[cold]
-    pub unsafe fn op_print(&mut self) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_jump_false(&mut self, index: usize) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_call(&mut self, arguments_size: usize, frame_size: usize) {
-        unsafe {}
-    }
-
-    pub unsafe fn op_return(&mut self) {
-        unsafe {}
     }
 }

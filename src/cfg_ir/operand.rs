@@ -27,11 +27,11 @@ impl Operand {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Register(pub u8);
-
 #[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Variable(pub usize);
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Register(pub u8);
 
 impl fmt::Display for Register {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

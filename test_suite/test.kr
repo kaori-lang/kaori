@@ -1,20 +1,4 @@
 def main() {
-  
-
-
-    
-}
-
-
-def foo() -> number {
     var a: number = 8;
     var b: number = 5.7;
-
-    if a > 2 {
-        return 0;
-    } else {
-        return 3;
-    }
-
-    return 1;
 }
