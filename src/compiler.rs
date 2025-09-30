@@ -1,5 +1,7 @@
 use crate::{
-    bytecode::bytecode_generator::BytecodeGenerator,
+    bytecode::{
+        bytecode::Bytecode, bytecode_generator::BytecodeGenerator, instruction::Instruction,
+    },
     cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
@@ -49,10 +51,10 @@ fn run_lifetime_analyis(cfg_ir: &CfgIr) {
     a.analyze_cfgs(); */
 }
 
-fn generate_bytecode(cfg_ir: &CfgIr) {
+fn generate_bytecode(cfg_ir: &CfgIr) -> Bytecode {
     let mut generator = BytecodeGenerator::new();
 
-    generator.generate(cfg_ir);
+    generator.generate(cfg_ir)
 }
 
 pub fn compile_source_code(source: String) -> Result<(), KaoriError> {
@@ -62,6 +64,6 @@ pub fn compile_source_code(source: String) -> Result<(), KaoriError> {
     let cfg_ir = build_cfg_ir(&hir);
 
     //run_lifetime_analyis(&cfg_ir);
-    generate_bytecode(&cfg_ir);
+    let bytecode = generate_bytecode(&cfg_ir);
     Ok(())
 }

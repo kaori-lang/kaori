@@ -5,50 +5,33 @@ use crate::{
     error::kaori_error::KaoriError,
 };
 
-use super::registers::Registers;
+use super::{call_stack::CallStack, registers::Registers};
 
 pub struct Interpreter {
-    instruction_index: usize,
+    call_stack: CallStack,
     instructions: Vec<Instruction>,
     constant_pool: ConstantPool,
     registers: Registers,
-    function_frames: Vec<FunctionFrame>,
-}
-
-type InstructionIndex = usize;
-type RegisterIndex = usize;
-pub struct FunctionFrame {
-    pub base_address: RegisterIndex,
-    pub return_address: InstructionIndex,
-}
-
-impl FunctionFrame {
-    fn new(base_address: RegisterIndex, return_address: InstructionIndex) -> Self {
-        Self {
-            base_address,
-            return_address,
-        }
-    }
 }
 
 impl Interpreter {
     pub fn new(instructions: Vec<Instruction>, constant_pool: ConstantPool) -> Self {
-        let main_frame = FunctionFrame::new(0, instructions.len());
+        let return_address = instructions.len();
 
         Self {
-            instruction_index: 0,
             instructions,
             constant_pool,
             registers: Registers::new(),
-            function_frames: vec![main_frame],
         }
     }
 
     pub fn execute_instructions(&mut self) -> Result<(), KaoriError> {
+        let mut instruction_index = 0;
+
         let size = self.instructions.len();
 
-        while self.instruction_index < size {
-            let instruction = self.instructions.get(self.instruction_index).unwrap();
+        while instruction_index < size {
+            let instruction = self.instructions.get(instruction_index).unwrap();
 
             match *instruction {
                 Instruction::Add { dest, src1, src2 } => {
@@ -84,11 +67,7 @@ impl Interpreter {
                     self.registers.set_value(dest, value);
                 }
                 Instruction::Call => todo!(),
-                Instruction::Return { src } => {
-                    let frame = self.function_frames.pop().unwrap();
-
-                    self.instruction_index = frame.return_address;
-                }
+                Instruction::Return { src } => {}
                 Instruction::Jump { offset } => todo!(),
                 Instruction::JumpFalse { src, offset } => todo!(),
                 Instruction::Print { src } => {
@@ -98,7 +77,7 @@ impl Interpreter {
                 }
             }
 
-            self.instruction_index += 1;
+            instruction_index += 1;
         }
 
         Ok(())

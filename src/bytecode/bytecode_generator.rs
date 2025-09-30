@@ -10,15 +10,12 @@ use crate::cfg_ir::{
 };
 
 use super::{
-    bytecode::Bytecode,
-    instruction::{self, Instruction},
-    value::Value,
+    bytecode::Bytecode, constant_pool::ConstantPool, instruction::Instruction, value::Value,
 };
 
 type InstructionIndex = usize;
 pub struct BytecodeGenerator {
     pub cfg_instructions: Vec<CfgInstruction>,
-    pub bytecode: Bytecode,
     pub basic_blocks: HashMap<BlockId, InstructionIndex>,
 }
 
@@ -26,22 +23,25 @@ impl BytecodeGenerator {
     pub fn new() -> Self {
         Self {
             cfg_instructions: Vec::new(),
-            bytecode: Bytecode::default(),
             basic_blocks: HashMap::new(),
         }
     }
 
-    pub fn generate(&mut self, cfg_ir: &CfgIr) {
-        self.flatten_cfg(cfg_ir);
+    pub fn generate(&mut self, cfg_ir: &CfgIr) -> Bytecode {
+        self.flatten_cfg_ir(cfg_ir);
+
+        let mut instructions = Vec::new();
+        let mut constant_pool = ConstantPool::default();
 
         for index in 0..self.cfg_instructions.len() {
-            let instruction = self.convert_instruction(index);
-
-            println!("{instruction}");
+            let instruction = self.convert_instruction(index, &mut constant_pool);
+            instructions.push(instruction);
         }
+
+        Bytecode::new(instructions, constant_pool)
     }
 
-    fn flatten_cfg(&mut self, cfg_ir: &CfgIr) {
+    fn flatten_cfg_ir(&mut self, cfg_ir: &CfgIr) {
         for cfg in &cfg_ir.cfgs {
             self.visit_cfg(*cfg, &cfg_ir.basic_blocks);
         }
@@ -89,7 +89,11 @@ impl BytecodeGenerator {
         }
     }
 
-    fn convert_instruction(&mut self, index: InstructionIndex) -> Instruction {
+    fn convert_instruction(
+        &mut self,
+        index: InstructionIndex,
+        constant_pool: &mut ConstantPool,
+    ) -> Instruction {
         match self.cfg_instructions[index] {
             CfgInstruction::Add { dest, src1, src2 } => Instruction::add(dest, src1, src2),
             CfgInstruction::Subtract { dest, src1, src2 } => {
@@ -122,21 +126,21 @@ impl BytecodeGenerator {
             /*   CfgInstruction::StringConst { dest, value } => {
                 let value = Value::boolean(false);
 
-                let constant_index = self.bytecode.constant_pool.insert_value(value);
+                let constant_index = constant_pool.insert_value(value);
 
                 Instruction::const_(dest, constant_index)
             } */
             CfgInstruction::NumberConst { dest, value } => {
                 let value = Value::number(value);
 
-                let constant_index = self.bytecode.constant_pool.insert_value(value);
+                let constant_index = constant_pool.insert_value(value);
 
                 Instruction::const_(dest, constant_index)
             }
             CfgInstruction::BooleanConst { dest, value } => {
                 let value = Value::boolean(value);
 
-                let constant_index = self.bytecode.constant_pool.insert_value(value);
+                let constant_index = constant_pool.insert_value(value);
 
                 Instruction::const_(dest, constant_index)
             }
@@ -145,7 +149,7 @@ impl BytecodeGenerator {
 
                 let value = Value::instruction_index(instruction_index);
 
-                let constant_index = self.bytecode.constant_pool.insert_value(value);
+                let constant_index = constant_pool.insert_value(value);
 
                 Instruction::const_(dest, constant_index)
             }
@@ -154,6 +158,7 @@ impl BytecodeGenerator {
             CfgInstruction::Print { src } => Instruction::print(src),
             CfgInstruction::Jump { target } => {
                 let offset = *self.basic_blocks.get(&target).unwrap() as i16 - index as i16;
+
                 Instruction::jump(offset)
             }
             CfgInstruction::JumpFalse { src, target } => {
