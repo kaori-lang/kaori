@@ -1,15 +1,16 @@
+use core::fmt;
 use std::u16;
 
 use super::value::Value;
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct ConstantIndex(u16);
 
 pub struct ConstantPool {
     pub values: Vec<Value>,
 }
 
 impl ConstantPool {
+    pub fn new() -> Self {
+        Self { values: Vec::new() }
+    }
     pub fn insert_value(&mut self, value: Value) -> ConstantIndex {
         let constant_index = ConstantIndex(self.values.len() as u16);
 
@@ -20,5 +21,14 @@ impl ConstantPool {
 
     pub fn get_value(&self, constant_index: ConstantIndex) -> Value {
         self.values[usize::from(constant_index.0)]
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ConstantIndex(u16);
+
+impl fmt::Display for ConstantIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "c{}", self.0)
     }
 }

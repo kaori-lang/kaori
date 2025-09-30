@@ -198,7 +198,7 @@ impl Instruction {
             src: src.to_register(),
         }
     }
-    pub fn load_const(dest: Operand, src: u16) -> Self {
+    pub fn load_const(dest: Operand, src: ConstantIndex) -> Self {
         Instruction::LoadConst {
             dest: dest.to_register(),
             src,
