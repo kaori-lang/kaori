@@ -75,7 +75,7 @@ pub enum Instruction {
         dest: Register,
         src: Register,
     },
-    LoadConst {
+    Const {
         dest: Register,
         src: ConstantIndex,
     },
@@ -203,8 +203,8 @@ impl Instruction {
             src: src.to_register(),
         }
     }
-    pub fn load_const(dest: Operand, src: ConstantIndex) -> Self {
-        Self::LoadConst {
+    pub fn const_(dest: Operand, src: ConstantIndex) -> Self {
+        Self::Const {
             dest: dest.to_register(),
             src,
         }
@@ -287,7 +287,7 @@ impl fmt::Display for Instruction {
             }
             Self::Negate { dest, src } => write!(f, "Negate {}, {}", dest, src),
             Self::Not { dest, src } => write!(f, "Not {}, {}", dest, src),
-            Self::LoadConst { dest, src } => write!(f, "LoadConst {}, {}", dest, src),
+            Self::Const { dest, src } => write!(f, "Const {}, {}", dest, src),
             Self::Move { dest, src } => write!(f, "Move {}, {}", dest, src),
             Self::Call => write!(f, "Call"),
             Self::Return { src } => write!(f, "Return {}", src),

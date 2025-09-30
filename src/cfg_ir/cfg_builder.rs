@@ -41,7 +41,7 @@ impl CfgBuilder {
         let id = self.current_bb;
         let basic_block = self.cfg_ir.basic_blocks.get_mut(id.0).unwrap();
 
-        if let Terminator::Return = basic_block.terminator {
+        if let Terminator::Return { .. } = basic_block.terminator {
             return;
         }
 
@@ -136,7 +136,10 @@ impl CfgBuilder {
 
                 let last_bb = self.current_bb;
 
-                self.set_terminator(last_bb, Terminator::Return);
+                match self.cfg_ir.basic_blocks[self.current_bb.0].terminator {
+                    Terminator::Return { .. } => {}
+                    _ => self.set_terminator(last_bb, Terminator::Return { src: None }),
+                }
 
                 self.free_all_variables();
             }

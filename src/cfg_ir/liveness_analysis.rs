@@ -94,7 +94,7 @@ impl<'a> LivenessAnalysis<'a> {
                 self.update_variable_lifetime(*dest);
             }
             CfgInstruction::Call => {}
-            CfgInstruction::Return { .. } => {}
+
             CfgInstruction::Print { src } => {}
         }
     }
@@ -131,7 +131,6 @@ impl<'a> LivenessAnalysis<'a> {
                 self.update_variable_lifetime(*dest);
             }
             CfgInstruction::Call => {}
-            CfgInstruction::Return { .. } => {}
             CfgInstruction::Print { src } => {}
         }
 

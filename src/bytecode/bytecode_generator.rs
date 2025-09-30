@@ -9,56 +9,21 @@ use crate::cfg_ir::{
     graph_traversal::reversed_postorder,
 };
 
-use super::{
-    constant_pool::ConstantPool,
-    instruction::{self, Instruction},
-    value::Value,
-};
+use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
 
 type InstructionIndex = usize;
 pub struct BytecodeGenerator {
-    pub instructions: Vec<Instruction>,
-    pub constant_pool: ConstantPool,
-    pub instruction_index: InstructionIndex,
+    pub cfg_instructions: Vec<CfgInstruction>,
+    pub bytecode: Bytecode,
     pub basic_blocks: HashMap<BlockId, InstructionIndex>,
 }
 
 impl BytecodeGenerator {
     pub fn new() -> Self {
         Self {
-            instructions: Vec::new(),
-            constant_pool: ConstantPool::new(),
+            bytecode: Bytecode::default(),
             instruction_index: 0,
             basic_blocks: HashMap::new(),
-        }
-    }
-
-    fn update_bb_instruction_index(&mut self, cfg_ir: &CfgIr) {
-        let mut instruction_index = 0;
-
-        for cfg in &cfg_ir.cfgs {
-            let basic_blocks = reversed_postorder(*cfg, &cfg_ir.basic_blocks);
-
-            for bb_id in basic_blocks {
-                self.basic_blocks.insert(bb_id, instruction_index);
-
-                let bb = &cfg_ir.basic_blocks[bb_id.0];
-
-                instruction_index += bb.instructions.len();
-
-                match bb.terminator {
-                    Terminator::Branch { .. } => {
-                        instruction_index += 1;
-                    }
-                    Terminator::Goto(..) => {
-                        instruction_index += 1;
-                    }
-                    Terminator::Return => {
-                        instruction_index += 1;
-                    }
-                    _ => {}
-                }
-            }
         }
     }
 
@@ -68,14 +33,16 @@ impl BytecodeGenerator {
         for cfg in &cfg_ir.cfgs {
             self.visit_cfg(*cfg, &cfg_ir.basic_blocks);
         }
+    }
 
-        for instruction in &self.instructions {
-            println!("{instruction}");
-        }
+    fn calculate_offset(&self, id: BlockId) -> i16 {
+        let block_index = *self.basic_blocks.get(&id).unwrap() as i16;
+
+        block_index - self.instruction_index as i16
     }
 
     fn emit_instruction(&mut self, instruction: Instruction) {
-        self.instructions.push(instruction);
+        self.bytecode.instructions.push(instruction);
 
         self.instruction_index += 1;
     }
@@ -105,23 +72,23 @@ impl BytecodeGenerator {
                 r#true,
                 r#false,
             } => {
-                let offset = *self.basic_blocks.get(&r#false).unwrap() as i16
-                    - self.instruction_index as i16;
+                let offset = self.calculate_offset(r#false);
 
                 let instruction = Instruction::jump_false(src, offset);
 
                 self.emit_instruction(instruction);
             }
             Terminator::Goto(target) => {
-                let offset =
-                    *self.basic_blocks.get(&target).unwrap() as i16 - self.instruction_index as i16;
+                let offset = self.calculate_offset(target);
 
                 let instruction = Instruction::jump(offset);
 
                 self.emit_instruction(instruction);
             }
-            Terminator::Return => {
-                let instruction = Instruction::return_(src);
+            Terminator::Return { src } => {
+                let instruction = Instruction::return_(src.unwrap());
+
+                self.emit_instruction(instruction);
             }
             _ => {}
         }
@@ -160,36 +127,35 @@ impl BytecodeGenerator {
             /*   CfgInstruction::StringConst { dest, value } => {
                 let value = Value::boolean(false);
 
-                let constant_index = self.constant_pool.insert_value(value);
+                let constant_index = self.bytecode.constant_pool.insert_value(value);
 
-                Instruction::load_const(dest, constant_index)
+                Instruction::const_(dest, constant_index)
             } */
             CfgInstruction::NumberConst { dest, value } => {
                 let value = Value::number(value);
 
-                let constant_index = self.constant_pool.insert_value(value);
+                let constant_index = self.bytecode.constant_pool.insert_value(value);
 
-                Instruction::load_const(dest, constant_index)
+                Instruction::const_(dest, constant_index)
             }
             CfgInstruction::BooleanConst { dest, value } => {
                 let value = Value::boolean(value);
 
-                let constant_index = self.constant_pool.insert_value(value);
+                let constant_index = self.bytecode.constant_pool.insert_value(value);
 
-                Instruction::load_const(dest, constant_index)
+                Instruction::const_(dest, constant_index)
             }
             CfgInstruction::FunctionConst { dest, value } => {
                 let instruction_index = *self.basic_blocks.get(&value).unwrap();
 
                 let value = Value::instruction_index(instruction_index);
 
-                let constant_index = self.constant_pool.insert_value(value);
+                let constant_index = self.bytecode.constant_pool.insert_value(value);
 
-                Instruction::load_const(dest, constant_index)
+                Instruction::const_(dest, constant_index)
             }
 
             CfgInstruction::Call => Instruction::call(),
-            CfgInstruction::Return { src } => Instruction::return_(src),
             CfgInstruction::Print { src } => Instruction::print(src),
             _ => unreachable!(),
         }

@@ -1,6 +1,6 @@
 use crate::{
     bytecode::bytecode_generator::BytecodeGenerator,
-    cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr, liveness_analysis::LivenessAnalysis},
+    cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},

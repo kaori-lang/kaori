@@ -1,10 +1,10 @@
-def main() {
+def main() -> number {
     var a: number = 8;
-    var b: number = 5.7;
-
-    if a > 2 {
-        print(1);
-    } else {
-        print(2);
+   
+    while a < 10 {
+        var b: number = 5.7;
     }
+
+    return 1;
 }
+

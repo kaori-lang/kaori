@@ -23,6 +23,8 @@ fn traverse(
         return;
     }
 
+    visited.insert(id);
+
     let bb = &basic_blocks[id.0];
 
     match bb.terminator {
@@ -38,6 +40,5 @@ fn traverse(
         _ => {}
     };
 
-    visited.insert(id);
     postorder.push(id);
 }
