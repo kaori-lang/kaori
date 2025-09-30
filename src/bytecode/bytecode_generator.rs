@@ -9,7 +9,11 @@ use crate::cfg_ir::{
     graph_traversal::reversed_postorder,
 };
 
-use super::{constant_pool::ConstantPool, instruction::Instruction, value::Value};
+use super::{
+    constant_pool::ConstantPool,
+    instruction::{self, Instruction},
+    value::Value,
+};
 
 type InstructionIndex = usize;
 pub struct BytecodeGenerator {
@@ -49,7 +53,9 @@ impl BytecodeGenerator {
                     Terminator::Goto(..) => {
                         instruction_index += 1;
                     }
-                    Terminator::Return => {}
+                    Terminator::Return => {
+                        instruction_index += 1;
+                    }
                     _ => {}
                 }
             }
@@ -114,7 +120,9 @@ impl BytecodeGenerator {
 
                 self.emit_instruction(instruction);
             }
-            Terminator::Return => {}
+            Terminator::Return => {
+                let instruction = Instruction::return_(src);
+            }
             _ => {}
         }
     }

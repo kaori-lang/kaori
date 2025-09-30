@@ -96,9 +96,6 @@ pub enum CfgInstruction {
         src: Operand,
     },
     Call,
-    Return {
-        src: Operand,
-    },
     Print {
         src: Operand,
     },
@@ -312,10 +309,6 @@ impl CfgInstruction {
 
     pub fn call() -> Self {
         Self::Call
-    }
-
-    pub fn return_(src: impl Into<Operand>) -> Self {
-        Self::Return { src: src.into() }
     }
 
     pub fn print(src: impl Into<Operand>) -> Self {

@@ -230,15 +230,12 @@ impl CfgBuilder {
             HirStmtKind::Continue => {}
             HirStmtKind::Return(expr) => {
                 if let Some(expr) = expr {
-                    let src = self.visit_expression(expr);
+                    let src = self.visit_expression(expr).into();
 
-                    let instruction = CfgInstruction::return_(src);
-
-                    self.emit_instruction(instruction);
+                    self.set_terminator(self.current_bb, Terminator::Return { src: Some(src) });
+                } else {
+                    self.set_terminator(self.current_bb, Terminator::Return { src: None });
                 }
-                let current_bb = self.current_bb;
-
-                self.set_terminator(current_bb, Terminator::Return);
             }
         };
     }
