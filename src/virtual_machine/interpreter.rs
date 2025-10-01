@@ -1,7 +1,11 @@
 #![allow(clippy::missing_safety_doc)]
 
 use crate::{
-    bytecode::{constant_pool::ConstantPool, instruction::Instruction, value::Value},
+    bytecode::{
+        constant_pool::ConstantPool,
+        instruction::{self, Instruction},
+        value::Value,
+    },
     error::kaori_error::KaoriError,
 };
 
@@ -19,6 +23,7 @@ impl Interpreter {
         let return_address = instructions.len();
 
         Self {
+            call_stack: CallStack::new(return_address),
             instructions,
             constant_pool,
             registers: Registers::new(),
@@ -26,13 +31,17 @@ impl Interpreter {
     }
 
     pub fn execute_instructions(&mut self) -> Result<(), KaoriError> {
+        /*  for instruction in &self.instructions {
+            println!("{instruction}");
+        } */
+
         let mut instruction_index = 0;
 
         let size = self.instructions.len();
 
         while instruction_index < size {
             let instruction = self.instructions.get(instruction_index).unwrap();
-
+            //println!("{instruction}");
             match *instruction {
                 Instruction::Add { dest, src1, src2 } => {
                     let lhs = self.registers.get_value(src1);
@@ -50,7 +59,14 @@ impl Interpreter {
                 Instruction::NotEqual { dest, src1, src2 } => todo!(),
                 Instruction::Greater { dest, src1, src2 } => todo!(),
                 Instruction::GreaterEqual { dest, src1, src2 } => todo!(),
-                Instruction::Less { dest, src1, src2 } => todo!(),
+                Instruction::Less { dest, src1, src2 } => {
+                    let lhs = self.registers.get_value(src1);
+                    let rhs = self.registers.get_value(src2);
+
+                    let value = unsafe { Value::boolean(lhs.as_number() < rhs.as_number()) };
+
+                    self.registers.set_value(dest, value);
+                }
                 Instruction::LessEqual { dest, src1, src2 } => todo!(),
                 Instruction::And { dest, src1, src2 } => todo!(),
                 Instruction::Or { dest, src1, src2 } => todo!(),
@@ -67,9 +83,22 @@ impl Interpreter {
                     self.registers.set_value(dest, value);
                 }
                 Instruction::Call => todo!(),
-                Instruction::Return { src } => {}
-                Instruction::Jump { offset } => todo!(),
-                Instruction::JumpFalse { src, offset } => todo!(),
+                Instruction::Return { src } => instruction_index = self.instructions.len(),
+                Instruction::Jump { offset } => {
+                    instruction_index = (instruction_index as i16 + offset) as usize;
+
+                    continue;
+                }
+                Instruction::JumpFalse { src, offset } => {
+                    let value = self.registers.get_value(src);
+
+                    unsafe {
+                        if !value.as_bool() {
+                            instruction_index = (instruction_index as i16 + offset) as usize;
+                            continue;
+                        }
+                    }
+                }
                 Instruction::Print { src } => {
                     let value = self.registers.get_value(src);
 

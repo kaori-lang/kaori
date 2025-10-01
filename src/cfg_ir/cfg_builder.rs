@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    bytecode::instruction,
     semantic::{
         hir_decl::{HirDecl, HirDeclKind},
         hir_expr::{HirExpr, HirExprKind},
@@ -155,7 +156,11 @@ impl CfgBuilder {
                 self.visit_expression(expression);
             }
             HirStmtKind::Print(expression) => {
-                self.visit_expression(expression);
+                let src = self.visit_expression(expression);
+
+                let instruction = CfgInstruction::print(src);
+
+                self.emit_instruction(instruction);
             }
             HirStmtKind::Block(nodes) => {
                 self.visit_nodes(nodes);
@@ -203,21 +208,19 @@ impl CfgBuilder {
                 if let Some(init) = init {
                     self.visit_declaration(init);
                 }
-                let previous_bb = self.current_bb;
+
                 let condition_bb = self.create_bb();
                 let block_bb = self.create_bb();
                 let terminator_bb = self.create_bb();
 
+                self.set_terminator(self.current_bb, Terminator::Goto(condition_bb));
+
                 self.current_bb = condition_bb;
+
                 let src = self.visit_expression(condition);
 
-                self.current_bb = block_bb;
-                self.visit_statement(block);
-
-                self.set_terminator(previous_bb, Terminator::Goto(condition_bb));
-
                 self.set_terminator(
-                    condition_bb,
+                    self.current_bb,
                     Terminator::Branch {
                         src: src.into(),
                         r#true: block_bb,
@@ -225,7 +228,10 @@ impl CfgBuilder {
                     },
                 );
 
-                self.set_terminator(block_bb, Terminator::Goto(condition_bb));
+                self.current_bb = block_bb;
+                self.visit_statement(block);
+
+                self.set_terminator(self.current_bb, Terminator::Goto(condition_bb));
 
                 self.current_bb = terminator_bb;
             }

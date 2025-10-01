@@ -1,21 +1,19 @@
-
-""" 
 import time
-start_time = time.perf_counter()
 
-def fib(n):
-    if n == 0:
-        return 0
-    if n == 1:
-        return 1 
+iterations = 1_000_000
+max_fib = 40
+
+start = time.perf_counter()
+
+for i in range(iterations):
+    a = 0
+    b = 1
+
+    for j in range(max_fib):
+        temp = a + b
+        a = b
+        b = temp
     
-    return fib(n - 1) + fib(n - 2)
+end = time.perf_counter()
 
-print(fib(40))
-end_time = time.perf_counter()
-
-execution_time = (end_time - start_time)
-
-print(f"Total time: {execution_time:.3f}s")
- """
-
+print(f"Elapsed time: {end - start:.6f} seconds")

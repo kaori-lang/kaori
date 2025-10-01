@@ -5,7 +5,10 @@ use std::process::ExitCode;
 #[allow(unused_imports)]
 use std::{fs, time::Instant};
 
-use kaori::{compiler::compile_source_code, error::kaori_error::KaoriError};
+use kaori::{
+    compiler::compile_source_code, error::kaori_error::KaoriError,
+    virtual_machine::interpreter::Interpreter,
+};
 
 fn main() -> ExitCode {
     let source_to_run = Some("test_suite/test.kr".to_owned()); // Debug purposes
@@ -34,24 +37,50 @@ fn main() -> ExitCode {
 // TODO: remove the lint suppressions after using unused variables.
 #[allow(unused_variables)]
 pub fn run_program(source: String) -> Result<(), KaoriError> {
-    let compilation = compile_source_code(source)?;
+    let bytecode = compile_source_code(source)?;
 
-    /*  let mut bytecode = Bytecode::default();
-
-    let mut bytecode_generator = BytecodeGenerator::new(&mut bytecode);
-
-    bytecode_generator.generate(&resolved_declarations)?;
-
-    let instructions = bytecode.instructions;
-    let constant_pool = bytecode.constant_pool.constants;
-
-    let mut interpreter = Interpreter::new(instructions, constant_pool);
+    let mut interpreter = Interpreter::new(bytecode.instructions, bytecode.constant_pool);
 
     let start = Instant::now();
 
     interpreter.execute_instructions()?;
 
-    println!("Vm executed in: {:#?}", start.elapsed()); */
-
+    println!("Vm executed in: {:#?}", start.elapsed());
     Ok(())
 }
+
+/*
+HirStmtKind::Loop {
+    init,
+    condition,
+    block,
+} => {
+    if let Some(init) = init {
+        self.visit_declaration(init);
+    }
+    let previous_bb = self.current_bb;
+    let condition_bb = self.create_bb();
+    let block_bb = self.create_bb();
+    let terminator_bb = self.create_bb();
+
+    self.current_bb = condition_bb;
+    let src = self.visit_expression(condition);
+
+    self.current_bb = block_bb;
+    self.visit_statement(block);
+
+    self.set_terminator(previous_bb, Terminator::Goto(condition_bb));
+
+    self.set_terminator(
+        condition_bb,
+        Terminator::Branch {
+            src: src.into(),
+            r#true: block_bb,
+            r#false: terminator_bb,
+        },
+    );
+
+    self.set_terminator(block_bb, Terminator::Goto(condition_bb));
+
+    self.current_bb = terminator_bb;
+} */
