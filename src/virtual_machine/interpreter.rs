@@ -1,11 +1,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 use crate::{
-    bytecode::{
-        constant_pool::ConstantPool,
-        instruction::{self, Instruction},
-        value::Value,
-    },
+    bytecode::{constant_pool::ConstantPool, instruction::Instruction, value::Value},
     error::kaori_error::KaoriError,
 };
 
@@ -31,23 +27,26 @@ impl Interpreter {
     }
 
     pub fn execute_instructions(&mut self) -> Result<(), KaoriError> {
-        /*  for instruction in &self.instructions {
+        for instruction in &self.instructions {
             println!("{instruction}");
-        } */
+        }
 
-        let mut instruction_index = 0;
+        let mut instruction_index = self.instructions.len();
 
         let size = self.instructions.len();
 
         while instruction_index < size {
-            let instruction = self.instructions.get(instruction_index).unwrap();
+            let instruction = &self.instructions[instruction_index];
             //println!("{instruction}");
             match *instruction {
                 Instruction::Add { dest, src1, src2 } => {
                     let lhs = self.registers.get_value(src1);
                     let rhs = self.registers.get_value(src2);
 
-                    let value = unsafe { Value::number(lhs.as_number() + rhs.as_number()) };
+                    let value = match (lhs, rhs) {
+                        (Value::Number(left), Value::Number(right)) => Value::Number(left + right),
+                        _ => unreachable!("Add must be run with numbers"),
+                    };
 
                     self.registers.set_value(dest, value);
                 }
@@ -63,7 +62,10 @@ impl Interpreter {
                     let lhs = self.registers.get_value(src1);
                     let rhs = self.registers.get_value(src2);
 
-                    let value = unsafe { Value::boolean(lhs.as_number() < rhs.as_number()) };
+                    let value = match (lhs, rhs) {
+                        (Value::Number(left), Value::Number(right)) => Value::Bool(left < right),
+                        _ => unreachable!("Less must be run with numbers"),
+                    };
 
                     self.registers.set_value(dest, value);
                 }
@@ -83,20 +85,23 @@ impl Interpreter {
                     self.registers.set_value(dest, value);
                 }
                 Instruction::Call => todo!(),
-                Instruction::Return { src } => instruction_index = self.instructions.len(),
+                Instruction::Return { src } => {
+                    println!("{:#?}", self.registers.get_value(src));
+                    instruction_index = self.instructions.len()
+                }
                 Instruction::Jump { offset } => {
                     instruction_index = (instruction_index as i16 + offset) as usize;
 
                     continue;
                 }
-                Instruction::JumpFalse { src, offset } => {
-                    let value = self.registers.get_value(src);
-
-                    unsafe {
-                        if !value.as_bool() {
+                Instruction::JumpIfFalse { src, offset } => {
+                    if let Value::Bool(value) = self.registers.get_value(src) {
+                        if !value {
                             instruction_index = (instruction_index as i16 + offset) as usize;
                             continue;
                         }
+                    } else {
+                        unreachable!("JumpFalse must run with booleans")
                     }
                 }
                 Instruction::Print { src } => {

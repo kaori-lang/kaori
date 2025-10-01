@@ -90,7 +90,7 @@ pub enum Instruction {
     Jump {
         offset: i16,
     },
-    JumpFalse {
+    JumpIfFalse {
         src: Register,
         offset: i16,
     },
@@ -226,8 +226,8 @@ impl Instruction {
     pub fn jump(offset: i16) -> Self {
         Self::Jump { offset }
     }
-    pub fn jump_false(src: Operand, offset: i16) -> Self {
-        Self::JumpFalse {
+    pub fn jump_if_false(src: Operand, offset: i16) -> Self {
+        Self::JumpIfFalse {
             src: src.to_register(),
             offset,
         }
@@ -292,7 +292,7 @@ impl fmt::Display for Instruction {
             Self::Call => write!(f, "Call"),
             Self::Return { src } => write!(f, "Return {}", src),
             Self::Jump { offset } => write!(f, "Jump {}", offset),
-            Self::JumpFalse { src, offset } => write!(f, "JumpFalse {} {}", src, offset),
+            Self::JumpIfFalse { src, offset } => write!(f, "JumpIfFalse {} {}", src, offset),
             Self::Print { src } => write!(f, "Print {}", src),
         }
     }

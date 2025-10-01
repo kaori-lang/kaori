@@ -71,7 +71,7 @@ impl BytecodeGenerator {
                 r#true,
                 r#false,
             } => {
-                let instruction = CfgInstruction::jump_false(src, r#false);
+                let instruction = CfgInstruction::jump_if_false(src, r#false);
 
                 self.cfg_instructions.push(instruction);
             }
@@ -161,10 +161,10 @@ impl BytecodeGenerator {
 
                 Instruction::jump(offset)
             }
-            CfgInstruction::JumpFalse { src, target } => {
+            CfgInstruction::JumpIfFalse { src, target } => {
                 let offset = *self.basic_blocks.get(&target).unwrap() as i16 - index as i16;
 
-                Instruction::jump_false(src, offset)
+                Instruction::jump_if_false(src, offset)
             }
             CfgInstruction::Return { src } => Instruction::return_(src.unwrap()),
             _ => todo!(),

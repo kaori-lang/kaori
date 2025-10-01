@@ -38,6 +38,13 @@ pub enum HirExprKind {
     BooleanLiteral(bool),
 }
 
+pub enum HirConstant {
+    FunctionRef(HirId),
+    Str(String),
+    Number(f64),
+    Boolean(bool),
+}
+
 impl HirExpr {
     pub fn binary(operator: BinaryOp, left: HirExpr, right: HirExpr, span: Span) -> HirExpr {
         HirExpr {
