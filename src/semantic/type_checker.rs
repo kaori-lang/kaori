@@ -8,7 +8,7 @@ use crate::{
 
 use super::{
     hir_decl::{HirDecl, HirDeclKind},
-    hir_expr::{HirExpr, HirExprKind},
+    hir_expr::{HirConstant, HirExpr, HirExprKind},
     hir_id::HirId,
     hir_node::HirNode,
     hir_stmt::{HirStmt, HirStmtKind},
@@ -289,19 +289,26 @@ impl TypeChecker {
 
                 *return_ty
             }
-            HirExprKind::FunctionRef(id) => {
-                let hir_ty = self.types.get(id).unwrap().to_owned();
-
-                self.get_type_def(&hir_ty)
-            }
             HirExprKind::VariableRef(id) => {
                 let hir_ty = self.types.get(id).unwrap().to_owned();
 
                 self.get_type_def(&hir_ty)
             }
-            HirExprKind::StringLiteral(..) => TypeDef::String,
-            HirExprKind::BooleanLiteral(..) => TypeDef::Boolean,
-            HirExprKind::NumberLiteral(..) => TypeDef::Number,
+
+            HirExprKind::Constant(constant) => {
+                let ty = match constant {
+                    HirConstant::Boolean(..) => TypeDef::Boolean,
+                    HirConstant::Number(..) => TypeDef::Number,
+                    HirConstant::FunctionRef(id) => {
+                        let hir_ty = self.types.get(id).unwrap().to_owned();
+
+                        self.get_type_def(&hir_ty)
+                    }
+                    HirConstant::Str(..) => TypeDef::String,
+                };
+
+                ty
+            }
         };
 
         Ok(ty)

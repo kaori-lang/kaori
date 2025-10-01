@@ -28,16 +28,14 @@ pub enum HirExprKind {
         right: Box<HirExpr>,
     },
     VariableRef(HirId),
-    FunctionRef(HirId),
     FunctionCall {
         callee: Box<HirExpr>,
         arguments: Vec<HirExpr>,
     },
-    StringLiteral(String),
-    NumberLiteral(f64),
-    BooleanLiteral(bool),
+    Constant(HirConstant),
 }
 
+#[derive(Debug, Clone)]
 pub enum HirConstant {
     FunctionRef(HirId),
     Str(String),
@@ -88,11 +86,11 @@ impl HirExpr {
         }
     }
 
-    pub fn function_ref(id: HirId, span: Span) -> HirExpr {
+    pub fn function_constant(id: HirId, span: Span) -> HirExpr {
         HirExpr {
             id,
             span,
-            kind: HirExprKind::FunctionRef(id),
+            kind: HirExprKind::Constant(HirConstant::FunctionRef(id)),
         }
     }
 
@@ -107,27 +105,11 @@ impl HirExpr {
         }
     }
 
-    pub fn string_literal(value: String, span: Span) -> HirExpr {
+    pub fn constant(constant: HirConstant, span: Span) -> HirExpr {
         HirExpr {
             id: HirId::default(),
             span,
-            kind: HirExprKind::StringLiteral(value),
-        }
-    }
-
-    pub fn number_literal(value: f64, span: Span) -> HirExpr {
-        HirExpr {
-            id: HirId::default(),
-            span,
-            kind: HirExprKind::NumberLiteral(value),
-        }
-    }
-
-    pub fn boolean_literal(value: bool, span: Span) -> HirExpr {
-        HirExpr {
-            id: HirId::default(),
-            span,
-            kind: HirExprKind::BooleanLiteral(value),
+            kind: HirExprKind::Constant(constant),
         }
     }
 }
