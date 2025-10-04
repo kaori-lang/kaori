@@ -41,3 +41,13 @@ if __name__ == '__main__':
         exit(1)
 
 
+
+
+def foo(n):
+  if == 0:
+    return
+
+  foo(n - 1)
+  
+foo(5)
+print("hello world")``` 

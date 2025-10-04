@@ -31,13 +31,13 @@ impl Interpreter {
             println!("{instruction}");
         }
 
-        let mut instruction_index = self.instructions.len();
+        let mut instruction_index = 0;
 
         let size = self.instructions.len();
 
         while instruction_index < size {
             let instruction = &self.instructions[instruction_index];
-            //println!("{instruction}");
+
             match *instruction {
                 Instruction::Add { dest, src1, src2 } => {
                     let lhs = self.registers.get_value(src1);

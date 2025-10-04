@@ -32,13 +32,8 @@ pub enum HirExprKind {
         callee: Box<HirExpr>,
         arguments: Vec<HirExpr>,
     },
-    Constant(HirConstant),
-}
-
-#[derive(Debug, Clone)]
-pub enum HirConstant {
     FunctionRef(HirId),
-    Str(String),
+    String(String),
     Number(f64),
     Boolean(bool),
 }
@@ -86,14 +81,6 @@ impl HirExpr {
         }
     }
 
-    pub fn function_constant(id: HirId, span: Span) -> HirExpr {
-        HirExpr {
-            id,
-            span,
-            kind: HirExprKind::Constant(HirConstant::FunctionRef(id)),
-        }
-    }
-
     pub fn function_call(callee: HirExpr, arguments: Vec<HirExpr>, span: Span) -> HirExpr {
         HirExpr {
             id: HirId::default(),
@@ -105,11 +92,35 @@ impl HirExpr {
         }
     }
 
-    pub fn constant(constant: HirConstant, span: Span) -> HirExpr {
+    pub fn function_ref(id: HirId, span: Span) -> HirExpr {
         HirExpr {
             id: HirId::default(),
             span,
-            kind: HirExprKind::Constant(constant),
+            kind: HirExprKind::FunctionRef(id),
+        }
+    }
+
+    pub fn string(value: String, span: Span) -> HirExpr {
+        HirExpr {
+            id: HirId::default(),
+            span,
+            kind: HirExprKind::String(value),
+        }
+    }
+
+    pub fn number(value: f64, span: Span) -> HirExpr {
+        HirExpr {
+            id: HirId::default(),
+            span,
+            kind: HirExprKind::Number(value),
+        }
+    }
+
+    pub fn boolean(value: bool, span: Span) -> HirExpr {
+        HirExpr {
+            id: HirId::default(),
+            span,
+            kind: HirExprKind::Boolean(value),
         }
     }
 }

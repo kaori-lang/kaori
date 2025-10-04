@@ -338,7 +338,7 @@ impl CfgBuilder {
 
                 dest
             }
-            HirExprKind::StringLiteral(value) => {
+            HirExprKind::String(value) => {
                 let dest = self.create_variable();
 
                 let instruction = CfgInstruction::string_const(dest, value);
@@ -347,7 +347,7 @@ impl CfgBuilder {
 
                 dest
             }
-            HirExprKind::BooleanLiteral(value) => {
+            HirExprKind::Boolean(value) => {
                 let dest = self.create_variable();
 
                 let instruction = CfgInstruction::boolean_const(dest, *value);
@@ -356,7 +356,7 @@ impl CfgBuilder {
 
                 dest
             }
-            HirExprKind::NumberLiteral(value) => {
+            HirExprKind::Number(value) => {
                 let dest = self.create_variable();
 
                 let instruction = CfgInstruction::number_const(dest, *value);

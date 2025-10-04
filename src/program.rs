@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::{
     bytecode::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
     cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr},
@@ -5,6 +7,7 @@ use crate::{
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},
     syntax::{decl::Decl, parser::Parser},
+    virtual_machine::interpreter::Interpreter,
 };
 
 fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {
@@ -65,4 +68,18 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
     let bytecode = generate_bytecode(&cfg_ir);
 
     Ok(bytecode)
+}
+
+#[allow(unused_variables)]
+pub fn run_program(source: String) -> Result<(), KaoriError> {
+    let bytecode = compile_source_code(source)?;
+
+    let mut interpreter = Interpreter::new(bytecode.instructions, bytecode.constant_pool);
+
+    let start = Instant::now();
+
+    interpreter.execute_instructions()?;
+
+    println!("Vm executed in: {:#?}", start.elapsed());
+    Ok(())
 }

@@ -419,11 +419,9 @@ impl Resolver {
 
                 HirExpr::function_call(callee, arguments, expression.span)
             }
-            ExprKind::NumberLiteral(value) => HirExpr::number_literal(*value, expression.span),
-            ExprKind::BooleanLiteral(value) => HirExpr::boolean_literal(*value, expression.span),
-            ExprKind::StringLiteral(value) => {
-                HirExpr::string_literal(value.to_owned(), expression.span)
-            }
+            ExprKind::NumberLiteral(value) => HirExpr::number(*value, expression.span),
+            ExprKind::BooleanLiteral(value) => HirExpr::boolean(*value, expression.span),
+            ExprKind::StringLiteral(value) => HirExpr::string(value.to_owned(), expression.span),
             ExprKind::Identifier(name) => {
                 let Some(symbol) = self.symbol_table.search(name) else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));

@@ -12,10 +12,8 @@ def main() -> number {
             b = temp;
         }
     }
-
+   
     return 1.5;
 }
-
-
 
 
