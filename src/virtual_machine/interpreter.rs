@@ -11,42 +11,39 @@ use super::call_stack::CallStack;
 pub struct Interpreter {
     call_stack: CallStack,
     instructions: Vec<Instruction>,
-    registers: Vec<Value>,
-    register_offset: i16,
+    constants: Vec<Value>,
+    registers: [Value; 4096],
 }
 
 impl Interpreter {
-    pub fn new(instructions: Vec<Instruction>, mut constants: Vec<Value>) -> Self {
+    pub fn new(instructions: Vec<Instruction>, constants: Vec<Value>) -> Self {
         let return_address = instructions.len();
-        let register_offset = constants.len() as i16;
-
-        constants.resize(1024, Value::default());
 
         Self {
             call_stack: CallStack::new(return_address),
             instructions,
-            registers: constants,
-            register_offset,
+            constants,
+            registers: [Value::default(); 4096],
         }
     }
 
-    pub fn get_value(&mut self, register: Register) -> Value {
-        self.registers[(register.0 + self.register_offset) as usize]
+    pub fn get_value(&self, register: Register) -> Value {
+        if register.0 < 0 {
+            self.constants[(-register.0) as usize]
+        } else {
+            self.registers[register.0 as usize]
+        }
     }
 
     pub fn set_value(&mut self, register: Register, value: Value) {
-        self.registers[(register.0 + self.register_offset) as usize] = value;
+        self.registers[register.0 as usize] = value;
     }
 
     pub fn op_add(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
 
-        let value = match (lhs, rhs) {
-            (Value::Number(left), Value::Number(right)) => Value::Number(left + right),
-            _ => unreachable!("Add must be run with numbers"),
-        };
-
+        let value = unsafe { Value::number(lhs.as_number() + rhs.as_number()) };
         self.set_value(dest, value);
     }
 
@@ -54,10 +51,7 @@ impl Interpreter {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
 
-        let value = match (lhs, rhs) {
-            (Value::Number(left), Value::Number(right)) => Value::Bool(left < right),
-            _ => unreachable!("Less must be run with numbers"),
-        };
+        let value = unsafe { Value::boolean(lhs.as_number() < rhs.as_number()) };
 
         self.set_value(dest, value);
     }
@@ -107,19 +101,21 @@ impl Interpreter {
                     continue;
                 }
                 Instruction::JumpIfFalse { src, offset } => {
-                    if let Value::Bool(value) = self.get_value(src) {
-                        if !value {
+                    let value = self.get_value(src);
+
+                    unsafe {
+                        if !value.as_boolean() {
                             instruction_index = (instruction_index as i16 + offset) as usize;
                             continue;
                         }
-                    } else {
-                        unreachable!("JumpFalse must run with booleans")
-                    }
+                    };
                 }
                 Instruction::Print { src } => {
                     let value = self.get_value(src);
 
-                    println!("{value:#?}");
+                    unsafe {
+                        println!("{:#?}", value.as_number());
+                    }
                 }
             }
 

@@ -1,26 +1,36 @@
-#[derive(Debug, Clone, PartialEq, Copy)]
-pub enum Value {
-    Number(f64),
-    Bool(bool),
-    InstructionIndex(usize),
+#[derive(Clone, Copy)]
+pub union Value {
+    number: f64,
+    boolean: bool,
+    instruction_index: usize,
 }
 
 impl Value {
+    pub fn default() -> Value {
+        Value { boolean: false }
+    }
+
     pub fn number(value: f64) -> Value {
-        Value::Number(value)
+        Value { number: value }
     }
 
     pub fn boolean(value: bool) -> Value {
-        Value::Bool(value)
+        Value { boolean: value }
     }
 
-    pub fn instruction_index(instruction_index: usize) -> Value {
-        Value::InstructionIndex(instruction_index)
+    pub fn instruction(instruction_index: usize) -> Value {
+        Value { instruction_index }
     }
-}
 
-impl Default for Value {
-    fn default() -> Self {
-        Value::boolean(false)
+    pub unsafe fn as_number(self) -> f64 {
+        unsafe { self.number }
+    }
+
+    pub unsafe fn as_boolean(self) -> bool {
+        unsafe { self.boolean }
+    }
+
+    pub unsafe fn as_instruction_index(self) -> usize {
+        unsafe { self.instruction_index }
     }
 }

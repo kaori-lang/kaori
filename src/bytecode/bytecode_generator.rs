@@ -29,13 +29,15 @@ impl BytecodeGenerator {
     pub fn convert_constants(&self, cfg_constants: &[CfgConstant]) -> Vec<Value> {
         let mut constants = Vec::new();
 
+        constants.push(Value::default());
+
         for constant in cfg_constants {
             let constant = match constant {
                 CfgConstant::Boolean(value) => Value::boolean(*value),
                 CfgConstant::FunctionRef(value) => {
                     let instruction_index = *self.basic_blocks.get(&value).unwrap();
 
-                    Value::instruction_index(instruction_index)
+                    Value::instruction(instruction_index)
                 }
                 CfgConstant::Number(value) => Value::number(**value),
                 _ => todo!(),
@@ -43,8 +45,6 @@ impl BytecodeGenerator {
 
             constants.push(constant);
         }
-
-        constants.reverse();
 
         constants
     }
