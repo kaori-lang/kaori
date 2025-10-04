@@ -74,12 +74,13 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
-    let mut interpreter = Interpreter::new(bytecode.instructions, bytecode.constant_pool);
+    let mut interpreter = Interpreter::new(bytecode.instructions, bytecode.constants);
 
     let start = Instant::now();
 
     interpreter.execute_instructions()?;
 
     println!("Vm executed in: {:#?}", start.elapsed());
+
     Ok(())
 }

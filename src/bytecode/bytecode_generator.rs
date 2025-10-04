@@ -4,12 +4,13 @@ use std::collections::HashMap;
 
 use crate::cfg_ir::{
     basic_block::{BasicBlock, BlockId, Terminator},
+    cfg_constants::{CfgConstant, CfgConstants},
     cfg_instruction::CfgInstruction,
     cfg_ir::CfgIr,
     graph_traversal::reversed_postorder,
 };
 
-use super::{bytecode::Bytecode, instruction::Instruction};
+use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
 
 type InstructionIndex = usize;
 pub struct BytecodeGenerator {
@@ -25,18 +26,42 @@ impl BytecodeGenerator {
         }
     }
 
+    pub fn convert_constants(&self, cfg_constants: &[CfgConstant]) -> Vec<Value> {
+        let mut constants = Vec::new();
+
+        for constant in cfg_constants {
+            let constant = match constant {
+                CfgConstant::Boolean(value) => Value::boolean(*value),
+                CfgConstant::FunctionRef(value) => {
+                    let instruction_index = *self.basic_blocks.get(&value).unwrap();
+
+                    Value::instruction_index(instruction_index)
+                }
+                CfgConstant::Number(value) => Value::number(**value),
+                _ => todo!(),
+            };
+
+            constants.push(constant);
+        }
+
+        constants.reverse();
+
+        constants
+    }
+
     pub fn generate(&mut self, cfg_ir: &CfgIr) -> Bytecode {
         self.flatten_cfg_ir(cfg_ir);
 
         let mut instructions = Vec::new();
-        let mut constant_pool = Vec::new();
 
         for index in 0..self.cfg_instructions.len() {
             let instruction = self.convert_instruction(index);
             instructions.push(instruction);
         }
 
-        Bytecode::new(instructions, constant_pool)
+        let constants = self.convert_constants(&cfg_ir.constants.constants);
+
+        Bytecode::new(instructions, constants)
     }
 
     fn flatten_cfg_ir(&mut self, cfg_ir: &CfgIr) {

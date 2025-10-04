@@ -331,25 +331,11 @@ impl CfgBuilder {
             HirExprKind::FunctionRef(id) => {
                 let value = *self.nodes_block.get(id).unwrap();
 
-                let dest = self.cfg_ir.constants.push_function_ref(value);
-
-                dest
+                self.cfg_ir.constants.push_function_ref(value)
             }
-            HirExprKind::String(value) => {
-                let dest = self.cfg_ir.constants.push_string(value.to_owned());
-
-                dest
-            }
-            HirExprKind::Boolean(value) => {
-                let dest = self.cfg_ir.constants.push_boolean(*value);
-
-                dest
-            }
-            HirExprKind::Number(value) => {
-                let dest = self.cfg_ir.constants.push_number(*value);
-
-                dest
-            }
+            HirExprKind::String(value) => self.cfg_ir.constants.push_string(value.to_owned()),
+            HirExprKind::Boolean(value) => self.cfg_ir.constants.push_boolean(*value),
+            HirExprKind::Number(value) => self.cfg_ir.constants.push_number(*value),
         }
     }
 }

@@ -11,43 +11,64 @@ use super::call_stack::CallStack;
 pub struct Interpreter {
     call_stack: CallStack,
     instructions: Vec<Instruction>,
-    constant_pool: Vec<Value>,
     registers: Vec<Value>,
+    register_offset: i16,
 }
 
 impl Interpreter {
-    pub fn new(instructions: Vec<Instruction>, constant_pool: Vec<Value>) -> Self {
+    pub fn new(instructions: Vec<Instruction>, mut constants: Vec<Value>) -> Self {
         let return_address = instructions.len();
+        let register_offset = constants.len() as i16;
+
+        constants.resize(1024, Value::default());
 
         Self {
             call_stack: CallStack::new(return_address),
             instructions,
-            constant_pool,
-            registers: vec![Value::default(); 1024],
+            registers: constants,
+            register_offset,
         }
     }
 
-    pub fn get_value(&self, register: Register) -> Value {
-        if register.0 >= 0 {
-            self.registers[register.0 as usize]
-        } else {
-            self.registers[-register.0 as usize]
-        }
+    pub fn get_value(&mut self, register: Register) -> Value {
+        self.registers[(register.0 + self.register_offset) as usize]
     }
 
     pub fn set_value(&mut self, register: Register, value: Value) {
-        if register.0 >= 0 {
-            self.registers[register.0 as usize] = value;
-        } else {
-            self.registers[-register.0 as usize] = value;
-        }
+        self.registers[(register.0 + self.register_offset) as usize] = value;
+    }
+
+    pub fn op_add(&mut self, dest: Register, src1: Register, src2: Register) {
+        let lhs = self.get_value(src1);
+        let rhs = self.get_value(src2);
+
+        let value = match (lhs, rhs) {
+            (Value::Number(left), Value::Number(right)) => Value::Number(left + right),
+            _ => unreachable!("Add must be run with numbers"),
+        };
+
+        self.set_value(dest, value);
+    }
+
+    pub fn op_less(&mut self, dest: Register, src1: Register, src2: Register) {
+        let lhs = self.get_value(src1);
+        let rhs = self.get_value(src2);
+
+        let value = match (lhs, rhs) {
+            (Value::Number(left), Value::Number(right)) => Value::Bool(left < right),
+            _ => unreachable!("Less must be run with numbers"),
+        };
+
+        self.set_value(dest, value);
+    }
+
+    pub fn op_move(&mut self, dest: Register, src: Register) {
+        let value = self.get_value(src);
+
+        self.set_value(dest, value);
     }
 
     pub fn execute_instructions(&mut self) -> Result<(), KaoriError> {
-        for instruction in &self.instructions {
-            println!("{instruction}");
-        }
-
         let mut instruction_index = 0;
 
         let size = self.instructions.len();
@@ -56,16 +77,11 @@ impl Interpreter {
             let instruction = &self.instructions[instruction_index];
 
             match *instruction {
+                Instruction::Move { dest, src } => {
+                    self.op_move(dest, src);
+                }
                 Instruction::Add { dest, src1, src2 } => {
-                    let lhs = self.get_value(src1);
-                    let rhs = self.get_value(src2);
-
-                    let value = match (lhs, rhs) {
-                        (Value::Number(left), Value::Number(right)) => Value::Number(left + right),
-                        _ => unreachable!("Add must be run with numbers"),
-                    };
-
-                    self.set_value(dest, value);
+                    self.op_add(dest, src1, src2);
                 }
                 Instruction::Subtract { dest, src1, src2 } => todo!(),
                 Instruction::Multiply { dest, src1, src2 } => todo!(),
@@ -76,31 +92,15 @@ impl Interpreter {
                 Instruction::Greater { dest, src1, src2 } => todo!(),
                 Instruction::GreaterEqual { dest, src1, src2 } => todo!(),
                 Instruction::Less { dest, src1, src2 } => {
-                    let lhs = self.get_value(src1);
-                    let rhs = self.get_value(src2);
-
-                    let value = match (lhs, rhs) {
-                        (Value::Number(left), Value::Number(right)) => Value::Bool(left < right),
-                        _ => unreachable!("Less must be run with numbers"),
-                    };
-
-                    self.set_value(dest, value);
+                    self.op_less(dest, src1, src2);
                 }
                 Instruction::LessEqual { dest, src1, src2 } => todo!(),
                 Instruction::And { dest, src1, src2 } => todo!(),
                 Instruction::Or { dest, src1, src2 } => todo!(),
                 Instruction::Negate { dest, src } => todo!(),
                 Instruction::Not { dest, src } => todo!(),
-                Instruction::Move { dest, src } => {
-                    let value = self.get_value(src);
-
-                    self.set_value(dest, value);
-                }
                 Instruction::Call => todo!(),
-                Instruction::Return { src } => {
-                    println!("{:#?}", self.get_value(src));
-                    instruction_index = self.instructions.len()
-                }
+                Instruction::Return { src } => instruction_index = self.instructions.len(),
                 Instruction::Jump { offset } => {
                     instruction_index = (instruction_index as i16 + offset) as usize;
 

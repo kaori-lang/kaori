@@ -17,12 +17,16 @@ impl CfgConstants {
             variable: -1,
         }
     }
+
     fn push_constant(&mut self, constant: CfgConstant) -> Variable {
         if let Some(variable) = self.constants_variable.get(&constant) {
             *variable
         } else {
-            self.constants.push(constant);
             let variable = Variable(self.variable);
+
+            self.constants_variable
+                .insert(constant.to_owned(), variable);
+            self.constants.push(constant);
 
             self.variable -= 1;
 
