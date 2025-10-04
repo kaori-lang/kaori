@@ -22,19 +22,23 @@ impl Operand {
     pub fn to_register(self) -> Register {
         match self {
             Self::Register(register) => register,
-            Self::Variable(Variable(value)) => Register(value as u8),
+            Self::Variable(Variable(value)) => Register(value as i8),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Variable(pub usize);
+pub struct Variable(pub isize);
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct Register(pub u8);
+pub struct Register(pub i8);
 
 impl fmt::Display for Register {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "r{}", self.0)
+        if self.0 < 0 {
+            write!(f, "c{}", self.0)
+        } else {
+            write!(f, "r{}", self.0)
+        }
     }
 }

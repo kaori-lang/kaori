@@ -74,11 +74,6 @@ impl Interpreter {
                 Instruction::Or { dest, src1, src2 } => todo!(),
                 Instruction::Negate { dest, src } => todo!(),
                 Instruction::Not { dest, src } => todo!(),
-                Instruction::Const { dest, src } => {
-                    let value = self.constant_pool.get_value(src);
-
-                    self.registers.set_value(dest, value);
-                }
                 Instruction::Move { dest, src } => {
                     let value = self.registers.get_value(src);
 

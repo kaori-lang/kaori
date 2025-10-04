@@ -9,9 +9,7 @@ use crate::cfg_ir::{
     graph_traversal::reversed_postorder,
 };
 
-use super::{
-    bytecode::Bytecode, constant_pool::ConstantPool, instruction::Instruction, value::Value,
-};
+use super::{bytecode::Bytecode, constant_pool::ConstantPool, instruction::Instruction};
 
 type InstructionIndex = usize;
 pub struct BytecodeGenerator {
@@ -122,38 +120,6 @@ impl BytecodeGenerator {
             CfgInstruction::Negate { dest, src } => Instruction::negate(dest, src),
             CfgInstruction::Not { dest, src } => Instruction::not(dest, src),
             CfgInstruction::Move { dest, src } => Instruction::mov(dest, src),
-
-            /*   CfgInstruction::StringConst { dest, value } => {
-                let value = Value::boolean(false);
-
-                let constant_index = constant_pool.insert_value(value);
-
-                Instruction::const_(dest, constant_index)
-            } */
-            CfgInstruction::NumberConst { dest, value } => {
-                let value = Value::number(value);
-
-                let constant_index = constant_pool.insert_value(value);
-
-                Instruction::const_(dest, constant_index)
-            }
-            CfgInstruction::BooleanConst { dest, value } => {
-                let value = Value::boolean(value);
-
-                let constant_index = constant_pool.insert_value(value);
-
-                Instruction::const_(dest, constant_index)
-            }
-            CfgInstruction::FunctionConst { dest, value } => {
-                let instruction_index = *self.basic_blocks.get(&value).unwrap();
-
-                let value = Value::instruction_index(instruction_index);
-
-                let constant_index = constant_pool.insert_value(value);
-
-                Instruction::const_(dest, constant_index)
-            }
-
             CfgInstruction::Call => Instruction::call(),
             CfgInstruction::Print { src } => Instruction::print(src),
             CfgInstruction::Jump { target } => {

@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 ariadne = "0.5.1"
+ordered-float = "5.1.0"
 regex = "1.11.1"
 
 [profile.release]

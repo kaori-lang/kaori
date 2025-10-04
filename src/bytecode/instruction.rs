@@ -75,10 +75,6 @@ pub enum Instruction {
         dest: Register,
         src: Register,
     },
-    Const {
-        dest: Register,
-        src: ConstantIndex,
-    },
     Move {
         dest: Register,
         src: Register,
@@ -107,6 +103,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn subtract(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Subtract {
             dest: dest.to_register(),
@@ -114,6 +111,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn multiply(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Multiply {
             dest: dest.to_register(),
@@ -121,6 +119,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn divide(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Divide {
             dest: dest.to_register(),
@@ -128,6 +127,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn modulo(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Modulo {
             dest: dest.to_register(),
@@ -135,6 +135,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Equal {
             dest: dest.to_register(),
@@ -142,6 +143,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn not_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::NotEqual {
             dest: dest.to_register(),
@@ -149,6 +151,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn greater(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Greater {
             dest: dest.to_register(),
@@ -156,6 +159,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn greater_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::GreaterEqual {
             dest: dest.to_register(),
@@ -163,6 +167,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn less(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Less {
             dest: dest.to_register(),
@@ -170,6 +175,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn less_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::LessEqual {
             dest: dest.to_register(),
@@ -177,6 +183,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn and(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::And {
             dest: dest.to_register(),
@@ -184,6 +191,7 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn or(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Or {
             dest: dest.to_register(),
@@ -191,24 +199,21 @@ impl Instruction {
             src2: src2.to_register(),
         }
     }
+
     pub fn negate(dest: Operand, src: Operand) -> Self {
         Self::Negate {
             dest: dest.to_register(),
             src: src.to_register(),
         }
     }
+
     pub fn not(dest: Operand, src: Operand) -> Self {
         Self::Not {
             dest: dest.to_register(),
             src: src.to_register(),
         }
     }
-    pub fn const_(dest: Operand, src: ConstantIndex) -> Self {
-        Self::Const {
-            dest: dest.to_register(),
-            src,
-        }
-    }
+
     pub fn mov(dest: Operand, src: Operand) -> Self {
         Self::Move {
             dest: dest.to_register(),
@@ -218,20 +223,24 @@ impl Instruction {
     pub fn call() -> Self {
         Self::Call
     }
+
     pub fn return_(src: Operand) -> Self {
         Self::Return {
             src: src.to_register(),
         }
     }
+
     pub fn jump(offset: i16) -> Self {
         Self::Jump { offset }
     }
+
     pub fn jump_if_false(src: Operand, offset: i16) -> Self {
         Self::JumpIfFalse {
             src: src.to_register(),
             offset,
         }
     }
+
     pub fn print(src: Operand) -> Self {
         Self::Print {
             src: src.to_register(),
@@ -240,8 +249,6 @@ impl Instruction {
 }
 
 use std::fmt;
-
-use super::constant_pool::ConstantIndex;
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -287,7 +294,6 @@ impl fmt::Display for Instruction {
             }
             Self::Negate { dest, src } => write!(f, "Negate {}, {}", dest, src),
             Self::Not { dest, src } => write!(f, "Not {}, {}", dest, src),
-            Self::Const { dest, src } => write!(f, "Const {}, {}", dest, src),
             Self::Move { dest, src } => write!(f, "Move {}, {}", dest, src),
             Self::Call => write!(f, "Call"),
             Self::Return { src } => write!(f, "Return {}", src),
