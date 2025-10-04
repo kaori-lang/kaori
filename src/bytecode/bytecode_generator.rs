@@ -9,7 +9,7 @@ use crate::cfg_ir::{
     graph_traversal::reversed_postorder,
 };
 
-use super::{bytecode::Bytecode, constant_pool::ConstantPool, instruction::Instruction};
+use super::{bytecode::Bytecode, instruction::Instruction};
 
 type InstructionIndex = usize;
 pub struct BytecodeGenerator {
@@ -29,10 +29,10 @@ impl BytecodeGenerator {
         self.flatten_cfg_ir(cfg_ir);
 
         let mut instructions = Vec::new();
-        let mut constant_pool = ConstantPool::default();
+        let mut constant_pool = Vec::new();
 
         for index in 0..self.cfg_instructions.len() {
-            let instruction = self.convert_instruction(index, &mut constant_pool);
+            let instruction = self.convert_instruction(index);
             instructions.push(instruction);
         }
 
@@ -87,11 +87,7 @@ impl BytecodeGenerator {
         }
     }
 
-    fn convert_instruction(
-        &mut self,
-        index: InstructionIndex,
-        constant_pool: &mut ConstantPool,
-    ) -> Instruction {
+    fn convert_instruction(&self, index: InstructionIndex) -> Instruction {
         match self.cfg_instructions[index] {
             CfgInstruction::Add { dest, src1, src2 } => Instruction::add(dest, src1, src2),
             CfgInstruction::Subtract { dest, src1, src2 } => {

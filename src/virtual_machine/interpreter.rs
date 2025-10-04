@@ -1,28 +1,45 @@
 #![allow(clippy::missing_safety_doc)]
 
 use crate::{
-    bytecode::{constant_pool::ConstantPool, instruction::Instruction, value::Value},
+    bytecode::{instruction::Instruction, value::Value},
+    cfg_ir::operand::Register,
     error::kaori_error::KaoriError,
 };
 
-use super::{call_stack::CallStack, registers::Registers};
+use super::call_stack::CallStack;
 
 pub struct Interpreter {
     call_stack: CallStack,
     instructions: Vec<Instruction>,
-    constant_pool: ConstantPool,
-    registers: Registers,
+    constant_pool: Vec<Value>,
+    registers: Vec<Value>,
 }
 
 impl Interpreter {
-    pub fn new(instructions: Vec<Instruction>, constant_pool: ConstantPool) -> Self {
+    pub fn new(instructions: Vec<Instruction>, constant_pool: Vec<Value>) -> Self {
         let return_address = instructions.len();
 
         Self {
             call_stack: CallStack::new(return_address),
             instructions,
             constant_pool,
-            registers: Registers::new(),
+            registers: vec![Value::default(); 1024],
+        }
+    }
+
+    pub fn get_value(&self, register: Register) -> Value {
+        if register.0 >= 0 {
+            self.registers[register.0 as usize]
+        } else {
+            self.registers[-register.0 as usize]
+        }
+    }
+
+    pub fn set_value(&mut self, register: Register, value: Value) {
+        if register.0 >= 0 {
+            self.registers[register.0 as usize] = value;
+        } else {
+            self.registers[-register.0 as usize] = value;
         }
     }
 
@@ -40,15 +57,15 @@ impl Interpreter {
 
             match *instruction {
                 Instruction::Add { dest, src1, src2 } => {
-                    let lhs = self.registers.get_value(src1);
-                    let rhs = self.registers.get_value(src2);
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
 
                     let value = match (lhs, rhs) {
                         (Value::Number(left), Value::Number(right)) => Value::Number(left + right),
                         _ => unreachable!("Add must be run with numbers"),
                     };
 
-                    self.registers.set_value(dest, value);
+                    self.set_value(dest, value);
                 }
                 Instruction::Subtract { dest, src1, src2 } => todo!(),
                 Instruction::Multiply { dest, src1, src2 } => todo!(),
@@ -59,15 +76,15 @@ impl Interpreter {
                 Instruction::Greater { dest, src1, src2 } => todo!(),
                 Instruction::GreaterEqual { dest, src1, src2 } => todo!(),
                 Instruction::Less { dest, src1, src2 } => {
-                    let lhs = self.registers.get_value(src1);
-                    let rhs = self.registers.get_value(src2);
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
 
                     let value = match (lhs, rhs) {
                         (Value::Number(left), Value::Number(right)) => Value::Bool(left < right),
                         _ => unreachable!("Less must be run with numbers"),
                     };
 
-                    self.registers.set_value(dest, value);
+                    self.set_value(dest, value);
                 }
                 Instruction::LessEqual { dest, src1, src2 } => todo!(),
                 Instruction::And { dest, src1, src2 } => todo!(),
@@ -75,13 +92,13 @@ impl Interpreter {
                 Instruction::Negate { dest, src } => todo!(),
                 Instruction::Not { dest, src } => todo!(),
                 Instruction::Move { dest, src } => {
-                    let value = self.registers.get_value(src);
+                    let value = self.get_value(src);
 
-                    self.registers.set_value(dest, value);
+                    self.set_value(dest, value);
                 }
                 Instruction::Call => todo!(),
                 Instruction::Return { src } => {
-                    println!("{:#?}", self.registers.get_value(src));
+                    println!("{:#?}", self.get_value(src));
                     instruction_index = self.instructions.len()
                 }
                 Instruction::Jump { offset } => {
@@ -90,7 +107,7 @@ impl Interpreter {
                     continue;
                 }
                 Instruction::JumpIfFalse { src, offset } => {
-                    if let Value::Bool(value) = self.registers.get_value(src) {
+                    if let Value::Bool(value) = self.get_value(src) {
                         if !value {
                             instruction_index = (instruction_index as i16 + offset) as usize;
                             continue;
@@ -100,7 +117,7 @@ impl Interpreter {
                     }
                 }
                 Instruction::Print { src } => {
-                    let value = self.registers.get_value(src);
+                    let value = self.get_value(src);
 
                     println!("{value:#?}");
                 }

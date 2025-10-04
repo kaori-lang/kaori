@@ -75,22 +75,6 @@ pub enum CfgInstruction {
         dest: Operand,
         src: Operand,
     },
-    StringConst {
-        dest: Operand,
-        value: String,
-    },
-    NumberConst {
-        dest: Operand,
-        value: f64,
-    },
-    BooleanConst {
-        dest: Operand,
-        value: bool,
-    },
-    FunctionConst {
-        dest: Operand,
-        value: BlockId,
-    },
     Move {
         dest: Operand,
         src: Operand,
@@ -279,34 +263,6 @@ impl CfgInstruction {
         Self::Not {
             dest: dest.into(),
             src: src.into(),
-        }
-    }
-
-    pub fn string_const(dest: impl Into<Operand>, value: impl Into<String>) -> Self {
-        Self::StringConst {
-            dest: dest.into(),
-            value: value.into(),
-        }
-    }
-
-    pub fn number_const(dest: impl Into<Operand>, value: f64) -> Self {
-        Self::NumberConst {
-            dest: dest.into(),
-            value,
-        }
-    }
-
-    pub fn boolean_const(dest: impl Into<Operand>, value: bool) -> Self {
-        Self::BooleanConst {
-            dest: dest.into(),
-            value,
-        }
-    }
-
-    pub fn function_const(dest: impl Into<Operand>, value: BlockId) -> Self {
-        Self::FunctionConst {
-            dest: dest.into(),
-            value,
         }
     }
 
