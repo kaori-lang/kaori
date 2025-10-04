@@ -14,6 +14,7 @@ use crate::{
 
 use super::{
     basic_block::{BasicBlock, BlockId, Terminator},
+    cfg_constants::CfgConstant,
     cfg_instruction::CfgInstruction,
     cfg_ir::CfgIr,
     operand::Variable,
@@ -22,9 +23,7 @@ use super::{
 pub struct CfgBuilder {
     pub cfg_ir: CfgIr,
     current_bb: BlockId,
-    positive_variable: isize,
-    negative_variable: isize,
-
+    variable: isize,
     nodes_variable: HashMap<HirId, Variable>,
     nodes_block: HashMap<HirId, BlockId>,
 }
@@ -32,11 +31,9 @@ pub struct CfgBuilder {
 impl CfgBuilder {
     pub fn new() -> Self {
         Self {
-            cfg_ir: CfgIr::default(),
+            cfg_ir: CfgIr::new(),
             current_bb: BlockId(0),
-            positive_variable: 0,
-            negative_variable: -1,
-
+            variable: 0,
             nodes_variable: HashMap::new(),
             nodes_block: HashMap::new(),
         }
@@ -77,24 +74,16 @@ impl CfgBuilder {
         self.cfg_ir.basic_blocks.get_mut(id.0).unwrap().terminator = terminator;
     }
 
-    fn create_positive_variable(&mut self) -> Variable {
-        let variable = Variable(self.positive_variable);
+    fn create_variable(&mut self) -> Variable {
+        let variable = Variable(self.variable);
 
-        self.positive_variable += 1;
-
-        variable
-    }
-
-    fn create_negative_variable(&mut self) -> Variable {
-        let variable = Variable(self.negative_variable);
-
-        self.negative_variable -= 1;
+        self.variable += 1;
 
         variable
     }
 
-    fn free_positive_variables(&mut self) {
-        self.positive_variable = 0;
+    fn free_variables(&mut self) {
+        self.variable = 0;
     }
 
     pub fn build_ir(&mut self, declarations: &[HirDecl]) {
@@ -126,7 +115,7 @@ impl CfgBuilder {
         match &declaration.kind {
             HirDeclKind::Variable { right } => {
                 let src = self.visit_expression(right);
-                let dest = self.create_positive_variable();
+                let dest = self.create_variable();
 
                 self.nodes_variable.insert(declaration.id, dest);
 
@@ -139,7 +128,7 @@ impl CfgBuilder {
                 self.current_bb = *self.nodes_block.get(&declaration.id).unwrap();
 
                 for parameter in parameters {
-                    let variable = self.create_positive_variable();
+                    let variable = self.create_variable();
                     self.nodes_variable.insert(parameter.id, variable);
                 }
 
@@ -154,7 +143,7 @@ impl CfgBuilder {
                     _ => self.set_terminator(last_bb, Terminator::Return { src: None }),
                 }
 
-                self.free_positive_variables();
+                self.free_variables();
             }
             HirDeclKind::Struct { fields } => {}
             HirDeclKind::Parameter => {}
@@ -280,7 +269,7 @@ impl CfgBuilder {
             } => {
                 let src1 = self.visit_expression(left);
                 let src2 = self.visit_expression(right);
-                let dest = self.create_positive_variable();
+                let dest = self.create_variable();
 
                 let instruction = match operator.kind {
                     BinaryOpKind::Add => CfgInstruction::add(dest, src1, src2),
@@ -307,7 +296,7 @@ impl CfgBuilder {
             }
             HirExprKind::Unary { right, operator } => {
                 let src = self.visit_expression(right);
-                let dest = self.create_positive_variable();
+                let dest = self.create_variable();
 
                 let instruction = match operator.kind {
                     UnaryOpKind::Negate => CfgInstruction::negate(dest, src),
@@ -319,7 +308,7 @@ impl CfgBuilder {
                 dest
             }
             HirExprKind::FunctionCall { callee, arguments } => {
-                let dest = self.create_positive_variable();
+                let dest = self.create_variable();
 
                 let call_instruction = CfgInstruction::Call;
 
@@ -340,24 +329,24 @@ impl CfgBuilder {
 
             HirExprKind::VariableRef(id) => *self.nodes_variable.get(id).unwrap(),
             HirExprKind::FunctionRef(id) => {
-                let dest = self.create_positive_variable();
-
                 let value = *self.nodes_block.get(id).unwrap();
+
+                let dest = self.cfg_ir.constants.push_function_ref(value);
 
                 dest
             }
             HirExprKind::String(value) => {
-                let dest = self.create_positive_variable();
+                let dest = self.cfg_ir.constants.push_string(value.to_owned());
 
                 dest
             }
             HirExprKind::Boolean(value) => {
-                let dest = self.create_positive_variable();
+                let dest = self.cfg_ir.constants.push_boolean(*value);
 
                 dest
             }
             HirExprKind::Number(value) => {
-                let dest = self.create_positive_variable();
+                let dest = self.cfg_ir.constants.push_number(*value);
 
                 dest
             }
