@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use crate::{
-    bytecode::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
+    bytecode::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator, instruction},
     cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
@@ -73,6 +73,10 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 #[allow(unused_variables)]
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
+
+    for instruction in &bytecode.instructions {
+        println!("{instruction}");
+    }
 
     let mut interpreter = Interpreter::new(bytecode.instructions, bytecode.constants);
 

@@ -57,16 +57,6 @@ pub enum CfgInstruction {
         src1: Operand,
         src2: Operand,
     },
-    And {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
-    },
-    Or {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
-    },
     Negate {
         dest: Operand,
         src: Operand,
@@ -222,30 +212,6 @@ impl CfgInstruction {
         src2: impl Into<Operand>,
     ) -> Self {
         Self::LessEqual {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
-    }
-
-    pub fn and(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::And {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
-    }
-
-    pub fn or(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::Or {
             dest: dest.into(),
             src1: src1.into(),
             src2: src2.into(),

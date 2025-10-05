@@ -285,8 +285,8 @@ impl CfgBuilder {
                     BinaryOpKind::Less => CfgInstruction::less(dest, src1, src2),
                     BinaryOpKind::LessEqual => CfgInstruction::less_equal(dest, src1, src2),
 
-                    BinaryOpKind::And => CfgInstruction::and(dest, src1, src2),
-                    BinaryOpKind::Or => CfgInstruction::or(dest, src1, src2),
+                    BinaryOpKind::And => todo!(),
+                    BinaryOpKind::Or => todo!(),
                 };
 
                 self.emit_instruction(instruction);
