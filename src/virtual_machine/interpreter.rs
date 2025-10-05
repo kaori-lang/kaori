@@ -130,8 +130,7 @@ impl Interpreter {
                     let value = unsafe { Value::boolean(lhs.as_number() <= rhs.as_number()) };
                     self.set_value(dest, value);
                 }
-                Instruction::And { dest, src1, src2 } => todo!(),
-                Instruction::Or { dest, src1, src2 } => todo!(),
+
                 Instruction::Negate { dest, src } => todo!(),
                 Instruction::Not { dest, src } => todo!(),
                 Instruction::Call => todo!(),

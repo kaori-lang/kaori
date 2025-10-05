@@ -57,16 +57,7 @@ pub enum Instruction {
         src1: Register,
         src2: Register,
     },
-    And {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    Or {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
+
     Negate {
         dest: Register,
         src: Register,
@@ -184,22 +175,6 @@ impl Instruction {
         }
     }
 
-    pub fn and(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::And {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
-        }
-    }
-
-    pub fn or(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::Or {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
-        }
-    }
-
     pub fn negate(dest: Operand, src: Operand) -> Self {
         Self::Negate {
             dest: dest.to_register(),
@@ -286,12 +261,7 @@ impl fmt::Display for Instruction {
             Self::LessEqual { dest, src1, src2 } => {
                 write!(f, "LessEqual {}, {}, {}", dest, src1, src2)
             }
-            Self::And { dest, src1, src2 } => {
-                write!(f, "And {}, {}, {}", dest, src1, src2)
-            }
-            Self::Or { dest, src1, src2 } => {
-                write!(f, "Or {}, {}, {}", dest, src1, src2)
-            }
+
             Self::Negate { dest, src } => write!(f, "Negate {}, {}", dest, src),
             Self::Not { dest, src } => write!(f, "Not {}, {}", dest, src),
             Self::Move { dest, src } => write!(f, "Move {}, {}", dest, src),

@@ -135,8 +135,8 @@ impl BytecodeGenerator {
             CfgInstruction::LessEqual { dest, src1, src2 } => {
                 Instruction::less_equal(dest, src1, src2)
             }
-            CfgInstruction::And { dest, src1, src2 } => Instruction::and(dest, src1, src2),
-            CfgInstruction::Or { dest, src1, src2 } => Instruction::or(dest, src1, src2),
+            CfgInstruction::And { dest, src1, src2 } => todo!(),
+            CfgInstruction::Or { dest, src1, src2 } => todo!(),
 
             CfgInstruction::Negate { dest, src } => Instruction::negate(dest, src),
             CfgInstruction::Not { dest, src } => Instruction::not(dest, src),
