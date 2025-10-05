@@ -12,7 +12,7 @@ pub struct Interpreter {
     call_stack: CallStack,
     instructions: Vec<Instruction>,
     constants: Vec<Value>,
-    registers: [Value; 4096],
+    registers: [Value; 1024],
 }
 
 impl Interpreter {
@@ -23,7 +23,7 @@ impl Interpreter {
             call_stack: CallStack::new(return_address),
             instructions,
             constants,
-            registers: [Value::default(); 4096],
+            registers: [Value::default(); 1024],
         }
     }
 

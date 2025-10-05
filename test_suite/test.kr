@@ -13,34 +13,6 @@ def main() -> number {
         }
     }
 
-    return 1.5;
+    return 0;
 }
 
-
-
-/*
-Move r0, c1
-Move r1, c2
-Move r2, c3
-Jump 1
-Less r3, r2, r0
-JumpIfFalse r3 17
-Move r4, c3
-Move r5, c4
-Move r6, c3
-Jump 1
-Less r7, r6, r1
-JumpIfFalse r7 8
-Add r8, r4, r5
-Move r9, r8
-Move r4, r5
-Move r5, r9
-Add r10, r6, c4
-Move r6, r10
-Jump -8
-Add r11, r2, c4
-Move r2, r11
-Jump -17
-Return c5
-
-*/
