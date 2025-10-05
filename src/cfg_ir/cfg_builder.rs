@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::{
-    bytecode::instruction,
     semantic::{
         hir_decl::{HirDecl, HirDeclKind},
         hir_expr::{HirExpr, HirExprKind},
@@ -14,7 +13,6 @@ use crate::{
 
 use super::{
     basic_block::{BasicBlock, BlockId, Terminator},
-    cfg_constants::CfgConstant,
     cfg_instruction::CfgInstruction,
     cfg_ir::CfgIr,
     operand::Variable,
@@ -28,17 +26,18 @@ pub struct CfgBuilder {
     nodes_block: HashMap<HirId, BlockId>,
 }
 
-impl CfgBuilder {
-    pub fn new() -> Self {
+impl Default for CfgBuilder {
+    fn default() -> Self {
         Self {
-            cfg_ir: CfgIr::new(),
+            cfg_ir: CfgIr::default(),
             current_bb: BlockId(0),
             variable: 0,
             nodes_variable: HashMap::new(),
             nodes_block: HashMap::new(),
         }
     }
-
+}
+impl CfgBuilder {
     fn emit_instruction(&mut self, instruction: CfgInstruction) {
         let id = self.current_bb;
         let basic_block = self.cfg_ir.basic_blocks.get_mut(id.0).unwrap();

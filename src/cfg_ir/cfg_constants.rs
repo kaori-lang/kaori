@@ -9,15 +9,17 @@ pub struct CfgConstants {
     pub variable: isize,
 }
 
-impl CfgConstants {
-    pub fn new() -> Self {
+impl Default for CfgConstants {
+    fn default() -> Self {
         Self {
             constants: Vec::new(),
             constants_variable: HashMap::new(),
             variable: -1,
         }
     }
+}
 
+impl CfgConstants {
     fn push_constant(&mut self, constant: CfgConstant) -> Variable {
         if let Some(variable) = self.constants_variable.get(&constant) {
             *variable

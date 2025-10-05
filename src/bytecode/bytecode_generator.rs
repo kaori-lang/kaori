@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::cfg_ir::{
     basic_block::{BasicBlock, BlockId, Terminator},
-    cfg_constants::{CfgConstant, CfgConstants},
+    cfg_constants::CfgConstant,
     cfg_instruction::CfgInstruction,
     cfg_ir::CfgIr,
     graph_traversal::reversed_postorder,
@@ -35,7 +35,7 @@ impl BytecodeGenerator {
             let constant = match constant {
                 CfgConstant::Boolean(value) => Value::boolean(*value),
                 CfgConstant::FunctionRef(value) => {
-                    let instruction_index = *self.basic_blocks.get(&value).unwrap();
+                    let instruction_index = *self.basic_blocks.get(value).unwrap();
 
                     Value::instruction(instruction_index)
                 }

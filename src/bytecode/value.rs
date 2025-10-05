@@ -5,11 +5,13 @@ pub union Value {
     instruction_index: usize,
 }
 
-impl Value {
-    pub fn default() -> Value {
+impl Default for Value {
+    fn default() -> Value {
         Value { boolean: false }
     }
+}
 
+impl Value {
     pub fn number(value: f64) -> Value {
         Value { number: value }
     }

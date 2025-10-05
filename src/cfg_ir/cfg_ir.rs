@@ -9,12 +9,12 @@ pub struct CfgIr {
     pub constants: CfgConstants,
 }
 
-impl CfgIr {
-    pub fn new() -> Self {
+impl Default for CfgIr {
+    fn default() -> Self {
         Self {
             cfgs: Vec::new(),
             basic_blocks: Vec::new(),
-            constants: CfgConstants::new(),
+            constants: CfgConstants::default(),
         }
     }
 }

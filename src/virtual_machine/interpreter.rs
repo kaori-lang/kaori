@@ -39,29 +39,6 @@ impl Interpreter {
         self.registers[register.0 as usize] = value;
     }
 
-    pub fn op_add(&mut self, dest: Register, src1: Register, src2: Register) {
-        let lhs = self.get_value(src1);
-        let rhs = self.get_value(src2);
-
-        let value = unsafe { Value::number(lhs.as_number() + rhs.as_number()) };
-        self.set_value(dest, value);
-    }
-
-    pub fn op_less(&mut self, dest: Register, src1: Register, src2: Register) {
-        let lhs = self.get_value(src1);
-        let rhs = self.get_value(src2);
-
-        let value = unsafe { Value::boolean(lhs.as_number() < rhs.as_number()) };
-
-        self.set_value(dest, value);
-    }
-
-    pub fn op_move(&mut self, dest: Register, src: Register) {
-        let value = self.get_value(src);
-
-        self.set_value(dest, value);
-    }
-
     pub fn execute_instructions(&mut self) -> Result<(), KaoriError> {
         let mut instruction_index = 0;
 
@@ -72,23 +49,87 @@ impl Interpreter {
 
             match *instruction {
                 Instruction::Move { dest, src } => {
-                    self.op_move(dest, src);
+                    let value = self.get_value(src);
+
+                    self.set_value(dest, value);
                 }
                 Instruction::Add { dest, src1, src2 } => {
-                    self.op_add(dest, src1, src2);
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
+
+                    let value = unsafe { Value::number(lhs.as_number() + rhs.as_number()) };
+                    self.set_value(dest, value);
                 }
-                Instruction::Subtract { dest, src1, src2 } => todo!(),
-                Instruction::Multiply { dest, src1, src2 } => todo!(),
-                Instruction::Divide { dest, src1, src2 } => todo!(),
-                Instruction::Modulo { dest, src1, src2 } => todo!(),
-                Instruction::Equal { dest, src1, src2 } => todo!(),
-                Instruction::NotEqual { dest, src1, src2 } => todo!(),
-                Instruction::Greater { dest, src1, src2 } => todo!(),
-                Instruction::GreaterEqual { dest, src1, src2 } => todo!(),
+                Instruction::Subtract { dest, src1, src2 } => {
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
+
+                    let value = unsafe { Value::number(lhs.as_number() - rhs.as_number()) };
+                    self.set_value(dest, value);
+                }
+                Instruction::Multiply { dest, src1, src2 } => {
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
+
+                    let value = unsafe { Value::number(lhs.as_number() * rhs.as_number()) };
+                    self.set_value(dest, value);
+                }
+                Instruction::Divide { dest, src1, src2 } => {
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
+
+                    let value = unsafe { Value::number(lhs.as_number() / rhs.as_number()) };
+                    self.set_value(dest, value);
+                }
+                Instruction::Modulo { dest, src1, src2 } => {
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
+
+                    let value = unsafe { Value::number(lhs.as_number() % rhs.as_number()) };
+                    self.set_value(dest, value);
+                }
+                Instruction::Equal { dest, src1, src2 } => {
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
+
+                    let value = unsafe { Value::boolean(lhs.as_number() == rhs.as_number()) };
+                    self.set_value(dest, value);
+                }
+                Instruction::NotEqual { dest, src1, src2 } => {
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
+
+                    let value = unsafe { Value::boolean(lhs.as_number() != rhs.as_number()) };
+                    self.set_value(dest, value);
+                }
+                Instruction::Greater { dest, src1, src2 } => {
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
+
+                    let value = unsafe { Value::boolean(lhs.as_number() > rhs.as_number()) };
+                    self.set_value(dest, value);
+                }
+                Instruction::GreaterEqual { dest, src1, src2 } => {
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
+
+                    let value = unsafe { Value::boolean(lhs.as_number() >= rhs.as_number()) };
+                    self.set_value(dest, value);
+                }
                 Instruction::Less { dest, src1, src2 } => {
-                    self.op_less(dest, src1, src2);
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
+
+                    let value = unsafe { Value::boolean(lhs.as_number() < rhs.as_number()) };
+                    self.set_value(dest, value);
                 }
-                Instruction::LessEqual { dest, src1, src2 } => todo!(),
+                Instruction::LessEqual { dest, src1, src2 } => {
+                    let lhs = self.get_value(src1);
+                    let rhs = self.get_value(src2);
+
+                    let value = unsafe { Value::boolean(lhs.as_number() <= rhs.as_number()) };
+                    self.set_value(dest, value);
+                }
                 Instruction::And { dest, src1, src2 } => todo!(),
                 Instruction::Or { dest, src1, src2 } => todo!(),
                 Instruction::Negate { dest, src } => todo!(),

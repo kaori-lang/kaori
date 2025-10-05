@@ -39,7 +39,7 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
 }
 
 fn build_cfg_ir(hir: &[HirDecl]) -> CfgIr {
-    let mut cfg_builder = CfgBuilder::new();
+    let mut cfg_builder = CfgBuilder::default();
 
     cfg_builder.build_ir(hir);
 
