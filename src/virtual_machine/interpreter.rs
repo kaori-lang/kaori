@@ -12,7 +12,7 @@ pub struct Interpreter {
     call_stack: CallStack,
     instructions: Vec<Instruction>,
     constants: Vec<Value>,
-    registers: [Value; 1024],
+    registers: [Value; 4096],
 }
 
 impl Interpreter {
@@ -23,15 +23,15 @@ impl Interpreter {
             call_stack: CallStack::new(return_address),
             instructions,
             constants,
-            registers: [Value::default(); 1024],
+            registers: [Value::default(); 4096],
         }
     }
 
-    pub fn get_value(&self, register: Register) -> Value {
+    pub fn get_value(&self, register: Register) -> &Value {
         if register.0 < 0 {
-            self.constants[(-register.0) as usize]
+            &self.constants[(-register.0) as usize]
         } else {
-            self.registers[register.0 as usize]
+            &self.registers[register.0 as usize]
         }
     }
 
@@ -51,7 +51,7 @@ impl Interpreter {
                 Instruction::Move { dest, src } => {
                     let value = self.get_value(src);
 
-                    self.set_value(dest, value);
+                    self.set_value(dest, *value);
                 }
                 Instruction::Add { dest, src1, src2 } => {
                     let lhs = self.get_value(src1);

@@ -1,9 +1,9 @@
 use std::fs;
 
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use kaori::{program::compile_source_code, virtual_machine::interpreter::Interpreter};
 
-fn bench_execute(c: &mut Criterion) {
+fn bench_execute(criterion: &mut Criterion) {
     let source_path = "test_suite/test.kr";
     let source = match fs::read_to_string(source_path) {
         Ok(source) => source,
@@ -18,11 +18,12 @@ fn bench_execute(c: &mut Criterion) {
         }
     };
 
-    let mut interpreter = Interpreter::new(bytecode.instructions, bytecode.constants);
+    let mut interpreter = Box::new(Interpreter::new(bytecode.instructions, bytecode.constants));
 
-    c.bench_function("execute_instructions", |b| {
-        b.iter(|| {
+    criterion.bench_function("execute_instructions", |bencher| {
+        bencher.iter(|| {
             interpreter.execute_instructions();
+            black_box(&mut interpreter);
         });
     });
 }
