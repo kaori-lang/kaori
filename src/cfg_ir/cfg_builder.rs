@@ -172,21 +172,12 @@ impl CfgBuilder {
             } => {
                 let src = self.visit_expression(condition);
 
-                let condition_bb = self.current_bb;
                 let then_bb = self.create_bb();
                 let else_bb = self.create_bb();
                 let terminator_block = self.create_bb();
 
-                self.current_bb = then_bb;
-                self.visit_statement(then_branch);
-
-                if let Some(branch) = else_branch {
-                    self.current_bb = else_bb;
-                    self.visit_statement(branch);
-                }
-
                 self.set_terminator(
-                    condition_bb,
+                    self.current_bb,
                     Terminator::Branch {
                         src: src.into(),
                         r#true: then_bb,
@@ -194,9 +185,16 @@ impl CfgBuilder {
                     },
                 );
 
-                self.set_terminator(then_bb, Terminator::Goto(terminator_block));
+                self.current_bb = then_bb;
+                self.visit_statement(then_branch);
+                self.set_terminator(self.current_bb, Terminator::Goto(terminator_block));
 
-                self.set_terminator(else_bb, Terminator::Goto(terminator_block));
+                self.current_bb = else_bb;
+                if let Some(branch) = else_branch {
+                    self.visit_statement(branch);
+                }
+
+                self.set_terminator(self.current_bb, Terminator::Goto(terminator_block));
 
                 self.current_bb = terminator_block;
             }
