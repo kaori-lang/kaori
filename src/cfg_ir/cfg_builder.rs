@@ -46,11 +46,21 @@ impl CfgBuilder {
         let id = self.current_bb;
         let basic_block = self.cfg_ir.basic_blocks.get_mut(id.0).unwrap();
 
-        if let Terminator::Return { .. } = basic_block.terminator {
+        let Terminator::None = basic_block.terminator else {
             return;
-        }
+        };
 
         basic_block.instructions.push(instruction);
+    }
+
+    fn set_terminator(&mut self, id: BlockId, terminator: Terminator) {
+        let basic_block = self.cfg_ir.basic_blocks.get_mut(id.0).unwrap();
+
+        let Terminator::None = basic_block.terminator else {
+            return;
+        };
+
+        basic_block.terminator = terminator;
     }
 
     fn create_bb(&mut self) -> BlockId {
@@ -71,10 +81,6 @@ impl CfgBuilder {
         self.cfg_ir.cfgs.push(basic_block);
 
         basic_block
-    }
-
-    fn set_terminator(&mut self, id: BlockId, terminator: Terminator) {
-        self.cfg_ir.basic_blocks.get_mut(id.0).unwrap().terminator = terminator;
     }
 
     fn create_variable(&mut self) -> Variable {
@@ -228,12 +234,15 @@ impl CfgBuilder {
                     },
                 );
 
-                self.active_loops.push(condition_bb, terminator_bb);
                 self.current_bb = block_bb;
+
+                self.active_loops.push(condition_bb, terminator_bb);
                 self.visit_statement(block);
-                self.set_terminator(self.current_bb, Terminator::Goto(condition_bb));
-                self.current_bb = terminator_bb;
                 self.active_loops.pop();
+
+                self.set_terminator(self.current_bb, Terminator::Goto(condition_bb));
+
+                self.current_bb = terminator_bb;
             }
             HirStmtKind::Break => {
                 let label = self.active_loops.top();

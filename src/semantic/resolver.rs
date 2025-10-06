@@ -284,12 +284,13 @@ impl Resolver {
             StmtKind::WhileLoop { condition, block } => {
                 let init = None;
                 let condition = self.resolve_expression(condition)?;
+                let increment = None;
 
                 self.active_loops += 1;
                 let block = self.resolve_statement(block)?;
                 self.active_loops -= 1;
 
-                HirStmt::loop_(init, condition, block, statement.span)
+                HirStmt::loop_(init, condition, block, None, statement.span)
             }
             StmtKind::ForLoop {
                 init,

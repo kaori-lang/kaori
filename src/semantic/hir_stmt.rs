@@ -21,6 +21,7 @@ pub enum HirStmtKind {
         init: Option<HirDecl>,
         condition: HirExpr,
         block: Box<HirStmt>,
+        increment: Option<Box<HirStmt>>,
     },
     Block(Vec<HirNode>),
     Expression(Box<HirExpr>),
@@ -55,7 +56,13 @@ impl HirStmt {
         }
     }
 
-    pub fn loop_(init: Option<HirDecl>, condition: HirExpr, block: HirStmt, span: Span) -> HirStmt {
+    pub fn loop_(
+        init: Option<HirDecl>,
+        condition: HirExpr,
+        block: HirStmt,
+        increment: Option<HirStmt>,
+        span: Span,
+    ) -> HirStmt {
         HirStmt {
             id: HirId::default(),
             span,
@@ -63,6 +70,7 @@ impl HirStmt {
                 init,
                 condition,
                 block: Box::new(block),
+                increment: increment.map(Box::new),
             },
         }
     }

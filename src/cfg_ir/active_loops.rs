@@ -1,5 +1,6 @@
 use super::basic_block::BlockId;
 
+#[derive(Debug)]
 pub struct LoopLabel {
     pub start: BlockId,
     pub end: BlockId,
