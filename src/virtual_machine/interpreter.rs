@@ -140,15 +140,22 @@ impl Interpreter {
 
                     continue;
                 }
-                Instruction::JumpIfFalse { src, offset } => {
+                Instruction::ConditionalJump {
+                    src,
+                    true_offset,
+                    false_offset,
+                } => {
                     let value = self.get_value(src);
 
                     unsafe {
-                        if !value.as_boolean() {
-                            instruction_index = (instruction_index as i16 + offset) as usize;
-                            continue;
+                        if value.as_boolean() {
+                            instruction_index = (instruction_index as i16 + true_offset) as usize;
+                        } else {
+                            instruction_index = (instruction_index as i16 + false_offset) as usize;
                         }
-                    };
+                    }
+
+                    continue;
                 }
                 Instruction::Print { src } => {
                     let value = self.get_value(src);

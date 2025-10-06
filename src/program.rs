@@ -73,17 +73,17 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
-    /*  for instruction in &bytecode.instructions {
+    for instruction in &bytecode.instructions {
         println!("{}", instruction);
-    } */
-
+    }
+    /*
     let mut interpreter = Box::new(Interpreter::new(bytecode.instructions, bytecode.constants));
 
     let start = Instant::now();
 
     interpreter.execute_instructions()?;
 
-    println!("Vm executed in: {:#?}", start.elapsed());
+    println!("Vm executed in: {:#?}", start.elapsed()); */
 
     Ok(())
 }

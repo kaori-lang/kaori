@@ -77,9 +77,10 @@ pub enum Instruction {
     Jump {
         offset: i16,
     },
-    JumpIfFalse {
+    ConditionalJump {
         src: Register,
-        offset: i16,
+        true_offset: i16,
+        false_offset: i16,
     },
     Print {
         src: Register,
@@ -209,10 +210,11 @@ impl Instruction {
         Self::Jump { offset }
     }
 
-    pub fn jump_if_false(src: Operand, offset: i16) -> Self {
-        Self::JumpIfFalse {
+    pub fn conditional_jump(src: Operand, true_offset: i16, false_offset: i16) -> Self {
+        Self::ConditionalJump {
             src: src.to_register(),
-            offset,
+            true_offset,
+            false_offset,
         }
     }
 
@@ -268,7 +270,11 @@ impl fmt::Display for Instruction {
             Self::Call => write!(f, "Call"),
             Self::Return { src } => write!(f, "Return {src}"),
             Self::Jump { offset } => write!(f, "Jump {offset}"),
-            Self::JumpIfFalse { src, offset } => write!(f, "JumpIfFalse {src}, {offset}"),
+            Self::ConditionalJump {
+                src,
+                true_offset,
+                false_offset,
+            } => write!(f, "ConditionalJump {src}, {true_offset} {false_offset}"),
             Self::Print { src } => write!(f, "Print {src}"),
         }
     }

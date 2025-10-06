@@ -72,13 +72,10 @@ pub enum CfgInstruction {
     Jump {
         target: BlockId,
     },
-    JumpIfTrue {
+    ConditionalJump {
         src: Operand,
-        target: BlockId,
-    },
-    JumpIfFalse {
-        src: Operand,
-        target: BlockId,
+        true_target: BlockId,
+        false_target: BlockId,
     },
     Return {
         src: Option<Operand>,
@@ -247,17 +244,15 @@ impl CfgInstruction {
         Self::Jump { target }
     }
 
-    pub fn jump_if_true(src: impl Into<Operand>, target: BlockId) -> Self {
-        Self::JumpIfFalse {
+    pub fn conditional_jump(
+        src: impl Into<Operand>,
+        true_target: BlockId,
+        false_target: BlockId,
+    ) -> Self {
+        Self::ConditionalJump {
             src: src.into(),
-            target,
-        }
-    }
-
-    pub fn jump_if_false(src: impl Into<Operand>, target: BlockId) -> Self {
-        Self::JumpIfFalse {
-            src: src.into(),
-            target,
+            true_target,
+            false_target,
         }
     }
 

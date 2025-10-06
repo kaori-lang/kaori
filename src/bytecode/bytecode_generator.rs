@@ -10,7 +10,11 @@ use crate::cfg_ir::{
     graph_traversal::reversed_postorder,
 };
 
-use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
+use super::{
+    bytecode::Bytecode,
+    instruction::{self, Instruction},
+    value::Value,
+};
 
 type InstructionIndex = usize;
 pub struct BytecodeGenerator {
@@ -94,7 +98,7 @@ impl BytecodeGenerator {
                 r#true,
                 r#false,
             } => {
-                let instruction = CfgInstruction::jump_if_false(src, r#false);
+                let instruction = CfgInstruction::conditional_jump(src, r#true, r#false);
 
                 self.cfg_instructions.push(instruction);
             }
@@ -145,13 +149,19 @@ impl BytecodeGenerator {
 
                 Instruction::jump(offset)
             }
-            CfgInstruction::JumpIfFalse { src, target } => {
-                let offset = *self.basic_blocks.get(&target).unwrap() as i16 - index as i16;
+            CfgInstruction::ConditionalJump {
+                src,
+                true_target,
+                false_target,
+            } => {
+                let true_offset =
+                    *self.basic_blocks.get(&true_target).unwrap() as i16 - index as i16;
+                let false_offset =
+                    *self.basic_blocks.get(&false_target).unwrap() as i16 - index as i16;
 
-                Instruction::jump_if_false(src, offset)
+                Instruction::conditional_jump(src, true_offset, false_offset)
             }
             CfgInstruction::Return { src } => Instruction::return_(src.unwrap()),
-            _ => todo!(),
         }
     }
 }
