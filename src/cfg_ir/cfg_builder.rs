@@ -274,6 +274,68 @@ impl CfgBuilder {
         };
     }
 
+    fn visit_logical_or(&mut self, left: &HirExpr, right: &HirExpr) -> Variable {
+        let dest = self.create_variable();
+
+        let src1 = self.visit_expression(left);
+
+        self.emit_instruction(CfgInstruction::move_(dest, src1));
+
+        let src2_bb = self.create_bb();
+        let terminator = self.create_bb();
+
+        self.set_terminator(
+            self.current_bb,
+            Terminator::Branch {
+                src: dest.into(),
+                r#true: terminator,
+                r#false: src2_bb,
+            },
+        );
+
+        self.current_bb = src2_bb;
+
+        let src2 = self.visit_expression(right);
+
+        self.emit_instruction(CfgInstruction::move_(dest, src2));
+
+        self.set_terminator(src2_bb, Terminator::Goto(terminator));
+
+        self.current_bb = terminator;
+
+        dest
+    }
+
+    fn visit_logical_and(&mut self, left: &HirExpr, right: &HirExpr) -> Variable {
+        let dest = self.create_variable();
+
+        let src1 = self.visit_expression(left);
+
+        self.emit_instruction(CfgInstruction::move_(dest, src1));
+
+        let src2_bb = self.create_bb();
+        let terminator = self.create_bb();
+
+        self.set_terminator(
+            self.current_bb,
+            Terminator::Branch {
+                src: dest.into(),
+                r#true: src2_bb,
+                r#false: terminator,
+            },
+        );
+
+        self.current_bb = src2_bb;
+
+        let src2 = self.visit_expression(right);
+        self.emit_instruction(CfgInstruction::move_(dest, src2));
+        self.set_terminator(src2_bb, Terminator::Goto(terminator));
+
+        self.current_bb = terminator;
+
+        dest
+    }
+
     fn visit_expression(&mut self, expression: &HirExpr) -> Variable {
         match &expression.kind {
             HirExprKind::Assign { left, right } => {
@@ -290,34 +352,37 @@ impl CfgBuilder {
                 operator,
                 left,
                 right,
-            } => {
-                let src1 = self.visit_expression(left);
-                let src2 = self.visit_expression(right);
-                let dest = self.create_variable();
+            } => match operator.kind {
+                BinaryOpKind::And => self.visit_logical_and(left, right),
+                BinaryOpKind::Or => self.visit_logical_or(left, right),
+                _ => {
+                    let src1 = self.visit_expression(left);
+                    let src2 = self.visit_expression(right);
+                    let dest = self.create_variable();
 
-                let instruction = match operator.kind {
-                    BinaryOpKind::Add => CfgInstruction::add(dest, src1, src2),
-                    BinaryOpKind::Subtract => CfgInstruction::subtract(dest, src1, src2),
-                    BinaryOpKind::Multiply => CfgInstruction::multiply(dest, src1, src2),
-                    BinaryOpKind::Divide => CfgInstruction::divide(dest, src1, src2),
-                    BinaryOpKind::Modulo => CfgInstruction::modulo(dest, src1, src2),
+                    let instruction = match operator.kind {
+                        BinaryOpKind::Add => CfgInstruction::add(dest, src1, src2),
+                        BinaryOpKind::Subtract => CfgInstruction::subtract(dest, src1, src2),
+                        BinaryOpKind::Multiply => CfgInstruction::multiply(dest, src1, src2),
+                        BinaryOpKind::Divide => CfgInstruction::divide(dest, src1, src2),
+                        BinaryOpKind::Modulo => CfgInstruction::modulo(dest, src1, src2),
 
-                    BinaryOpKind::Equal => CfgInstruction::equal(dest, src1, src2),
-                    BinaryOpKind::NotEqual => CfgInstruction::not_equal(dest, src1, src2),
-                    BinaryOpKind::Greater => CfgInstruction::greater(dest, src1, src2),
-                    BinaryOpKind::GreaterEqual => CfgInstruction::greater_equal(dest, src1, src2),
+                        BinaryOpKind::Equal => CfgInstruction::equal(dest, src1, src2),
+                        BinaryOpKind::NotEqual => CfgInstruction::not_equal(dest, src1, src2),
+                        BinaryOpKind::Greater => CfgInstruction::greater(dest, src1, src2),
+                        BinaryOpKind::GreaterEqual => {
+                            CfgInstruction::greater_equal(dest, src1, src2)
+                        }
+                        BinaryOpKind::Less => CfgInstruction::less(dest, src1, src2),
+                        BinaryOpKind::LessEqual => CfgInstruction::less_equal(dest, src1, src2),
+                        _ => unreachable!(),
+                    };
 
-                    BinaryOpKind::Less => CfgInstruction::less(dest, src1, src2),
-                    BinaryOpKind::LessEqual => CfgInstruction::less_equal(dest, src1, src2),
+                    self.emit_instruction(instruction);
 
-                    BinaryOpKind::And => todo!(),
-                    BinaryOpKind::Or => todo!(),
-                };
-
-                self.emit_instruction(instruction);
-
-                dest
-            }
+                    dest
+                }
+            },
             HirExprKind::Unary { right, operator } => {
                 let src = self.visit_expression(right);
                 let dest = self.create_variable();
