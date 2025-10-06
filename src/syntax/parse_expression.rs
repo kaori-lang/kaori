@@ -1,4 +1,8 @@
-use crate::{error::kaori_error::KaoriError, kaori_error, lexer::token_kind::TokenKind};
+use crate::{
+    error::{self, kaori_error::KaoriError},
+    kaori_error,
+    lexer::token_kind::TokenKind,
+};
 
 use super::{
     assign_op::{AssignOp, AssignOpKind},
@@ -232,7 +236,11 @@ impl Parser {
                 expr
             }
             TokenKind::NumberLiteral => {
-                let value = self.token_stream.lexeme().parse::<f64>().unwrap();
+                let value = match self.token_stream.lexeme().parse::<f64>() {
+                    Ok(value) => Ok(value),
+                    Err(..) => Err(kaori_error!(span, "expected a valid float to be parsed")),
+                }?;
+
                 self.token_stream.advance();
 
                 Expr::number_literal(value, span)

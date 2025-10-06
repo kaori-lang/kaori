@@ -12,6 +12,7 @@ use crate::{
 };
 
 use super::{
+    active_loops::ActiveLoops,
     basic_block::{BasicBlock, BlockId, Terminator},
     cfg_instruction::CfgInstruction,
     cfg_ir::CfgIr,
@@ -24,6 +25,7 @@ pub struct CfgBuilder {
     variable: isize,
     nodes_variable: HashMap<HirId, Variable>,
     nodes_block: HashMap<HirId, BlockId>,
+    active_loops: ActiveLoops,
 }
 
 impl Default for CfgBuilder {
@@ -34,9 +36,11 @@ impl Default for CfgBuilder {
             variable: 0,
             nodes_variable: HashMap::new(),
             nodes_block: HashMap::new(),
+            active_loops: ActiveLoops::default(),
         }
     }
 }
+
 impl CfgBuilder {
     fn emit_instruction(&mut self, instruction: CfgInstruction) {
         let id = self.current_bb;
@@ -214,9 +218,7 @@ impl CfgBuilder {
                 self.set_terminator(self.current_bb, Terminator::Goto(condition_bb));
 
                 self.current_bb = condition_bb;
-
                 let src = self.visit_expression(condition);
-
                 self.set_terminator(
                     self.current_bb,
                     Terminator::Branch {
@@ -226,15 +228,23 @@ impl CfgBuilder {
                     },
                 );
 
+                self.active_loops.push(condition_bb, terminator_bb);
                 self.current_bb = block_bb;
                 self.visit_statement(block);
-
                 self.set_terminator(self.current_bb, Terminator::Goto(condition_bb));
-
                 self.current_bb = terminator_bb;
+                self.active_loops.pop();
             }
-            HirStmtKind::Break => {}
-            HirStmtKind::Continue => {}
+            HirStmtKind::Break => {
+                let label = self.active_loops.top();
+
+                self.set_terminator(self.current_bb, Terminator::Goto(label.end));
+            }
+            HirStmtKind::Continue => {
+                let label = self.active_loops.top();
+
+                self.set_terminator(self.current_bb, Terminator::Goto(label.start));
+            }
             HirStmtKind::Return(expr) => {
                 if let Some(expr) = expr {
                     let src = self.visit_expression(expr).into();
@@ -324,9 +334,15 @@ impl CfgBuilder {
                 dest
             }
 
-            HirExprKind::VariableRef(id) => *self.nodes_variable.get(id).unwrap(),
+            HirExprKind::VariableRef(id) => *self
+                .nodes_variable
+                .get(id)
+                .expect("VariableRef points to a missing variable node"),
             HirExprKind::FunctionRef(id) => {
-                let value = *self.nodes_block.get(id).unwrap();
+                let value = *self
+                    .nodes_block
+                    .get(id)
+                    .expect("FunctionRef points to a missing variable node");
 
                 self.cfg_ir.constants.push_function_ref(value)
             }

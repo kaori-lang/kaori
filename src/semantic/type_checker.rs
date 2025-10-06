@@ -326,9 +326,9 @@ impl TypeChecker {
                 TypeDef::function(parameters, return_ty)
             }
             HirTyKind::TypeRef(id) => {
-                let hir_ty = self.types.get(id).unwrap().to_owned();
+                let hir_ty = self.types.get(id).unwrap();
 
-                self.get_type_def(&hir_ty)
+                self.get_type_def(hir_ty)
             }
             HirTyKind::Struct { fields } => {
                 let fields = fields
