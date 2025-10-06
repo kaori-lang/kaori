@@ -19,6 +19,14 @@ pub enum HirExprKind {
         left: Box<HirExpr>,
         right: Box<HirExpr>,
     },
+    LogicalOr {
+        left: Box<HirExpr>,
+        right: Box<HirExpr>,
+    },
+    LogicalAnd {
+        left: Box<HirExpr>,
+        right: Box<HirExpr>,
+    },
     Unary {
         right: Box<HirExpr>,
         operator: UnaryOp,

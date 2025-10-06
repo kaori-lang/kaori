@@ -1,8 +1,4 @@
-use crate::{
-    error::{self, kaori_error::KaoriError},
-    kaori_error,
-    lexer::token_kind::TokenKind,
-};
+use crate::{error::kaori_error::KaoriError, kaori_error, lexer::token_kind::TokenKind};
 
 use super::{
     assign_op::{AssignOp, AssignOpKind},

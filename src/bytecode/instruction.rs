@@ -229,47 +229,47 @@ impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Add { dest, src1, src2 } => {
-                write!(f, "Add {}, {}, {}", dest, src1, src2)
+                write!(f, "Add {dest}, {src1}, {src2}")
             }
             Self::Subtract { dest, src1, src2 } => {
-                write!(f, "Subtract {}, {}, {}", dest, src1, src2)
+                write!(f, "Subtract {dest}, {src1}, {src2}")
             }
             Self::Multiply { dest, src1, src2 } => {
-                write!(f, "Multiply {}, {}, {}", dest, src1, src2)
+                write!(f, "Multiply {dest}, {src1}, {src2}")
             }
             Self::Divide { dest, src1, src2 } => {
-                write!(f, "Divide {}, {}, {}", dest, src1, src2)
+                write!(f, "Divide {dest}, {src1}, {src2}")
             }
             Self::Modulo { dest, src1, src2 } => {
-                write!(f, "Modulo {}, {}, {}", dest, src1, src2)
+                write!(f, "Modulo {dest}, {src1}, {src2}")
             }
             Self::Equal { dest, src1, src2 } => {
-                write!(f, "Equal {}, {}, {}", dest, src1, src2)
+                write!(f, "Equal {dest}, {src1}, {src2}")
             }
             Self::NotEqual { dest, src1, src2 } => {
-                write!(f, "NotEqual {}, {}, {}", dest, src1, src2)
+                write!(f, "NotEqual {dest}, {src1}, {src2}")
             }
             Self::Greater { dest, src1, src2 } => {
-                write!(f, "Greater {}, {}, {}", dest, src1, src2)
+                write!(f, "Greater {dest}, {src1}, {src2}")
             }
             Self::GreaterEqual { dest, src1, src2 } => {
-                write!(f, "GreaterEqual {}, {}, {}", dest, src1, src2)
+                write!(f, "GreaterEqual {dest}, {src1}, {src2}")
             }
             Self::Less { dest, src1, src2 } => {
-                write!(f, "Less {}, {}, {}", dest, src1, src2)
+                write!(f, "Less {dest}, {src1}, {src2}")
             }
             Self::LessEqual { dest, src1, src2 } => {
-                write!(f, "LessEqual {}, {}, {}", dest, src1, src2)
+                write!(f, "LessEqual {dest}, {src1}, {src2}")
             }
 
-            Self::Negate { dest, src } => write!(f, "Negate {}, {}", dest, src),
-            Self::Not { dest, src } => write!(f, "Not {}, {}", dest, src),
-            Self::Move { dest, src } => write!(f, "Move {}, {}", dest, src),
+            Self::Negate { dest, src } => write!(f, "Negate {dest}, {src}"),
+            Self::Not { dest, src } => write!(f, "Not {dest}, {src}"),
+            Self::Move { dest, src } => write!(f, "Move {dest}, {src}"),
             Self::Call => write!(f, "Call"),
-            Self::Return { src } => write!(f, "Return {}", src),
-            Self::Jump { offset } => write!(f, "Jump {}", offset),
-            Self::JumpIfFalse { src, offset } => write!(f, "JumpIfFalse {} {}", src, offset),
-            Self::Print { src } => write!(f, "Print {}", src),
+            Self::Return { src } => write!(f, "Return {src}"),
+            Self::Jump { offset } => write!(f, "Jump {offset}"),
+            Self::JumpIfFalse { src, offset } => write!(f, "JumpIfFalse {src}, {offset}"),
+            Self::Print { src } => write!(f, "Print {src}"),
         }
     }
 }
