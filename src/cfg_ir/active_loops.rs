@@ -2,8 +2,8 @@ use super::basic_block::BlockId;
 
 #[derive(Debug)]
 pub struct LoopLabel {
-    pub start: BlockId,
-    pub end: BlockId,
+    pub increment_bb: BlockId,
+    pub terminator_bb: BlockId,
 }
 
 #[derive(Default)]
@@ -12,8 +12,11 @@ pub struct ActiveLoops {
 }
 
 impl ActiveLoops {
-    pub fn push(&mut self, start: BlockId, end: BlockId) {
-        let active_loop = LoopLabel { start, end };
+    pub fn push(&mut self, increment_bb: BlockId, terminator_bb: BlockId) {
+        let active_loop = LoopLabel {
+            increment_bb,
+            terminator_bb,
+        };
 
         self.active_loops.push(active_loop);
     }

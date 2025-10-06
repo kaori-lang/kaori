@@ -212,6 +212,7 @@ impl CfgBuilder {
                 init,
                 condition,
                 block,
+                increment,
             } => {
                 if let Some(init) = init {
                     self.visit_declaration(init);
@@ -220,6 +221,7 @@ impl CfgBuilder {
                 let condition_bb = self.create_bb();
                 let block_bb = self.create_bb();
                 let terminator_bb = self.create_bb();
+                let increment_bb = self.create_bb();
 
                 self.set_terminator(self.current_bb, Terminator::Goto(condition_bb));
 
@@ -235,10 +237,16 @@ impl CfgBuilder {
                 );
 
                 self.current_bb = block_bb;
-
-                self.active_loops.push(condition_bb, terminator_bb);
+                self.active_loops.push(increment_bb, terminator_bb);
                 self.visit_statement(block);
                 self.active_loops.pop();
+                self.set_terminator(self.current_bb, Terminator::Goto(increment_bb));
+
+                self.current_bb = increment_bb;
+
+                if let Some(increment) = increment {
+                    self.visit_statement(increment);
+                }
 
                 self.set_terminator(self.current_bb, Terminator::Goto(condition_bb));
 
@@ -247,12 +255,12 @@ impl CfgBuilder {
             HirStmtKind::Break => {
                 let label = self.active_loops.top();
 
-                self.set_terminator(self.current_bb, Terminator::Goto(label.end));
+                self.set_terminator(self.current_bb, Terminator::Goto(label.terminator_bb));
             }
             HirStmtKind::Continue => {
                 let label = self.active_loops.top();
 
-                self.set_terminator(self.current_bb, Terminator::Goto(label.start));
+                self.set_terminator(self.current_bb, Terminator::Goto(label.increment_bb));
             }
             HirStmtKind::Return(expr) => {
                 if let Some(expr) = expr {

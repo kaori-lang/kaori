@@ -150,6 +150,7 @@ impl TypeChecker {
                 init,
                 condition,
                 block,
+                increment,
             } => {
                 if let Some(init) = init {
                     self.type_check_declaration(init)?;
@@ -157,6 +158,10 @@ impl TypeChecker {
                 self.type_check_expression(condition)?;
 
                 self.type_check_statement(block)?;
+
+                if let Some(increment) = increment {
+                    self.type_check_statement(increment)?;
+                }
             }
             HirStmtKind::Break => {}
             HirStmtKind::Continue => {}

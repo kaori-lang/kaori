@@ -290,7 +290,7 @@ impl Resolver {
                 let block = self.resolve_statement(block)?;
                 self.active_loops -= 1;
 
-                HirStmt::loop_(init, condition, block, None, statement.span)
+                HirStmt::loop_(init, condition, block, increment, statement.span)
             }
             StmtKind::ForLoop {
                 init,
@@ -302,33 +302,15 @@ impl Resolver {
 
                 let init = Some(self.resolve_declaration(init)?);
                 let condition = self.resolve_expression(condition)?;
-                let increment = self.resolve_statement(increment)?;
+                let increment = Some(self.resolve_statement(increment)?);
 
-                let nodes = match &block.kind {
-                    StmtKind::Block(nodes) => {
-                        self.active_loops += 1;
-
-                        let mut nodes = nodes
-                            .iter()
-                            .map(|node| self.resolve_node(node))
-                            .collect::<Result<Vec<HirNode>, KaoriError>>()?;
-
-                        let increment = HirNode::from(increment);
-
-                        nodes.push(increment);
-
-                        self.active_loops -= 1;
-
-                        nodes
-                    }
-                    _ => unreachable!(),
-                };
-
-                let block = HirStmt::block(nodes, block.span);
+                self.active_loops += 1;
+                let block = self.resolve_statement(block)?;
+                self.active_loops -= 1;
 
                 self.symbol_table.exit_scope();
 
-                HirStmt::loop_(init, condition, block, statement.span)
+                HirStmt::loop_(init, condition, block, increment, statement.span)
             }
             StmtKind::Break => {
                 if self.active_loops == 0 {
