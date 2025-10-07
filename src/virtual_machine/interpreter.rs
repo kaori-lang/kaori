@@ -12,7 +12,7 @@ pub struct Interpreter {
     call_stack: CallStack,
     instructions: Vec<Instruction>,
     constants: Vec<Value>,
-    registers: [Value; 4096],
+    registers: [Value; 1024],
     instruction_index: usize,
 }
 
@@ -24,7 +24,7 @@ impl Interpreter {
             call_stack: CallStack::new(return_address),
             instructions,
             constants,
-            registers: [Value::default(); 4096],
+            registers: [Value::default(); 1024],
             instruction_index: 0,
         }
     }
@@ -62,8 +62,9 @@ impl Interpreter {
                 Instruction::LessEqual { dest, src1, src2 } => {
                     self.instruction_less_equal(dest, src1, src2)
                 }
-                Instruction::Negate { dest, src } => self.instruction_negate(dest, src),
+
                 Instruction::Not { dest, src } => self.instruction_not(dest, src),
+                Instruction::Negate { dest, src } => self.instruction_negate(dest, src),
                 Instruction::Call => todo!(),
                 Instruction::Return { src } => self.instruction_index = self.instructions.len(),
                 Instruction::Jump { offset } => {
