@@ -29,6 +29,60 @@ impl Interpreter {
         }
     }
 
+    pub fn execute_instructions(&mut self) -> Result<(), KaoriError> {
+        let size = self.instructions.len();
+
+        while self.instruction_index < size {
+            match self.instructions[self.instruction_index] {
+                Instruction::Move { dest, src } => self.instr_move(dest, src),
+                Instruction::Add { dest, src1, src2 } => self.instr_add(dest, src1, src2),
+                Instruction::Subtract { dest, src1, src2 } => self.instr_subtract(dest, src1, src2),
+                Instruction::Multiply { dest, src1, src2 } => self.instr_multiply(dest, src1, src2),
+                Instruction::Divide { dest, src1, src2 } => self.instr_divide(dest, src1, src2),
+                Instruction::Modulo { dest, src1, src2 } => self.instr_modulo(dest, src1, src2),
+                Instruction::Equal { dest, src1, src2 } => self.instr_equal(dest, src1, src2),
+                Instruction::NotEqual { dest, src1, src2 } => {
+                    self.instr_not_equal(dest, src1, src2)
+                }
+                Instruction::Greater { dest, src1, src2 } => self.instr_greater(dest, src1, src2),
+                Instruction::GreaterEqual { dest, src1, src2 } => {
+                    self.instr_greater_equal(dest, src1, src2)
+                }
+                Instruction::Less { dest, src1, src2 } => self.instr_less(dest, src1, src2),
+                Instruction::LessEqual { dest, src1, src2 } => {
+                    self.instr_less_equal(dest, src1, src2)
+                }
+                Instruction::Negate { dest, src } => todo!(),
+                Instruction::Not { dest, src } => todo!(),
+                Instruction::Call => todo!(),
+                Instruction::Return { src } => self.instruction_index = self.instructions.len(),
+                Instruction::Jump { offset } => {
+                    self.instr_jump(offset);
+                    continue;
+                }
+                Instruction::ConditionalJump {
+                    src,
+                    true_offset,
+                    false_offset,
+                } => {
+                    self.instr_conditional_jump(src, true_offset, false_offset);
+                    continue;
+                }
+                Instruction::Print { src } => {
+                    let value = self.get_value(src);
+
+                    unsafe {
+                        println!("{:#?}", value.as_number());
+                    }
+                }
+            }
+
+            self.instruction_index += 1;
+        }
+
+        Ok(())
+    }
+
     #[inline(always)]
     pub fn get_value(&self, register: Register) -> &Value {
         if register.0 < 0 {
@@ -153,100 +207,5 @@ impl Interpreter {
                 self.instruction_index = (self.instruction_index as i16 + false_offset) as usize;
             }
         }
-    }
-
-    #[inline(always)]
-    fn dispatch_instruction(&mut self) {
-        match self.instructions[self.instruction_index] {
-            Instruction::Move { dest, src } => self.instr_move(dest, src),
-            Instruction::Add { dest, src1, src2 } => self.instr_add(dest, src1, src2),
-            Instruction::Subtract { dest, src1, src2 } => self.instr_subtract(dest, src1, src2),
-            Instruction::Multiply { dest, src1, src2 } => self.instr_multiply(dest, src1, src2),
-            Instruction::Divide { dest, src1, src2 } => self.instr_divide(dest, src1, src2),
-            Instruction::Modulo { dest, src1, src2 } => self.instr_modulo(dest, src1, src2),
-            Instruction::Equal { dest, src1, src2 } => self.instr_equal(dest, src1, src2),
-            Instruction::NotEqual { dest, src1, src2 } => self.instr_not_equal(dest, src1, src2),
-            Instruction::Greater { dest, src1, src2 } => self.instr_greater(dest, src1, src2),
-            Instruction::GreaterEqual { dest, src1, src2 } => {
-                self.instr_greater_equal(dest, src1, src2)
-            }
-            Instruction::Less { dest, src1, src2 } => self.instr_less(dest, src1, src2),
-            Instruction::LessEqual { dest, src1, src2 } => self.instr_less_equal(dest, src1, src2),
-            Instruction::Negate { dest, src } => todo!(),
-            Instruction::Not { dest, src } => todo!(),
-            Instruction::Call => todo!(),
-            Instruction::Return { src } => self.instruction_index = self.instructions.len(),
-            Instruction::Jump { offset } => {
-                self.instr_jump(offset);
-            }
-            Instruction::ConditionalJump {
-                src,
-                true_offset,
-                false_offset,
-            } => {
-                self.instr_conditional_jump(src, true_offset, false_offset);
-            }
-            Instruction::Print { src } => {
-                let value = self.get_value(src);
-
-                unsafe {
-                    println!("{:#?}", value.as_number());
-                }
-            }
-        }
-    }
-
-    pub fn execute_instructions(&mut self) -> Result<(), KaoriError> {
-        let size = self.instructions.len();
-
-        while self.instruction_index < size {
-            match self.instructions[self.instruction_index] {
-                Instruction::Move { dest, src } => self.instr_move(dest, src),
-                Instruction::Add { dest, src1, src2 } => self.instr_add(dest, src1, src2),
-                Instruction::Subtract { dest, src1, src2 } => self.instr_subtract(dest, src1, src2),
-                Instruction::Multiply { dest, src1, src2 } => self.instr_multiply(dest, src1, src2),
-                Instruction::Divide { dest, src1, src2 } => self.instr_divide(dest, src1, src2),
-                Instruction::Modulo { dest, src1, src2 } => self.instr_modulo(dest, src1, src2),
-                Instruction::Equal { dest, src1, src2 } => self.instr_equal(dest, src1, src2),
-                Instruction::NotEqual { dest, src1, src2 } => {
-                    self.instr_not_equal(dest, src1, src2)
-                }
-                Instruction::Greater { dest, src1, src2 } => self.instr_greater(dest, src1, src2),
-                Instruction::GreaterEqual { dest, src1, src2 } => {
-                    self.instr_greater_equal(dest, src1, src2)
-                }
-                Instruction::Less { dest, src1, src2 } => self.instr_less(dest, src1, src2),
-                Instruction::LessEqual { dest, src1, src2 } => {
-                    self.instr_less_equal(dest, src1, src2)
-                }
-                Instruction::Negate { dest, src } => todo!(),
-                Instruction::Not { dest, src } => todo!(),
-                Instruction::Call => todo!(),
-                Instruction::Return { src } => self.instruction_index = self.instructions.len(),
-                Instruction::Jump { offset } => {
-                    self.instr_jump(offset);
-                    continue;
-                }
-                Instruction::ConditionalJump {
-                    src,
-                    true_offset,
-                    false_offset,
-                } => {
-                    self.instr_conditional_jump(src, true_offset, false_offset);
-                    continue;
-                }
-                Instruction::Print { src } => {
-                    let value = self.get_value(src);
-
-                    unsafe {
-                        println!("{:#?}", value.as_number());
-                    }
-                }
-            }
-
-            self.instruction_index += 1;
-        }
-
-        Ok(())
     }
 }
