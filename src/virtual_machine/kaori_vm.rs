@@ -63,8 +63,8 @@ impl KaoriVM {
                     self.instruction_less_equal(dest, src1, src2)
                 }
 
-                Instruction::Not { dest, src } => self.instruction_not(dest, src),
-                Instruction::Negate { dest, src } => self.instruction_negate(dest, src),
+                Instruction::Not { dest, src } => todo!(),
+                Instruction::Negate { dest, src } => todo!(),
                 Instruction::Call => todo!(),
                 Instruction::Return { src } => self.instruction_index = self.instructions.len(),
                 Instruction::Jump { offset } => {
