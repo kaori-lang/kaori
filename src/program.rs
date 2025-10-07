@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use crate::{
-    bytecode::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
+    bytecode::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator, instruction},
     cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
@@ -75,11 +75,15 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     let mut vm = KaoriVM::new(bytecode.instructions, bytecode.constants);
 
-    let start = Instant::now();
-
-    vm.run()?;
-
-    println!("Vm executed in: {:#?}", start.elapsed());
+    run_vm(&mut vm);
 
     Ok(())
+}
+
+fn run_vm(vm: &mut KaoriVM) {
+    let start = Instant::now();
+
+    vm.run();
+
+    println!("Vm executed in: {:#?}", start.elapsed());
 }

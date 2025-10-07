@@ -1,6 +1,4 @@
 use crate::cfg_ir::operand::{Operand, Register};
-
-#[derive(Debug, Clone)]
 pub enum Instruction {
     Add {
         dest: Register,

@@ -18,11 +18,12 @@ fn bench_execute(criterion: &mut Criterion) {
         }
     };
 
+    let mut vm = KaoriVM::new(bytecode.instructions, bytecode.constants);
+
     criterion.bench_function("vm", |bencher| {
         bencher.iter(|| {
-            let mut vm = KaoriVM::new(bytecode.instructions.clone(), bytecode.constants.clone());
             vm.run();
-            black_box(vm);
+            black_box(&mut vm);
         });
     });
 }
