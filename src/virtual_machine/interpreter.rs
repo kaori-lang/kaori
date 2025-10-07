@@ -62,8 +62,8 @@ impl Interpreter {
                 Instruction::LessEqual { dest, src1, src2 } => {
                     self.instruction_less_equal(dest, src1, src2)
                 }
-                Instruction::Negate { dest, src } => todo!(),
-                Instruction::Not { dest, src } => todo!(),
+                Instruction::Negate { dest, src } => self.instruction_negate(dest, src),
+                Instruction::Not { dest, src } => self.instruction_not(dest, src),
                 Instruction::Call => todo!(),
                 Instruction::Return { src } => self.instruction_index = self.instructions.len(),
                 Instruction::Jump { offset } => {
@@ -196,6 +196,20 @@ impl Interpreter {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
         let value = unsafe { Value::boolean(lhs.as_number() <= rhs.as_number()) };
+        self.set_value(dest, value);
+    }
+
+    #[inline(always)]
+    fn instruction_not(&mut self, dest: Register, src: Register) {
+        let rhs = self.get_value(src);
+        let value = unsafe { Value::boolean(!rhs.as_boolean()) };
+        self.set_value(dest, value);
+    }
+
+    #[inline(always)]
+    fn instruction_negate(&mut self, dest: Register, src: Register) {
+        let rhs = self.get_value(src);
+        let value = unsafe { Value::number(-rhs.as_number()) };
         self.set_value(dest, value);
     }
 
