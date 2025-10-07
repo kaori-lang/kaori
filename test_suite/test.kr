@@ -1,15 +1,18 @@
 def main() -> number {
-    var a: bool = true;
+    var iterations: number = 1000000;
+    var max_fib: number = 40;
 
-    a && false;
+    for var i: number = 0; i < iterations; i += 1 {
+        var a: number = 0;
+        var b: number = 1;
+
+        for var j: number = 0; j < max_fib; j += 1 {
+            var temp: number = a + b;
+            a = b;
+            b = temp;
+        }
+
+    }
 
     return 0;
 }
-
-Move r0, c1
-Move r1, r0
-JumpIfTrue r1, 2
-JumpIfFalse r1, 3
-Move r1, c2
-Jump 1
-Return c3

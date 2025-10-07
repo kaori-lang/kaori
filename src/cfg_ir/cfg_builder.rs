@@ -43,8 +43,7 @@ impl Default for CfgBuilder {
 
 impl CfgBuilder {
     fn emit_instruction(&mut self, instruction: CfgInstruction) {
-        let id = self.current_bb;
-        let basic_block = self.cfg_ir.basic_blocks.get_mut(id.0).unwrap();
+        let basic_block = self.cfg_ir.basic_blocks.get_mut(self.current_bb.0).unwrap();
 
         let Terminator::None = basic_block.terminator else {
             return;
@@ -53,8 +52,8 @@ impl CfgBuilder {
         basic_block.instructions.push(instruction);
     }
 
-    fn set_terminator(&mut self, id: BlockId, terminator: Terminator) {
-        let basic_block = self.cfg_ir.basic_blocks.get_mut(id.0).unwrap();
+    fn set_terminator(&mut self, terminator: Terminator) {
+        let basic_block = self.cfg_ir.basic_blocks.get_mut(self.current_bb.0).unwrap();
 
         let Terminator::None = basic_block.terminator else {
             return;
@@ -145,11 +144,9 @@ impl CfgBuilder {
                     self.visit_ast_node(node);
                 }
 
-                let last_bb = self.current_bb;
-
                 match self.cfg_ir.basic_blocks[self.current_bb.0].terminator {
                     Terminator::Return { .. } => {}
-                    _ => self.set_terminator(last_bb, Terminator::Return { src: None }),
+                    _ => self.set_terminator(Terminator::Return { src: None }),
                 }
 
                 self.free_variables();
@@ -186,25 +183,21 @@ impl CfgBuilder {
                 let else_bb = self.create_bb();
                 let terminator_block = self.create_bb();
 
-                self.set_terminator(
-                    self.current_bb,
-                    Terminator::Branch {
-                        src: src.into(),
-                        r#true: then_bb,
-                        r#false: else_bb,
-                    },
-                );
+                self.set_terminator(Terminator::Branch {
+                    src: src.into(),
+                    r#true: then_bb,
+                    r#false: else_bb,
+                });
 
                 self.current_bb = then_bb;
                 self.visit_statement(then_branch);
-                self.set_terminator(self.current_bb, Terminator::Goto(terminator_block));
+                self.set_terminator(Terminator::Goto(terminator_block));
 
                 self.current_bb = else_bb;
                 if let Some(branch) = else_branch {
                     self.visit_statement(branch);
                 }
-
-                self.set_terminator(self.current_bb, Terminator::Goto(terminator_block));
+                self.set_terminator(Terminator::Goto(terminator_block));
 
                 self.current_bb = terminator_block;
             }
@@ -223,52 +216,47 @@ impl CfgBuilder {
                 let terminator_bb = self.create_bb();
                 let increment_bb = self.create_bb();
 
-                self.set_terminator(self.current_bb, Terminator::Goto(condition_bb));
+                self.set_terminator(Terminator::Goto(condition_bb));
 
                 self.current_bb = condition_bb;
                 let src = self.visit_expression(condition);
-                self.set_terminator(
-                    self.current_bb,
-                    Terminator::Branch {
-                        src: src.into(),
-                        r#true: block_bb,
-                        r#false: terminator_bb,
-                    },
-                );
+                self.set_terminator(Terminator::Branch {
+                    src: src.into(),
+                    r#true: block_bb,
+                    r#false: terminator_bb,
+                });
 
                 self.current_bb = block_bb;
                 self.active_loops.push(increment_bb, terminator_bb);
                 self.visit_statement(block);
                 self.active_loops.pop();
-                self.set_terminator(self.current_bb, Terminator::Goto(increment_bb));
+                self.set_terminator(Terminator::Goto(increment_bb));
 
                 self.current_bb = increment_bb;
-
                 if let Some(increment) = increment {
                     self.visit_statement(increment);
                 }
-
-                self.set_terminator(self.current_bb, Terminator::Goto(condition_bb));
+                self.set_terminator(Terminator::Goto(condition_bb));
 
                 self.current_bb = terminator_bb;
             }
             HirStmtKind::Break => {
                 let label = self.active_loops.top();
 
-                self.set_terminator(self.current_bb, Terminator::Goto(label.terminator_bb));
+                self.set_terminator(Terminator::Goto(label.terminator_bb));
             }
             HirStmtKind::Continue => {
                 let label = self.active_loops.top();
 
-                self.set_terminator(self.current_bb, Terminator::Goto(label.increment_bb));
+                self.set_terminator(Terminator::Goto(label.increment_bb));
             }
             HirStmtKind::Return(expr) => {
                 if let Some(expr) = expr {
                     let src = self.visit_expression(expr).into();
 
-                    self.set_terminator(self.current_bb, Terminator::Return { src: Some(src) });
+                    self.set_terminator(Terminator::Return { src: Some(src) });
                 } else {
-                    self.set_terminator(self.current_bb, Terminator::Return { src: None });
+                    self.set_terminator(Terminator::Return { src: None });
                 }
             }
         };
@@ -284,14 +272,11 @@ impl CfgBuilder {
         let src2_bb = self.create_bb();
         let terminator = self.create_bb();
 
-        self.set_terminator(
-            self.current_bb,
-            Terminator::Branch {
-                src: dest.into(),
-                r#true: terminator,
-                r#false: src2_bb,
-            },
-        );
+        self.set_terminator(Terminator::Branch {
+            src: dest.into(),
+            r#true: terminator,
+            r#false: src2_bb,
+        });
 
         self.current_bb = src2_bb;
 
@@ -299,7 +284,7 @@ impl CfgBuilder {
 
         self.emit_instruction(CfgInstruction::move_(dest, src2));
 
-        self.set_terminator(src2_bb, Terminator::Goto(terminator));
+        self.set_terminator(Terminator::Goto(terminator));
 
         self.current_bb = terminator;
 
@@ -316,20 +301,17 @@ impl CfgBuilder {
         let src2_bb = self.create_bb();
         let terminator = self.create_bb();
 
-        self.set_terminator(
-            self.current_bb,
-            Terminator::Branch {
-                src: dest.into(),
-                r#true: src2_bb,
-                r#false: terminator,
-            },
-        );
+        self.set_terminator(Terminator::Branch {
+            src: dest.into(),
+            r#true: src2_bb,
+            r#false: terminator,
+        });
 
         self.current_bb = src2_bb;
 
         let src2 = self.visit_expression(right);
         self.emit_instruction(CfgInstruction::move_(dest, src2));
-        self.set_terminator(src2_bb, Terminator::Goto(terminator));
+        self.set_terminator(Terminator::Goto(terminator));
 
         self.current_bb = terminator;
 
