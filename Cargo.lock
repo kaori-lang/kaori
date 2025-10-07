@@ -241,7 +241,6 @@ dependencies = [
  "ariadne",
  "criterion",
  "ordered-float",
- "regex",
 ]
 
 [[package]]

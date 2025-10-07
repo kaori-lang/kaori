@@ -62,7 +62,6 @@ impl KaoriVM {
                 Instruction::LessEqual { dest, src1, src2 } => {
                     self.instruction_less_equal(dest, src1, src2)
                 }
-
                 Instruction::Not { dest, src } => todo!(),
                 Instruction::Negate { dest, src } => todo!(),
                 Instruction::Call => todo!(),
@@ -106,13 +105,11 @@ impl KaoriVM {
         self.registers[register.0 as usize] = value;
     }
 
-    #[inline(always)]
     fn instruction_move(&mut self, dest: Register, src: Register) {
         let value = self.get_value(src);
         self.set_value(dest, *value);
     }
 
-    #[inline(always)]
     fn instruction_add(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
@@ -120,7 +117,6 @@ impl KaoriVM {
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_subtract(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
@@ -128,7 +124,6 @@ impl KaoriVM {
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_multiply(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
@@ -136,7 +131,6 @@ impl KaoriVM {
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_divide(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
@@ -144,7 +138,6 @@ impl KaoriVM {
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_modulo(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
@@ -152,7 +145,6 @@ impl KaoriVM {
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_equal(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
@@ -160,7 +152,6 @@ impl KaoriVM {
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_not_equal(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
@@ -168,7 +159,6 @@ impl KaoriVM {
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_greater(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
@@ -176,7 +166,6 @@ impl KaoriVM {
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_greater_equal(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
@@ -184,7 +173,6 @@ impl KaoriVM {
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_less(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
@@ -192,7 +180,6 @@ impl KaoriVM {
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_less_equal(&mut self, dest: Register, src1: Register, src2: Register) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
@@ -200,26 +187,22 @@ impl KaoriVM {
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_not(&mut self, dest: Register, src: Register) {
         let rhs = self.get_value(src);
         let value = unsafe { Value::boolean(!rhs.as_boolean()) };
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_negate(&mut self, dest: Register, src: Register) {
         let rhs = self.get_value(src);
         let value = unsafe { Value::number(-rhs.as_number()) };
         self.set_value(dest, value);
     }
 
-    #[inline(always)]
     fn instruction_jump(&mut self, offset: i16) {
         self.instruction_index = (self.instruction_index as i16 + offset) as usize;
     }
 
-    #[inline(always)]
     fn instruction_conditional_jump(&mut self, src: Register, true_offset: i16, false_offset: i16) {
         let value = self.get_value(src);
 
