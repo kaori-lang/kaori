@@ -7,9 +7,8 @@ use std::{fs, time::Instant};
 
 use kaori::program::run_program;
 
-fn main() -> ExitCode {
-    let source_to_run = Some("test_suite/test.kr".to_owned()); // Debug purposes
-    //let source_to_run = args().nth(1);
+/* fn main() -> ExitCode {
+    let source_to_run = args().nth(1);
 
     if source_to_run.is_none() {
         eprintln!("Error: No path was found for the program's source!");
@@ -29,4 +28,17 @@ fn main() -> ExitCode {
 
     eprintln!("Error: Could not read the file by the given path.");
     ExitCode::FAILURE
+} */
+
+fn main() {
+    let source_to_run = "test_suite/test.kr";
+
+    match fs::read_to_string(source_to_run) {
+        Ok(source) => {
+            if let Err(error) = run_program(source.to_owned()) {
+                error.report(&source);
+            }
+        }
+        Err(error) => eprintln!("Error: Could not read the file by the given path."),
+    };
 }
