@@ -1,4 +1,4 @@
-use kaori::{program::compile_source_code, virtual_machine::interpreter::Interpreter};
+use kaori::{program::compile_source_code, virtual_machine::kaori_vm::KaoriVM};
 use std::fs;
 
 #[test]
@@ -14,6 +14,6 @@ fn execute_instructions_miri() {
     };
 
     // Run interpreter
-    let mut interpreter = Interpreter::new(bytecode.instructions, bytecode.constants);
+    let mut interpreter = KaoriVM::new(bytecode.instructions, bytecode.constants);
     interpreter.run();
 }

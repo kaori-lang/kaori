@@ -1,7 +1,7 @@
 use std::fs;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use kaori::{program::compile_source_code, virtual_machine::interpreter::Interpreter};
+use kaori::{program::compile_source_code, virtual_machine::kaori_vm::KaoriVM};
 
 fn bench_execute(criterion: &mut Criterion) {
     let source_path = "test_suite/test.kr";
@@ -18,12 +18,11 @@ fn bench_execute(criterion: &mut Criterion) {
         }
     };
 
-    criterion.bench_function("run interpreter", |bencher| {
+    criterion.bench_function("vm", |bencher| {
         bencher.iter(|| {
-            let mut interpreter =
-                Interpreter::new(bytecode.instructions.clone(), bytecode.constants.clone());
-            interpreter.run();
-            black_box(interpreter);
+            let mut vm = KaoriVM::new(bytecode.instructions.clone(), bytecode.constants.clone());
+            vm.run();
+            black_box(vm);
         });
     });
 }

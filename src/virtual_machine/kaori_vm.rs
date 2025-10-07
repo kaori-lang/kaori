@@ -8,15 +8,15 @@ use crate::{
 
 use super::call_stack::CallStack;
 
-pub struct Interpreter {
+pub struct KaoriVM {
     call_stack: CallStack,
     instructions: Vec<Instruction>,
     constants: Vec<Value>,
-    registers: [Value; 1024],
+    registers: Vec<Value>,
     instruction_index: usize,
 }
 
-impl Interpreter {
+impl KaoriVM {
     pub fn new(instructions: Vec<Instruction>, constants: Vec<Value>) -> Self {
         let return_address = instructions.len();
 
@@ -24,7 +24,7 @@ impl Interpreter {
             call_stack: CallStack::new(return_address),
             instructions,
             constants,
-            registers: [Value::default(); 1024],
+            registers: vec![Value::default(); 1024],
             instruction_index: 0,
         }
     }
