@@ -12,6 +12,7 @@ def main() -> number {
             b = temp;
         }
 
+  
     }
 
     return 0;

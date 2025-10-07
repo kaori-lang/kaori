@@ -18,12 +18,12 @@ fn bench_execute(criterion: &mut Criterion) {
         }
     };
 
-    let mut interpreter = Box::new(Interpreter::new(bytecode.instructions, bytecode.constants));
-
-    criterion.bench_function("execute_instructions", |bencher| {
+    criterion.bench_function("run interpreter", |bencher| {
         bencher.iter(|| {
-            interpreter.execute_instructions();
-            black_box(&mut interpreter);
+            let mut interpreter =
+                Interpreter::new(bytecode.instructions.clone(), bytecode.constants.clone());
+            interpreter.run();
+            black_box(interpreter);
         });
     });
 }

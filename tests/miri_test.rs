@@ -15,5 +15,5 @@ fn execute_instructions_miri() {
 
     // Run interpreter
     let mut interpreter = Interpreter::new(bytecode.instructions, bytecode.constants);
-    interpreter.execute_instructions();
+    interpreter.run();
 }
