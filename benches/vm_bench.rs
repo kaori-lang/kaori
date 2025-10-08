@@ -1,7 +1,7 @@
 use std::fs;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use kaori::{program::compile_source_code, virtual_machine::kaori_vm::KaoriVM};
+use kaori::program::compile_source_code;
 
 fn bench_execute(c: &mut Criterion) {
     let source_path = "test_suite/test.kr";
@@ -10,20 +10,7 @@ fn bench_execute(c: &mut Criterion) {
         Err(error) => return,
     };
 
-    c.bench_function("vm", |bencher| {
-        let bytecode = match compile_source_code(source.to_owned()) {
-            Ok(bytecode) => bytecode,
-            Err(error) => {
-                error.report(&source);
-                return;
-            }
-        };
-
-        let mut vm = KaoriVM::new(bytecode.instructions, bytecode.constants);
-        bencher.iter(|| {
-            vm.run();
-        });
-    });
+    c.bench_function("vm", |bencher| {});
 }
 
 criterion_group!(benches, bench_execute);

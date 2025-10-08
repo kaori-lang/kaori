@@ -4,6 +4,8 @@ use crate::bytecode::{instruction::Instruction, value::Value};
 
 use super::call_stack::CallStack;
 
+const DISPATCH_OP: [fn(ctx: &mut VMContext, index: usize); 1] = [instruction_add];
+
 pub struct VMContext {
     pub call_stack: CallStack,
     pub instructions: Vec<Instruction>,
@@ -58,6 +60,8 @@ fn instruction_add(ctx: &mut VMContext, index: usize) {
     let lhs = get_value(ctx, src1).as_number();
     let rhs = get_value(ctx, src2 as i16).as_number();
     set_value(ctx, dest, Value::number(lhs + rhs));
+
+    DISPATCH_OP[0](ctx, index + 1)
 }
 
 #[inline(never)]

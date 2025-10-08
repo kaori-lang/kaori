@@ -84,13 +84,10 @@ pub enum Instruction {
     Print {
         src: i16,
     },
+    Halt,
 }
 
 impl Instruction {
-    pub fn op_code(&self) -> usize {
-        mem::discriminant(self)
-    }
-
     pub fn add(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Add {
             dest: dest.to_register(),
@@ -228,7 +225,10 @@ impl Instruction {
     }
 }
 
-use std::{fmt, mem};
+use std::{
+    fmt::{self, write},
+    mem,
+};
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -279,6 +279,7 @@ impl fmt::Display for Instruction {
                 false_offset,
             } => write!(f, "ConditionalJump {src}, {true_offset} {false_offset}"),
             Self::Print { src } => write!(f, "Print {src}"),
+            Self::Halt => write!(f, "Halt"),
         }
     }
 }
