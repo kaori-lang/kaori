@@ -294,10 +294,9 @@ fn instruction_jump(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked();
         };
 
-        // offset is relative to current instruction
-        let target = ip.offset(offset as isize);
-        let op_code = (*target).discriminant();
-        become ctx.instruction_dispatch[op_code](ctx, target);
+        let ip = ip.offset(offset as isize);
+        let op_code = (*ip).discriminant();
+        become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
 
@@ -314,14 +313,14 @@ fn instruction_conditional_jump(ctx: &mut VMContext, ip: *const Instruction) {
         };
 
         let value = get_value(ctx, src);
-        let target = if value.as_boolean() {
+        let ip = if value.as_boolean() {
             ip.offset(true_offset as isize)
         } else {
             ip.offset(false_offset as isize)
         };
 
-        let op_code = (*target).discriminant();
-        become ctx.instruction_dispatch[op_code](ctx, target);
+        let op_code = (*ip).discriminant();
+        become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
 
