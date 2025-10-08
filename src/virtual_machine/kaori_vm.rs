@@ -4,7 +4,12 @@ use crate::bytecode::{instruction::Instruction, value::Value};
 
 use super::call_stack::CallStack;
 
-const DISPATCH_OP: [fn(&mut VMContext, instructions: &[Instruction], index: usize); 20] = [
+const DISPATCH_OP: [fn(
+    &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+); 20] = [
     instruction_add,              // 0
     instruction_subtract,         // 1
     instruction_multiply,         // 2
@@ -43,20 +48,31 @@ impl VMContext {
     }
 }
 
-pub fn get_value(ctx: &VMContext, register: i16) -> &Value {
+pub fn run_vm(instructions: Vec<Instruction>, constants: Vec<Value>) {
+    let mut ctx = VMContext::new(instructions.len(), constants);
+
+    let instruction = &instructions[0];
+    DISPATCH_OP[instruction.index()](&mut ctx, instruction, &instructions, 0);
+}
+
+fn get_value(ctx: &VMContext, register: i16) -> &Value {
     if register < 0 {
         &ctx.constants[-register as usize]
     } else {
         &ctx.registers[register as usize]
     }
 }
-
-pub fn set_value(ctx: &mut VMContext, register: i16, value: Value) {
+fn set_value(ctx: &mut VMContext, register: i16, value: Value) {
     ctx.registers[register as usize] = value;
 }
 
 #[inline(never)]
-fn instruction_move(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
+fn instruction_move(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let instruction = &instructions[index];
 
     let Instruction::Move { dest, src } = *instruction else {
@@ -66,13 +82,19 @@ fn instruction_move(ctx: &mut VMContext, instructions: &[Instruction], index: us
     let value = get_value(ctx, src);
     set_value(ctx, dest, *value);
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index)
+    let index = index + 1;
+    let instruction = &instructions[index];
+
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_add(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
-
+fn instruction_add(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Add { dest, src1, src2 } = *instruction else {
         unsafe {
             unreachable_unchecked();
@@ -83,244 +105,318 @@ fn instruction_add(ctx: &mut VMContext, instructions: &[Instruction], index: usi
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::number(lhs + rhs));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_subtract(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_subtract(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Subtract { dest, src1, src2 } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let lhs = get_value(ctx, src1).as_number();
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::number(lhs - rhs));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_multiply(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_multiply(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Multiply { dest, src1, src2 } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let lhs = get_value(ctx, src1).as_number();
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::number(lhs * rhs));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_divide(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_divide(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Divide { dest, src1, src2 } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let lhs = get_value(ctx, src1).as_number();
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::number(lhs / rhs));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_modulo(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_modulo(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Modulo { dest, src1, src2 } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let lhs = get_value(ctx, src1).as_number();
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::number(lhs % rhs));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_equal(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_equal(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Equal { dest, src1, src2 } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let lhs = get_value(ctx, src1).as_number();
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs == rhs));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_not_equal(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_not_equal(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::NotEqual { dest, src1, src2 } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let lhs = get_value(ctx, src1).as_number();
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs != rhs));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_greater(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_greater(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Greater { dest, src1, src2 } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let lhs = get_value(ctx, src1).as_number();
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs > rhs));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_greater_equal(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_greater_equal(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::GreaterEqual { dest, src1, src2 } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let lhs = get_value(ctx, src1).as_number();
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs >= rhs));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_less(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_less(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Less { dest, src1, src2 } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let lhs = get_value(ctx, src1).as_number();
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs < rhs));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_less_equal(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_less_equal(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::LessEqual { dest, src1, src2 } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let lhs = get_value(ctx, src1).as_number();
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs <= rhs));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_negate(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_negate(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Negate { dest, src } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let value = get_value(ctx, src).as_number();
     set_value(ctx, dest, Value::number(-value));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_not(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_not(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Not { dest, src } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let value = get_value(ctx, src).as_boolean();
     set_value(ctx, dest, Value::boolean(!value));
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_jump(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_jump(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Jump { offset } = *instruction else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
     let jump_index = (index as i16 + offset) as usize;
-
-    DISPATCH_OP[instruction.index()](ctx, instructions, jump_index)
+    let instruction = &instructions[jump_index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, jump_index)
 }
 
 #[inline(never)]
-fn instruction_conditional_jump(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
+fn instruction_conditional_jump(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::ConditionalJump {
         src,
         true_offset,
         false_offset,
     } = *instruction
     else {
-        unsafe {
-            unreachable_unchecked();
-        }
+        unsafe { unreachable_unchecked() }
     };
 
-    let value = get_value(ctx, src).as_boolean();
-    let offset = if value { true_offset } else { false_offset };
+    let value = get_value(ctx, src);
+    let offset = if value.as_boolean() {
+        true_offset
+    } else {
+        false_offset
+    };
     let jump_index = (index as i16 + offset) as usize;
-
-    DISPATCH_OP[instruction.index()](ctx, instructions, jump_index)
+    let instruction = &instructions[jump_index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, jump_index)
 }
 
 #[inline(never)]
-fn instruction_call(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {}
+fn instruction_call(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
+}
 
 #[inline(never)]
-fn instruction_return(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {}
+fn instruction_return(
+    ctx: &mut VMContext,
+    _instruction: &Instruction,
+    instructions: &[Instruction],
+    _index: usize,
+) {
+}
 
 #[inline(never)]
-fn instruction_print(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
-    let instruction = &instructions[index];
-
+fn instruction_print(
+    ctx: &mut VMContext,
+    instruction: &Instruction,
+    instructions: &[Instruction],
+    index: usize,
+) {
     let Instruction::Print { src } = *instruction else {
         unsafe { unreachable_unchecked() }
     };
@@ -328,10 +424,17 @@ fn instruction_print(ctx: &mut VMContext, instructions: &[Instruction], index: u
     let value = get_value(ctx, src).as_number();
     println!("{value}");
 
-    DISPATCH_OP[instruction.index()](ctx, instructions, index + 1)
+    let index = index + 1;
+    let instruction = &instructions[index];
+    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
 }
 
 #[inline(never)]
-fn instruction_halt(ctx: &mut VMContext, instructions: &[Instruction], index: usize) {
+fn instruction_halt(
+    _ctx: &mut VMContext,
+    _instruction: &Instruction,
+    _instructions: &[Instruction],
+    _index: usize,
+) {
     println!("Program finished!");
 }

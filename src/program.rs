@@ -7,6 +7,7 @@ use crate::{
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},
     syntax::{decl::Decl, parser::Parser},
+    virtual_machine::kaori_vm::run_vm,
 };
 
 fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {
@@ -72,13 +73,13 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
-    /*     for instruction in &bytecode.instructions {
-           println!("{instruction}");
-       }
-    */
+    for instruction in &bytecode.instructions {
+        println!("{instruction}");
+    }
 
     let start = Instant::now();
 
+    run_vm(bytecode.instructions, bytecode.constants);
     println!("Vm executed in: {:#?}", start.elapsed());
 
     Ok(())
