@@ -10,4 +10,4 @@ criterion = "0.5"
 mem = "0.5.0"
 
 [profile.release]
-debug = false
+debug = true

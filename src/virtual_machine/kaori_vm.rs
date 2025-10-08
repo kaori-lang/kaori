@@ -79,14 +79,13 @@ fn instruction_move(
     let value = get_value(ctx, src);
     set_value(ctx, dest, *value);
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
 
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -107,14 +106,13 @@ fn instruction_add(
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::number(lhs + rhs));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
 
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -133,14 +131,13 @@ fn instruction_subtract(
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::number(lhs - rhs));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
 
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -159,13 +156,12 @@ fn instruction_multiply(
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::number(lhs * rhs));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -184,13 +180,12 @@ fn instruction_divide(
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::number(lhs / rhs));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -209,13 +204,12 @@ fn instruction_modulo(
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::number(lhs % rhs));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -234,13 +228,12 @@ fn instruction_equal(
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs == rhs));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -259,13 +252,13 @@ fn instruction_not_equal(
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs != rhs));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
+
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -284,13 +277,12 @@ fn instruction_greater(
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs > rhs));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -309,13 +301,12 @@ fn instruction_greater_equal(
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs >= rhs));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -334,13 +325,12 @@ fn instruction_less(
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs < rhs));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -359,13 +349,12 @@ fn instruction_less_equal(
     let rhs = get_value(ctx, src2).as_number();
     set_value(ctx, dest, Value::boolean(lhs <= rhs));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -383,13 +372,12 @@ fn instruction_negate(
     let value = get_value(ctx, src).as_number();
     set_value(ctx, dest, Value::number(-value));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -407,13 +395,12 @@ fn instruction_not(
     let value = get_value(ctx, src).as_boolean();
     set_value(ctx, dest, Value::boolean(!value));
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
@@ -429,6 +416,7 @@ fn instruction_jump(
     };
 
     let jump_index = (index as i16 + offset) as usize;
+
     let instruction = &instructions[jump_index];
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
@@ -455,13 +443,15 @@ fn instruction_conditional_jump(
     };
 
     let value = get_value(ctx, src);
-    let offset = if value.as_boolean() {
-        true_offset
+
+    let jump_index = if value.as_boolean() {
+        (index as i16 + true_offset) as usize
     } else {
-        false_offset
+        (index as i16 + false_offset) as usize
     };
-    let jump_index = (index as i16 + offset) as usize;
+
     let instruction = &instructions[jump_index];
+
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
@@ -502,13 +492,12 @@ fn instruction_print(
     let value = get_value(ctx, src).as_number();
     println!("{value}");
 
-    let index = index + 1;
-    let instruction = &instructions[index];
+    let instruction = unsafe { instructions.get_unchecked(index + 1) };
     become ctx.instruction_dispatch[instruction.discriminant()](
         ctx,
         instruction,
         instructions,
-        index,
+        index + 1,
     )
 }
 
