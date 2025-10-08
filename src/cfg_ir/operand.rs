@@ -19,10 +19,10 @@ impl From<Variable> for Operand {
 }
 
 impl Operand {
-    pub fn to_register(self) -> Register {
+    pub fn to_register(self) -> i16 {
         match self {
-            Self::Register(register) => register,
-            Self::Variable(Variable(value)) => Register(value as i16),
+            Self::Register(register) => register.0,
+            Self::Variable(Variable(value)) => value as i16,
         }
     }
 }

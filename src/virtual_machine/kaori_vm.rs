@@ -1,9 +1,8 @@
-#![allow(clippy::missing_safety_doc)]
+use std::hint::unreachable_unchecked;
 
 use crate::{
     bytecode::{instruction::Instruction, value::Value},
     cfg_ir::operand::Register,
-    error::kaori_error::KaoriError,
 };
 
 use super::call_stack::CallStack;
@@ -29,189 +28,170 @@ impl KaoriVM {
         }
     }
 
-    pub fn run(&mut self) -> Result<(), KaoriError> {
-        let size = self.instructions.len();
+    pub fn run(&mut self) {}
 
-        while self.instruction_index < size {
-            match self.instructions[self.instruction_index] {
-                Instruction::Move { dest, src } => self.instruction_move(dest, src),
-                Instruction::Add { dest, src1, src2 } => self.instruction_add(dest, src1, src2),
-                Instruction::Subtract { dest, src1, src2 } => {
-                    self.instruction_subtract(dest, src1, src2)
-                }
-                Instruction::Multiply { dest, src1, src2 } => {
-                    self.instruction_multiply(dest, src1, src2)
-                }
-                Instruction::Divide { dest, src1, src2 } => {
-                    self.instruction_divide(dest, src1, src2)
-                }
-                Instruction::Modulo { dest, src1, src2 } => {
-                    self.instruction_modulo(dest, src1, src2)
-                }
-                Instruction::Equal { dest, src1, src2 } => self.instruction_equal(dest, src1, src2),
-                Instruction::NotEqual { dest, src1, src2 } => {
-                    self.instruction_not_equal(dest, src1, src2)
-                }
-                Instruction::Greater { dest, src1, src2 } => {
-                    self.instruction_greater(dest, src1, src2)
-                }
-                Instruction::GreaterEqual { dest, src1, src2 } => {
-                    self.instruction_greater_equal(dest, src1, src2)
-                }
-                Instruction::Less { dest, src1, src2 } => self.instruction_less(dest, src1, src2),
-                Instruction::LessEqual { dest, src1, src2 } => {
-                    self.instruction_less_equal(dest, src1, src2)
-                }
-                Instruction::Not { dest, src } => self.instruction_not(dest, src),
-                Instruction::Negate { dest, src } => self.instruction_negate(dest, src),
-                Instruction::Call => todo!(),
-                Instruction::Return { src } => self.instruction_index = self.instructions.len(),
-                Instruction::Jump { offset } => {
-                    self.instruction_jump(offset);
-                    continue;
-                }
-                Instruction::ConditionalJump {
-                    src,
-                    true_offset,
-                    false_offset,
-                } => {
-                    self.instruction_conditional_jump(src, true_offset, false_offset);
-                    continue;
-                }
-                Instruction::Print { src } => {
-                    let value = self.get_value(src);
-
-                    unsafe {
-                        println!("{:#?}", value.as_number());
-                    }
-                }
-            }
-
-            self.instruction_index += 1;
-        }
-
-        Ok(())
-    }
-
-    pub fn get_value(&self, register: Register) -> &Value {
-        if register.0 < 0 {
-            &self.constants[(-register.0) as usize]
+    pub fn get_value(&self, register: i16) -> &Value {
+        if register < 0 {
+            &self.constants[-register as usize]
         } else {
-            &self.registers[register.0 as usize]
+            &self.registers[register as usize]
         }
     }
 
-    pub fn set_value(&mut self, register: Register, value: Value) {
+    pub fn set_value(&mut self, register: i16, value: Value) {
         self.registers[register.0 as usize] = value;
     }
 
+    #[inline(never)]
     fn instruction_move(&mut self, dest: Register, src: Register) {
-        let value = self.get_value(src);
-        self.set_value(dest, *value);
+        let value = *self.get_value(src);
+        self.set_value(dest, value);
+
+        self.instruction_index += 1;
     }
 
-    fn instruction_add(&mut self, dest: Register, src1: Register, src2: Register) {
+    #[inline(never)]
+    fn instruction_add(&mut self, instruction_index: usize) {
+        let Instruction::Add { dest, src1, src2 } = self.instructions[instruction_index] else {
+            unsafe {
+                unreachable_unchecked();
+            }
+        };
+
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
-        let value = unsafe { Value::number(lhs.as_number() + rhs.as_number()) };
-        self.set_value(dest, value);
+        self.set_value(dest, Value::number(lhs.as_number() + rhs.as_number()));
+
+        self.instruction_index += 1;
     }
 
-    fn instruction_subtract(&mut self, dest: Register, src1: Register, src2: Register) {
+    #[inline(never)]
+    fn instruction_subtract(&mut self, instruction: &Instruction) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
-        let value = unsafe { Value::number(lhs.as_number() - rhs.as_number()) };
-        self.set_value(dest, value);
+        self.set_value(dest, Value::number(lhs.as_number() - rhs.as_number()));
+
+        self.instruction_index += 1;
     }
 
-    fn instruction_multiply(&mut self, dest: Register, src1: Register, src2: Register) {
+    #[inline(never)]
+    fn instruction_multiply(&mut self, instruction: &Instruction) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
-        let value = unsafe { Value::number(lhs.as_number() * rhs.as_number()) };
-        self.set_value(dest, value);
+        self.set_value(dest, Value::number(lhs.as_number() * rhs.as_number()));
+
+        self.instruction_index += 1;
     }
 
-    fn instruction_divide(&mut self, dest: Register, src1: Register, src2: Register) {
+    #[inline(never)]
+    fn instruction_divide(&mut self, instruction: &Instruction) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
-        let value = unsafe { Value::number(lhs.as_number() / rhs.as_number()) };
-        self.set_value(dest, value);
+        self.set_value(dest, Value::number(lhs.as_number() / rhs.as_number()));
+
+        self.instruction_index += 1;
     }
 
-    fn instruction_modulo(&mut self, dest: Register, src1: Register, src2: Register) {
+    #[inline(never)]
+    fn instruction_modulo(&mut self, instruction: &Instruction) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
-        let value = unsafe { Value::number(lhs.as_number() % rhs.as_number()) };
-        self.set_value(dest, value);
+        self.set_value(dest, Value::number(lhs.as_number() % rhs.as_number()));
+
+        self.instruction_index += 1;
     }
 
-    fn instruction_equal(&mut self, dest: Register, src1: Register, src2: Register) {
+    #[inline(never)]
+    fn instruction_equal(&mut self, instruction: &Instruction) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
-        let value = unsafe { Value::boolean(lhs.as_number() == rhs.as_number()) };
-        self.set_value(dest, value);
+        self.set_value(dest, Value::boolean(lhs.as_number() == rhs.as_number()));
+
+        self.instruction_index += 1;
     }
 
-    fn instruction_not_equal(&mut self, dest: Register, src1: Register, src2: Register) {
+    #[inline(never)]
+    fn instruction_not_equal(&mut self, instruction: &Instruction) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
-        let value = unsafe { Value::boolean(lhs.as_number() != rhs.as_number()) };
-        self.set_value(dest, value);
+        self.set_value(dest, Value::boolean(lhs.as_number() != rhs.as_number()));
+
+        self.instruction_index += 1;
     }
 
-    fn instruction_greater(&mut self, dest: Register, src1: Register, src2: Register) {
+    #[inline(never)]
+    fn instruction_greater(&mut self, instruction: &Instruction) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
-        let value = unsafe { Value::boolean(lhs.as_number() > rhs.as_number()) };
-        self.set_value(dest, value);
+        self.set_value(dest, Value::boolean(lhs.as_number() > rhs.as_number()));
+
+        self.instruction_index += 1;
     }
 
-    fn instruction_greater_equal(&mut self, dest: Register, src1: Register, src2: Register) {
+    #[inline(never)]
+    fn instruction_greater_equal(&mut self, instruction: &Instruction) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
-        let value = unsafe { Value::boolean(lhs.as_number() >= rhs.as_number()) };
-        self.set_value(dest, value);
+        self.set_value(dest, Value::boolean(lhs.as_number() >= rhs.as_number()));
+
+        self.instruction_index += 1;
     }
 
-    fn instruction_less(&mut self, dest: Register, src1: Register, src2: Register) {
+    #[inline(never)]
+    fn instruction_less(&mut self, instruction: &Instruction) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
-        let value = unsafe { Value::boolean(lhs.as_number() < rhs.as_number()) };
-        self.set_value(dest, value);
+        self.set_value(dest, Value::boolean(lhs.as_number() < rhs.as_number()));
+
+        self.instruction_index += 1;
     }
 
-    fn instruction_less_equal(&mut self, dest: Register, src1: Register, src2: Register) {
+    #[inline(never)]
+    fn instruction_less_equal(&mut self, instruction: &Instruction) {
         let lhs = self.get_value(src1);
         let rhs = self.get_value(src2);
-        let value = unsafe { Value::boolean(lhs.as_number() <= rhs.as_number()) };
-        self.set_value(dest, value);
+        self.set_value(dest, Value::boolean(lhs.as_number() <= rhs.as_number()));
+
+        self.instruction_index += 1;
     }
 
+    #[inline(never)]
     fn instruction_not(&mut self, dest: Register, src: Register) {
-        let rhs = self.get_value(src);
-        let value = unsafe { Value::boolean(!rhs.as_boolean()) };
-        self.set_value(dest, value);
+        let value = self.get_value(src);
+        self.set_value(dest, Value::boolean(!value.as_boolean()));
+
+        self.instruction_index += 1;
     }
 
+    #[inline(never)]
     fn instruction_negate(&mut self, dest: Register, src: Register) {
-        let rhs = self.get_value(src);
-        let value = unsafe { Value::number(-rhs.as_number()) };
-        self.set_value(dest, value);
+        let value = self.get_value(src);
+        self.set_value(dest, Value::number(-value.as_number()));
+
+        self.instruction_index += 1;
     }
 
+    #[inline(never)]
     fn instruction_jump(&mut self, offset: i16) {
         self.instruction_index = (self.instruction_index as i16 + offset) as usize;
     }
 
+    #[inline(never)]
     fn instruction_conditional_jump(&mut self, src: Register, true_offset: i16, false_offset: i16) {
         let value = self.get_value(src);
 
-        unsafe {
-            if value.as_boolean() {
-                self.instruction_index = (self.instruction_index as i16 + true_offset) as usize;
-            } else {
-                self.instruction_index = (self.instruction_index as i16 + false_offset) as usize;
-            }
+        if value.as_boolean() {
+            self.instruction_index = (self.instruction_index as i16 + true_offset) as usize;
+        } else {
+            self.instruction_index = (self.instruction_index as i16 + false_offset) as usize;
         }
+    }
+
+    #[inline(never)]
+    fn instruction_print(&mut self, src: Register) {
+        let value = self.get_value(src);
+
+        println!("", value.a);
+        self.instruction_index += 1;
     }
 }

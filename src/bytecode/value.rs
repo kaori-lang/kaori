@@ -1,38 +1,32 @@
-#[derive(Clone, Copy)]
-pub union Value {
-    number: f64,
-    boolean: bool,
-    instruction_index: usize,
-}
-
-impl Default for Value {
-    fn default() -> Value {
-        Value { boolean: false }
-    }
-}
+#[derive(Default, Clone, Copy, Debug)]
+pub struct Value(u64);
 
 impl Value {
-    pub fn number(value: f64) -> Value {
-        Value { number: value }
+    const TAG_NUMBER: u64 = 0;
+    const TAG_BOOLEAN: u64 = 1;
+    const TAG_INSTRUCTION: u64 = 2;
+
+    pub fn number(value: f64) -> Self {
+        Self(value.to_bits())
     }
 
-    pub fn boolean(value: bool) -> Value {
-        Value { boolean: value }
+    pub fn boolean(value: bool) -> Self {
+        Self(((value as u64) << 63) | Self::TAG_BOOLEAN)
     }
 
-    pub fn instruction(instruction_index: usize) -> Value {
-        Value { instruction_index }
+    pub fn instruction(index: usize) -> Self {
+        Self((index as u64) << 2 | Self::TAG_INSTRUCTION)
     }
 
-    pub unsafe fn as_number(self) -> f64 {
-        unsafe { self.number }
+    pub fn as_number(&self) -> f64 {
+        f64::from_bits(self.0)
     }
 
-    pub unsafe fn as_boolean(self) -> bool {
-        unsafe { self.boolean }
+    pub fn as_boolean(&self) -> bool {
+        (self.0 >> 63) != 0
     }
 
-    pub unsafe fn as_instruction_index(self) -> usize {
-        unsafe { self.instruction_index }
+    pub fn as_instruction(&self) -> usize {
+        (self.0 >> 2) as usize
     }
 }

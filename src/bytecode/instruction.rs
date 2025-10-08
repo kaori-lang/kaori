@@ -1,91 +1,96 @@
-use crate::cfg_ir::operand::{Operand, Register};
+use crate::cfg_ir::operand::Operand;
+
 pub enum Instruction {
     Add {
-        dest: Register,
-        src1: Register,
-        src2: Register,
+        dest: i16,
+        src1: i16,
+        src2: i16,
     },
     Subtract {
-        dest: Register,
-        src1: Register,
-        src2: Register,
+        dest: i16,
+        src1: i16,
+        src2: i16,
     },
     Multiply {
-        dest: Register,
-        src1: Register,
-        src2: Register,
+        dest: i16,
+        src1: i16,
+        src2: i16,
     },
     Divide {
-        dest: Register,
-        src1: Register,
-        src2: Register,
+        dest: i16,
+        src1: i16,
+        src2: i16,
     },
     Modulo {
-        dest: Register,
-        src1: Register,
-        src2: Register,
+        dest: i16,
+        src1: i16,
+        src2: i16,
     },
     Equal {
-        dest: Register,
-        src1: Register,
-        src2: Register,
+        dest: i16,
+        src1: i16,
+        src2: i16,
     },
     NotEqual {
-        dest: Register,
-        src1: Register,
-        src2: Register,
+        dest: i16,
+        src1: i16,
+        src2: i16,
     },
     Greater {
-        dest: Register,
-        src1: Register,
-        src2: Register,
+        dest: i16,
+        src1: i16,
+        src2: i16,
     },
     GreaterEqual {
-        dest: Register,
-        src1: Register,
-        src2: Register,
+        dest: i16,
+        src1: i16,
+        src2: i16,
     },
     Less {
-        dest: Register,
-        src1: Register,
-        src2: Register,
+        dest: i16,
+        src1: i16,
+        src2: i16,
     },
     LessEqual {
-        dest: Register,
-        src1: Register,
-        src2: Register,
+        dest: i16,
+        src1: i16,
+        src2: i16,
     },
 
     Negate {
-        dest: Register,
-        src: Register,
+        dest: i16,
+        src: i16,
     },
     Not {
-        dest: Register,
-        src: Register,
+        dest: i16,
+        src: i16,
     },
     Move {
-        dest: Register,
-        src: Register,
+        dest: i16,
+        src: i16,
     },
     Call,
     Return {
-        src: Register,
+        src: i16,
     },
     Jump {
         offset: i16,
     },
     ConditionalJump {
-        src: Register,
+        src: i16,
         true_offset: i16,
         false_offset: i16,
     },
     Print {
-        src: Register,
+        src: i16,
     },
 }
 
 impl Instruction {
+    pub fn op_code(&self) -> usize {
+        mem::discriminant(self)
+    }
+
     pub fn add(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Add {
             dest: dest.to_register(),
@@ -223,7 +228,7 @@ impl Instruction {
     }
 }
 
-use std::fmt;
+use std::{fmt, mem};
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

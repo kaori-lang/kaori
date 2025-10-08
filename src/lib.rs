@@ -1,3 +1,4 @@
+#![feature(explicit_tail_calls)]
 pub mod bytecode;
 pub mod cfg_ir;
 pub mod error;
