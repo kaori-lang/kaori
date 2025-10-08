@@ -1,13 +1,12 @@
 use std::time::Instant;
 
 use crate::{
-    bytecode::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator, instruction},
+    bytecode::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
     cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},
     syntax::{decl::Decl, parser::Parser},
-    virtual_machine::kaori_vm::KaoriVM,
 };
 
 fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {
@@ -77,11 +76,8 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
            println!("{instruction}");
        }
     */
-    let mut vm = KaoriVM::new(bytecode.instructions, bytecode.constants);
 
     let start = Instant::now();
-
-    vm.run();
 
     println!("Vm executed in: {:#?}", start.elapsed());
 
