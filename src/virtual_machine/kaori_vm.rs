@@ -4,38 +4,13 @@ use crate::bytecode::{instruction::Instruction, value::Value};
 
 use super::call_stack::CallStack;
 
-const DISPATCH_OP: [fn(
-    &mut VMContext,
-    instruction: &Instruction,
-    instructions: &[Instruction],
-    index: usize,
-); 20] = [
-    instruction_add,              // 0
-    instruction_subtract,         // 1
-    instruction_multiply,         // 2
-    instruction_divide,           // 3
-    instruction_modulo,           // 4
-    instruction_equal,            // 5
-    instruction_not_equal,        // 6
-    instruction_greater,          // 7
-    instruction_greater_equal,    // 8
-    instruction_less,             // 9
-    instruction_less_equal,       // 10
-    instruction_negate,           // 11
-    instruction_not,              // 12
-    instruction_move,             // 13
-    instruction_call,             // 14
-    instruction_return,           // 15
-    instruction_jump,             // 16
-    instruction_conditional_jump, // 17
-    instruction_print,            // 18
-    instruction_halt,             // 19
-];
-
+type InstructionHandler =
+    fn(&mut VMContext, instruction: &Instruction, instructions: &[Instruction], index: usize);
 pub struct VMContext {
     pub call_stack: CallStack,
     pub constants: Vec<Value>,
     pub registers: Vec<Value>,
+    pub instruction_dispatch: [InstructionHandler; 20],
 }
 
 impl VMContext {
@@ -44,6 +19,28 @@ impl VMContext {
             call_stack: CallStack::new(return_address),
             constants,
             registers: vec![Value::default(); 1024],
+            instruction_dispatch: [
+                instruction_add,              // 0
+                instruction_subtract,         // 1
+                instruction_multiply,         // 2
+                instruction_divide,           // 3
+                instruction_modulo,           // 4
+                instruction_equal,            // 5
+                instruction_not_equal,        // 6
+                instruction_greater,          // 7
+                instruction_greater_equal,    // 8
+                instruction_less,             // 9
+                instruction_less_equal,       // 10
+                instruction_negate,           // 11
+                instruction_not,              // 12
+                instruction_move,             // 13
+                instruction_call,             // 14
+                instruction_return,           // 15
+                instruction_jump,             // 16
+                instruction_conditional_jump, // 17
+                instruction_print,            // 18
+                instruction_halt,             // 19
+            ],
         }
     }
 }
@@ -52,9 +49,10 @@ pub fn run_vm(instructions: Vec<Instruction>, constants: Vec<Value>) {
     let mut ctx = VMContext::new(instructions.len(), constants);
 
     let instruction = &instructions[0];
-    DISPATCH_OP[instruction.index()](&mut ctx, instruction, &instructions, 0);
+    ctx.instruction_dispatch[instruction.discriminant()](&mut ctx, instruction, &instructions, 0);
 }
 
+#[inline(always)]
 fn get_value(ctx: &VMContext, register: i16) -> &Value {
     if register < 0 {
         &ctx.constants[-register as usize]
@@ -62,6 +60,7 @@ fn get_value(ctx: &VMContext, register: i16) -> &Value {
         &ctx.registers[register as usize]
     }
 }
+#[inline(always)]
 fn set_value(ctx: &mut VMContext, register: i16, value: Value) {
     ctx.registers[register as usize] = value;
 }
@@ -73,8 +72,6 @@ fn instruction_move(
     instructions: &[Instruction],
     index: usize,
 ) {
-    let instruction = &instructions[index];
-
     let Instruction::Move { dest, src } = *instruction else {
         unsafe { unreachable_unchecked() }
     };
@@ -85,7 +82,12 @@ fn instruction_move(
     let index = index + 1;
     let instruction = &instructions[index];
 
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -108,7 +110,12 @@ fn instruction_add(
     let index = index + 1;
     let instruction = &instructions[index];
 
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -128,7 +135,13 @@ fn instruction_subtract(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -148,7 +161,12 @@ fn instruction_multiply(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -168,7 +186,12 @@ fn instruction_divide(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -188,7 +211,12 @@ fn instruction_modulo(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -208,7 +236,12 @@ fn instruction_equal(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -228,7 +261,12 @@ fn instruction_not_equal(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -248,7 +286,12 @@ fn instruction_greater(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -268,7 +311,12 @@ fn instruction_greater_equal(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -288,7 +336,12 @@ fn instruction_less(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -308,7 +361,12 @@ fn instruction_less_equal(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -327,7 +385,12 @@ fn instruction_negate(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -346,7 +409,12 @@ fn instruction_not(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]
@@ -362,7 +430,12 @@ fn instruction_jump(
 
     let jump_index = (index as i16 + offset) as usize;
     let instruction = &instructions[jump_index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, jump_index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        jump_index,
+    )
 }
 
 #[inline(never)]
@@ -389,7 +462,12 @@ fn instruction_conditional_jump(
     };
     let jump_index = (index as i16 + offset) as usize;
     let instruction = &instructions[jump_index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, jump_index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        jump_index,
+    )
 }
 
 #[inline(never)]
@@ -426,7 +504,12 @@ fn instruction_print(
 
     let index = index + 1;
     let instruction = &instructions[index];
-    become DISPATCH_OP[instruction.index()](ctx, instruction, instructions, index)
+    become ctx.instruction_dispatch[instruction.discriminant()](
+        ctx,
+        instruction,
+        instructions,
+        index,
+    )
 }
 
 #[inline(never)]

@@ -115,6 +115,11 @@ impl Instruction {
         }
     }
 
+    #[inline(always)]
+    pub fn discriminant(&self) -> usize {
+        unsafe { *<*const _>::from(self).cast::<u8>() as usize }
+    }
+
     pub fn add(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Add {
             dest: dest.to_register(),
