@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::cfg_ir::operand::Operand;
 
 pub enum Instruction {
@@ -88,6 +90,31 @@ pub enum Instruction {
 }
 
 impl Instruction {
+    pub fn index(&self) -> usize {
+        match self {
+            Instruction::Add { .. } => 0,
+            Instruction::Subtract { .. } => 1,
+            Instruction::Multiply { .. } => 2,
+            Instruction::Divide { .. } => 3,
+            Instruction::Modulo { .. } => 4,
+            Instruction::Equal { .. } => 5,
+            Instruction::NotEqual { .. } => 6,
+            Instruction::Greater { .. } => 7,
+            Instruction::GreaterEqual { .. } => 8,
+            Instruction::Less { .. } => 9,
+            Instruction::LessEqual { .. } => 10,
+            Instruction::Negate { .. } => 11,
+            Instruction::Not { .. } => 12,
+            Instruction::Move { .. } => 13,
+            Instruction::Call => 14,
+            Instruction::Return { .. } => 15,
+            Instruction::Jump { .. } => 16,
+            Instruction::ConditionalJump { .. } => 17,
+            Instruction::Print { .. } => 18,
+            Instruction::Halt => 19,
+        }
+    }
+
     pub fn add(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Add {
             dest: dest.to_register(),
@@ -224,11 +251,6 @@ impl Instruction {
         }
     }
 }
-
-use std::{
-    fmt::{self, write},
-    mem,
-};
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

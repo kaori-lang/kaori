@@ -4,7 +4,28 @@ use crate::bytecode::{instruction::Instruction, value::Value};
 
 use super::call_stack::CallStack;
 
-const DISPATCH_OP: [fn(ctx: &mut VMContext, index: usize); 1] = [instruction_add];
+const DISPATCH_OP: [InstructionHandler; 20] = [
+    instruction_add,              // 0
+    instruction_subtract,         // 1
+    instruction_multiply,         // 2
+    instruction_divide,           // 3
+    instruction_modulo,           // 4
+    instruction_equal,            // 5
+    instruction_not_equal,        // 6
+    instruction_greater,          // 7
+    instruction_greater_equal,    // 8
+    instruction_less,             // 9
+    instruction_less_equal,       // 10
+    instruction_negate,           // 11
+    instruction_not,              // 12
+    instruction_move,             // 13
+    instruction_call,             // 14
+    instruction_return,           // 15
+    instruction_jump,             // 16
+    instruction_conditional_jump, // 17
+    instruction_print,            // 18
+    instruction_halt,             // 19
+];
 
 pub struct VMContext {
     pub call_stack: CallStack,
@@ -45,8 +66,8 @@ fn instruction_move(ctx: &mut VMContext, index: usize) {
         unsafe { unreachable_unchecked() }
     };
 
-    let val = get_value(ctx, src);
-    set_value(ctx, dest, *val);
+    let value = get_value(ctx, src);
+    set_value(ctx, dest, *value);
 }
 
 #[inline(never)]
@@ -186,8 +207,8 @@ fn instruction_negate(ctx: &mut VMContext, index: usize) {
         unsafe { unreachable_unchecked() }
     };
 
-    let val = get_value(ctx, src).as_number();
-    set_value(ctx, dest, Value::number(-val));
+    let value = get_value(ctx, src).as_number();
+    set_value(ctx, dest, Value::number(-value));
 }
 
 #[inline(never)]
@@ -196,8 +217,8 @@ fn instruction_not(ctx: &mut VMContext, index: usize) {
         unsafe { unreachable_unchecked() }
     };
 
-    let val = get_value(ctx, src).as_boolean();
-    set_value(ctx, dest, Value::boolean(!val));
+    let value = get_value(ctx, src).as_boolean();
+    set_value(ctx, dest, Value::boolean(!value));
 }
 
 #[inline(never)]
@@ -208,7 +229,31 @@ fn instruction_jump(ctx: &mut VMContext, index: usize) {
         }
     };
 
-    ctx.instruction_index = ((ctx.instruction_index as isize) + (offset as isize)) as usize;
+    ctx.instruction_index = (ctx.instruction_index as i16 + offset) as usize;
+}
+
+#[inline(never)]
+fn instruction_conditional_jump(ctx: &mut VMContext, index: usize) {
+    let Instruction::ConditionalJump {
+        src,
+        true_offset,
+        false_offset,
+    } = ctx.instructions[index]
+    else {
+        unsafe {
+            unreachable_unchecked();
+        }
+    };
+
+    let value = get_value(ctx, src);
+
+    let offset = if value.as_boolean() {
+        true_offset
+    } else {
+        false_offset
+    };
+
+    ctx.instruction_index = (ctx.instruction_index as i16 + offset) as usize;
 }
 
 #[inline(never)]
@@ -219,4 +264,9 @@ fn instruction_print(ctx: &mut VMContext, index: usize) {
 
     let val = get_value(ctx, src).as_number();
     println!("{val}");
+}
+
+#[inline(never)]
+fn instruction_halt(ctx: &mut VMContext, index: usize) {
+    println!("Program finished!");
 }
