@@ -42,6 +42,20 @@ impl VMContext {
             ],
         }
     }
+
+    #[inline(always)]
+    fn get_value(&self, register: i16) -> &Value {
+        if register < 0 {
+            &self.constants[-register as usize]
+        } else {
+            &self.registers[register as usize]
+        }
+    }
+
+    #[inline(always)]
+    fn set_value(&mut self, register: i16, value: Value) {
+        self.registers[register as usize] = value;
+    }
 }
 
 pub fn run_vm(instructions: Vec<Instruction>, constants: Vec<Value>) {
@@ -52,19 +66,6 @@ pub fn run_vm(instructions: Vec<Instruction>, constants: Vec<Value>) {
     ctx.instruction_dispatch[op_code](&mut ctx, ip);
 }
 
-#[inline(always)]
-fn get_value(ctx: &VMContext, register: i16) -> &Value {
-    if register < 0 {
-        &ctx.constants[-register as usize]
-    } else {
-        &ctx.registers[register as usize]
-    }
-}
-#[inline(always)]
-fn set_value(ctx: &mut VMContext, register: i16, value: Value) {
-    ctx.registers[register as usize] = value;
-}
-
 #[inline(never)]
 fn instruction_move(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
@@ -72,12 +73,13 @@ fn instruction_move(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked();
         };
 
-        let value = get_value(ctx, src);
+        let value = ctx.get_value(src);
 
-        set_value(ctx, dest, *value);
+        ctx.set_value(dest, *value);
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -88,9 +90,9 @@ fn instruction_add(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::Add { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
-        let lhs = get_value(ctx, src1).as_number();
-        let rhs = get_value(ctx, src2).as_number();
-        set_value(ctx, dest, Value::number(lhs + rhs));
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
+        ctx.set_value(dest, Value::number(lhs + rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -104,9 +106,9 @@ fn instruction_subtract(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::Subtract { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
-        let lhs = get_value(ctx, src1).as_number();
-        let rhs = get_value(ctx, src2).as_number();
-        set_value(ctx, dest, Value::number(lhs - rhs));
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
+        ctx.set_value(dest, Value::number(lhs - rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -120,9 +122,9 @@ fn instruction_multiply(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::Multiply { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
-        let lhs = get_value(ctx, src1).as_number();
-        let rhs = get_value(ctx, src2).as_number();
-        set_value(ctx, dest, Value::number(lhs * rhs));
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
+        ctx.set_value(dest, Value::number(lhs * rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -136,9 +138,9 @@ fn instruction_divide(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::Divide { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
-        let lhs = get_value(ctx, src1).as_number();
-        let rhs = get_value(ctx, src2).as_number();
-        set_value(ctx, dest, Value::number(lhs / rhs));
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
+        ctx.set_value(dest, Value::number(lhs / rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -152,9 +154,9 @@ fn instruction_modulo(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::Modulo { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
-        let lhs = get_value(ctx, src1).as_number();
-        let rhs = get_value(ctx, src2).as_number();
-        set_value(ctx, dest, Value::number(lhs % rhs));
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
+        ctx.set_value(dest, Value::number(lhs % rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -168,9 +170,9 @@ fn instruction_equal(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::Equal { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
-        let lhs = get_value(ctx, src1).as_number();
-        let rhs = get_value(ctx, src2).as_number();
-        set_value(ctx, dest, Value::boolean(lhs == rhs));
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
+        ctx.set_value(dest, Value::boolean(lhs == rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -184,9 +186,9 @@ fn instruction_not_equal(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::NotEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
-        let lhs = get_value(ctx, src1).as_number();
-        let rhs = get_value(ctx, src2).as_number();
-        set_value(ctx, dest, Value::boolean(lhs != rhs));
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
+        ctx.set_value(dest, Value::boolean(lhs != rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -200,9 +202,9 @@ fn instruction_greater(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::Greater { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
-        let lhs = get_value(ctx, src1).as_number();
-        let rhs = get_value(ctx, src2).as_number();
-        set_value(ctx, dest, Value::boolean(lhs > rhs));
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
+        ctx.set_value(dest, Value::boolean(lhs > rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -216,9 +218,9 @@ fn instruction_greater_equal(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::GreaterEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
-        let lhs = get_value(ctx, src1).as_number();
-        let rhs = get_value(ctx, src2).as_number();
-        set_value(ctx, dest, Value::boolean(lhs >= rhs));
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
+        ctx.set_value(dest, Value::boolean(lhs >= rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -232,9 +234,9 @@ fn instruction_less(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::Less { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
-        let lhs = get_value(ctx, src1).as_number();
-        let rhs = get_value(ctx, src2).as_number();
-        set_value(ctx, dest, Value::boolean(lhs < rhs));
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
+        ctx.set_value(dest, Value::boolean(lhs < rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -248,9 +250,9 @@ fn instruction_less_equal(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::LessEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
-        let lhs = get_value(ctx, src1).as_number();
-        let rhs = get_value(ctx, src2).as_number();
-        set_value(ctx, dest, Value::boolean(lhs <= rhs));
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
+        ctx.set_value(dest, Value::boolean(lhs <= rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -264,8 +266,8 @@ fn instruction_negate(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::Negate { dest, src } = *ip else {
             unreachable_unchecked();
         };
-        let value = get_value(ctx, src).as_number();
-        set_value(ctx, dest, Value::number(-value));
+        let value = ctx.get_value(src).as_number();
+        ctx.set_value(dest, Value::number(-value));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -279,8 +281,8 @@ fn instruction_not(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::Not { dest, src } = *ip else {
             unreachable_unchecked();
         };
-        let value = get_value(ctx, src).as_boolean();
-        set_value(ctx, dest, Value::boolean(!value));
+        let value = ctx.get_value(src).as_boolean();
+        ctx.set_value(dest, Value::boolean(!value));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -312,7 +314,7 @@ fn instruction_conditional_jump(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked();
         };
 
-        let value = get_value(ctx, src);
+        let value = ctx.get_value(src);
         let ip = if value.as_boolean() {
             ip.offset(true_offset as isize)
         } else {
@@ -337,7 +339,7 @@ fn instruction_print(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked();
         };
 
-        let value = get_value(ctx, src);
+        let value = ctx.get_value(src);
         println!("{}", value.as_number()); // adapt if you have multiple value types
 
         let ip = ip.add(1);
@@ -349,5 +351,4 @@ fn instruction_print(ctx: &mut VMContext, ip: *const Instruction) {
 #[inline(never)]
 fn instruction_halt(_ctx: &mut VMContext, _ip: *const Instruction) {
     println!("Program finished!");
-    std::process::exit(0);
 }

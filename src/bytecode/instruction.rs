@@ -93,31 +93,31 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn index(&self) -> usize {
-        match self {
-            Instruction::Add { .. } => 0,
-            Instruction::Subtract { .. } => 1,
-            Instruction::Multiply { .. } => 2,
-            Instruction::Divide { .. } => 3,
-            Instruction::Modulo { .. } => 4,
-            Instruction::Equal { .. } => 5,
-            Instruction::NotEqual { .. } => 6,
-            Instruction::Greater { .. } => 7,
-            Instruction::GreaterEqual { .. } => 8,
-            Instruction::Less { .. } => 9,
-            Instruction::LessEqual { .. } => 10,
-            Instruction::Negate { .. } => 11,
-            Instruction::Not { .. } => 12,
-            Instruction::Move { .. } => 13,
-            Instruction::Call => 14,
-            Instruction::Return { .. } => 15,
-            Instruction::Jump { .. } => 16,
-            Instruction::ConditionalJump { .. } => 17,
-            Instruction::Print { .. } => 18,
-            Instruction::Halt => 19,
-        }
-    }
-
+    /* pub fn discriminant(&self) -> usize {
+           match self {
+               Instruction::Add { .. } => 0,
+               Instruction::Subtract { .. } => 1,
+               Instruction::Multiply { .. } => 2,
+               Instruction::Divide { .. } => 3,
+               Instruction::Modulo { .. } => 4,
+               Instruction::Equal { .. } => 5,
+               Instruction::NotEqual { .. } => 6,
+               Instruction::Greater { .. } => 7,
+               Instruction::GreaterEqual { .. } => 8,
+               Instruction::Less { .. } => 9,
+               Instruction::LessEqual { .. } => 10,
+               Instruction::Negate { .. } => 11,
+               Instruction::Not { .. } => 12,
+               Instruction::Move { .. } => 13,
+               Instruction::Call => 14,
+               Instruction::Return { .. } => 15,
+               Instruction::Jump { .. } => 16,
+               Instruction::ConditionalJump { .. } => 17,
+               Instruction::Print { .. } => 18,
+               Instruction::Halt => 19,
+           }
+       }
+    */
     #[inline(always)]
     pub fn discriminant(&self) -> usize {
         unsafe { *<*const _>::from(self).cast::<u8>() as usize }

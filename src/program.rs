@@ -80,7 +80,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     let start = Instant::now();
 
     run_vm(bytecode.instructions, bytecode.constants);
-    println!("Vm executed in: {:#?}", start.elapsed());
+    println!("Time elapsed: {:#?}", start.elapsed());
 
     Ok(())
 }
