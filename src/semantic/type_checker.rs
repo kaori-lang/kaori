@@ -193,7 +193,7 @@ impl TypeChecker {
                 let left_ty = self.type_check_expression(left)?;
 
                 if left_ty == right_ty {
-                    left_ty
+                    TypeDef::Void
                 } else {
                     return Err(kaori_error!(
                         expression.span,

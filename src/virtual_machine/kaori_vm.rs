@@ -63,6 +63,7 @@ pub fn run_vm(instructions: Vec<Instruction>, constants: Vec<Value>) {
 
     let ip = instructions.as_ptr();
     let op_code = instructions[0].discriminant();
+
     ctx.instruction_dispatch[op_code](&mut ctx, ip);
 }
 
@@ -90,12 +91,14 @@ fn instruction_add(ctx: &mut VMContext, ip: *const Instruction) {
         let Instruction::Add { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
         };
+
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
         ctx.set_value(dest, Value::number(lhs + rhs));
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -112,6 +115,7 @@ fn instruction_subtract(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -128,6 +132,7 @@ fn instruction_multiply(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -144,6 +149,7 @@ fn instruction_divide(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -160,6 +166,7 @@ fn instruction_modulo(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -176,6 +183,7 @@ fn instruction_equal(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -192,6 +200,7 @@ fn instruction_not_equal(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -208,6 +217,7 @@ fn instruction_greater(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -224,6 +234,7 @@ fn instruction_greater_equal(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -240,6 +251,7 @@ fn instruction_less(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -256,6 +268,7 @@ fn instruction_less_equal(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -271,6 +284,7 @@ fn instruction_negate(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -286,6 +300,7 @@ fn instruction_not(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
@@ -344,6 +359,7 @@ fn instruction_print(ctx: &mut VMContext, ip: *const Instruction) {
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
+
         become ctx.instruction_dispatch[op_code](ctx, ip);
     }
 }
