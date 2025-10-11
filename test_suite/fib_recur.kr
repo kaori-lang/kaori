@@ -12,11 +12,13 @@ def fib(n: number) -> number {
     return fib(n - 1) + fib(n - 2);
 }
 
-def main() {
+def main() -> number {
     var x: number = 30;
-
+    
     if fib(x) != 832040 {
         print(1);
     }
+
+    return 1;
 }
 

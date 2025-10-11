@@ -13,7 +13,7 @@ pub struct VMContext {
 }
 
 impl VMContext {
-    pub fn new(return_address: usize, constants: Vec<Value>) -> Self {
+    pub fn new(return_address: *const Instruction, constants: Vec<Value>) -> Self {
         Self {
             call_stack: CallStack::new(return_address),
             constants,
@@ -48,18 +48,24 @@ impl VMContext {
         if register < 0 {
             &self.constants[-register as usize]
         } else {
-            &self.registers[register as usize]
+            let base_address = self.call_stack.function_frames.last().unwrap().base_address;
+
+            &self.registers[base_address + register as usize]
         }
     }
 
     #[inline(always)]
     fn set_value(&mut self, register: i16, value: Value) {
-        self.registers[register as usize] = value;
+        let base_address = self.call_stack.function_frames.last().unwrap().base_address;
+
+        self.registers[base_address + register as usize] = value;
     }
 }
 
 pub fn run_vm(instructions: Vec<Instruction>, constants: Vec<Value>) {
-    let mut ctx = VMContext::new(instructions.len(), constants);
+    let halt_ip = unsafe { instructions.as_ptr().add(instructions.len() - 1) };
+
+    let mut ctx = VMContext::new(halt_ip, constants);
 
     let ip = instructions.as_ptr();
     let op_code = instructions[0].discriminant();
@@ -345,7 +351,26 @@ fn instruction_conditional_jump(ctx: &mut VMContext, ip: *const Instruction) {
 fn instruction_call(ctx: &mut VMContext, ip: *const Instruction) {}
 
 #[inline(never)]
-fn instruction_return(ctx: &mut VMContext, _ip: *const Instruction) {}
+fn instruction_return(ctx: &mut VMContext, ip: *const Instruction) {
+    unsafe {
+        let Instruction::Return { src } = *ip else {
+            unreachable_unchecked();
+        };
+
+        let value = *ctx.get_value(src);
+
+        let frame = ctx.call_stack.pop_frame();
+
+        let dest = frame.return_register;
+
+        ctx.set_value(dest, value);
+
+        let ip = frame.return_address;
+        let op_code = (*ip).discriminant();
+
+        become ctx.instruction_dispatch[op_code](ctx, ip);
+    }
+}
 
 #[inline(never)]
 fn instruction_print(ctx: &mut VMContext, ip: *const Instruction) {

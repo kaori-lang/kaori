@@ -59,6 +59,8 @@ impl BytecodeGenerator {
             instructions.push(instruction);
         }
 
+        instructions.push(Instruction::Halt);
+
         let constants = self.convert_constants(&cfg_ir.constants.constants);
 
         Bytecode::new(instructions, constants)

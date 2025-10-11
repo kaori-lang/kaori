@@ -399,7 +399,6 @@ impl CfgBuilder {
                 }
 
                 let instruction = CfgInstruction::call(dest, src, caller_size);
-
                 self.emit_instruction(instruction);
 
                 dest

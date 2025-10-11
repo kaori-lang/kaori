@@ -77,13 +77,13 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
-    /*   for instruction in &bytecode.instructions {
-           println!("{instruction}");
-       }
-    */
+    for instruction in &bytecode.instructions {
+        println!("{instruction}");
+    }
+
     let start = Instant::now();
 
-    run_vm(bytecode.instructions, bytecode.constants);
+    //run_vm(bytecode.instructions, bytecode.constants);
     println!("Time elapsed: {:#?}", start.elapsed());
 
     Ok(())
