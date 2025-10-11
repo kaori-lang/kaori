@@ -138,7 +138,11 @@ impl BytecodeGenerator {
             CfgInstruction::Negate { dest, src } => Instruction::negate(dest, src),
             CfgInstruction::Not { dest, src } => Instruction::not(dest, src),
             CfgInstruction::Move { dest, src } => Instruction::mov(dest, src),
-            CfgInstruction::Call => Instruction::call(),
+            CfgInstruction::Call {
+                dest,
+                src,
+                caller_size,
+            } => Instruction::call(dest, src, caller_size),
             CfgInstruction::Print { src } => Instruction::print(src),
             CfgInstruction::Jump { target } => {
                 let offset = *self.basic_blocks.get(&target).unwrap() as i16 - index as i16;

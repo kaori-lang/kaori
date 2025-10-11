@@ -137,6 +137,7 @@ impl CfgBuilder {
 
                 for parameter in parameters {
                     let variable = self.create_variable();
+
                     self.nodes_variable.insert(parameter.id, variable);
                 }
 
@@ -381,19 +382,25 @@ impl CfgBuilder {
             HirExprKind::FunctionCall { callee, arguments } => {
                 let dest = self.create_variable();
 
-                let call_instruction = CfgInstruction::Call;
+                let arguments_src = arguments
+                    .iter()
+                    .map(|argument| self.visit_expression(argument))
+                    .collect::<Vec<Variable>>();
 
-                self.emit_instruction(call_instruction);
+                let src = self.visit_expression(callee);
 
-                for (dest, argument) in arguments.iter().enumerate() {
-                    let src = self.visit_expression(argument);
+                let caller_size = self.variable;
 
-                    /*   let instruction = CfgInstruction::Move { dest, src };
+                for src in arguments_src {
+                    let dest = self.create_variable();
+                    let instruction = CfgInstruction::move_(dest, src);
 
-                    self.emit_instruction(instruction); */
+                    self.emit_instruction(instruction);
                 }
 
-                let callee_variable = self.visit_expression(callee);
+                let instruction = CfgInstruction::call(dest, src, caller_size);
+
+                self.emit_instruction(instruction);
 
                 dest
             }

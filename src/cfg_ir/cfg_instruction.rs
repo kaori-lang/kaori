@@ -80,7 +80,11 @@ pub enum CfgInstruction {
     Return {
         src: Option<Operand>,
     },
-    Call,
+    Call {
+        dest: Operand,
+        src: Operand,
+        caller_size: isize,
+    },
     Print {
         src: Operand,
     },
@@ -262,8 +266,12 @@ impl CfgInstruction {
         }
     }
 
-    pub fn call() -> Self {
-        Self::Call
+    pub fn call(dest: impl Into<Operand>, src: impl Into<Operand>, caller_size: isize) -> Self {
+        Self::Call {
+            dest: dest.into(),
+            src: src.into(),
+            caller_size,
+        }
     }
 
     pub fn print(src: impl Into<Operand>) -> Self {
