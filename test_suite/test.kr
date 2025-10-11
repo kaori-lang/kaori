@@ -1,18 +1,9 @@
 def main() -> number {
-    var iterations: number = 1000000;
-    var max_fib: number = 40;
+    var a: number = 5;
 
-    for var i: number = 0; i < iterations; i += 1 {
-        var a: number = 0;
-        var b: number = 1;
 
-        for var j: number = 0; j < max_fib; j += 1 {
-            var temp: number = a + b;
-            a = b;
-            b = temp;
-        }
+    if a = 2 {
 
-  
     }
 
     return 0;

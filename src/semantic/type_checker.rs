@@ -139,7 +139,16 @@ impl TypeChecker {
                 then_branch,
                 else_branch,
             } => {
-                self.type_check_expression(condition)?;
+                let condition_ty = self.type_check_expression(condition)?;
+
+                let TypeDef::Boolean = condition_ty else {
+                    return Err(kaori_error!(
+                        condition.span,
+                        "expected a boolean for condition, but found {:#?}",
+                        condition_ty
+                    ));
+                };
+
                 self.type_check_statement(then_branch)?;
 
                 if let Some(branch) = else_branch {
@@ -155,7 +164,16 @@ impl TypeChecker {
                 if let Some(init) = init {
                     self.type_check_declaration(init)?;
                 }
-                self.type_check_expression(condition)?;
+
+                let condition_ty = self.type_check_expression(condition)?;
+
+                let TypeDef::Boolean = condition_ty else {
+                    return Err(kaori_error!(
+                        condition.span,
+                        "expected a boolean for condition, but found {:#?}",
+                        condition_ty
+                    ));
+                };
 
                 self.type_check_statement(block)?;
 
