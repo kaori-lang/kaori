@@ -1,3 +1,5 @@
+use super::instruction::Instruction;
+
 #[derive(Default, Clone, Copy, Debug)]
 pub struct Value(u64);
 
@@ -17,8 +19,8 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn instruction(index: usize) -> Self {
-        Self((index as u64) << 2 | Self::TAG_INSTRUCTION)
+    pub fn instruction(ptr: *const Instruction) -> Self {
+        Self(ptr as u64)
     }
 
     #[inline(always)]
@@ -32,7 +34,7 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn as_instruction(&self) -> usize {
-        (self.0 >> 2) as usize
+    pub fn as_instruction(&self) -> *const Instruction {
+        self.0 as *const Instruction
     }
 }

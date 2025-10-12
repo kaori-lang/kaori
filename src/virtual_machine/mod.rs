@@ -1,3 +1,3 @@
 pub mod kaori_vm;
 
-pub mod call_stack;
+pub mod function_frame;

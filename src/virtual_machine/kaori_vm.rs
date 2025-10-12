@@ -2,22 +2,22 @@ use std::hint::unreachable_unchecked;
 
 use crate::bytecode::{instruction::Instruction, value::Value};
 
-use super::call_stack::CallStack;
+use super::function_frame::FunctionFrame;
 
 type InstructionHandler = fn(&mut VMContext, ip: *const Instruction);
 pub struct VMContext {
-    pub call_stack: CallStack,
+    pub call_stack: Vec<FunctionFrame>,
     pub constants: Vec<Value>,
-    pub registers: Vec<Value>,
+    pub registers: *mut Value,
     pub instruction_dispatch: [InstructionHandler; 20],
 }
 
 impl VMContext {
-    pub fn new(return_address: *const Instruction, constants: Vec<Value>) -> Self {
+    pub fn new(constants: Vec<Value>, registers: *mut Value) -> Self {
         Self {
-            call_stack: CallStack::new(return_address),
+            call_stack: Vec::new(),
             constants,
-            registers: vec![Value::default(); 1024],
+            registers,
             instruction_dispatch: [
                 instruction_add,              // 0
                 instruction_subtract,         // 1
@@ -44,28 +44,56 @@ impl VMContext {
     }
 
     #[inline(always)]
-    fn get_value(&self, register: i16) -> &Value {
+    fn get_value(&self, register: i16) -> Value {
         if register < 0 {
-            &self.constants[-register as usize]
+            self.constants[-register as usize]
         } else {
-            let base_address = self.call_stack.function_frames.last().unwrap().base_address;
-
-            &self.registers[base_address + register as usize]
+            unsafe { *self.registers.add(register as usize) }
         }
     }
 
     #[inline(always)]
     fn set_value(&mut self, register: i16, value: Value) {
-        let base_address = self.call_stack.function_frames.last().unwrap().base_address;
+        unsafe {
+            *self.registers.add(register as usize) = value;
+        }
+    }
 
-        self.registers[base_address + register as usize] = value;
+    #[inline(always)]
+    fn pop_frame(&mut self) -> FunctionFrame {
+        let frame = unsafe { self.call_stack.pop().unwrap_unchecked() };
+
+        self.registers = unsafe { self.call_stack.last().unwrap_unchecked().registers };
+
+        frame
+    }
+
+    #[inline(always)]
+    fn push_frame(
+        &mut self,
+        return_register: i16,
+        return_address: *const Instruction,
+        caller_size: u16,
+    ) {
+        let registers = unsafe { self.registers.add(caller_size as usize) };
+
+        self.registers = registers;
+
+        let frame = FunctionFrame::new(registers, return_address, return_register);
+
+        self.call_stack.push(frame);
     }
 }
 
 pub fn run_vm(instructions: Vec<Instruction>, constants: Vec<Value>) {
     let halt_ip = unsafe { instructions.as_ptr().add(instructions.len() - 1) };
 
-    let mut ctx = VMContext::new(halt_ip, constants);
+    let mut registers = vec![Value::default(); 1024];
+
+    let mut ctx = VMContext::new(constants, registers.as_mut_ptr());
+
+    ctx.push_frame(0, halt_ip, 0);
+    ctx.push_frame(0, halt_ip, 0);
 
     let ip = instructions.as_ptr();
     let op_code = instructions[0].discriminant();
@@ -82,7 +110,7 @@ fn instruction_move(ctx: &mut VMContext, ip: *const Instruction) {
 
         let value = ctx.get_value(src);
 
-        ctx.set_value(dest, *value);
+        ctx.set_value(dest, value);
 
         let ip = ip.add(1);
         let op_code = (*ip).discriminant();
@@ -185,6 +213,7 @@ fn instruction_equal(ctx: &mut VMContext, ip: *const Instruction) {
         };
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
+
         ctx.set_value(dest, Value::boolean(lhs == rhs));
 
         let ip = ip.add(1);
@@ -348,7 +377,28 @@ fn instruction_conditional_jump(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_call(ctx: &mut VMContext, ip: *const Instruction) {}
+fn instruction_call(ctx: &mut VMContext, ip: *const Instruction) {
+    unsafe {
+        let Instruction::Call {
+            dest,
+            src,
+            caller_size,
+        } = *ip
+        else {
+            unreachable_unchecked();
+        };
+
+        let return_register = dest;
+        let return_address = ip.add(1);
+
+        let ip = ctx.get_value(src).as_instruction();
+        let op_code = (*ip).discriminant();
+
+        ctx.push_frame(return_register, return_address, caller_size);
+
+        become ctx.instruction_dispatch[op_code](ctx, ip);
+    }
+}
 
 #[inline(never)]
 fn instruction_return(ctx: &mut VMContext, ip: *const Instruction) {
@@ -357,9 +407,9 @@ fn instruction_return(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked();
         };
 
-        let value = *ctx.get_value(src);
+        let value = ctx.get_value(src);
 
-        let frame = ctx.call_stack.pop_frame();
+        let frame = ctx.pop_frame();
 
         let dest = frame.return_register;
 
@@ -390,6 +440,4 @@ fn instruction_print(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_halt(_ctx: &mut VMContext, _ip: *const Instruction) {
-    println!("Program finished!");
-}
+fn instruction_halt(_ctx: &mut VMContext, _ip: *const Instruction) {}

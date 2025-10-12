@@ -10,7 +10,11 @@ use crate::cfg_ir::{
     graph_traversal::reversed_postorder,
 };
 
-use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
+use super::{
+    bytecode::Bytecode,
+    instruction::{self, Instruction},
+    value::Value,
+};
 
 type InstructionIndex = usize;
 pub struct BytecodeGenerator {
@@ -26,7 +30,11 @@ impl BytecodeGenerator {
         }
     }
 
-    pub fn convert_constants(&self, cfg_constants: &[CfgConstant]) -> Vec<Value> {
+    pub fn convert_constants(
+        &self,
+        cfg_constants: &[CfgConstant],
+        instructions: &[Instruction],
+    ) -> Vec<Value> {
         let mut constants = Vec::new();
 
         constants.push(Value::default());
@@ -37,7 +45,8 @@ impl BytecodeGenerator {
                 CfgConstant::FunctionRef(value) => {
                     let instruction_index = *self.basic_blocks.get(value).unwrap();
 
-                    Value::instruction(instruction_index)
+                    let ptr = unsafe { instructions.as_ptr().add(instruction_index) };
+                    Value::instruction(ptr)
                 }
                 CfgConstant::Number(value) => Value::number(**value),
                 _ => todo!(),
@@ -61,7 +70,7 @@ impl BytecodeGenerator {
 
         instructions.push(Instruction::Halt);
 
-        let constants = self.convert_constants(&cfg_ir.constants.constants);
+        let constants = self.convert_constants(&cfg_ir.constants.constants, &instructions);
 
         Bytecode::new(instructions, constants)
     }

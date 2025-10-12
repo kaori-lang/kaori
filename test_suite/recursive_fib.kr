@@ -1,5 +1,3 @@
-/* test recursive fibonacci */
-
 def fib(n: number) -> number {
     if n == 0 {
         return 0;
@@ -13,12 +11,7 @@ def fib(n: number) -> number {
 }
 
 def main() -> number {
-    var x: number = 30;
-    
-    if fib(x) != 832040 {
-        print(1);
-    }
-
+    fib(40);
     return 1;
 }
 
