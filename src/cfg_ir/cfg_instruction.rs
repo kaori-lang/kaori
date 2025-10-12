@@ -1,4 +1,4 @@
-use super::{basic_block::BlockId, operand::Operand};
+use super::basic_block::BlockId;
 
 #[derive(Debug, Clone)]
 pub enum CfgInstruction {

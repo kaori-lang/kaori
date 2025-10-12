@@ -10,11 +10,7 @@ use crate::cfg_ir::{
     graph_traversal::reversed_postorder,
 };
 
-use super::{
-    bytecode::Bytecode,
-    instruction::{self, Instruction},
-    value::Value,
-};
+use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
 
 type InstructionIndex = usize;
 pub struct BytecodeGenerator {

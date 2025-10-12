@@ -1,7 +1,5 @@
 use core::fmt;
 
-use crate::cfg_ir::operand::Operand;
-
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 #[repr(align(8))]

@@ -1,4 +1,4 @@
-use super::{cfg_instruction::CfgInstruction, operand::Operand};
+use super::{cfg_instruction::CfgInstruction, variable::Variable};
 
 pub struct BasicBlock {
     pub id: BlockId,
@@ -19,13 +19,13 @@ impl BasicBlock {
 #[derive(Debug)]
 pub enum Terminator {
     Branch {
-        src: Operand,
+        src: Variable,
         r#true: BlockId,
         r#false: BlockId,
     },
     Goto(BlockId),
     Return {
-        src: Option<Operand>,
+        src: Option<Variable>,
     },
     None,
 }
