@@ -3,8 +3,7 @@ use core::fmt;
 use crate::cfg_ir::operand::Operand;
 
 #[derive(Debug, Clone, Copy)]
-#[repr(u8)]
-#[repr(align(8))]
+#[repr(u8, align(2))]
 pub enum Instruction {
     Add {
         dest: i16,
@@ -61,7 +60,6 @@ pub enum Instruction {
         src1: i16,
         src2: i16,
     },
-
     Negate {
         dest: i16,
         src: i16,
@@ -93,39 +91,18 @@ pub enum Instruction {
     Print {
         src: i16,
     },
+    // must be the last instruction so count is computed properly
     Halt,
 }
 
 impl Instruction {
-    /* pub fn discriminant(&self) -> usize {
-           match self {
-               Instruction::Add { .. } => 0,
-               Instruction::Subtract { .. } => 1,
-               Instruction::Multiply { .. } => 2,
-               Instruction::Divide { .. } => 3,
-               Instruction::Modulo { .. } => 4,
-               Instruction::Equal { .. } => 5,
-               Instruction::NotEqual { .. } => 6,
-               Instruction::Greater { .. } => 7,
-               Instruction::GreaterEqual { .. } => 8,
-               Instruction::Less { .. } => 9,
-               Instruction::LessEqual { .. } => 10,
-               Instruction::Negate { .. } => 11,
-               Instruction::Not { .. } => 12,
-               Instruction::Move { .. } => 13,
-               Instruction::Call => 14,
-               Instruction::Return { .. } => 15,
-               Instruction::Jump { .. } => 16,
-               Instruction::ConditionalJump { .. } => 17,
-               Instruction::Print { .. } => 18,
-               Instruction::Halt => 19,
-           }
-       }
-    */
+    pub(crate) const COUNT: usize = Instruction::Halt.discriminant() + 1;
+
     #[inline(always)]
-    pub fn discriminant(&self) -> usize {
-        unsafe { *<*const _>::from(self).cast::<u8>() as usize }
+    pub const fn discriminant(&self) -> usize {
+        (unsafe { *(self as *const Self as *const u8) }) as usize
     }
+
 
     pub fn add(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Add {

@@ -12,7 +12,7 @@ use crate::cfg_ir::{
 
 use super::{
     bytecode::Bytecode,
-    instruction::{self, Instruction},
+    instruction::Instruction,
     value::Value,
 };
 

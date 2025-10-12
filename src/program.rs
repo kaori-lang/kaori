@@ -4,7 +4,6 @@ use crate::{
     bytecode::{
         bytecode::Bytecode,
         bytecode_generator::BytecodeGenerator,
-        instruction::{self, Instruction},
     },
     cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr},
     error::kaori_error::KaoriError,
@@ -50,11 +49,6 @@ fn build_cfg_ir(hir: &[HirDecl]) -> CfgIr {
     cfg_builder.cfg_ir
 }
 
-fn run_lifetime_analyis(cfg_ir: &CfgIr) {
-    /*  let mut a = LivenessAnalysis::new(cfg_stream);
-
-    a.analyze_cfgs(); */
-}
 
 fn generate_bytecode(cfg_ir: &CfgIr) -> Bytecode {
     let mut generator = BytecodeGenerator::new();
@@ -79,7 +73,10 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     let start = Instant::now();
 
-    run_vm(bytecode.instructions, bytecode.constants);
+    unsafe { run_vm(&bytecode.instructions, &bytecode.constants); }
+
+    let elapsed = start.elapsed();
+    println!("took: {elapsed:?}");
 
     Ok(())
 }
