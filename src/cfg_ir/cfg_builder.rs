@@ -152,7 +152,7 @@ impl CfgBuilder {
 
                 self.free_variables();
             }
-            HirDeclKind::Struct { fields } => {}
+            HirDeclKind::Struct { fields: _ } => {}
             HirDeclKind::Parameter => {}
             HirDeclKind::Field => {}
         }

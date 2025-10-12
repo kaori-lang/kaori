@@ -1,6 +1,3 @@
-use std::env::args;
-use std::process::ExitCode;
-
 // TODO: remove this line suppression after using the import.
 #[allow(unused_imports)]
 use std::{fs, time::Instant};
@@ -41,6 +38,6 @@ fn main() {
                 error.report(&source);
             }
         }
-        Err(error) => eprintln!("Error: Could not read the file by the given path."),
+        Err(_) => eprintln!("Error: Could not read the file by the given path."),
     };
 }
