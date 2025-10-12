@@ -1,11 +1,11 @@
+use std::{env::args, process::ExitCode};
 // TODO: remove this line suppression after using the import.
 #[allow(unused_imports)]
 use std::{fs, time::Instant};
 
 use kaori::program::run_program;
 
-/*
-fn main() -> ExitCode {
+/* fn main() -> ExitCode {
     let source_to_run = args().nth(1);
 
     if source_to_run.is_none() {
@@ -28,7 +28,6 @@ fn main() -> ExitCode {
     ExitCode::FAILURE
 }
  */
-
 fn main() {
     let source_to_run = "test_suite/recursive_fib.kr";
 

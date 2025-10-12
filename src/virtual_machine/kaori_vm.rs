@@ -1,17 +1,17 @@
-use std::mem::MaybeUninit;
 use crate::bytecode::{instruction::Instruction, value::Value};
+use std::mem::MaybeUninit;
 
 struct CallFrame {
     return_address: *const Instruction,
     register_ptr: *mut Value,
-    return_slot: *mut Value
+    return_slot: *mut Value,
 }
 
 type InstructionHandler = unsafe fn(
     call_stack: *mut CallFrame,
     constants_ptr: *const Value,
     register_ptr: *mut Value,
-    ip: *const Instruction
+    ip: *const Instruction,
 );
 
 struct Context {
@@ -49,9 +49,10 @@ macro_rules! pop_frame {
     }};
 }
 
-
 macro_rules! raw_register {
-    ($ctx:ident, $var: expr) => { $ctx.register_ptr.add(register_index($var)) };
+    ($ctx:ident, $var: expr) => {
+        $ctx.register_ptr.add(register_index($var))
+    };
 }
 
 macro_rules! get {
@@ -75,7 +76,6 @@ macro_rules! set {
     };
 }
 
-
 macro_rules! call_to {
     ($(@become $({$become_binder: tt})?)? $ctx:ident, $new_ip:expr) => {{
         let ip = $new_ip;
@@ -94,7 +94,9 @@ macro_rules! dispatch_to {
 }
 
 macro_rules! dispatch_next {
-    ($ctx:ident, $ip: expr) => { dispatch_to!($ctx, $ip.add(1)) };
+    ($ctx:ident, $ip: expr) => {
+        dispatch_to!($ctx, $ip.add(1))
+    };
 }
 
 macro_rules! declare_instructions {
@@ -280,7 +282,6 @@ pub unsafe fn run_vm(instructions: &[Instruction], constants: &[Value]) {
         constants_ptr: constants.as_ptr(),
         register_ptr: registers.as_mut_ptr().cast::<Value>(),
     };
-
 
     unsafe {
         // Push initial frame
