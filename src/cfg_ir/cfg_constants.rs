@@ -1,10 +1,7 @@
 use ordered_float::OrderedFloat;
 use std::collections::HashMap;
 
-use super::variable::Variable;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct BlockId(pub usize);
+use super::{basic_block::BlockId, variable::Variable};
 
 pub struct CfgConstants {
     pub number_constants: Vec<f64>,
@@ -18,8 +15,6 @@ pub struct CfgConstants {
 
     pub function_constants: Vec<BlockId>,
     pub function_variable: HashMap<BlockId, Variable>,
-
-    pub variable: isize,
 }
 
 impl Default for CfgConstants {
@@ -33,7 +28,6 @@ impl Default for CfgConstants {
             boolean_variable: HashMap::new(),
             function_constants: Vec::new(),
             function_variable: HashMap::new(),
-            variable: 0,
         }
     }
 }
@@ -80,13 +74,13 @@ impl CfgConstants {
         }
     }
 
-    pub fn push_function_ref(&mut self, func: BlockId) -> Variable {
-        if let Some(variable) = self.function_variable.get(&func) {
+    pub fn push_function(&mut self, value: BlockId) -> Variable {
+        if let Some(variable) = self.function_variable.get(&value) {
             *variable
         } else {
             let variable = Variable::Function(Self::next_variable(&self.function_constants));
-            self.function_constants.push(func);
-            self.function_variable.insert(func, variable);
+            self.function_constants.push(value);
+            self.function_variable.insert(value, variable);
             variable
         }
     }

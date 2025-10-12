@@ -27,12 +27,12 @@ pub enum HirExprKind {
         left: Box<HirExpr>,
         right: Box<HirExpr>,
     },
-    VariableRef(HirId),
+    Variable(HirId),
     FunctionCall {
         callee: Box<HirExpr>,
         arguments: Vec<HirExpr>,
     },
-    FunctionRef(HirId),
+    Function(HirId),
     String(String),
     Number(f64),
     Boolean(bool),
@@ -73,11 +73,11 @@ impl HirExpr {
         }
     }
 
-    pub fn variable_ref(id: HirId, span: Span) -> HirExpr {
+    pub fn variable(id: HirId, span: Span) -> HirExpr {
         HirExpr {
             id: HirId::default(),
             span,
-            kind: HirExprKind::VariableRef(id),
+            kind: HirExprKind::Variable(id),
         }
     }
 
@@ -92,11 +92,11 @@ impl HirExpr {
         }
     }
 
-    pub fn function_ref(id: HirId, span: Span) -> HirExpr {
+    pub fn function(id: HirId, span: Span) -> HirExpr {
         HirExpr {
             id: HirId::default(),
             span,
-            kind: HirExprKind::FunctionRef(id),
+            kind: HirExprKind::Function(id),
         }
     }
 

@@ -312,7 +312,7 @@ impl TypeChecker {
 
                 *return_ty
             }
-            HirExprKind::VariableRef(id) => {
+            HirExprKind::Variable(id) => {
                 let hir_ty = self.types.get(id).unwrap().to_owned();
 
                 self.get_type_def(&hir_ty)
@@ -320,7 +320,7 @@ impl TypeChecker {
             HirExprKind::Boolean(..) => TypeDef::Boolean,
             HirExprKind::Number(..) => TypeDef::Number,
             HirExprKind::String(..) => TypeDef::String,
-            HirExprKind::FunctionRef(id) => {
+            HirExprKind::Function(id) => {
                 let hir_ty = self.types.get(id).unwrap().to_owned();
 
                 self.get_type_def(&hir_ty)

@@ -16,14 +16,14 @@ use super::{
     basic_block::{BasicBlock, BlockId, Terminator},
     cfg_instruction::CfgInstruction,
     cfg_ir::CfgIr,
-    operand::Variable,
+    variable::Variable,
 };
 
 pub struct CfgBuilder {
     pub cfg_ir: CfgIr,
     current_bb: BlockId,
     variable: isize,
-    nodes_variable: HashMap<HirId, Variable>,
+    declarations: HashMap<HirId, Variable>,
     nodes_block: HashMap<HirId, BlockId>,
     active_loops: ActiveLoops,
 }
@@ -34,7 +34,7 @@ impl Default for CfgBuilder {
             cfg_ir: CfgIr::default(),
             current_bb: BlockId(0),
             variable: 0,
-            nodes_variable: HashMap::new(),
+            declarations: HashMap::new(),
             nodes_block: HashMap::new(),
             active_loops: ActiveLoops::default(),
         }
@@ -125,7 +125,7 @@ impl CfgBuilder {
                 let src = self.visit_expression(right);
                 let dest = self.create_variable();
 
-                self.nodes_variable.insert(declaration.id, dest);
+                self.declarations.insert(declaration.id, dest);
 
                 let instruction = CfgInstruction::move_(dest, src);
 
@@ -138,7 +138,7 @@ impl CfgBuilder {
                 for parameter in parameters {
                     let variable = self.create_variable();
 
-                    self.nodes_variable.insert(parameter.id, variable);
+                    self.declarations.insert(parameter.id, variable);
                 }
 
                 for node in body {
@@ -404,17 +404,17 @@ impl CfgBuilder {
                 dest
             }
 
-            HirExprKind::VariableRef(id) => *self
-                .nodes_variable
+            HirExprKind::Variable(id) => *self
+                .declarations
                 .get(id)
                 .expect("VariableRef points to a missing variable node"),
-            HirExprKind::FunctionRef(id) => {
+            HirExprKind::Function(id) => {
                 let value = *self
                     .nodes_block
                     .get(id)
                     .expect("FunctionRef points to a missing variable node");
 
-                self.cfg_ir.constants.push_function_ref(value)
+                self.cfg_ir.constants.push_function(value)
             }
             HirExprKind::String(value) => self.cfg_ir.constants.push_string(value.to_owned()),
             HirExprKind::Boolean(value) => self.cfg_ir.constants.push_boolean(*value),
