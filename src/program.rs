@@ -58,7 +58,6 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
     let hir = run_semantic_analysis(&mut ast)?;
     let cfg_ir = build_cfg_ir(&hir);
 
-    //run_lifetime_analyis(&cfg_ir);
     let bytecode = generate_bytecode(&cfg_ir);
 
     Ok(bytecode)
@@ -73,13 +72,17 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     let start = Instant::now();
 
-    /*     unsafe {
+    unsafe {
         run_vm(&bytecode.instructions, &bytecode.constants);
-    } */
+    }
 
+    let elapsed = start.elapsed();
+    println!("main vm took: {elapsed:?}");
+
+    let start = Instant::now();
     run_other_vm(bytecode.instructions, bytecode.constants);
     let elapsed = start.elapsed();
-    println!("took: {elapsed:?}");
+    println!("other vm took: {elapsed:?}");
 
     Ok(())
 }
