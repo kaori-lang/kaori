@@ -5,6 +5,7 @@ use crate::{
         hir_decl::{HirDecl, HirDeclKind},
         hir_expr::{HirExpr, HirExprKind},
         hir_id::HirId,
+        hir_ir::HirIr,
         hir_node::HirNode,
         hir_stmt::{HirStmt, HirStmtKind},
     },
@@ -19,7 +20,8 @@ use super::{
     variable::Variable,
 };
 
-pub struct CfgBuilder {
+pub struct CfgBuilder<'a> {
+    hir_ir: &'a HirIr,
     pub cfg_ir: CfgIr,
     current_bb: BlockId,
     variable: isize,
@@ -28,9 +30,10 @@ pub struct CfgBuilder {
     active_loops: ActiveLoops,
 }
 
-impl Default for CfgBuilder {
-    fn default() -> Self {
+impl<'a> CfgBuilder<'a> {
+    pub fn new(hir_ir: &'a HirIr) -> Self {
         Self {
+            hir_ir,
             cfg_ir: CfgIr::default(),
             current_bb: BlockId(0),
             variable: 0,
@@ -39,9 +42,19 @@ impl Default for CfgBuilder {
             active_loops: ActiveLoops::default(),
         }
     }
-}
 
-impl CfgBuilder {
+    pub fn build_ir(&mut self) {
+        for declaration in &self.hir_ir.declarations {
+            let cfg_root = self.create_cfg();
+
+            self.nodes_block.insert(declaration.id, cfg_root);
+        }
+
+        for declaration in &self.hir_ir.declarations {
+            self.visit_declaration(declaration);
+        }
+    }
+
     fn emit_instruction(&mut self, instruction: CfgInstruction) {
         let basic_block = self.cfg_ir.basic_blocks.get_mut(self.current_bb.0).unwrap();
 
@@ -80,18 +93,6 @@ impl CfgBuilder {
         self.cfg_ir.cfgs.push(basic_block);
 
         basic_block
-    }
-
-    pub fn build_ir(&mut self, declarations: &[HirDecl]) {
-        for declaration in declarations {
-            let cfg_root = self.create_cfg();
-
-            self.nodes_block.insert(declaration.id, cfg_root);
-        }
-
-        for declaration in declarations {
-            self.visit_declaration(declaration);
-        }
     }
 
     fn visit_nodes(&mut self, nodes: &[HirNode]) {

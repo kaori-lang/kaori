@@ -1,8 +1,9 @@
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub enum TypeDef {
     Boolean,
     String,
     Number,
+    #[default]
     Void,
     Function {
         parameters: Vec<TypeDef>,
@@ -11,12 +12,6 @@ pub enum TypeDef {
     Struct {
         fields: Vec<TypeDef>,
     },
-}
-
-impl Default for TypeDef {
-    fn default() -> Self {
-        TypeDef::Void
-    }
 }
 
 impl TypeDef {

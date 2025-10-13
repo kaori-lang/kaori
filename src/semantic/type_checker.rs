@@ -24,7 +24,10 @@ pub struct TypeChecker {
 }
 
 impl TypeChecker {
-    pub fn type_check(&mut self, declarations: &[HirDecl]) -> Result<(), KaoriError> {
+    pub fn type_check(
+        mut self,
+        declarations: &[HirDecl],
+    ) -> Result<HashMap<HirId, TypeDef>, KaoriError> {
         for declaration in declarations.iter() {
             match &declaration.kind {
                 HirDeclKind::Function { .. } => {
@@ -41,7 +44,7 @@ impl TypeChecker {
             self.type_check_declaration(declaration)?;
         }
 
-        Ok(())
+        Ok(self.types_table)
     }
 
     fn type_check_nodes(&mut self, nodes: &[HirNode]) -> Result<(), KaoriError> {
@@ -125,9 +128,7 @@ impl TypeChecker {
                     .map(|field| self.type_check_declaration(field))
                     .collect::<Result<Vec<TypeDef>, KaoriError>>()?;
 
-                let ty = TypeDef::struct_(fields);
-
-                ty
+                TypeDef::struct_(fields)
             }
             HirDeclKind::Parameter => {
                 let ty = self.get_type_def(&declaration.ty);

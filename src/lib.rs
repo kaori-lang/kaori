@@ -1,7 +1,7 @@
 #![feature(explicit_tail_calls)]
 
 //pub mod bytecode;
-//pub mod cfg_ir;
+pub mod cfg_ir;
 pub mod error;
 pub mod lexer;
 pub mod program;
