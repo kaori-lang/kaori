@@ -1,17 +1,13 @@
 use std::time::Instant;
 
 use crate::{
-    bytecode::{
-        bytecode::Bytecode,
-        bytecode_generator::BytecodeGenerator,
-        instruction::{self, Instruction},
-    },
+    bytecode::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
     cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},
     syntax::{decl::Decl, parser::Parser},
-    virtual_machine::kaori_vm::run_vm,
+    virtual_machine::{kaori_vm::run_vm, other_vm::run_other_vm},
 };
 
 fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {
@@ -50,12 +46,6 @@ fn build_cfg_ir(hir: &[HirDecl]) -> CfgIr {
     cfg_builder.cfg_ir
 }
 
-fn run_lifetime_analyis(cfg_ir: &CfgIr) {
-    /*  let mut a = LivenessAnalysis::new(cfg_stream);
-
-    a.analyze_cfgs(); */
-}
-
 fn generate_bytecode(cfg_ir: &CfgIr) -> Bytecode {
     let mut generator = BytecodeGenerator::new();
 
@@ -77,9 +67,19 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
+    /*   for instruction in &bytecode.instructions {
+        println!("{instruction}");
+    } */
+
     let start = Instant::now();
 
-    run_vm(bytecode.instructions, bytecode.constants);
+    /* unsafe {
+        run_vm(&bytecode.instructions, &bytecode.constants);
+    } */
+
+    run_other_vm(bytecode.instructions, bytecode.constants);
+    let elapsed = start.elapsed();
+    println!("took: {elapsed:?}");
 
     Ok(())
 }

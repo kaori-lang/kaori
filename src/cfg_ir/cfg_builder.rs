@@ -82,18 +82,6 @@ impl CfgBuilder {
         basic_block
     }
 
-    fn create_variable(&mut self) -> Variable {
-        let variable = Variable(self.variable);
-
-        self.variable += 1;
-
-        variable
-    }
-
-    fn free_variables(&mut self) {
-        self.variable = 0;
-    }
-
     pub fn build_ir(&mut self, declarations: &[HirDecl]) {
         for declaration in declarations {
             let cfg_root = self.create_cfg();
@@ -152,7 +140,7 @@ impl CfgBuilder {
 
                 self.free_variables();
             }
-            HirDeclKind::Struct { fields } => {}
+            HirDeclKind::Struct { fields: _ } => {}
             HirDeclKind::Parameter => {}
             HirDeclKind::Field => {}
         }

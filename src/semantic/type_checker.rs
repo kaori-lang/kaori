@@ -20,6 +20,7 @@ use super::{
 pub struct TypeChecker {
     function_return_ty: Option<TypeDef>,
     types: HashMap<HirId, HirTy>,
+    types_table: HashMap<HirId, TypeDef>,
 }
 
 impl TypeChecker {
@@ -204,7 +205,7 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn type_check_expression(&self, expression: &HirExpr) -> Result<TypeDef, KaoriError> {
+    fn type_check_expression(&mut self, expression: &HirExpr) -> Result<TypeDef, KaoriError> {
         let ty = match &expression.kind {
             HirExprKind::Assign { left, right } => {
                 let right_ty = self.type_check_expression(right)?;
@@ -326,6 +327,8 @@ impl TypeChecker {
                 self.get_type_def(&hir_ty)
             }
         };
+
+        self.types_table.insert(expression.id, ty.to_owned());
 
         Ok(ty)
     }

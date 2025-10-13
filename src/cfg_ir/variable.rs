@@ -5,3 +5,14 @@ pub enum Variable {
     Boolean(i16),
     Function(i16),
 }
+
+impl Variable {
+    pub fn to_i16(self) -> i16 {
+        match self {
+            Variable::Number(value)
+            | Variable::String(value)
+            | Variable::Boolean(value)
+            | Variable::Function(value) => value,
+        }
+    }
+}

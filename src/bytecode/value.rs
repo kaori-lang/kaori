@@ -4,10 +4,6 @@ use super::instruction::Instruction;
 pub struct Value(u64);
 
 impl Value {
-    const TAG_NUMBER: u64 = 0;
-    const TAG_BOOLEAN: u64 = 1;
-    const TAG_INSTRUCTION: u64 = 2;
-
     #[inline(always)]
     pub fn number(value: f64) -> Self {
         Self(value.to_bits())
@@ -15,12 +11,12 @@ impl Value {
 
     #[inline(always)]
     pub fn boolean(value: bool) -> Self {
-        Self(((value as u64) << 63) | Self::TAG_BOOLEAN)
+        Self(value as u64)
     }
 
     #[inline(always)]
     pub fn instruction(ptr: *const Instruction) -> Self {
-        Self(ptr as u64)
+        Self(ptr.expose_provenance() as u64)
     }
 
     #[inline(always)]
@@ -30,11 +26,11 @@ impl Value {
 
     #[inline(always)]
     pub fn as_boolean(&self) -> bool {
-        (self.0 >> 63) != 0
+        self.0 != 0
     }
 
     #[inline(always)]
     pub fn as_instruction(&self) -> *const Instruction {
-        self.0 as *const Instruction
+        core::ptr::with_exposed_provenance(self.0 as usize)
     }
 }
