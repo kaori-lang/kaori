@@ -8,6 +8,7 @@ use crate::{
         hir_ir::HirIr,
         hir_node::HirNode,
         hir_stmt::{HirStmt, HirStmtKind},
+        type_def::TypeDef,
     },
     syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
 };
@@ -20,9 +21,9 @@ use super::{
     variable::Variable,
 };
 
-pub struct CfgBuilder<'a> {
-    hir_ir: &'a HirIr,
-    pub cfg_ir: CfgIr,
+pub struct CfgBuilder {
+    types_table: HashMap<HirId, TypeDef>,
+    cfg_ir: CfgIr,
     current_bb: BlockId,
     variable: isize,
     declarations: HashMap<HirId, Variable>,
@@ -30,10 +31,10 @@ pub struct CfgBuilder<'a> {
     active_loops: ActiveLoops,
 }
 
-impl<'a> CfgBuilder<'a> {
-    pub fn new(hir_ir: &'a HirIr) -> Self {
+impl CfgBuilder {
+    pub fn new(types_table: HashMap<HirId, TypeDef>) -> Self {
         Self {
-            hir_ir,
+            types_table,
             cfg_ir: CfgIr::default(),
             current_bb: BlockId(0),
             variable: 0,
@@ -43,16 +44,18 @@ impl<'a> CfgBuilder<'a> {
         }
     }
 
-    pub fn build_ir(&mut self) {
-        for declaration in &self.hir_ir.declarations {
+    pub fn build_ir(mut self, declarations: &[HirDecl]) -> CfgIr {
+        for declaration in declarations {
             let cfg_root = self.create_cfg();
 
             self.nodes_block.insert(declaration.id, cfg_root);
         }
 
-        for declaration in &self.hir_ir.declarations {
+        for declaration in declarations {
             self.visit_declaration(declaration);
         }
+
+        self.cfg_ir
     }
 
     fn emit_instruction(&mut self, instruction: CfgInstruction) {
@@ -174,7 +177,7 @@ impl<'a> CfgBuilder<'a> {
                 let terminator_block = self.create_bb();
 
                 self.set_terminator(Terminator::Branch {
-                    src: src,
+                    src,
                     r#true: then_bb,
                     r#false: else_bb,
                 });
@@ -211,7 +214,7 @@ impl<'a> CfgBuilder<'a> {
                 self.current_bb = condition_bb;
                 let src = self.visit_expression(condition);
                 self.set_terminator(Terminator::Branch {
-                    src: src,
+                    src,
                     r#true: block_bb,
                     r#false: terminator_bb,
                 });

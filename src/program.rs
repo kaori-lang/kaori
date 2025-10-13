@@ -1,9 +1,9 @@
 use crate::{
+    cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},
-    syntax::{decl::Decl, parser::Parser},
-    //virtual_machine::other_vm::run_other_vm,
+    syntax::{decl::Decl, parser::Parser}, //virtual_machine::other_vm::run_other_vm,
 };
 
 fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {
@@ -36,12 +36,13 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<HirIr, KaoriError> {
     Ok(hir)
 }
 
-fn build_cfg_ir(hir: &HirIr) -> CfgIr {
-    let mut cfg_builder = CfgBuilder::default();
+fn build_cfg_ir(hir: HirIr) -> CfgIr {
+    let types_table = hir.types_table;
+    let declarations = hir.declarations;
 
-    cfg_builder.build_ir(hir);
+    let cfg_builder = CfgBuilder::new(types_table);
 
-    cfg_builder.cfg_ir
+    cfg_builder.build_ir(&declarations)
 }
 
 /* fn generate_bytecode(cfg_ir: &CfgIr) -> Bytecode {
@@ -54,7 +55,7 @@ pub fn compile_source_code(source: String) -> Result<(), KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
     let hir = run_semantic_analysis(&mut ast)?;
-    let cfg_ir = build_cfg_ir(&hir);
+    let cfg_ir = build_cfg_ir(hir);
 
     let bytecode = generate_bytecode(&cfg_ir);
 
