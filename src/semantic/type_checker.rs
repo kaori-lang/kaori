@@ -86,6 +86,13 @@ impl TypeChecker {
                     _ => unreachable!(),
                 };
 
+                let parameters_ty = parameters
+                    .iter()
+                    .map(|parameter| self.type_check_declaration(parameter))
+                    .collect::<Result<Vec<TypeDef>, KaoriError>>()?;
+
+                let ty = TypeDef::function(parameters_ty, return_ty.to_owned());
+
                 self.function_return_ty = return_ty.to_owned();
 
                 let mut has_return_statement = false;
@@ -99,23 +106,18 @@ impl TypeChecker {
                     }
                 }
 
-                if return_ty.is_some() && !has_return_statement {
+                if return_ty != TypeDef::Void && !has_return_statement {
                     return Err(kaori_error!(
                         declaration.span,
                         "expected a return statement for this function"
                     ));
                 }
 
-                let parameters_ty = parameters
-                    .iter()
-                    .map(|parameter| self.type_check_declaration(parameter))
-                    .collect::<Result<Vec<TypeDef>, KaoriError>>()?;
-
                 for node in body {
                     self.type_check_ast_node(node)?;
                 }
 
-                TypeDef::function(parameters_ty, return_ty)
+                ty
             }
             HirDeclKind::Struct { fields } => {
                 let fields = fields
@@ -143,7 +145,7 @@ impl TypeChecker {
             }
         };
 
-        self.types_table.insert(declaration.id, ty);
+        self.types_table.insert(declaration.id, ty.to_owned());
 
         Ok(ty)
     }
@@ -209,11 +211,10 @@ impl TypeChecker {
             HirStmtKind::Break => {}
             HirStmtKind::Continue => {}
             HirStmtKind::Return(expr) => {
-                let mut ty = None;
-
-                if let Some(expr) = expr {
-                    ty = Some(self.type_check_expression(expr)?);
-                }
+                let ty = match expr {
+                    Some(expr) => self.type_check_expression(expr)?,
+                    _ => TypeDef::Void,
+                };
 
                 if self.function_return_ty != ty {
                     return Err(kaori_error!(
@@ -368,10 +369,7 @@ impl TypeChecker {
                     .map(|parameter| self.get_type_def(parameter))
                     .collect();
 
-                let return_ty = match return_ty {
-                    Some(ty) => self.get_type_def(ty),
-                    None => TypeDef::Void,
-                };
+                let return_ty = self.get_type_def(return_ty);
 
                 TypeDef::function(parameters, return_ty)
             }
@@ -390,6 +388,7 @@ impl TypeChecker {
             }
             HirTyKind::Bool => TypeDef::Boolean,
             HirTyKind::Number => TypeDef::Number,
+            HirTyKind::Void => TypeDef::Void,
         }
     }
 }

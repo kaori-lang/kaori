@@ -36,8 +36,6 @@ impl BytecodeGenerator {
         }
 
         instructions.push(Instruction::Halt);
-
-        Bytecode::new(instructions, cfg_ir.constants)
     }
 
     fn flatten_cfg_ir(&mut self, cfg_ir: &CfgIr) {

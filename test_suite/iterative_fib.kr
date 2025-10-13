@@ -1,4 +1,4 @@
-def main() -> number {
+def main()  {
     var iterations: number = 1000000;
     var max_fib: number = 40;
 
@@ -13,7 +13,7 @@ def main() -> number {
         }
     }
 
-    return 0;
+    return;
 }
 
 
