@@ -173,7 +173,7 @@ impl CfgBuilder {
                 let terminator_block = self.create_bb();
 
                 self.set_terminator(Terminator::Branch {
-                    src: src.into(),
+                    src: src,
                     r#true: then_bb,
                     r#false: else_bb,
                 });
@@ -210,7 +210,7 @@ impl CfgBuilder {
                 self.current_bb = condition_bb;
                 let src = self.visit_expression(condition);
                 self.set_terminator(Terminator::Branch {
-                    src: src.into(),
+                    src: src,
                     r#true: block_bb,
                     r#false: terminator_bb,
                 });
@@ -241,7 +241,7 @@ impl CfgBuilder {
             }
             HirStmtKind::Return(expr) => {
                 if let Some(expr) = expr {
-                    let src = self.visit_expression(expr).into();
+                    let src = self.visit_expression(expr);
 
                     self.set_terminator(Terminator::Return { src: Some(src) });
                 } else {
@@ -262,7 +262,7 @@ impl CfgBuilder {
         let terminator = self.create_bb();
 
         self.set_terminator(Terminator::Branch {
-            src: dest.into(),
+            src: dest,
             r#true: terminator,
             r#false: src2_bb,
         });
@@ -291,7 +291,7 @@ impl CfgBuilder {
         let terminator = self.create_bb();
 
         self.set_terminator(Terminator::Branch {
-            src: dest.into(),
+            src: dest,
             r#true: src2_bb,
             r#false: terminator,
         });

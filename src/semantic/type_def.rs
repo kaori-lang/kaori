@@ -13,6 +13,12 @@ pub enum TypeDef {
     },
 }
 
+impl Default for TypeDef {
+    fn default() -> Self {
+        TypeDef::Void
+    }
+}
+
 impl TypeDef {
     pub fn function(parameters: Vec<TypeDef>, return_ty: TypeDef) -> TypeDef {
         TypeDef::Function {

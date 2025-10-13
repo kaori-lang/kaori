@@ -434,10 +434,7 @@ impl Resolver {
                     .map(|parameter| self.resolve_type(parameter))
                     .collect::<Result<Vec<HirTy>, KaoriError>>()?;
 
-                let return_ty = match return_ty {
-                    Some(ty) => Some(self.resolve_type(ty)?),
-                    _ => None,
-                };
+                let return_ty = self.resolve_type(return_ty)?;
 
                 HirTy::function(parameters, return_ty, ty.span)
             }
@@ -462,6 +459,7 @@ impl Resolver {
             }
             TyKind::Bool => HirTy::bool(ty.span),
             TyKind::Number => HirTy::number(ty.span),
+            TyKind::Void => HirTy::void(ty.span),
         };
 
         Ok(hir_ty)

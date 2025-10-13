@@ -13,7 +13,7 @@ pub struct Ty {
 pub enum TyKind {
     Function {
         parameters: Vec<Ty>,
-        return_ty: Option<Box<Ty>>,
+        return_ty: Box<Ty>,
     },
     Struct {
         fields: Vec<Ty>,
@@ -21,16 +21,17 @@ pub enum TyKind {
     Identifier(String),
     Number,
     Bool,
+    Void,
 }
 
 impl Ty {
-    pub fn function(parameters: Vec<Ty>, return_ty: Option<Ty>, span: Span) -> Ty {
+    pub fn function(parameters: Vec<Ty>, return_ty: Ty, span: Span) -> Ty {
         Ty {
             id: AstId::default(),
             span,
             kind: TyKind::Function {
                 parameters,
-                return_ty: return_ty.map(Box::new),
+                return_ty: Box::new(return_ty),
             },
         }
     }
@@ -56,6 +57,14 @@ impl Ty {
             id: AstId::default(),
             span,
             kind: TyKind::Bool,
+        }
+    }
+
+    pub fn void(span: Span) -> Ty {
+        Ty {
+            id: AstId::default(),
+            span,
+            kind: TyKind::Void,
         }
     }
 

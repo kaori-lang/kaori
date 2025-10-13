@@ -18,7 +18,7 @@ use super::{
 
 #[derive(Debug, Default)]
 pub struct TypeChecker {
-    function_return_ty: Option<TypeDef>,
+    function_return_ty: TypeDef,
     types: HashMap<HirId, HirTy>,
     types_table: HashMap<HirId, TypeDef>,
 }
@@ -61,8 +61,8 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn type_check_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
-        match &declaration.kind {
+    fn type_check_declaration(&mut self, declaration: &HirDecl) -> Result<TypeDef, KaoriError> {
+        let ty = match &declaration.kind {
             HirDeclKind::Variable { right } => {
                 let right = self.type_check_expression(right)?;
                 let ty = self.get_type_def(&declaration.ty);
@@ -77,12 +77,12 @@ impl TypeChecker {
                 }
 
                 self.types.insert(declaration.id, declaration.ty.to_owned());
+
+                ty
             }
             HirDeclKind::Function { body, parameters } => {
                 let return_ty = match &declaration.ty.kind {
-                    HirTyKind::Function { return_ty, .. } => {
-                        return_ty.as_ref().map(|ty| self.get_type_def(ty))
-                    }
+                    HirTyKind::Function { return_ty, .. } => self.get_type_def(return_ty),
                     _ => unreachable!(),
                 };
 
@@ -106,25 +106,49 @@ impl TypeChecker {
                     ));
                 }
 
-                for parameter in parameters {
-                    self.type_check_declaration(parameter)?;
-                }
+                let parameters_ty = parameters
+                    .iter()
+                    .map(|parameter| self.type_check_declaration(parameter))
+                    .collect::<Result<Vec<TypeDef>, KaoriError>>()?;
 
                 for node in body {
                     self.type_check_ast_node(node)?;
                 }
+
+                TypeDef::function(parameters_ty, return_ty)
             }
-            HirDeclKind::Struct { .. } => {}
+            HirDeclKind::Struct { fields } => {
+                let fields = fields
+                    .iter()
+                    .map(|field| self.type_check_declaration(field))
+                    .collect::<Result<Vec<TypeDef>, KaoriError>>()?;
+
+                let ty = TypeDef::struct_(fields);
+
+                ty
+            }
             HirDeclKind::Parameter => {
+                let ty = self.get_type_def(&declaration.ty);
+
                 self.types.insert(declaration.id, declaration.ty.to_owned());
+
+                ty
             }
-            HirDeclKind::Field => {}
+            HirDeclKind::Field => {
+                let ty = self.get_type_def(&declaration.ty);
+
+                self.types.insert(declaration.id, declaration.ty.to_owned());
+
+                ty
+            }
         };
 
-        Ok(())
+        self.types_table.insert(declaration.id, ty);
+
+        Ok(ty)
     }
 
-    fn type_check_statement(&mut self, statement: &HirStmt) -> Result<(), KaoriError> {
+    fn type_check_statement(&mut self, statement: &HirStmt) -> Result<TypeDef, KaoriError> {
         match &statement.kind {
             HirStmtKind::Expression(expression) => {
                 self.type_check_expression(expression)?;
@@ -202,7 +226,7 @@ impl TypeChecker {
             }
         };
 
-        Ok(())
+        Ok(TypeDef::Void)
     }
 
     fn type_check_expression(&mut self, expression: &HirExpr) -> Result<TypeDef, KaoriError> {

@@ -13,7 +13,7 @@ pub struct HirTy {
 pub enum HirTyKind {
     Function {
         parameters: Vec<HirTy>,
-        return_ty: Option<Box<HirTy>>,
+        return_ty: Box<HirTy>,
     },
     Struct {
         fields: Vec<HirTy>,
@@ -21,6 +21,7 @@ pub enum HirTyKind {
     TypeRef(HirId),
     Number,
     Bool,
+    Void,
 }
 
 impl PartialEq for HirTy {
@@ -32,13 +33,13 @@ impl PartialEq for HirTy {
 impl Eq for HirTy {}
 
 impl HirTy {
-    pub fn function(parameters: Vec<HirTy>, return_ty: Option<HirTy>, span: Span) -> HirTy {
+    pub fn function(parameters: Vec<HirTy>, return_ty: HirTy, span: Span) -> HirTy {
         HirTy {
             id: HirId::default(),
             span,
             kind: HirTyKind::Function {
                 parameters,
-                return_ty: return_ty.map(Box::new),
+                return_ty: Box::new(return_ty),
             },
         }
     }
@@ -64,6 +65,14 @@ impl HirTy {
             id: HirId::default(),
             span,
             kind: HirTyKind::Bool,
+        }
+    }
+
+    pub fn void(span: Span) -> HirTy {
+        HirTy {
+            id: HirId::default(),
+            span,
+            kind: HirTyKind::Void,
         }
     }
 
