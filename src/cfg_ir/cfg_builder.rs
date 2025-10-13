@@ -5,7 +5,6 @@ use crate::{
         hir_decl::{HirDecl, HirDeclKind},
         hir_expr::{HirExpr, HirExprKind},
         hir_id::HirId,
-        hir_ir::HirIr,
         hir_node::HirNode,
         hir_stmt::{HirStmt, HirStmtKind},
         type_def::TypeDef,

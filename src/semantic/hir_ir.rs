@@ -14,8 +14,4 @@ impl HirIr {
             types_table,
         }
     }
-
-    pub fn get_type(&self, id: &HirId) -> &TypeDef {
-        self.types_table.get(id).unwrap()
-    }
 }

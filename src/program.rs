@@ -57,9 +57,9 @@ pub fn compile_source_code(source: String) -> Result<(), KaoriError> {
     let hir = run_semantic_analysis(&mut ast)?;
     let cfg_ir = build_cfg_ir(hir);
 
-    let bytecode = generate_bytecode(&cfg_ir);
+    //let bytecode = generate_bytecode(&cfg_ir);
 
-    Ok()
+    Ok(())
 }
 
 pub fn run_program(source: String) -> Result<(), KaoriError> {
