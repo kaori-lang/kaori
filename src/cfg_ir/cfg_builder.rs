@@ -24,9 +24,8 @@ pub struct CfgBuilder {
     types_table: HashMap<HirId, TypeDef>,
     cfg_ir: CfgIr,
     current_bb: BlockId,
-    variable: isize,
-    declarations: HashMap<HirId, Variable>,
-    nodes_block: HashMap<HirId, BlockId>,
+    variables: HashMap<HirId, Variable>,
+    functions: HashMap<HirId, BlockId>,
     active_loops: ActiveLoops,
 }
 
@@ -36,18 +35,20 @@ impl CfgBuilder {
             types_table,
             cfg_ir: CfgIr::default(),
             current_bb: BlockId(0),
-            variable: 0,
-            declarations: HashMap::new(),
-            nodes_block: HashMap::new(),
+            variables: HashMap::new(),
+            functions: HashMap::new(),
             active_loops: ActiveLoops::default(),
         }
     }
 
     pub fn build_ir(mut self, declarations: &[HirDecl]) -> CfgIr {
         for declaration in declarations {
-            let cfg_root = self.create_cfg();
+            if let HirDeclKind::Function { .. } = &declaration.kind {
+                let basic_block = self.create_bb();
+                self.cfg_ir.cfgs.push(basic_block);
 
-            self.nodes_block.insert(declaration.id, cfg_root);
+                self.functions.insert(declaration.id, basic_block);
+            }
         }
 
         for declaration in declarations {
@@ -89,14 +90,6 @@ impl CfgBuilder {
         id
     }
 
-    fn create_cfg(&mut self) -> BlockId {
-        let basic_block = self.create_bb();
-
-        self.cfg_ir.cfgs.push(basic_block);
-
-        basic_block
-    }
-
     fn visit_nodes(&mut self, nodes: &[HirNode]) {
         for node in nodes {
             self.visit_ast_node(node);
@@ -116,7 +109,7 @@ impl CfgBuilder {
                 let src = self.visit_expression(right);
                 let dest = self.create_variable();
 
-                self.declarations.insert(declaration.id, dest);
+                self.variables.insert(declaration.id, dest);
 
                 let instruction = CfgInstruction::move_(dest, src);
 
@@ -124,12 +117,12 @@ impl CfgBuilder {
             }
 
             HirDeclKind::Function { body, parameters } => {
-                self.current_bb = *self.nodes_block.get(&declaration.id).unwrap();
+                self.current_bb = *self.functions.get(&declaration.id).unwrap();
 
                 for parameter in parameters {
                     let variable = self.create_variable();
 
-                    self.declarations.insert(parameter.id, variable);
+                    self.variables.insert(parameter.id, variable);
                 }
 
                 for node in body {
@@ -396,12 +389,12 @@ impl CfgBuilder {
             }
 
             HirExprKind::Variable(id) => *self
-                .declarations
+                .variables
                 .get(id)
                 .expect("VariableRef points to a missing variable node"),
             HirExprKind::Function(id) => {
                 let value = *self
-                    .nodes_block
+                    .functions
                     .get(id)
                     .expect("FunctionRef points to a missing variable node");
 
