@@ -10,11 +10,7 @@ use crate::cfg_ir::{
     graph_traversal::reversed_postorder,
 };
 
-use super::{
-    bytecode::Bytecode,
-    instruction::Instruction,
-    value::Value,
-};
+use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
 
 type InstructionIndex = usize;
 pub struct BytecodeGenerator {
@@ -42,7 +38,7 @@ impl BytecodeGenerator {
         for constant in cfg_constants {
             let constant = match constant {
                 CfgConstant::Boolean(value) => Value::boolean(*value),
-                CfgConstant::FunctionRef(value) => {
+                CfgConstant::Function(value) => {
                     let instruction_index = *self.basic_blocks.get(value).unwrap();
 
                     let ptr = unsafe { instructions.as_ptr().add(instruction_index) };
@@ -172,7 +168,7 @@ impl BytecodeGenerator {
 
                 Instruction::conditional_jump(src, true_offset, false_offset)
             }
-            CfgInstruction::Return { src } => Instruction::return_(src.unwrap()),
+            CfgInstruction::Return { src } => Instruction::return_(src),
         }
     }
 }

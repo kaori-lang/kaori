@@ -1,280 +1,177 @@
-use super::{basic_block::BlockId, operand::Operand};
+use super::{basic_block::BlockId, variable::Variable};
 
 #[derive(Debug, Clone)]
 pub enum CfgInstruction {
     Add {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Variable,
+        src1: Variable,
+        src2: Variable,
     },
     Subtract {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Variable,
+        src1: Variable,
+        src2: Variable,
     },
     Multiply {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Variable,
+        src1: Variable,
+        src2: Variable,
     },
     Divide {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Variable,
+        src1: Variable,
+        src2: Variable,
     },
     Modulo {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Variable,
+        src1: Variable,
+        src2: Variable,
     },
     Equal {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Variable,
+        src1: Variable,
+        src2: Variable,
     },
     NotEqual {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Variable,
+        src1: Variable,
+        src2: Variable,
     },
     Greater {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Variable,
+        src1: Variable,
+        src2: Variable,
     },
     GreaterEqual {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Variable,
+        src1: Variable,
+        src2: Variable,
     },
     Less {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Variable,
+        src1: Variable,
+        src2: Variable,
     },
     LessEqual {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Variable,
+        src1: Variable,
+        src2: Variable,
     },
     Negate {
-        dest: Operand,
-        src: Operand,
+        dest: Variable,
+        src: Variable,
     },
     Not {
-        dest: Operand,
-        src: Operand,
+        dest: Variable,
+        src: Variable,
     },
     Move {
-        dest: Operand,
-        src: Operand,
+        dest: Variable,
+        src: Variable,
     },
     Jump {
         target: BlockId,
     },
     ConditionalJump {
-        src: Operand,
+        src: Variable,
         true_target: BlockId,
         false_target: BlockId,
     },
     Return {
-        src: Option<Operand>,
+        src: Variable,
     },
     Call {
-        dest: Operand,
-        src: Operand,
-        caller_size: isize,
+        dest: Variable,
+        src: Variable,
+        caller_size: u16,
     },
     Print {
-        src: Operand,
+        src: Variable,
     },
 }
 
 impl CfgInstruction {
-    pub fn add(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::Add {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
+    pub fn add(dest: Variable, src1: Variable, src2: Variable) -> Self {
+        Self::Add { dest, src1, src2 }
     }
 
-    pub fn subtract(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::Subtract {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
+    pub fn subtract(dest: Variable, src1: Variable, src2: Variable) -> Self {
+        Self::Subtract { dest, src1, src2 }
     }
 
-    pub fn multiply(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::Multiply {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
+    pub fn multiply(dest: Variable, src1: Variable, src2: Variable) -> Self {
+        Self::Multiply { dest, src1, src2 }
     }
 
-    pub fn divide(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::Divide {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
+    pub fn divide(dest: Variable, src1: Variable, src2: Variable) -> Self {
+        Self::Divide { dest, src1, src2 }
     }
 
-    pub fn modulo(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::Modulo {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
+    pub fn modulo(dest: Variable, src1: Variable, src2: Variable) -> Self {
+        Self::Modulo { dest, src1, src2 }
     }
 
-    pub fn equal(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::Equal {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
+    pub fn equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+        Self::Equal { dest, src1, src2 }
     }
 
-    pub fn not_equal(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::NotEqual {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
+    pub fn not_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+        Self::NotEqual { dest, src1, src2 }
     }
 
-    pub fn greater(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::Greater {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
+    pub fn greater(dest: Variable, src1: Variable, src2: Variable) -> Self {
+        Self::Greater { dest, src1, src2 }
     }
 
-    pub fn greater_equal(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::GreaterEqual {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
+    pub fn greater_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+        Self::GreaterEqual { dest, src1, src2 }
     }
 
-    pub fn less(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::Less {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
+    pub fn less(dest: Variable, src1: Variable, src2: Variable) -> Self {
+        Self::Less { dest, src1, src2 }
     }
 
-    pub fn less_equal(
-        dest: impl Into<Operand>,
-        src1: impl Into<Operand>,
-        src2: impl Into<Operand>,
-    ) -> Self {
-        Self::LessEqual {
-            dest: dest.into(),
-            src1: src1.into(),
-            src2: src2.into(),
-        }
+    pub fn less_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+        Self::LessEqual { dest, src1, src2 }
     }
 
-    pub fn negate(dest: impl Into<Operand>, src: impl Into<Operand>) -> Self {
-        Self::Negate {
-            dest: dest.into(),
-            src: src.into(),
-        }
+    pub fn negate(dest: Variable, src: Variable) -> Self {
+        Self::Negate { dest, src }
     }
 
-    pub fn not(dest: impl Into<Operand>, src: impl Into<Operand>) -> Self {
-        Self::Not {
-            dest: dest.into(),
-            src: src.into(),
-        }
+    pub fn not(dest: Variable, src: Variable) -> Self {
+        Self::Not { dest, src }
     }
 
-    pub fn move_(dest: impl Into<Operand>, src: impl Into<Operand>) -> Self {
-        Self::Move {
-            dest: dest.into(),
-            src: src.into(),
-        }
+    pub fn move_(dest: Variable, src: Variable) -> Self {
+        Self::Move { dest, src }
     }
 
     pub fn jump(target: BlockId) -> Self {
         Self::Jump { target }
     }
 
-    pub fn conditional_jump(
-        src: impl Into<Operand>,
-        true_target: BlockId,
-        false_target: BlockId,
-    ) -> Self {
+    pub fn conditional_jump(src: Variable, true_target: BlockId, false_target: BlockId) -> Self {
         Self::ConditionalJump {
-            src: src.into(),
+            src,
             true_target,
             false_target,
         }
     }
 
-    pub fn return_(src: Option<impl Into<Operand>>) -> Self {
-        Self::Return {
-            src: src.map(|src| src.into()),
-        }
+    pub fn return_(src: Variable) -> Self {
+        Self::Return { src }
     }
 
-    pub fn call(dest: impl Into<Operand>, src: impl Into<Operand>, caller_size: isize) -> Self {
+    pub fn call(dest: Variable, src: Variable, caller_size: u16) -> Self {
         Self::Call {
-            dest: dest.into(),
-            src: src.into(),
+            dest,
+            src,
             caller_size,
         }
     }
 
-    pub fn print(src: impl Into<Operand>) -> Self {
-        Self::Print { src: src.into() }
+    pub fn print(src: Variable) -> Self {
+        Self::Print { src }
     }
 }

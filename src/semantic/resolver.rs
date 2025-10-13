@@ -355,7 +355,7 @@ impl Resolver {
                 let right = self.resolve_expression(right)?;
                 let left = self.resolve_expression(left)?;
 
-                let HirExprKind::VariableRef(..) = &left.kind else {
+                let HirExprKind::Variable(..) = &left.kind else {
                     return Err(kaori_error!(
                         left.span,
                         "expected a valid left hand side to assign values to"
@@ -411,8 +411,8 @@ impl Resolver {
                 };
 
                 match symbol.kind {
-                    SymbolKind::Function => HirExpr::function_ref(symbol.id, expression.span),
-                    SymbolKind::Variable => HirExpr::variable_ref(symbol.id, expression.span),
+                    SymbolKind::Function => HirExpr::function(symbol.id, expression.span),
+                    SymbolKind::Variable => HirExpr::variable(symbol.id, expression.span),
                     SymbolKind::Struct => {
                         return Err(kaori_error!(expression.span, "{} is not a value", name));
                     }
@@ -434,10 +434,7 @@ impl Resolver {
                     .map(|parameter| self.resolve_type(parameter))
                     .collect::<Result<Vec<HirTy>, KaoriError>>()?;
 
-                let return_ty = match return_ty {
-                    Some(ty) => Some(self.resolve_type(ty)?),
-                    _ => None,
-                };
+                let return_ty = self.resolve_type(return_ty)?;
 
                 HirTy::function(parameters, return_ty, ty.span)
             }
@@ -462,6 +459,7 @@ impl Resolver {
             }
             TyKind::Bool => HirTy::bool(ty.span),
             TyKind::Number => HirTy::number(ty.span),
+            TyKind::Void => HirTy::void(ty.span),
         };
 
         Ok(hir_ty)

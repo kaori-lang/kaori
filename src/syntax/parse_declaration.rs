@@ -41,12 +41,14 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::RightParen)?;
 
-        let mut return_ty = None;
-
-        if self.token_stream.token_kind() == TokenKind::ThinArrow {
+        let return_ty = if self.token_stream.token_kind() == TokenKind::ThinArrow {
             self.token_stream.consume(TokenKind::ThinArrow)?;
-            return_ty = Some(self.parse_type()?);
-        }
+
+            self.parse_type()?
+        } else {
+            let span = self.token_stream.span();
+            Ty::void(span)
+        };
 
         let ty = Ty::function(
             parameters

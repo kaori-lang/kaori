@@ -1,12 +1,12 @@
 use ordered_float::OrderedFloat;
 use std::collections::HashMap;
 
-use super::{basic_block::BlockId, operand::Variable};
+use super::{basic_block::BlockId, variable::Variable};
 
 pub struct CfgConstants {
     pub constants: Vec<CfgConstant>,
     pub constants_variable: HashMap<CfgConstant, Variable>,
-    pub variable: isize,
+    pub variable: i16,
 }
 
 impl Default for CfgConstants {
@@ -36,8 +36,8 @@ impl CfgConstants {
         }
     }
 
-    pub fn push_function_ref(&mut self, func: BlockId) -> Variable {
-        self.push_constant(CfgConstant::FunctionRef(func))
+    pub fn push_function(&mut self, value: BlockId) -> Variable {
+        self.push_constant(CfgConstant::Function(value))
     }
 
     pub fn push_string(&mut self, value: String) -> Variable {
@@ -58,5 +58,5 @@ pub enum CfgConstant {
     String(String),
     Number(OrderedFloat<f64>),
     Boolean(bool),
-    FunctionRef(BlockId),
+    Function(BlockId),
 }

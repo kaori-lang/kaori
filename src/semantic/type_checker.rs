@@ -18,12 +18,16 @@ use super::{
 
 #[derive(Debug, Default)]
 pub struct TypeChecker {
-    function_return_ty: Option<TypeDef>,
+    function_return_ty: TypeDef,
     types: HashMap<HirId, HirTy>,
+    types_table: HashMap<HirId, TypeDef>,
 }
 
 impl TypeChecker {
-    pub fn type_check(&mut self, declarations: &[HirDecl]) -> Result<(), KaoriError> {
+    pub fn type_check(
+        mut self,
+        declarations: &[HirDecl],
+    ) -> Result<HashMap<HirId, TypeDef>, KaoriError> {
         for declaration in declarations.iter() {
             match &declaration.kind {
                 HirDeclKind::Function { .. } => {
@@ -40,7 +44,7 @@ impl TypeChecker {
             self.type_check_declaration(declaration)?;
         }
 
-        Ok(())
+        Ok(self.types_table)
     }
 
     fn type_check_nodes(&mut self, nodes: &[HirNode]) -> Result<(), KaoriError> {
@@ -60,8 +64,8 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn type_check_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
-        match &declaration.kind {
+    fn type_check_declaration(&mut self, declaration: &HirDecl) -> Result<TypeDef, KaoriError> {
+        let ty = match &declaration.kind {
             HirDeclKind::Variable { right } => {
                 let right = self.type_check_expression(right)?;
                 let ty = self.get_type_def(&declaration.ty);
@@ -76,14 +80,21 @@ impl TypeChecker {
                 }
 
                 self.types.insert(declaration.id, declaration.ty.to_owned());
+
+                ty
             }
             HirDeclKind::Function { body, parameters } => {
                 let return_ty = match &declaration.ty.kind {
-                    HirTyKind::Function { return_ty, .. } => {
-                        return_ty.as_ref().map(|ty| self.get_type_def(ty))
-                    }
+                    HirTyKind::Function { return_ty, .. } => self.get_type_def(return_ty),
                     _ => unreachable!(),
                 };
+
+                let parameters_ty = parameters
+                    .iter()
+                    .map(|parameter| self.type_check_declaration(parameter))
+                    .collect::<Result<Vec<TypeDef>, KaoriError>>()?;
+
+                let ty = TypeDef::function(parameters_ty, return_ty.to_owned());
 
                 self.function_return_ty = return_ty.to_owned();
 
@@ -98,32 +109,49 @@ impl TypeChecker {
                     }
                 }
 
-                if return_ty.is_some() && !has_return_statement {
+                if return_ty != TypeDef::Void && !has_return_statement {
                     return Err(kaori_error!(
                         declaration.span,
                         "expected a return statement for this function"
                     ));
                 }
 
-                for parameter in parameters {
-                    self.type_check_declaration(parameter)?;
-                }
-
                 for node in body {
                     self.type_check_ast_node(node)?;
                 }
+
+                ty
             }
-            HirDeclKind::Struct { .. } => {}
+            HirDeclKind::Struct { fields } => {
+                let fields = fields
+                    .iter()
+                    .map(|field| self.type_check_declaration(field))
+                    .collect::<Result<Vec<TypeDef>, KaoriError>>()?;
+
+                TypeDef::struct_(fields)
+            }
             HirDeclKind::Parameter => {
+                let ty = self.get_type_def(&declaration.ty);
+
                 self.types.insert(declaration.id, declaration.ty.to_owned());
+
+                ty
             }
-            HirDeclKind::Field => {}
+            HirDeclKind::Field => {
+                let ty = self.get_type_def(&declaration.ty);
+
+                self.types.insert(declaration.id, declaration.ty.to_owned());
+
+                ty
+            }
         };
 
-        Ok(())
+        self.types_table.insert(declaration.id, ty.to_owned());
+
+        Ok(ty)
     }
 
-    fn type_check_statement(&mut self, statement: &HirStmt) -> Result<(), KaoriError> {
+    fn type_check_statement(&mut self, statement: &HirStmt) -> Result<TypeDef, KaoriError> {
         match &statement.kind {
             HirStmtKind::Expression(expression) => {
                 self.type_check_expression(expression)?;
@@ -184,11 +212,10 @@ impl TypeChecker {
             HirStmtKind::Break => {}
             HirStmtKind::Continue => {}
             HirStmtKind::Return(expr) => {
-                let mut ty = None;
-
-                if let Some(expr) = expr {
-                    ty = Some(self.type_check_expression(expr)?);
-                }
+                let ty = match expr {
+                    Some(expr) => self.type_check_expression(expr)?,
+                    _ => TypeDef::Void,
+                };
 
                 if self.function_return_ty != ty {
                     return Err(kaori_error!(
@@ -201,10 +228,10 @@ impl TypeChecker {
             }
         };
 
-        Ok(())
+        Ok(TypeDef::Void)
     }
 
-    fn type_check_expression(&self, expression: &HirExpr) -> Result<TypeDef, KaoriError> {
+    fn type_check_expression(&mut self, expression: &HirExpr) -> Result<TypeDef, KaoriError> {
         let ty = match &expression.kind {
             HirExprKind::Assign { left, right } => {
                 let right_ty = self.type_check_expression(right)?;
@@ -312,7 +339,7 @@ impl TypeChecker {
 
                 *return_ty
             }
-            HirExprKind::VariableRef(id) => {
+            HirExprKind::Variable(id) => {
                 let hir_ty = self.types.get(id).unwrap().to_owned();
 
                 self.get_type_def(&hir_ty)
@@ -320,12 +347,14 @@ impl TypeChecker {
             HirExprKind::Boolean(..) => TypeDef::Boolean,
             HirExprKind::Number(..) => TypeDef::Number,
             HirExprKind::String(..) => TypeDef::String,
-            HirExprKind::FunctionRef(id) => {
+            HirExprKind::Function(id) => {
                 let hir_ty = self.types.get(id).unwrap().to_owned();
 
                 self.get_type_def(&hir_ty)
             }
         };
+
+        self.types_table.insert(expression.id, ty.to_owned());
 
         Ok(ty)
     }
@@ -341,10 +370,7 @@ impl TypeChecker {
                     .map(|parameter| self.get_type_def(parameter))
                     .collect();
 
-                let return_ty = match return_ty {
-                    Some(ty) => self.get_type_def(ty),
-                    None => TypeDef::Void,
-                };
+                let return_ty = self.get_type_def(return_ty);
 
                 TypeDef::function(parameters, return_ty)
             }
@@ -363,6 +389,7 @@ impl TypeChecker {
             }
             HirTyKind::Bool => TypeDef::Boolean,
             HirTyKind::Number => TypeDef::Number,
+            HirTyKind::Void => TypeDef::Void,
         }
     }
 }

@@ -10,8 +10,9 @@ def fib(n: number) -> number {
     return fib(n - 1) + fib(n - 2);
 }
 
-def main() -> number {
-    fib(10);
-    return 1;
+
+def main()  {
+    fib(40);
+
 }
 

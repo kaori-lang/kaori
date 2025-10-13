@@ -1,8 +1,9 @@
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub enum TypeDef {
     Boolean,
     String,
     Number,
+    #[default]
     Void,
     Function {
         parameters: Vec<TypeDef>,

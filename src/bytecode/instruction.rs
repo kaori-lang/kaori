@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::cfg_ir::operand::Operand;
+use crate::cfg_ir::variable::Variable;
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8, align(2))]
@@ -103,145 +103,140 @@ impl Instruction {
         (unsafe { *(self as *const Self as *const u8) }) as usize
     }
 
-
-    pub fn add(dest: Operand, src1: Operand, src2: Operand) -> Self {
+    pub fn add(dest: Variable, src1: Variable, src2: Variable) -> Self {
         Self::Add {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
+            dest: dest.to_i16(),
+            src1: src1.to_i16(),
+            src2: src2.to_i16(),
         }
     }
 
-    pub fn subtract(dest: Operand, src1: Operand, src2: Operand) -> Self {
+    pub fn subtract(dest: Variable, src1: Variable, src2: Variable) -> Self {
         Self::Subtract {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
+            dest: dest.to_i16(),
+            src1: src1.to_i16(),
+            src2: src2.to_i16(),
         }
     }
 
-    pub fn multiply(dest: Operand, src1: Operand, src2: Operand) -> Self {
+    pub fn multiply(dest: Variable, src1: Variable, src2: Variable) -> Self {
         Self::Multiply {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
+            dest: dest.to_i16(),
+            src1: src1.to_i16(),
+            src2: src2.to_i16(),
         }
     }
 
-    pub fn divide(dest: Operand, src1: Operand, src2: Operand) -> Self {
+    pub fn divide(dest: Variable, src1: Variable, src2: Variable) -> Self {
         Self::Divide {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
+            dest: dest.to_i16(),
+            src1: src1.to_i16(),
+            src2: src2.to_i16(),
         }
     }
 
-    pub fn modulo(dest: Operand, src1: Operand, src2: Operand) -> Self {
+    pub fn modulo(dest: Variable, src1: Variable, src2: Variable) -> Self {
         Self::Modulo {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
+            dest: dest.to_i16(),
+            src1: src1.to_i16(),
+            src2: src2.to_i16(),
         }
     }
 
-    pub fn equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
+    pub fn equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
         Self::Equal {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
+            dest: dest.to_i16(),
+            src1: src1.to_i16(),
+            src2: src2.to_i16(),
         }
     }
 
-    pub fn not_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
+    pub fn not_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
         Self::NotEqual {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
+            dest: dest.to_i16(),
+            src1: src1.to_i16(),
+            src2: src2.to_i16(),
         }
     }
 
-    pub fn greater(dest: Operand, src1: Operand, src2: Operand) -> Self {
+    pub fn greater(dest: Variable, src1: Variable, src2: Variable) -> Self {
         Self::Greater {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
+            dest: dest.to_i16(),
+            src1: src1.to_i16(),
+            src2: src2.to_i16(),
         }
     }
 
-    pub fn greater_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
+    pub fn greater_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
         Self::GreaterEqual {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
+            dest: dest.to_i16(),
+            src1: src1.to_i16(),
+            src2: src2.to_i16(),
         }
     }
 
-    pub fn less(dest: Operand, src1: Operand, src2: Operand) -> Self {
+    pub fn less(dest: Variable, src1: Variable, src2: Variable) -> Self {
         Self::Less {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
+            dest: dest.to_i16(),
+            src1: src1.to_i16(),
+            src2: src2.to_i16(),
         }
     }
 
-    pub fn less_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
+    pub fn less_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
         Self::LessEqual {
-            dest: dest.to_register(),
-            src1: src1.to_register(),
-            src2: src2.to_register(),
+            dest: dest.to_i16(),
+            src1: src1.to_i16(),
+            src2: src2.to_i16(),
         }
     }
 
-    pub fn negate(dest: Operand, src: Operand) -> Self {
+    pub fn negate(dest: Variable, src: Variable) -> Self {
         Self::Negate {
-            dest: dest.to_register(),
-            src: src.to_register(),
+            dest: dest.to_i16(),
+            src: src.to_i16(),
         }
     }
 
-    pub fn not(dest: Operand, src: Operand) -> Self {
+    pub fn not(dest: Variable, src: Variable) -> Self {
         Self::Not {
-            dest: dest.to_register(),
-            src: src.to_register(),
+            dest: dest.to_i16(),
+            src: src.to_i16(),
         }
     }
 
-    pub fn mov(dest: Operand, src: Operand) -> Self {
+    pub fn mov(dest: Variable, src: Variable) -> Self {
         Self::Move {
-            dest: dest.to_register(),
-            src: src.to_register(),
+            dest: dest.to_i16(),
+            src: src.to_i16(),
         }
     }
-    pub fn call(dest: Operand, src: Operand, caller_size: isize) -> Self {
+    pub fn call(dest: Variable, src: Variable, caller_size: u16) -> Self {
         Self::Call {
-            dest: dest.to_register(),
-            src: src.to_register(),
-            caller_size: caller_size as u16,
+            dest: dest.to_i16(),
+            src: src.to_i16(),
+            caller_size,
         }
     }
 
-    pub fn return_(src: Operand) -> Self {
-        Self::Return {
-            src: src.to_register(),
-        }
+    pub fn return_(src: Variable) -> Self {
+        Self::Return { src: src.to_i16() }
     }
 
     pub fn jump(offset: i16) -> Self {
         Self::Jump { offset }
     }
 
-    pub fn conditional_jump(src: Operand, true_offset: i16, false_offset: i16) -> Self {
+    pub fn conditional_jump(src: Variable, true_offset: i16, false_offset: i16) -> Self {
         Self::ConditionalJump {
-            src: src.to_register(),
+            src: src.to_i16(),
             true_offset,
             false_offset,
         }
     }
 
-    pub fn print(src: Operand) -> Self {
-        Self::Print {
-            src: src.to_register(),
-        }
+    pub fn print(src: Variable) -> Self {
+        Self::Print { src: src.to_i16() }
     }
 }
 

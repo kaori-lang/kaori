@@ -5,7 +5,7 @@ use crate::{
     cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
-    semantic::{hir_decl::HirDecl, resolver::Resolver, type_checker::TypeChecker},
+    semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},
     syntax::{decl::Decl, parser::Parser},
     virtual_machine::{kaori_vm::run_vm, other_vm::run_other_vm},
 };
@@ -26,26 +26,28 @@ fn run_syntax_analysis(token_stream: TokenStream) -> Result<Vec<Decl>, KaoriErro
     Ok(ast)
 }
 
-fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Vec<HirDecl>, KaoriError> {
+fn run_semantic_analysis(ast: &mut [Decl]) -> Result<HirIr, KaoriError> {
     let mut resolver = Resolver::default();
 
-    let hir = resolver.resolve(ast)?;
+    let declarations = resolver.resolve(ast)?;
 
-    let mut type_checker = TypeChecker::default();
+    let type_checker = TypeChecker::default();
 
-    type_checker.type_check(&hir)?;
+    let types_table = type_checker.type_check(&declarations)?;
+
+    let hir = HirIr::new(declarations, types_table);
 
     Ok(hir)
 }
 
-fn build_cfg_ir(hir: &[HirDecl]) -> CfgIr {
-    let mut cfg_builder = CfgBuilder::default();
+fn build_cfg_ir(hir: HirIr) -> CfgIr {
+    let types_table = hir.types_table;
+    let declarations = hir.declarations;
 
-    cfg_builder.build_ir(hir);
+    let cfg_builder = CfgBuilder::new(types_table);
 
-    cfg_builder.cfg_ir
+    cfg_builder.build_ir(&declarations)
 }
-
 fn generate_bytecode(cfg_ir: &CfgIr) -> Bytecode {
     let mut generator = BytecodeGenerator::new();
 
@@ -56,7 +58,7 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
     let hir = run_semantic_analysis(&mut ast)?;
-    let cfg_ir = build_cfg_ir(&hir);
+    let cfg_ir = build_cfg_ir(hir);
 
     let bytecode = generate_bytecode(&cfg_ir);
 
@@ -66,9 +68,9 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
-    /*   for instruction in &bytecode.instructions {
+    for instruction in &bytecode.instructions {
         println!("{instruction}");
-    } */
+    }
 
     let start = Instant::now();
 
@@ -82,7 +84,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     let start = Instant::now();
     run_other_vm(bytecode.instructions, bytecode.constants);
     let elapsed = start.elapsed();
-    println!("other vm took: {elapsed:?}");
+    println!("took: {elapsed:?}");
 
     Ok(())
 }
