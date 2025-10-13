@@ -73,7 +73,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     let start = Instant::now();
 
-    /* unsafe {
+    /*     unsafe {
         run_vm(&bytecode.instructions, &bytecode.constants);
     } */
 
