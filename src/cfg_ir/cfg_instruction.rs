@@ -78,12 +78,12 @@ pub enum CfgInstruction {
         false_target: BlockId,
     },
     Return {
-        src: Option<Variable>,
+        src: Variable,
     },
     Call {
         dest: Variable,
         src: Variable,
-        caller_size: isize,
+        caller_size: u16,
     },
     Print {
         src: Variable,
@@ -159,13 +159,11 @@ impl CfgInstruction {
         }
     }
 
-    pub fn return_(src: Option<Variable>) -> Self {
-        Self::Return {
-            src: src.map(|src| src),
-        }
+    pub fn return_(src: Variable) -> Self {
+        Self::Return { src }
     }
 
-    pub fn call(dest: Variable, src: Variable, caller_size: isize) -> Self {
+    pub fn call(dest: Variable, src: Variable, caller_size: u16) -> Self {
         Self::Call {
             dest,
             src,

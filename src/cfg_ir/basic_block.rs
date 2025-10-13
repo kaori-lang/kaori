@@ -25,7 +25,7 @@ pub enum Terminator {
     },
     Goto(BlockId),
     Return {
-        src: Option<Variable>,
+        src: Variable,
     },
     None,
 }

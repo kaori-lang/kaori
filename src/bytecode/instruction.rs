@@ -211,11 +211,11 @@ impl Instruction {
             src: src.to_i16(),
         }
     }
-    pub fn call(dest: Variable, src: Variable, caller_size: isize) -> Self {
+    pub fn call(dest: Variable, src: Variable, caller_size: u16) -> Self {
         Self::Call {
             dest: dest.to_i16(),
             src: src.to_i16(),
-            caller_size: caller_size as u16,
+            caller_size,
         }
     }
 
