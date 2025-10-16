@@ -23,26 +23,33 @@ impl FunctionFrame {
 }
 
 type InstructionHandler = fn(&mut VMContext, ip: *const Instruction);
+
+const INSTRUCTION_DISPATCH: [InstructionHandler; 20] = [
+    instruction_add,              // 0
+    instruction_subtract,         // 1
+    instruction_multiply,         // 2
+    instruction_divide,           // 3
+    instruction_modulo,           // 4
+    instruction_equal,            // 5
+    instruction_not_equal,        // 6
+    instruction_greater,          // 7
+    instruction_greater_equal,    // 8
+    instruction_less,             // 9
+    instruction_less_equal,       // 10
+    instruction_negate,           // 11
+    instruction_not,              // 12
+    instruction_move,             // 13
+    instruction_call,             // 14
+    instruction_return,           // 15
+    instruction_jump,             // 16
+    instruction_conditional_jump, // 17
+    instruction_print,            // 18
+    instruction_halt,             // 19
+];
 pub struct VMContext {
     pub call_stack: Vec<FunctionFrame>,
     pub constants: Vec<Value>,
     pub registers: *mut Value,
-    pub instruction_dispatch: [InstructionHandler; 20],
-}
-
-macro_rules! dispatch_next {
-    ($ip:expr, $ctx:ident) => {
-        unsafe {
-            let _: *const Instruction = $ip;
-            let _: &mut VMContext = $ctx;
-
-            let ip = $ip.add(1);
-
-            let op_code = (*ip).discriminant();
-
-            become $ctx.instruction_dispatch[op_code]($ctx, ip);
-        }
-    };
 }
 
 impl VMContext {
@@ -51,28 +58,6 @@ impl VMContext {
             call_stack: Vec::new(),
             constants,
             registers,
-            instruction_dispatch: [
-                instruction_add,              // 0
-                instruction_subtract,         // 1
-                instruction_multiply,         // 2
-                instruction_divide,           // 3
-                instruction_modulo,           // 4
-                instruction_equal,            // 5
-                instruction_not_equal,        // 6
-                instruction_greater,          // 7
-                instruction_greater_equal,    // 8
-                instruction_less,             // 9
-                instruction_less_equal,       // 10
-                instruction_negate,           // 11
-                instruction_not,              // 12
-                instruction_move,             // 13
-                instruction_call,             // 14
-                instruction_return,           // 15
-                instruction_jump,             // 16
-                instruction_conditional_jump, // 17
-                instruction_print,            // 18
-                instruction_halt,             // 19
-            ],
         }
     }
 
@@ -133,6 +118,31 @@ impl VMContext {
     }
 }
 
+#[inline(always)]
+fn dispatch_to(ctx: &mut VMContext, ip: *const Instruction, offset: isize) {
+    unsafe {
+        let ip = ip.offset(offset);
+
+        dispatch(ctx, ip);
+    }
+}
+
+#[inline(always)]
+fn dispatch_next(ctx: &mut VMContext, ip: *const Instruction) {
+    unsafe {
+        let ip = ip.add(1);
+
+        dispatch(ctx, ip);
+    }
+}
+
+#[inline(always)]
+fn dispatch(ctx: &mut VMContext, ip: *const Instruction) {
+    let op_code = unsafe { (*ip).discriminant() };
+
+    become INSTRUCTION_DISPATCH[op_code](ctx, ip);
+}
+
 pub fn run_other_vm(instructions: Vec<Instruction>, constants: Vec<Value>) {
     let halt_ip = unsafe { instructions.as_ptr().add(instructions.len() - 1) };
 
@@ -146,7 +156,7 @@ pub fn run_other_vm(instructions: Vec<Instruction>, constants: Vec<Value>) {
     let ip = instructions.as_ptr();
     let op_code = instructions[0].discriminant();
 
-    ctx.instruction_dispatch[op_code](&mut ctx, ip);
+    INSTRUCTION_DISPATCH[op_code](&mut ctx, ip);
 }
 
 #[inline(never)]
@@ -159,7 +169,7 @@ fn instruction_move(ctx: &mut VMContext, ip: *const Instruction) {
         let value = ctx.get_value(src);
         ctx.set_value(dest, value);
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -175,7 +185,7 @@ fn instruction_add(ctx: &mut VMContext, ip: *const Instruction) {
 
         ctx.set_value(dest, Value::number(lhs + rhs));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -190,7 +200,7 @@ fn instruction_subtract(ctx: &mut VMContext, ip: *const Instruction) {
         let rhs = ctx.get_number(src2);
         ctx.set_value(dest, Value::number(lhs - rhs));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -204,7 +214,7 @@ fn instruction_multiply(ctx: &mut VMContext, ip: *const Instruction) {
         let rhs = ctx.get_number(src2);
         ctx.set_value(dest, Value::number(lhs * rhs));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -218,7 +228,7 @@ fn instruction_divide(ctx: &mut VMContext, ip: *const Instruction) {
         let rhs = ctx.get_number(src2);
         ctx.set_value(dest, Value::number(lhs / rhs));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -232,7 +242,7 @@ fn instruction_modulo(ctx: &mut VMContext, ip: *const Instruction) {
         let rhs = ctx.get_number(src2);
         ctx.set_value(dest, Value::number(lhs % rhs));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -247,7 +257,7 @@ fn instruction_equal(ctx: &mut VMContext, ip: *const Instruction) {
 
         ctx.set_value(dest, Value::boolean(lhs == rhs));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -261,7 +271,7 @@ fn instruction_not_equal(ctx: &mut VMContext, ip: *const Instruction) {
         let rhs = ctx.get_number(src2);
         ctx.set_value(dest, Value::boolean(lhs != rhs));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -275,7 +285,7 @@ fn instruction_greater(ctx: &mut VMContext, ip: *const Instruction) {
         let rhs = ctx.get_number(src2);
         ctx.set_value(dest, Value::boolean(lhs > rhs));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -289,7 +299,7 @@ fn instruction_greater_equal(ctx: &mut VMContext, ip: *const Instruction) {
         let rhs = ctx.get_number(src2);
         ctx.set_value(dest, Value::boolean(lhs >= rhs));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -303,7 +313,7 @@ fn instruction_less(ctx: &mut VMContext, ip: *const Instruction) {
         let rhs = ctx.get_number(src2);
         ctx.set_value(dest, Value::boolean(lhs < rhs));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -317,7 +327,7 @@ fn instruction_less_equal(ctx: &mut VMContext, ip: *const Instruction) {
         let rhs = ctx.get_number(src2);
         ctx.set_value(dest, Value::boolean(lhs <= rhs));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -330,7 +340,7 @@ fn instruction_negate(ctx: &mut VMContext, ip: *const Instruction) {
         let value = ctx.get_number(src);
         ctx.set_value(dest, Value::number(-value));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -343,7 +353,7 @@ fn instruction_not(ctx: &mut VMContext, ip: *const Instruction) {
         let value = ctx.get_bool(src);
         ctx.set_value(dest, Value::boolean(!value));
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 
@@ -354,9 +364,7 @@ fn instruction_jump(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked();
         };
 
-        let ip = ip.offset(offset as isize);
-        let op_code = (*ip).discriminant();
-        become ctx.instruction_dispatch[op_code](ctx, ip);
+        dispatch_to(ctx, ip, offset as isize);
     }
 }
 
@@ -372,14 +380,12 @@ fn instruction_conditional_jump(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked();
         };
 
-        let ip = if ctx.get_bool(src) {
-            ip.offset(true_offset as isize)
-        } else {
-            ip.offset(false_offset as isize)
+        let offset = match ctx.get_bool(src) {
+            true => true_offset,
+            false => false_offset,
         };
 
-        let op_code = (*ip).discriminant();
-        become ctx.instruction_dispatch[op_code](ctx, ip);
+        dispatch_to(ctx, ip, offset as isize);
     }
 }
 
@@ -399,11 +405,10 @@ fn instruction_call(ctx: &mut VMContext, ip: *const Instruction) {
         let return_address = ip.add(1);
 
         let ip = ctx.get_instruction(src);
-        let op_code = (*ip).discriminant();
 
         ctx.push_frame(return_register, return_address, caller_size);
 
-        become ctx.instruction_dispatch[op_code](ctx, ip);
+        dispatch(ctx, ip);
     }
 }
 
@@ -422,9 +427,8 @@ fn instruction_return(ctx: &mut VMContext, ip: *const Instruction) {
         ctx.set_value(dest, value);
 
         let ip = frame.return_address;
-        let op_code = (*ip).discriminant();
 
-        become ctx.instruction_dispatch[op_code](ctx, ip);
+        dispatch(ctx, ip);
     }
 }
 
@@ -439,7 +443,7 @@ fn instruction_print(ctx: &mut VMContext, ip: *const Instruction) {
 
         println!("{}", value);
 
-        dispatch_next!(ip, ctx);
+        dispatch_next(ctx, ip);
     }
 }
 

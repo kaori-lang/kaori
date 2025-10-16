@@ -54,7 +54,6 @@ impl CfgBuilder {
             self.visit_declaration(declaration);
         }
 
-        println!("{}", &self.cfg_ir);
         self.cfg_ir
     }
 
