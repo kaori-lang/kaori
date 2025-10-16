@@ -7,7 +7,7 @@ use crate::{
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},
     syntax::{decl::Decl, parser::Parser},
-    virtual_machine::{kaori_vm::run_vm, other_vm::run_other_vm},
+    virtual_machine::other_vm::run_other_vm,
 };
 
 fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {
@@ -49,7 +49,7 @@ fn build_cfg_ir(hir: HirIr) -> CfgIr {
     cfg_builder.build_ir(&declarations)
 }
 fn generate_bytecode(cfg_ir: &CfgIr) -> Bytecode {
-    let mut generator = BytecodeGenerator::new();
+    let mut generator = BytecodeGenerator::default();
 
     generator.generate(cfg_ir)
 }
@@ -68,21 +68,16 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
-    for instruction in &bytecode.instructions {
-        println!("{instruction}");
-    }
-
-    let start = Instant::now();
-
-    unsafe {
+    /*    unsafe {
         run_vm(&bytecode.instructions, &bytecode.constants);
     }
 
     let elapsed = start.elapsed();
-    println!("main vm took: {elapsed:?}");
+    println!("main vm took: {elapsed:?}"); */
 
     let start = Instant::now();
     run_other_vm(bytecode.instructions, bytecode.constants);
+
     let elapsed = start.elapsed();
     println!("took: {elapsed:?}");
 

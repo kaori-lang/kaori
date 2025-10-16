@@ -1,21 +1,38 @@
-def main() -> number  {
-    var iterations: number = 10;
-    var max_fib: number = 40;
-
-    for var i: number = 0; i < iterations; i += 1 {
-        var a: number = 0;
-        var b: number = 1;
-
-        for var j: number = 0; j < max_fib; j += 1 {
-            var temp: number = a + b;
-            a = b;
-            b = temp;
-        }
-
-        print(b);
+def main()  {
+    if 1 > 2 { 
+        1 + 2;
+    } else if 2 > 3 {
+        2 + 2;
+        3 + 2;
+    } else if 3 < 2 {
+        4 + 4;
+    } else {
+        5 + 5;
     }
 
-    return 1;
+    return;
 }
 
+/*
 
+Greater r0, c1, c2
+ConditionalJump r0, 1 3
+Add r1, c1, c2
+Jump 14
+Greater r2, c2, c3
+ConditionalJump r2, 1 4
+Add r3, c2, c2
+Add r4, c3, c2
+Jump 8
+Less r5, c3, c2
+ConditionalJump r5, 1 3
+Add r6, c4, c4
+Jump 3
+Add r7, c5, c5
+Jump 1
+Jump 1
+Jump 1
+Return r8
+Halt
+
+*/

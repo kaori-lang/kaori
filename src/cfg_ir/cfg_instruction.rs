@@ -1,3 +1,6 @@
+use core::fmt;
+use std::fmt::{Display, Formatter};
+
 use super::{basic_block::BlockId, variable::Variable};
 
 #[derive(Debug, Clone)]
@@ -173,5 +176,41 @@ impl CfgInstruction {
 
     pub fn print(src: Variable) -> Self {
         Self::Print { src }
+    }
+}
+
+impl Display for CfgInstruction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        use CfgInstruction::*;
+
+        match self {
+            Add { dest, src1, src2 } => write!(f, "{} = {} + {}", dest, src1, src2),
+            Subtract { dest, src1, src2 } => write!(f, "{} = {} - {}", dest, src1, src2),
+            Multiply { dest, src1, src2 } => write!(f, "{} = {} * {}", dest, src1, src2),
+            Divide { dest, src1, src2 } => write!(f, "{} = {} / {}", dest, src1, src2),
+            Modulo { dest, src1, src2 } => write!(f, "{} = {} % {}", dest, src1, src2),
+
+            Equal { dest, src1, src2 } => write!(f, "{} = {} == {}", dest, src1, src2),
+            NotEqual { dest, src1, src2 } => write!(f, "{} = {} != {}", dest, src1, src2),
+            Greater { dest, src1, src2 } => write!(f, "{} = {} > {}", dest, src1, src2),
+            GreaterEqual { dest, src1, src2 } => write!(f, "{} = {} >= {}", dest, src1, src2),
+            Less { dest, src1, src2 } => write!(f, "{} = {} < {}", dest, src1, src2),
+            LessEqual { dest, src1, src2 } => write!(f, "{} = {} <= {}", dest, src1, src2),
+
+            Negate { dest, src } => write!(f, "{} = -{}", dest, src),
+            Not { dest, src } => write!(f, "{} = !{}", dest, src),
+            Move { dest, src } => write!(f, "{} = {}", dest, src),
+
+            Return { src } => write!(f, "return {}", src),
+            Call {
+                dest,
+                src,
+                caller_size,
+            } => {
+                write!(f, "{} = call {} ({})", dest, src, caller_size)
+            }
+            Print { src } => write!(f, "print {}", src),
+            _ => todo!(),
+        }
     }
 }

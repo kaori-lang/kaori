@@ -1,5 +1,3 @@
-#![allow(clippy::new_without_default)]
-
 use std::collections::HashMap;
 
 use crate::cfg_ir::{
@@ -13,19 +11,14 @@ use crate::cfg_ir::{
 use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
 
 type InstructionIndex = usize;
+
+#[derive(Default)]
 pub struct BytecodeGenerator {
     pub cfg_instructions: Vec<CfgInstruction>,
     pub basic_blocks: HashMap<BlockId, InstructionIndex>,
 }
 
 impl BytecodeGenerator {
-    pub fn new() -> Self {
-        Self {
-            cfg_instructions: Vec::new(),
-            basic_blocks: HashMap::new(),
-        }
-    }
-
     pub fn convert_constants(
         &self,
         cfg_constants: &[CfgConstant],
@@ -53,7 +46,6 @@ impl BytecodeGenerator {
 
         constants
     }
-
     pub fn generate(&mut self, cfg_ir: &CfgIr) -> Bytecode {
         self.flatten_cfg_ir(cfg_ir);
 

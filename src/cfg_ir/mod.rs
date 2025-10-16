@@ -1,5 +1,6 @@
 pub mod basic_block;
 pub mod cfg_builder;
+#[allow(clippy::module_inception)]
 pub mod cfg_ir;
 
 pub mod cfg_instruction;

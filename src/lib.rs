@@ -1,4 +1,5 @@
 #![feature(explicit_tail_calls)]
+#![allow(incomplete_features)]
 
 pub mod bytecode;
 pub mod cfg_ir;

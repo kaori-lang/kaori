@@ -2,7 +2,7 @@ use core::fmt;
 
 use crate::cfg_ir::variable::Variable;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(u8, align(2))]
 pub enum Instruction {
     Add {

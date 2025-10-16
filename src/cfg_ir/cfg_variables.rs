@@ -4,19 +4,13 @@ use crate::semantic::hir_id::HirId;
 
 use super::variable::Variable;
 
+#[derive(Default)]
 pub struct CfgVariables {
     pub variables: HashMap<HirId, Variable>,
     pub next_variable: i16,
 }
 
 impl CfgVariables {
-    pub fn new() -> Self {
-        Self {
-            variables: HashMap::new(),
-            next_variable: 0,
-        }
-    }
-
     pub fn create_variable(&mut self, id: HirId) -> Variable {
         let variable = Variable(self.next_variable);
         self.next_variable += 1;

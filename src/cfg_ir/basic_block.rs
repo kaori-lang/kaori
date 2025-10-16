@@ -1,5 +1,9 @@
+use core::fmt;
+use std::fmt::{Display, Formatter};
+
 use super::{cfg_instruction::CfgInstruction, variable::Variable};
 
+#[derive(Debug)]
 pub struct BasicBlock {
     pub id: BlockId,
     pub instructions: Vec<CfgInstruction>,
@@ -30,5 +34,32 @@ pub enum Terminator {
     None,
 }
 
+impl Display for Terminator {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Terminator::Branch {
+                src,
+                r#true,
+                r#false,
+            } => {
+                write!(f, "br {} -> BB{}, BB{}", src, r#true.0, r#false.0)
+            }
+            Terminator::Goto(target) => write!(f, "goto BB{}", target.0),
+            Terminator::Return { src } => write!(f, "ret {}", src),
+            Terminator::None => write!(f, "<no terminator>"),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct BlockId(pub usize);
+
+impl Display for BasicBlock {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "BB{}:", self.id.0)?;
+        for instr in &self.instructions {
+            writeln!(f, "  {}", instr)?;
+        }
+        writeln!(f, "  {}", self.terminator)
+    }
+}

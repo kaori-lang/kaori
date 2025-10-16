@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 pub mod bytecode;
 pub mod bytecode_generator;
 

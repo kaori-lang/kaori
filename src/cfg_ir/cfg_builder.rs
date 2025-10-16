@@ -30,9 +30,9 @@ pub struct CfgBuilder {
 }
 
 impl CfgBuilder {
-    pub fn new(types_table: HashMap<HirId, TypeDef>) -> Self {
+    pub fn new(_types_table: HashMap<HirId, TypeDef>) -> Self {
         Self {
-            variables: CfgVariables::new(),
+            variables: CfgVariables::default(),
             cfg_ir: CfgIr::default(),
             current_bb: BlockId(0),
             functions: HashMap::new(),
@@ -54,6 +54,7 @@ impl CfgBuilder {
             self.visit_declaration(declaration);
         }
 
+        println!("{}", &self.cfg_ir);
         self.cfg_ir
     }
 
