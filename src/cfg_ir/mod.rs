@@ -9,4 +9,5 @@ pub mod graph_traversal;
 pub mod active_loops;
 pub mod cfg_constants;
 pub mod cfg_variables;
+pub mod jump_threading;
 pub mod variable;

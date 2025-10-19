@@ -2,7 +2,9 @@ use std::time::Instant;
 
 use crate::{
     bytecode::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
-    cfg_ir::{cfg_builder::CfgBuilder, cfg_ir::CfgIr},
+    cfg_ir::{
+        cfg_builder::CfgBuilder, cfg_ir::CfgIr, jump_threading::run_jump_threading_optimization,
+    },
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},
@@ -58,8 +60,10 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
     let hir = run_semantic_analysis(&mut ast)?;
-    let cfg_ir = build_cfg_ir(hir);
+    let mut cfg_ir = build_cfg_ir(hir);
 
+    run_jump_threading_optimization(&mut cfg_ir);
+    println!("{}", cfg_ir);
     let bytecode = generate_bytecode(&cfg_ir);
 
     Ok(bytecode)
@@ -76,6 +80,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     println!("main vm took: {elapsed:?}"); */
 
     let start = Instant::now();
+
     run_kaori_vm(bytecode.instructions, bytecode.constants);
 
     let elapsed = start.elapsed();

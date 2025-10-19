@@ -96,8 +96,6 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub(crate) const COUNT: usize = Instruction::Halt.discriminant() + 1;
-
     #[inline(always)]
     pub const fn discriminant(&self) -> usize {
         (unsafe { *(self as *const Self as *const u8) }) as usize

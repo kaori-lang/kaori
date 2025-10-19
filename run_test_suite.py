@@ -10,7 +10,7 @@ from pathlib import Path
 
 ALL_TEST_SOURCES = [
     'primitives.kr',
-    'fib_recur.kr',
+    'recursive_fib.kr',
 ]
 
 def try_kaori_tests(test_sources: list[str]) -> bool:

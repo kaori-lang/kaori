@@ -20,7 +20,7 @@ impl BasicBlock {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Terminator {
     Branch {
         src: Variable,
