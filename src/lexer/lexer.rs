@@ -88,7 +88,6 @@ impl Lexer {
             "false" => TokenKind::False,
             "bool" => TokenKind::Bool,
             "number" => TokenKind::Number,
-            "var" => TokenKind::Variable,
             _ => TokenKind::Identifier,
         };
 
@@ -233,6 +232,7 @@ impl Lexer {
             ')' => TokenKind::RightParen,
             '{' => TokenKind::LeftBrace,
             '}' => TokenKind::RightBrace,
+            '$' => TokenKind::Dollar,
             ',' => TokenKind::Comma,
             ';' => TokenKind::Semicolon,
             ':' => TokenKind::Colon,

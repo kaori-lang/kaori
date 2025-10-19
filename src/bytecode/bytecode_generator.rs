@@ -143,24 +143,6 @@ impl BytecodeGenerator {
                 caller_size,
             } => Instruction::call(dest, src, caller_size),
             CfgInstruction::Print { src } => Instruction::print(src),
-            CfgInstruction::Jump { target } => {
-                let offset = *self.basic_blocks.get(&target).unwrap() as i16 - index as i16;
-
-                Instruction::jump(offset)
-            }
-            CfgInstruction::ConditionalJump {
-                src,
-                true_target,
-                false_target,
-            } => {
-                let true_offset =
-                    *self.basic_blocks.get(&true_target).unwrap() as i16 - index as i16;
-                let false_offset =
-                    *self.basic_blocks.get(&false_target).unwrap() as i16 - index as i16;
-
-                Instruction::conditional_jump(src, true_offset, false_offset)
-            }
-            CfgInstruction::Return { src } => Instruction::return_(src),
         }
     }
 }

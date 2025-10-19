@@ -63,7 +63,7 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
     let mut cfg_ir = build_cfg_ir(hir);
 
     run_jump_threading_optimization(&mut cfg_ir);
-    println!("{}", cfg_ir);
+
     let bytecode = generate_bytecode(&cfg_ir);
 
     Ok(bytecode)

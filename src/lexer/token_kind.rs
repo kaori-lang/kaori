@@ -25,6 +25,7 @@ pub enum TokenKind {
     Less,
     LessEqual,
 
+    Dollar,
     Comma,
     Semicolon,
     Colon,
@@ -38,7 +39,6 @@ pub enum TokenKind {
     // Keywords
     Function,
     Struct,
-    Variable,
     For,
     While,
     Break,
@@ -86,6 +86,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Less => "<",
             TokenKind::LessEqual => "<=",
 
+            TokenKind::Dollar => "$",
             TokenKind::Comma => ",",
             TokenKind::Semicolon => ";",
             TokenKind::Colon => ":",
@@ -97,7 +98,6 @@ impl fmt::Display for TokenKind {
             TokenKind::RightBrace => "}",
 
             TokenKind::Function => "def",
-            TokenKind::Variable => "var",
             TokenKind::For => "for",
             TokenKind::While => "while",
             TokenKind::Break => "break",

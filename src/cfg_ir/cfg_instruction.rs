@@ -72,17 +72,6 @@ pub enum CfgInstruction {
         dest: Variable,
         src: Variable,
     },
-    Jump {
-        target: BlockId,
-    },
-    ConditionalJump {
-        src: Variable,
-        true_target: BlockId,
-        false_target: BlockId,
-    },
-    Return {
-        src: Variable,
-    },
     Call {
         dest: Variable,
         src: Variable,
@@ -150,22 +139,6 @@ impl CfgInstruction {
         Self::Move { dest, src }
     }
 
-    pub fn jump(target: BlockId) -> Self {
-        Self::Jump { target }
-    }
-
-    pub fn conditional_jump(src: Variable, true_target: BlockId, false_target: BlockId) -> Self {
-        Self::ConditionalJump {
-            src,
-            true_target,
-            false_target,
-        }
-    }
-
-    pub fn return_(src: Variable) -> Self {
-        Self::Return { src }
-    }
-
     pub fn call(dest: Variable, src: Variable, caller_size: u16) -> Self {
         Self::Call {
             dest,
@@ -200,8 +173,6 @@ impl Display for CfgInstruction {
             Negate { dest, src } => write!(f, "{} = -{}", dest, src),
             Not { dest, src } => write!(f, "{} = !{}", dest, src),
             Move { dest, src } => write!(f, "{} = {}", dest, src),
-
-            Return { src } => write!(f, "return {}", src),
             Call {
                 dest,
                 src,
