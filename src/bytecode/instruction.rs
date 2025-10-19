@@ -228,14 +228,19 @@ impl Instruction {
         Self::Jump { offset }
     }
 
-    pub fn conditional_jump(src: Variable, true_offset: i16, false_offset: i16) -> Self {
-        Self::ConditionalJump {
+    pub fn jump_if_true(src: Variable, offset: i16) -> Self {
+        Self::JumpIfTrue {
             src: src.to_i16(),
-            true_offset,
-            false_offset,
+            offset,
         }
     }
 
+    pub fn jump_if_false(src: Variable, offset: i16) -> Self {
+        Self::JumpIfFalse {
+            src: src.to_i16(),
+            offset,
+        }
+    }
     pub fn print(src: Variable) -> Self {
         Self::Print { src: src.to_i16() }
     }
@@ -302,19 +307,13 @@ impl fmt::Display for Instruction {
             } => write!(f, "Call {}, {}, {}", reg(dest), reg(src), caller_size),
             Self::Return { src } => write!(f, "Return {}", reg(src)),
             Self::Jump { offset } => write!(f, "Jump {offset}"),
-            Self::ConditionalJump {
-                src,
-                true_offset,
-                false_offset,
-            } => {
-                write!(
-                    f,
-                    "ConditionalJump {}, {} {}",
-                    reg(src),
-                    true_offset,
-                    false_offset
-                )
+            Self::JumpIfTrue { src, offset } => {
+                write!(f, "JumpIfTrue {}, {}", reg(src), offset)
             }
+            Self::JumpIfFalse { src, offset } => {
+                write!(f, "JumpIfFalse {}, {}", reg(src), offset)
+            }
+
             Self::Print { src } => write!(f, "Print {}", reg(src)),
             Self::Halt => write!(f, "Halt"),
         }

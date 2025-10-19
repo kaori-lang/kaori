@@ -24,27 +24,28 @@ impl FunctionFrame {
 
 type InstructionHandler = fn(&mut VMContext, ip: *const Instruction);
 
-const INSTRUCTION_DISPATCH: [InstructionHandler; 20] = [
-    instruction_add,              // 0
-    instruction_subtract,         // 1
-    instruction_multiply,         // 2
-    instruction_divide,           // 3
-    instruction_modulo,           // 4
-    instruction_equal,            // 5
-    instruction_not_equal,        // 6
-    instruction_greater,          // 7
-    instruction_greater_equal,    // 8
-    instruction_less,             // 9
-    instruction_less_equal,       // 10
-    instruction_negate,           // 11
-    instruction_not,              // 12
-    instruction_move,             // 13
-    instruction_call,             // 14
-    instruction_return,           // 15
-    instruction_jump,             // 16
-    instruction_conditional_jump, // 17
-    instruction_print,            // 18
-    instruction_halt,             // 19
+const INSTRUCTION_DISPATCH: [InstructionHandler; 21] = [
+    instruction_add,           // 0
+    instruction_subtract,      // 1
+    instruction_multiply,      // 2
+    instruction_divide,        // 3
+    instruction_modulo,        // 4
+    instruction_equal,         // 5
+    instruction_not_equal,     // 6
+    instruction_greater,       // 7
+    instruction_greater_equal, // 8
+    instruction_less,          // 9
+    instruction_less_equal,    // 10
+    instruction_negate,        // 11
+    instruction_not,           // 12
+    instruction_move,          // 13
+    instruction_call,          // 14
+    instruction_return,        // 15
+    instruction_jump,          // 16
+    instruction_jump_if_true,  // 17
+    instruction_jump_if_false, // 18
+    instruction_print,         // 19
+    instruction_halt,          // 20
 ];
 pub struct VMContext {
     pub call_stack: Vec<FunctionFrame>,
@@ -378,23 +379,38 @@ fn instruction_jump(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_conditional_jump(ctx: &mut VMContext, ip: *const Instruction) {
+fn instruction_jump_if_true(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let Instruction::ConditionalJump {
-            src,
-            true_offset,
-            false_offset,
-        } = *ip
-        else {
+        let Instruction::JumpIfTrue { src, offset } = *ip else {
             unreachable_unchecked();
         };
 
-        let offset = match ctx.get_bool(src) {
-            true => true_offset,
-            false => false_offset,
+        match ctx.get_bool(src) {
+            true => {
+                dispatch_to!(ctx, ip, offset as isize);
+            }
+            false => {
+                dispatch_next!(ctx, ip);
+            }
+        };
+    }
+}
+
+#[inline(never)]
+fn instruction_jump_if_false(ctx: &mut VMContext, ip: *const Instruction) {
+    unsafe {
+        let Instruction::JumpIfFalse { src, offset } = *ip else {
+            unreachable_unchecked();
         };
 
-        dispatch_to!(ctx, ip, offset as isize);
+        match ctx.get_bool(src) {
+            true => {
+                dispatch_next!(ctx, ip);
+            }
+            false => {
+                dispatch_to!(ctx, ip, offset as isize);
+            }
+        };
     }
 }
 
