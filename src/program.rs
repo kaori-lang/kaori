@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use crate::{
-    bytecode::{bytecode::Bytecode, bytecode_generator::BytecodeGenerator},
+    bytecode::{bytecode::Bytecode, generate_bytecode::generate_bytecode},
     cfg_ir::{
         cfg_builder::CfgBuilder, cfg_ir::CfgIr, jump_threading::run_jump_threading_optimization,
     },
@@ -47,22 +47,18 @@ fn build_cfg_ir(hir: HirIr) -> CfgIr {
     let declarations = hir.declarations;
 
     let cfg_builder = CfgBuilder::new(types_table);
+    let mut cfg_ir = cfg_builder.build_ir(&declarations);
 
-    cfg_builder.build_ir(&declarations)
-}
-fn generate_bytecode(cfg_ir: &CfgIr) -> Bytecode {
-    let mut generator = BytecodeGenerator::default();
+    run_jump_threading_optimization(&mut cfg_ir);
 
-    generator.generate(cfg_ir)
+    cfg_ir
 }
 
 pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
     let hir = run_semantic_analysis(&mut ast)?;
-    let mut cfg_ir = build_cfg_ir(hir);
-
-    run_jump_threading_optimization(&mut cfg_ir);
+    let cfg_ir = build_cfg_ir(hir);
 
     let bytecode = generate_bytecode(&cfg_ir);
 

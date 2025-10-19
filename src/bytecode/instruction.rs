@@ -83,10 +83,13 @@ pub enum Instruction {
     Jump {
         offset: i16,
     },
-    ConditionalJump {
+    JumpIfTrue {
         src: i16,
-        true_offset: i16,
-        false_offset: i16,
+        offset: i16,
+    },
+    JumpIfFalse {
+        src: i16,
+        offset: i16,
     },
     Print {
         src: i16,

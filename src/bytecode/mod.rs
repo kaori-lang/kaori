@@ -1,6 +1,6 @@
 #[allow(clippy::module_inception)]
 pub mod bytecode;
-pub mod bytecode_generator;
+pub mod generate_bytecode;
 
 pub mod instruction;
 pub mod value;
