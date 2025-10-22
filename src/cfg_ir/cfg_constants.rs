@@ -3,20 +3,10 @@ use std::collections::HashMap;
 
 use super::{basic_block::BlockId, variable::Variable};
 
+#[derive(Default)]
 pub struct CfgConstants {
     pub constants: Vec<CfgConstant>,
     pub constants_variable: HashMap<CfgConstant, Variable>,
-    pub variable: i16,
-}
-
-impl Default for CfgConstants {
-    fn default() -> Self {
-        Self {
-            constants: Vec::new(),
-            constants_variable: HashMap::new(),
-            variable: -1,
-        }
-    }
 }
 
 impl CfgConstants {
@@ -24,16 +14,18 @@ impl CfgConstants {
         if let Some(variable) = self.constants_variable.get(&constant) {
             *variable
         } else {
-            let variable = Variable(self.variable);
+            let variable = self.create_variable();
 
             self.constants_variable
                 .insert(constant.to_owned(), variable);
             self.constants.push(constant);
 
-            self.variable -= 1;
-
             variable
         }
+    }
+
+    fn create_variable(&self) -> Variable {
+        Variable(-((self.constants.len() + 1) as i16))
     }
 
     pub fn push_function(&mut self, value: BlockId) -> Variable {

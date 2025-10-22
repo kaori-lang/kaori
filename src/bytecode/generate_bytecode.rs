@@ -10,78 +10,124 @@ use crate::cfg_ir::{
 
 use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
 
-fn convert_constants(cfg_constants: &[CfgConstant], instructions: &[Instruction]) -> Vec<Value> {
+pub fn generate_bytecode(cfg_ir: &CfgIr) -> Bytecode {
+    let mut context = CodegenContext {
+        basic_blocks: &cfg_ir.basic_blocks,
+        instructions: Vec::new(),
+        bb_start_index: HashMap::new(),
+        pending_backpatch: Vec::new(),
+    };
+
+    for cfg in &cfg_ir.cfgs {
+        context.visit_cfg(*cfg);
+    }
+
+    context.instructions.push(Instruction::Halt);
+
+    let constants = convert_constants(
+        &cfg_ir.constants.constants,
+        &context.instructions,
+        &context.bb_start_index,
+    );
+
+    Bytecode::new(context.instructions, constants)
+}
+
+struct CodegenContext<'a> {
+    basic_blocks: &'a [BasicBlock],
+    instructions: Vec<Instruction>,
+    bb_start_index: HashMap<BlockId, usize>,
+    pending_backpatch: Vec<(usize, BlockId)>,
+}
+
+impl<'a> CodegenContext<'a> {
+    fn visit_cfg(&mut self, cfg: BlockId) {
+        let blocks = reversed_postorder(cfg, self.basic_blocks);
+
+        for (index, bb_id) in blocks.iter().enumerate() {
+            self.bb_start_index.insert(*bb_id, self.instructions.len());
+            let next_bb_id = blocks.get(index + 1).copied();
+            self.visit_block(*bb_id, next_bb_id);
+        }
+
+        self.resolve_backpatches();
+    }
+
+    fn visit_block(&mut self, bb_id: BlockId, next_bb_id: Option<BlockId>) {
+        let basic_block = &self.basic_blocks[bb_id.0];
+
+        for instruction in &basic_block.instructions {
+            let instruction = visit_instruction(instruction);
+            self.instructions.push(instruction);
+        }
+
+        match basic_block.terminator {
+            Terminator::Branch {
+                src,
+                r#true,
+                r#false,
+            } => {}
+
+            Terminator::Goto(target) => {
+                if Some(target) != next_bb_id {
+                    let instruction = Instruction::jump(0);
+                    let index = self.instructions.len();
+                    self.pending_backpatch.push((index, target));
+                    self.instructions.push(instruction);
+                }
+            }
+
+            Terminator::Return { src } => {
+                self.instructions.push(Instruction::return_(src));
+            }
+
+            _ => {}
+        };
+    }
+
+    fn resolve_backpatches(&mut self) {
+        for (instr_index, target_block) in &self.pending_backpatch {
+            if let Some(&target_idx) = self.bb_start_index.get(target_block) {
+            } else {
+                panic!("Unresolved block target {:?}", target_block);
+            }
+        }
+
+        self.pending_backpatch.clear();
+    }
+}
+
+fn convert_constants(
+    cfg_constants: &[CfgConstant],
+    instructions: &[Instruction],
+    bb_start_index: &HashMap<BlockId, usize>,
+) -> Vec<Value> {
     let mut constants = Vec::new();
 
     constants.push(Value::default());
 
     for constant in cfg_constants {
-        let constant = match constant {
-            CfgConstant::Boolean(value) => Value::boolean(*value),
-            CfgConstant::Function(value) => {
-                let instruction_index = *self.basic_blocks.get(value).unwrap();
-
-                let ptr = unsafe { instructions.as_ptr().add(instruction_index) };
+        let value = match constant {
+            CfgConstant::Boolean(v) => Value::boolean(*v),
+            CfgConstant::Number(v) => Value::number(**v),
+            CfgConstant::Function(block_id) => {
+                let idx = *bb_start_index
+                    .get(block_id)
+                    .expect("Missing block ID for function constant");
+                let ptr = unsafe { instructions.as_ptr().add(idx) };
                 Value::instruction(ptr)
             }
-            CfgConstant::Number(value) => Value::number(**value),
-            _ => todo!(),
+            _ => todo!("Unhandled constant kind"),
         };
 
-        constants.push(constant);
+        constants.push(value);
     }
 
     constants
 }
-pub fn generate_bytecode(cfg_ir: &CfgIr) -> Bytecode {
-    let mut instructions = Vec::new();
 
-    for cfg in &cfg_ir.cfgs {
-        visit_cfg(*cfg, &cfg_ir.basic_blocks, &mut instructions);
-    }
-
-    instructions.push(Instruction::Halt);
-
-    let constants = convert_constants(&cfg_ir.constants.constants, &instructions);
-
-    Bytecode::new(instructions, constants)
-}
-
-fn visit_cfg(cfg: BlockId, basic_blocks: &[BasicBlock], instructions: &mut Vec<Instruction>) {
-    let blocks = reversed_postorder(cfg, basic_blocks);
-
-    let mut bb_start_index = HashMap::new();
-
-    for id in blocks {
-        bb_start_index.insert(id, instructions.len());
-
-        let basic_block = &basic_blocks[id.0];
-
-        visit_block(basic_block, instructions);
-    }
-}
-
-fn visit_block(basic_block: &BasicBlock, instructions: &mut Vec<Instruction>) {
-    for instruction in &basic_block.instructions {
-        let instruction = visit_instruction(instruction);
-
-        instructions.push(instruction);
-    }
-
-    match basic_block.terminator {
-        Terminator::Branch {
-            src,
-            r#true,
-            r#false,
-        } => {}
-        Terminator::Goto(target) => {}
-        Terminator::Return { src } => {}
-        _ => {}
-    }
-}
-
-fn visit_instruction(instruction: &CfgInstruction) -> Instruction {
-    match *instruction {
+fn visit_instruction(instr: &CfgInstruction) -> Instruction {
+    match *instr {
         CfgInstruction::Add { dest, src1, src2 } => Instruction::add(dest, src1, src2),
         CfgInstruction::Subtract { dest, src1, src2 } => Instruction::subtract(dest, src1, src2),
         CfgInstruction::Multiply { dest, src1, src2 } => Instruction::multiply(dest, src1, src2),

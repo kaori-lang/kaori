@@ -40,3 +40,5 @@ if __name__ == "__main__":
     for name, path, cmd_list in scripts:
         elapsed = run_script(path, cmd_list)
         print(f"{name:<25} {elapsed:.6f}")
+
+

@@ -1,7 +1,7 @@
 use core::fmt;
 use std::fmt::{Display, Formatter};
 
-use super::{basic_block::BlockId, variable::Variable};
+use super::variable::Variable;
 
 #[derive(Debug, Clone)]
 pub enum CfgInstruction {

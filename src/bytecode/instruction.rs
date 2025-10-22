@@ -313,7 +313,6 @@ impl fmt::Display for Instruction {
             Self::JumpIfFalse { src, offset } => {
                 write!(f, "JumpIfFalse {}, {}", reg(src), offset)
             }
-
             Self::Print { src } => write!(f, "Print {}", reg(src)),
             Self::Halt => write!(f, "Halt"),
         }

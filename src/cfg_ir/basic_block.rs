@@ -1,7 +1,9 @@
+use super::{cfg_instruction::CfgInstruction, variable::Variable};
 use core::fmt;
 use std::fmt::{Display, Formatter};
 
-use super::{cfg_instruction::CfgInstruction, variable::Variable};
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct BlockId(pub usize);
 
 #[derive(Debug)]
 pub struct BasicBlock {
@@ -50,9 +52,6 @@ impl Display for Terminator {
         }
     }
 }
-
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct BlockId(pub usize);
 
 impl Display for BasicBlock {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

@@ -68,6 +68,7 @@ fn traverse(
     };
 
     nodes.insert(id, *bb_id);
+
     let basic_block = &mut basic_blocks[id.0];
     basic_block.terminator = *terminator;
 
