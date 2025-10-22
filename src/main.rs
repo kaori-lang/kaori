@@ -30,7 +30,7 @@ fn main() -> ExitCode {
 }
  */
 fn main() {
-    let source_to_run = "test_suite/iterative_fib.kr";
+    let source_to_run = "test_suite/mutual_recursion.kr";
 
     match fs::read_to_string(source_to_run) {
         Ok(source) => {

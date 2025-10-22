@@ -1,0 +1,12 @@
+def foo(n: number) -> number {
+    if n > 0 {
+        foo(n - 1);
+    }
+
+    print(n);
+    return n;
+}
+
+def main() {
+    print(foo(1));
+}
