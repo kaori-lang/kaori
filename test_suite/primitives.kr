@@ -1,8 +1,8 @@
 /* test primitive vars. & operations */
 
 def test_numbers() -> bool {
-    $a: number = 10.0
-    $b: number = -2.0
+    $a: number = 10.0;
+    $b: number = -2.0;
 
     // test arithmetic
     $sum_a_b: number = a + b;

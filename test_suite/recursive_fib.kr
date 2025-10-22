@@ -1,5 +1,5 @@
 def fib(n: number) -> number {
-    if n <= 0 {
+    if n == 0 {
         return 0;
     }
 
@@ -12,30 +12,5 @@ def fib(n: number) -> number {
 
 
 def main()  {
-    $n: number = fib(2);
-    print(n);
+    fib(40);
 }
-
-/*
-Move r1, c1
-Call r0, c2, 1
-Move r2, r0
-Print r2
-Return r3
-LessEqual r1, r0, c3
-JumpIfFalse r1, 2
-Return c3
-
-Equal r2, r0, c4
-JumpIfFalse r2, 2
-Return c4
-Subtract r4, r0, c4
-Move r5, r4
-Call r3, c2, 5
-Subtract r7, r0, c1
-Move r8, r7
-Call r6, c2, 8
-Add r9, r3, r6
-Return r9
-Halt
-*/

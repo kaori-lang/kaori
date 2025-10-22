@@ -445,11 +445,12 @@ fn instruction_return(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked();
         };
 
+        let value = ctx.get_value(src);
+
         let frame = ctx.pop_frame();
 
         let dest = frame.return_register;
 
-        let value = ctx.get_value(src);
         ctx.set_value(dest, value);
 
         let ip = frame.return_address;

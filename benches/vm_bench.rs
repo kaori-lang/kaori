@@ -1,4 +1,4 @@
-use std::fs;
+/*use std::fs;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use kaori::program::compile_source_code;
@@ -15,3 +15,4 @@ fn bench_execute(c: &mut Criterion) {
 
 criterion_group!(benches, bench_execute);
 criterion_main!(benches);
+*/

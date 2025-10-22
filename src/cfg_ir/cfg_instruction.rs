@@ -181,7 +181,6 @@ impl Display for CfgInstruction {
                 write!(f, "{} = call {} ({})", dest, src, caller_size)
             }
             Print { src } => write!(f, "print {}", src),
-            _ => todo!(),
         }
     }
 }

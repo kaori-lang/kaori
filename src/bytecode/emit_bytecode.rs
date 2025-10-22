@@ -105,7 +105,7 @@ impl CodegenContext {
                 self.instructions.push(instruction);
             }
 
-            _ => {}
+            Terminator::None => {}
         };
     }
 
@@ -120,10 +120,10 @@ impl CodegenContext {
                 Instruction::Jump { offset } => {
                     *offset = new_offset;
                 }
-                Instruction::JumpIfTrue { src, offset } => {
+                Instruction::JumpIfTrue { offset, .. } => {
                     *offset = new_offset;
                 }
-                Instruction::JumpIfFalse { src, offset } => {
+                Instruction::JumpIfFalse { offset, .. } => {
                     *offset = new_offset;
                 }
                 _ => {}

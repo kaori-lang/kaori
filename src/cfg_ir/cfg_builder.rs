@@ -374,7 +374,7 @@ impl CfgBuilder {
 
                 let src = self.visit_expression(callee);
 
-                let caller_size = self.variables.next_variable as u16;
+                let caller_size = (self.variables.next_variable) as u16;
 
                 for (id, src) in arguments_src {
                     let dest = self.variables.create_variable(id);

@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use crate::{
-    bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode, instruction},
+    bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode},
     cfg_ir::{
         cfg_builder::CfgBuilder, cfg_ir::CfgIr, jump_threading::run_jump_threading_optimization,
     },
@@ -62,9 +62,9 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 
     let bytecode = emit_bytecode(cfg_ir.cfgs, cfg_ir.basic_blocks, cfg_ir.constants.constants);
 
-    for instruction in &bytecode.instructions {
+    /* for instruction in &bytecode.instructions {
         println!("{}", instruction);
-    }
+    } */
 
     Ok(bytecode)
 }

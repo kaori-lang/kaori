@@ -1,12 +1,21 @@
-def foo(n: number) -> number {
+def foo(n: number) {
+
+    if n > 0 {
+        bar(n - 1);
+    }
+
+}
+
+def bar(n: number) {
+    print(n);
+
     if n > 0 {
         foo(n - 1);
     }
 
-    print(n);
-    return n;
 }
 
+
 def main() {
-    print(foo(1));
+    print(foo(10));
 }
