@@ -85,5 +85,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     let elapsed = start.elapsed();
     println!("took: {elapsed:?}");
 
+    /*     run_kaori_vm(bytecode.instructions, bytecode.constants); */
+
     Ok(())
 }
