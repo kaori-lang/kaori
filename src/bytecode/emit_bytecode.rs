@@ -137,12 +137,9 @@ fn convert_constants(
     instructions: &[Instruction],
     bb_start_index: &HashMap<BlockId, usize>,
 ) -> Vec<Value> {
-    let mut constants = Vec::new();
-
-    constants.push(Value::default());
-
-    for constant in cfg_constants {
-        let value = match constant {
+    let mut constants = cfg_constants
+        .iter()
+        .map(|constant| match constant {
             CfgConstant::Boolean(v) => Value::boolean(*v),
             CfgConstant::Number(v) => Value::number(**v),
             CfgConstant::Function(block_id) => {
@@ -153,16 +150,18 @@ fn convert_constants(
                 Value::instruction(ptr)
             }
             _ => todo!("Unhandled constant kind"),
-        };
+        })
+        .collect::<Vec<Value>>();
 
-        constants.push(value);
-    }
+    constants.reverse();
+
+    constants.push(Value::default());
 
     constants
 }
 
-fn visit_instruction(instr: &CfgInstruction) -> Instruction {
-    match *instr {
+fn visit_instruction(instruction: &CfgInstruction) -> Instruction {
+    match *instruction {
         CfgInstruction::Add { dest, src1, src2 } => Instruction::add(dest, src1, src2),
         CfgInstruction::Subtract { dest, src1, src2 } => Instruction::subtract(dest, src1, src2),
         CfgInstruction::Multiply { dest, src1, src2 } => Instruction::multiply(dest, src1, src2),
@@ -178,7 +177,7 @@ fn visit_instruction(instr: &CfgInstruction) -> Instruction {
         CfgInstruction::LessEqual { dest, src1, src2 } => Instruction::less_equal(dest, src1, src2),
         CfgInstruction::Negate { dest, src } => Instruction::negate(dest, src),
         CfgInstruction::Not { dest, src } => Instruction::not(dest, src),
-        CfgInstruction::Move { dest, src } => Instruction::mov(dest, src),
+        CfgInstruction::Move { dest, src } => Instruction::move_(dest, src),
         CfgInstruction::Call {
             dest,
             src,

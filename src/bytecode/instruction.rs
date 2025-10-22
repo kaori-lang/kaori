@@ -206,7 +206,7 @@ impl Instruction {
         }
     }
 
-    pub fn mov(dest: Variable, src: Variable) -> Self {
+    pub fn move_(dest: Variable, src: Variable) -> Self {
         Self::Move {
             dest: dest.to_i16(),
             src: src.to_i16(),
@@ -248,7 +248,6 @@ impl Instruction {
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // helper closure for formatting registers
         let reg = |v: &i16| {
             if *v < 0 {
                 format!("c{}", v.abs())
@@ -259,62 +258,52 @@ impl fmt::Display for Instruction {
 
         match self {
             Self::Add { dest, src1, src2 } => {
-                write!(f, "Add {}, {}, {}", reg(dest), reg(src1), reg(src2))
+                write!(f, "ADD {}, {}, {}", reg(dest), reg(src1), reg(src2))
             }
             Self::Subtract { dest, src1, src2 } => {
-                write!(f, "Subtract {}, {}, {}", reg(dest), reg(src1), reg(src2))
+                write!(f, "SUB {}, {}, {}", reg(dest), reg(src1), reg(src2))
             }
             Self::Multiply { dest, src1, src2 } => {
-                write!(f, "Multiply {}, {}, {}", reg(dest), reg(src1), reg(src2))
+                write!(f, "MUL {}, {}, {}", reg(dest), reg(src1), reg(src2))
             }
             Self::Divide { dest, src1, src2 } => {
-                write!(f, "Divide {}, {}, {}", reg(dest), reg(src1), reg(src2))
+                write!(f, "DIV {}, {}, {}", reg(dest), reg(src1), reg(src2))
             }
             Self::Modulo { dest, src1, src2 } => {
-                write!(f, "Modulo {}, {}, {}", reg(dest), reg(src1), reg(src2))
+                write!(f, "MOD {}, {}, {}", reg(dest), reg(src1), reg(src2))
             }
             Self::Equal { dest, src1, src2 } => {
-                write!(f, "Equal {}, {}, {}", reg(dest), reg(src1), reg(src2))
+                write!(f, "EQ {}, {}, {}", reg(dest), reg(src1), reg(src2))
             }
             Self::NotEqual { dest, src1, src2 } => {
-                write!(f, "NotEqual {}, {}, {}", reg(dest), reg(src1), reg(src2))
+                write!(f, "NEQ {}, {}, {}", reg(dest), reg(src1), reg(src2))
             }
             Self::Greater { dest, src1, src2 } => {
-                write!(f, "Greater {}, {}, {}", reg(dest), reg(src1), reg(src2))
+                write!(f, "GT {}, {}, {}", reg(dest), reg(src1), reg(src2))
             }
             Self::GreaterEqual { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "GreaterEqual {}, {}, {}",
-                    reg(dest),
-                    reg(src1),
-                    reg(src2)
-                )
+                write!(f, "GTE {}, {}, {}", reg(dest), reg(src1), reg(src2))
             }
             Self::Less { dest, src1, src2 } => {
-                write!(f, "Less {}, {}, {}", reg(dest), reg(src1), reg(src2))
+                write!(f, "LT {}, {}, {}", reg(dest), reg(src1), reg(src2))
             }
             Self::LessEqual { dest, src1, src2 } => {
-                write!(f, "LessEqual {}, {}, {}", reg(dest), reg(src1), reg(src2))
+                write!(f, "LTE {}, {}, {}", reg(dest), reg(src1), reg(src2))
             }
-            Self::Negate { dest, src } => write!(f, "Negate {}, {}", reg(dest), reg(src)),
-            Self::Not { dest, src } => write!(f, "Not {}, {}", reg(dest), reg(src)),
-            Self::Move { dest, src } => write!(f, "Move {}, {}", reg(dest), reg(src)),
+            Self::Negate { dest, src } => write!(f, "NEG {}, {}", reg(dest), reg(src)),
+            Self::Not { dest, src } => write!(f, "NOT {}, {}", reg(dest), reg(src)),
+            Self::Move { dest, src } => write!(f, "MOV {}, {}", reg(dest), reg(src)),
             Self::Call {
                 dest,
                 src,
                 caller_size,
-            } => write!(f, "Call {}, {}, {}", reg(dest), reg(src), caller_size),
-            Self::Return { src } => write!(f, "Return {}", reg(src)),
-            Self::Jump { offset } => write!(f, "Jump {offset}"),
-            Self::JumpIfTrue { src, offset } => {
-                write!(f, "JumpIfTrue {}, {}", reg(src), offset)
-            }
-            Self::JumpIfFalse { src, offset } => {
-                write!(f, "JumpIfFalse {}, {}", reg(src), offset)
-            }
-            Self::Print { src } => write!(f, "Print {}", reg(src)),
-            Self::Halt => write!(f, "Halt"),
+            } => write!(f, "CALL {}, {}, {}", reg(dest), reg(src), caller_size),
+            Self::Return { src } => write!(f, "RET {}", reg(src)),
+            Self::Jump { offset } => write!(f, "JMP {}", offset),
+            Self::JumpIfTrue { src, offset } => write!(f, "JIT {}, {}", reg(src), offset),
+            Self::JumpIfFalse { src, offset } => write!(f, "JIF {}, {}", reg(src), offset),
+            Self::Print { src } => write!(f, "PRT {}", reg(src)),
+            Self::Halt => write!(f, "HLT"),
         }
     }
 }

@@ -1,5 +1,6 @@
 def foo(n: number) {
-
+    print(n);
+    
     if n > 0 {
         bar(n - 1);
     }

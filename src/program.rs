@@ -62,7 +62,7 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 
     let bytecode = emit_bytecode(cfg_ir.cfgs, cfg_ir.basic_blocks, cfg_ir.constants.constants);
 
-    /* for instruction in &bytecode.instructions {
+    /*  for instruction in &bytecode.instructions {
         println!("{}", instruction);
     } */
 
@@ -72,12 +72,11 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
-    /*    unsafe {
-        run_vm(&bytecode.instructions, &bytecode.constants);
-    }
-
-    let elapsed = start.elapsed();
-    println!("main vm took: {elapsed:?}"); */
+    /*
+    unsafe {
+         run_vm(&bytecode.instructions, &bytecode.constants);
+     }
+    */
 
     let start = Instant::now();
 

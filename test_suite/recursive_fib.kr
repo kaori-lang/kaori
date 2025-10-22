@@ -12,5 +12,6 @@ def fib(n: number) -> number {
 
 
 def main()  {
-    print(fib(40));
+    fib(40);
 }
+
