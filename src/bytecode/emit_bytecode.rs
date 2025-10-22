@@ -4,56 +4,61 @@ use crate::cfg_ir::{
     basic_block::{BasicBlock, BlockId, Terminator},
     cfg_constants::CfgConstant,
     cfg_instruction::CfgInstruction,
-    cfg_ir::CfgIr,
     graph_traversal::reversed_postorder,
 };
 
 use super::{bytecode::Bytecode, instruction::Instruction, value::Value};
 
-pub fn generate_bytecode(cfg_ir: &CfgIr) -> Bytecode {
+pub fn emit_bytecode(
+    cfgs: Vec<BlockId>,
+    basic_blocks: Vec<BasicBlock>,
+    constants: Vec<CfgConstant>,
+) -> Bytecode {
     let mut context = CodegenContext {
-        basic_blocks: &cfg_ir.basic_blocks,
+        basic_blocks,
         instructions: Vec::new(),
         bb_start_index: HashMap::new(),
-        pending_backpatch: Vec::new(),
     };
 
-    for cfg in &cfg_ir.cfgs {
-        context.visit_cfg(*cfg);
+    for cfg in cfgs.iter().copied() {
+        context.visit_cfg(cfg);
     }
 
     context.instructions.push(Instruction::Halt);
 
-    let constants = convert_constants(
-        &cfg_ir.constants.constants,
-        &context.instructions,
-        &context.bb_start_index,
-    );
+    let constants = convert_constants(&constants, &context.instructions, &context.bb_start_index);
 
     Bytecode::new(context.instructions, constants)
 }
 
-struct CodegenContext<'a> {
-    basic_blocks: &'a [BasicBlock],
+struct CodegenContext {
+    basic_blocks: Vec<BasicBlock>,
     instructions: Vec<Instruction>,
     bb_start_index: HashMap<BlockId, usize>,
-    pending_backpatch: Vec<(usize, BlockId)>,
 }
 
-impl<'a> CodegenContext<'a> {
+impl CodegenContext {
     fn visit_cfg(&mut self, cfg: BlockId) {
-        let blocks = reversed_postorder(cfg, self.basic_blocks);
+        let blocks = reversed_postorder(cfg, &self.basic_blocks);
+        let mut pending_backpatch = Vec::new();
 
-        for (index, bb_id) in blocks.iter().enumerate() {
-            self.bb_start_index.insert(*bb_id, self.instructions.len());
+        for (index, bb_id) in blocks.iter().copied().enumerate() {
+            self.bb_start_index.insert(bb_id, self.instructions.len());
+
             let next_bb_id = blocks.get(index + 1).copied();
-            self.visit_block(*bb_id, next_bb_id);
+
+            self.visit_block(bb_id, next_bb_id, &mut pending_backpatch);
         }
 
-        self.resolve_backpatches();
+        self.resolve_backpatches(&pending_backpatch);
     }
 
-    fn visit_block(&mut self, bb_id: BlockId, next_bb_id: Option<BlockId>) {
+    fn visit_block(
+        &mut self,
+        bb_id: BlockId,
+        next_bb_id: Option<BlockId>,
+        pending_backpatch: &mut Vec<(usize, BlockId)>,
+    ) {
         let basic_block = &self.basic_blocks[bb_id.0];
 
         for instruction in &basic_block.instructions {
@@ -66,34 +71,64 @@ impl<'a> CodegenContext<'a> {
                 src,
                 r#true,
                 r#false,
-            } => {}
+            } => {
+                if Some(r#true) != next_bb_id {
+                    let instruction = Instruction::jump_if_true(src, 0);
+                    let index = self.instructions.len();
+                    pending_backpatch.push((index, r#true));
+
+                    self.instructions.push(instruction);
+                }
+
+                if Some(r#false) != next_bb_id {
+                    let instruction = Instruction::jump_if_false(src, 0);
+                    let index = self.instructions.len();
+                    pending_backpatch.push((index, r#false));
+
+                    self.instructions.push(instruction);
+                }
+            }
 
             Terminator::Goto(target) => {
                 if Some(target) != next_bb_id {
                     let instruction = Instruction::jump(0);
                     let index = self.instructions.len();
-                    self.pending_backpatch.push((index, target));
+                    pending_backpatch.push((index, target));
+
                     self.instructions.push(instruction);
                 }
             }
 
             Terminator::Return { src } => {
-                self.instructions.push(Instruction::return_(src));
+                let instruction = Instruction::return_(src);
+
+                self.instructions.push(instruction);
             }
 
             _ => {}
         };
     }
 
-    fn resolve_backpatches(&mut self) {
-        for (instr_index, target_block) in &self.pending_backpatch {
-            if let Some(&target_idx) = self.bb_start_index.get(target_block) {
-            } else {
-                panic!("Unresolved block target {:?}", target_block);
-            }
-        }
+    fn resolve_backpatches(&mut self, pending_backpatch: &[(usize, BlockId)]) {
+        for (instruction_index, target_bb_id) in pending_backpatch.iter().copied() {
+            let instruction = &mut self.instructions[instruction_index];
+            let target_bb_index = *self.bb_start_index.get(&target_bb_id).unwrap();
 
-        self.pending_backpatch.clear();
+            let new_offset = target_bb_index as i16 - instruction_index as i16;
+
+            match instruction {
+                Instruction::Jump { offset } => {
+                    *offset = new_offset;
+                }
+                Instruction::JumpIfTrue { src, offset } => {
+                    *offset = new_offset;
+                }
+                Instruction::JumpIfFalse { src, offset } => {
+                    *offset = new_offset;
+                }
+                _ => {}
+            };
+        }
     }
 }
 
