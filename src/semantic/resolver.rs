@@ -222,7 +222,7 @@ impl Resolver {
             DeclKind::Function {
                 parameters,
                 body,
-                ty,
+                return_ty,
                 ..
             } => {
                 self.enter_function();

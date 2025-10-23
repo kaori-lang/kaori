@@ -20,12 +20,11 @@ pub enum DeclKind {
         name: String,
         parameters: Vec<Parameter>,
         body: Vec<AstNode>,
-        ty: Ty,
+        return_ty: Option<Ty>,
     },
     Struct {
         name: String,
         fields: Vec<Field>,
-        ty: Ty,
     },
 }
 
@@ -68,12 +67,12 @@ impl Field {
 }
 
 impl Decl {
-    pub fn struct_(name: String, fields: Vec<Field>, ty: Ty, span: Span) -> Decl {
+    pub fn struct_(name: String, fields: Vec<Field>, span: Span) -> Decl {
         Decl {
             id: AstId::default(),
             span,
 
-            kind: DeclKind::Struct { name, fields, ty },
+            kind: DeclKind::Struct { name, fields },
         }
     }
 
@@ -90,7 +89,7 @@ impl Decl {
         name: String,
         parameters: Vec<Parameter>,
         body: Vec<AstNode>,
-        ty: Ty,
+        return_ty: Option<Ty>,
         span: Span,
     ) -> Decl {
         Decl {
@@ -100,7 +99,7 @@ impl Decl {
                 name,
                 parameters,
                 body,
-                ty,
+                return_ty,
             },
         }
     }

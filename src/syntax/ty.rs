@@ -21,8 +21,6 @@ pub enum TyKind {
     Identifier(String),
     Number,
     Bool,
-    Void,
-    
 }
 
 impl Ty {
@@ -58,14 +56,6 @@ impl Ty {
             id: AstId::default(),
             span,
             kind: TyKind::Bool,
-        }
-    }
-
-    pub fn void(span: Span) -> Ty {
-        Ty {
-            id: AstId::default(),
-            span,
-            kind: TyKind::Void,
         }
     }
 

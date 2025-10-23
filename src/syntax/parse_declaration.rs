@@ -52,20 +52,10 @@ impl Parser {
         let return_ty = if self.token_stream.token_kind() == TokenKind::ThinArrow {
             self.token_stream.consume(TokenKind::ThinArrow)?;
 
-            self.parse_type()?
+            Some(self.parse_type()?)
         } else {
-            let span = self.token_stream.span();
-            Ty::void(span)
+            None
         };
-
-        let ty = Ty::function(
-            parameters
-                .iter()
-                .map(|parameter| parameter.ty.to_owned())
-                .collect(),
-            return_ty,
-            Span::default(),
-        );
 
         let mut body = Vec::new();
 
@@ -79,7 +69,7 @@ impl Parser {
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Decl::function(name, parameters, body, ty, span))
+        Ok(Decl::function(name, parameters, body, return_ty, span))
     }
 
     pub fn parse_function_parameter(&mut self) -> Result<Parameter, KaoriError> {
@@ -127,13 +117,8 @@ impl Parser {
         let fields =
             self.parse_comma_separator(Parser::parse_struct_field, TokenKind::RightBrace)?;
 
-        let ty = Ty::struct_(
-            fields.iter().map(|field| field.ty.to_owned()).collect(),
-            Span::default(),
-        );
-
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Decl::struct_(name, fields, ty, span))
+        Ok(Decl::struct_(name, fields, span))
     }
 }
