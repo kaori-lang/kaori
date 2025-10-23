@@ -137,7 +137,7 @@ impl CfgBuilder {
 
                 self.variables.reset_variables()
             }
-            HirDeclKind::Struct { fields, .. } => {}
+            HirDeclKind::Struct { .. } => {}
         }
     }
 

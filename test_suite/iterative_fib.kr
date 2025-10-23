@@ -1,5 +1,5 @@
 def main() {
-    $iterations = 100;
+    $iterations = 1000000;
     $max_fib = 40;
 
     for $i = 0; i < iterations; i += 1 {
@@ -13,4 +13,5 @@ def main() {
         }
     }
 }
+
 

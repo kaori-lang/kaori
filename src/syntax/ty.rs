@@ -22,6 +22,7 @@ pub enum TyKind {
     Number,
     Bool,
     Void,
+    
 }
 
 impl Ty {

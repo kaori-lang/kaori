@@ -224,7 +224,7 @@ impl Parser {
         let kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
 
-        Ok(match kind {
+        let primary = match kind {
             TokenKind::LeftParen => {
                 self.token_stream.consume(TokenKind::LeftParen)?;
                 let expr = self.parse_expression()?;
@@ -267,7 +267,9 @@ impl Parser {
                     kind
                 ));
             }
-        })
+        };
+
+        Ok(primary)
     }
 
     fn parse_identifier(&mut self) -> Result<Expr, KaoriError> {

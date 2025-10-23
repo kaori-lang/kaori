@@ -1,12 +1,8 @@
-local function fib(x)
-    if x == 0 then
-        return 0
-    elseif x == 1 then
-        return 1
-    else
-        return fib(x - 1) + fib(x - 2)
+local function fib(n)
+    if n < 2 then
+        return n
     end
+    return fib(n - 1) + fib(n - 2)
 end
-
 
 fib(40)

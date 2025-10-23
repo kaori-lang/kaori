@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     error::kaori_error::KaoriError,
     kaori_error,
-    syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
+    syntax::{binary_op::BinaryOpKind, decl::Parameter, unary_op::UnaryOpKind},
 };
 
 use super::{
@@ -92,43 +92,18 @@ impl TypeChecker {
                 parameters,
                 ty,
             } => {
-                let return_ty = match &ty.kind {
-                    HirTyKind::Function { return_ty, .. } => self.get_type_def(return_ty),
+                for parameter in parameters {
+                    let ty = self.get_type_def(&parameter.ty);
+
+                    self.types_table.insert(parameter.id, ty);
+                }
+
+                let ty = self.get_type_def(ty);
+
+                self.function_return_ty = match &ty {
+                    TypeDef::Function { return_ty, .. } => *return_ty.to_owned(),
                     _ => unreachable!(),
                 };
-
-                let parameters_ty = parameters
-                    .iter()
-                    .map(|parameter| {
-                        let ty = self.get_type_def(&parameter.ty);
-
-                        self.types.insert(parameter.id, parameter.ty.to_owned());
-
-                        ty
-                    })
-                    .collect();
-
-                let ty = TypeDef::function(parameters_ty, return_ty.to_owned());
-
-                self.function_return_ty = return_ty.to_owned();
-
-                let mut has_return_statement = false;
-
-                for node in body {
-                    if let HirNode::Statement(statement) = node
-                        && let HirStmtKind::Return(..) = statement.kind
-                    {
-                        has_return_statement = true;
-                        break;
-                    }
-                }
-
-                if return_ty != TypeDef::Void && !has_return_statement {
-                    return Err(kaori_error!(
-                        declaration.span,
-                        "expected a return statement for this function"
-                    ));
-                }
 
                 for node in body {
                     self.type_check_ast_node(node)?;
@@ -142,7 +117,7 @@ impl TypeChecker {
                     .map(|field| {
                         let ty = self.get_type_def(&field.ty);
 
-                        self.types.insert(field.id, field.ty.to_owned());
+                        self.types_table.insert(field.id, ty.to_owned());
 
                         ty
                     })

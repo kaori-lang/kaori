@@ -62,9 +62,9 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 
     let bytecode = emit_bytecode(cfg_ir.cfgs, cfg_ir.basic_blocks, cfg_ir.constants.constants);
 
-    /*  for instruction in &bytecode.instructions {
+    for instruction in &bytecode.instructions {
         println!("{}", instruction);
-    } */
+    }
 
     Ok(bytecode)
 }
@@ -84,8 +84,6 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     let elapsed = start.elapsed();
     println!("took: {elapsed:?}");
-
-    /*     run_kaori_vm(bytecode.instructions, bytecode.constants); */
 
     Ok(())
 }
