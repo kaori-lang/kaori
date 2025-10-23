@@ -104,7 +104,7 @@ impl CfgBuilder {
 
     fn visit_declaration(&mut self, declaration: &HirDecl) {
         match &declaration.kind {
-            HirDeclKind::Variable { right } => {
+            HirDeclKind::Variable { right, .. } => {
                 let src = self.visit_expression(right);
                 let dest = self.variables.create_variable(declaration.id);
 
@@ -113,7 +113,9 @@ impl CfgBuilder {
                 self.emit_instruction(instruction);
             }
 
-            HirDeclKind::Function { body, parameters } => {
+            HirDeclKind::Function {
+                body, parameters, ..
+            } => {
                 self.current_bb = *self.functions.get(&declaration.id).unwrap();
 
                 for parameter in parameters {
@@ -135,7 +137,7 @@ impl CfgBuilder {
 
                 self.variables.reset_variables()
             }
-            HirDeclKind::Struct { fields: _ } => {}
+            HirDeclKind::Struct { fields, .. } => {}
         }
     }
 

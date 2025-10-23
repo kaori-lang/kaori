@@ -71,9 +71,7 @@ impl TypeChecker {
 
                 match ty {
                     Some(ty) => {
-                        self.types.insert(declaration.id, ty.to_owned());
-
-                        let ty = self.get_type_def(&ty);
+                        let ty = self.get_type_def(ty);
 
                         if right != ty {
                             return Err(kaori_error!(
@@ -347,11 +345,7 @@ impl TypeChecker {
 
                 *return_ty
             }
-            HirExprKind::Variable(id) => {
-                let hir_ty = self.types.get(id).unwrap().to_owned();
-
-                self.get_type_def(&hir_ty)
-            }
+            HirExprKind::Variable(id) => self.types_table.get(id).unwrap().to_owned(),
             HirExprKind::Boolean(..) => TypeDef::Boolean,
             HirExprKind::Number(..) => TypeDef::Number,
             HirExprKind::String(..) => TypeDef::String,

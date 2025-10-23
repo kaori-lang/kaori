@@ -237,7 +237,7 @@ impl Resolver {
                     .map(|node| self.resolve_node(node))
                     .collect::<Result<Vec<HirNode>, KaoriError>>()?;
 
-                let ty = self.resolve_type(&ty)?;
+                let ty = self.resolve_type(ty)?;
 
                 self.exit_function();
 
@@ -251,7 +251,7 @@ impl Resolver {
                     .map(|field| self.resolve_field(field))
                     .collect::<Result<Vec<HirField>, KaoriError>>()?;
 
-                let ty = self.resolve_type(&ty)?;
+                let ty = self.resolve_type(ty)?;
                 let id = self.ids.get(&declaration.id).unwrap();
 
                 HirDecl::struct_(*id, fields, ty, declaration.span)
