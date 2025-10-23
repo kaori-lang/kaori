@@ -91,8 +91,14 @@ impl TypeChecker {
 
                 let parameters_ty = parameters
                     .iter()
-                    .map(|parameter| self.type_check_declaration(parameter))
-                    .collect::<Result<Vec<TypeDef>, KaoriError>>()?;
+                    .map(|parameter| {
+                        let ty = self.get_type_def(&parameter.ty);
+
+                        self.types.insert(parameter.id, parameter.ty.to_owned());
+
+                        ty
+                    })
+                    .collect();
 
                 let ty = TypeDef::function(parameters_ty, return_ty.to_owned());
 
@@ -125,24 +131,16 @@ impl TypeChecker {
             HirDeclKind::Struct { fields } => {
                 let fields = fields
                     .iter()
-                    .map(|field| self.type_check_declaration(field))
-                    .collect::<Result<Vec<TypeDef>, KaoriError>>()?;
+                    .map(|field| {
+                        let ty = self.get_type_def(&field.ty);
+
+                        self.types.insert(field.id, field.ty.to_owned());
+
+                        ty
+                    })
+                    .collect();
 
                 TypeDef::struct_(fields)
-            }
-            HirDeclKind::Parameter => {
-                let ty = self.get_type_def(&declaration.ty);
-
-                self.types.insert(declaration.id, declaration.ty.to_owned());
-
-                ty
-            }
-            HirDeclKind::Field => {
-                let ty = self.get_type_def(&declaration.ty);
-
-                self.types.insert(declaration.id, declaration.ty.to_owned());
-
-                ty
             }
         };
 

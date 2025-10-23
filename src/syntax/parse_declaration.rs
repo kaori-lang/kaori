@@ -3,7 +3,11 @@ use crate::{
     lexer::{span::Span, token_kind::TokenKind},
 };
 
-use super::{decl::Decl, parser::Parser, ty::Ty};
+use super::{
+    decl::{Decl, Field, Parameter},
+    parser::Parser,
+    ty::Ty,
+};
 
 impl Parser {
     pub fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
@@ -14,9 +18,13 @@ impl Parser {
         let name = self.token_stream.lexeme().to_owned();
 
         self.token_stream.consume(TokenKind::Identifier)?;
-        self.token_stream.consume(TokenKind::Colon)?;
 
-        let ty = self.parse_type()?;
+        let ty = if self.token_stream.token_kind() == TokenKind::Colon {
+            self.token_stream.consume(TokenKind::Colon)?;
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
 
         self.token_stream.consume(TokenKind::Assign)?;
 
@@ -74,7 +82,7 @@ impl Parser {
         Ok(Decl::function(name, parameters, body, ty, span))
     }
 
-    pub fn parse_function_parameter(&mut self) -> Result<Decl, KaoriError> {
+    pub fn parse_function_parameter(&mut self) -> Result<Parameter, KaoriError> {
         let start = self.token_stream.span();
 
         let name = self.token_stream.lexeme().to_owned();
@@ -87,10 +95,10 @@ impl Parser {
 
         let span = Span::merge(start, end);
 
-        Ok(Decl::parameter(name, ty, span))
+        Ok(Parameter::new(name, ty, span))
     }
 
-    pub fn parse_struct_field(&mut self) -> Result<Decl, KaoriError> {
+    pub fn parse_struct_field(&mut self) -> Result<Field, KaoriError> {
         let start = self.token_stream.span();
 
         let name = self.token_stream.lexeme().to_owned();
@@ -102,7 +110,7 @@ impl Parser {
 
         let span = Span::merge(start, end);
 
-        Ok(Decl::field(name, ty, span))
+        Ok(Field::new(name, ty, span))
     }
 
     pub fn parse_struct_declaration(&mut self) -> Result<Decl, KaoriError> {

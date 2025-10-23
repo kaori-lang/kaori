@@ -5,7 +5,7 @@ use super::{span::Span, token::Token, token_kind::TokenKind};
 pub struct Lexer {
     source: Vec<char>,
     index: usize,
-    pub tokens: Vec<Token>,
+    tokens: Vec<Token>,
 }
 
 impl Lexer {
@@ -285,7 +285,7 @@ impl Lexer {
         Ok(())
     }
 
-    pub fn tokenize(&mut self) -> Result<(), KaoriError> {
+    pub fn tokenize(mut self) -> Result<Vec<Token>, KaoriError> {
         while !self.at_end() {
             self.get_next_token()?;
         }
@@ -302,6 +302,6 @@ impl Lexer {
 
         self.tokens.push(token);
 
-        Ok(())
+        Ok(self.tokens)
     }
 }

@@ -7,7 +7,6 @@ pub struct Decl {
     pub id: AstId,
     pub span: Span,
     pub kind: DeclKind,
-    pub ty: Ty,
 }
 
 #[derive(Debug)]
@@ -15,64 +14,81 @@ pub enum DeclKind {
     Variable {
         name: String,
         right: Expr,
+        ty: Option<Ty>,
     },
     Function {
         name: String,
-        parameters: Vec<Decl>,
+        parameters: Vec<Parameter>,
         body: Vec<AstNode>,
+        ty: Ty,
     },
     Struct {
         name: String,
-        fields: Vec<Decl>,
-    },
-    Parameter {
-        name: String,
-    },
-    Field {
-        name: String,
+        fields: Vec<Field>,
+        ty: Ty,
     },
 }
 
+#[derive(Debug)]
+pub struct Parameter {
+    pub id: AstId,
+    pub span: Span,
+    pub name: String,
+    pub ty: Ty,
+}
+
+#[derive(Debug)]
+pub struct Field {
+    pub id: AstId,
+    pub span: Span,
+    pub name: String,
+    pub ty: Ty,
+}
+
+impl Parameter {
+    pub fn new(name: String, ty: Ty, span: Span) -> Parameter {
+        Parameter {
+            id: AstId::default(),
+            span,
+            name,
+            ty,
+        }
+    }
+}
+
+impl Field {
+    pub fn new(name: String, ty: Ty, span: Span) -> Field {
+        Field {
+            id: AstId::default(),
+            span,
+            name,
+            ty,
+        }
+    }
+}
+
 impl Decl {
-    pub fn struct_(name: String, fields: Vec<Decl>, ty: Ty, span: Span) -> Decl {
+    pub fn struct_(name: String, fields: Vec<Field>, ty: Ty, span: Span) -> Decl {
         Decl {
             id: AstId::default(),
             span,
-            ty,
-            kind: DeclKind::Struct { name, fields },
+
+            kind: DeclKind::Struct { name, fields, ty },
         }
     }
 
-    pub fn variable(name: String, right: Expr, ty: Ty, span: Span) -> Decl {
+    pub fn variable(name: String, right: Expr, ty: Option<Ty>, span: Span) -> Decl {
         Decl {
             id: AstId::default(),
             span,
-            ty,
-            kind: DeclKind::Variable { name, right },
-        }
-    }
 
-    pub fn parameter(name: String, ty: Ty, span: Span) -> Decl {
-        Decl {
-            id: AstId::default(),
-            span,
-            ty,
-            kind: DeclKind::Parameter { name },
-        }
-    }
-
-    pub fn field(name: String, ty: Ty, span: Span) -> Decl {
-        Decl {
-            id: AstId::default(),
-            span,
-            ty,
-            kind: DeclKind::Field { name },
+            kind: DeclKind::Variable { name, right, ty },
         }
     }
 
     pub fn function(
         name: String,
-        parameters: Vec<Decl>,
+        parameters: Vec<Parameter>,
         body: Vec<AstNode>,
         ty: Ty,
         span: Span,
@@ -80,11 +96,11 @@ impl Decl {
         Decl {
             id: AstId::default(),
             span,
-            ty,
             kind: DeclKind::Function {
                 name,
                 parameters,
                 body,
+                ty,
             },
         }
     }

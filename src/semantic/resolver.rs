@@ -9,7 +9,7 @@ use crate::{
         ast_id::AstId,
         ast_node::AstNode,
         binary_op::{BinaryOp, BinaryOpKind},
-        decl::{Decl, DeclKind},
+        decl::{Decl, DeclKind, Field, Parameter},
         expr::{Expr, ExprKind},
         stmt::{Stmt, StmtKind},
         ty::{Ty, TyKind},
@@ -17,7 +17,7 @@ use crate::{
 };
 
 use super::{
-    hir_decl::HirDecl,
+    hir_decl::{HirDecl, HirField, HirParameter},
     hir_expr::{HirExpr, HirExprKind},
     hir_id::HirId,
     hir_node::HirNode,
@@ -147,45 +147,57 @@ impl Resolver {
         Ok(node)
     }
 
+    fn resolve_parameter(&mut self, parameter: &Parameter) -> Result<HirParameter, KaoriError> {
+        if self
+            .symbol_table
+            .search_current_scope(&parameter.name)
+            .is_some()
+        {
+            return Err(kaori_error!(
+                parameter.span,
+                "function can't have parameters with the same name: {}",
+                parameter.name,
+            ));
+        };
+
+        let id = HirId::default();
+
+        self.symbol_table
+            .declare_variable(id, parameter.name.to_owned());
+
+        let ty = self.resolve_type(&parameter.ty)?;
+
+        Ok(HirParameter::new(id, ty, parameter.span))
+    }
+
+    fn resolve_field(&mut self, field: &Field) -> Result<HirField, KaoriError> {
+        if self
+            .symbol_table
+            .search_current_scope(&field.name)
+            .is_some()
+        {
+            return Err(kaori_error!(
+                field.span,
+                "struct can't have fields with the same name: {}",
+                field.name,
+            ));
+        };
+
+        let id = HirId::default();
+
+        self.symbol_table
+            .declare_variable(id, field.name.to_owned());
+
+        let ty = self.resolve_type(&field.ty)?;
+
+        Ok(HirField::new(id, ty, field.span))
+    }
+
     fn resolve_declaration(&mut self, declaration: &Decl) -> Result<HirDecl, KaoriError> {
         self.resolve_declaration_scope(declaration)?;
 
         let hir_decl = match &declaration.kind {
-            DeclKind::Parameter { name } => {
-                if self.symbol_table.search_current_scope(name).is_some() {
-                    return Err(kaori_error!(
-                        declaration.span,
-                        "function can't have parameters with the same name: {}",
-                        name,
-                    ));
-                };
-
-                let id = HirId::default();
-
-                self.symbol_table.declare_variable(id, name.to_owned());
-
-                let ty = self.resolve_type(&declaration.ty)?;
-
-                HirDecl::parameter(id, ty, declaration.span)
-            }
-            DeclKind::Field { name } => {
-                if self.symbol_table.search_current_scope(name).is_some() {
-                    return Err(kaori_error!(
-                        declaration.span,
-                        "struct can't have fields with the same name: {}",
-                        name,
-                    ));
-                };
-
-                let id = HirId::default();
-
-                self.symbol_table.declare_variable(id, name.to_owned());
-
-                let ty = self.resolve_type(&declaration.ty)?;
-
-                HirDecl::field(id, ty, declaration.span)
-            }
-            DeclKind::Variable { name, right } => {
+            DeclKind::Variable { name, right, ty } => {
                 let right = self.resolve_expression(right)?;
 
                 if self.symbol_table.search_current_scope(name).is_some() {
@@ -200,26 +212,29 @@ impl Resolver {
 
                 self.symbol_table.declare_variable(id, name.to_owned());
 
-                let ty = self.resolve_type(&declaration.ty)?;
+                let ty = self.resolve_type(&ty)?;
 
                 HirDecl::variable(id, right, ty, declaration.span)
             }
             DeclKind::Function {
-                parameters, body, ..
+                parameters,
+                body,
+                ty,
+                ..
             } => {
                 self.enter_function();
 
                 let parameters = parameters
                     .iter()
-                    .map(|parameter| self.resolve_declaration(parameter))
-                    .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
+                    .map(|parameter| self.resolve_parameter(parameter))
+                    .collect::<Result<Vec<HirParameter>, KaoriError>>()?;
 
                 let body = body
                     .iter()
                     .map(|node| self.resolve_node(node))
                     .collect::<Result<Vec<HirNode>, KaoriError>>()?;
 
-                let ty = self.resolve_type(&declaration.ty)?;
+                let ty = self.resolve_type(&ty)?;
 
                 self.exit_function();
 
@@ -227,13 +242,13 @@ impl Resolver {
 
                 HirDecl::function(*id, parameters, body, ty, declaration.span)
             }
-            DeclKind::Struct { fields, .. } => {
+            DeclKind::Struct { fields, ty, .. } => {
                 let fields = fields
                     .iter()
-                    .map(|field| self.resolve_declaration(field))
-                    .collect::<Result<Vec<HirDecl>, KaoriError>>()?;
+                    .map(|field| self.resolve_field(field))
+                    .collect::<Result<Vec<HirField>, KaoriError>>()?;
 
-                let ty = self.resolve_type(&declaration.ty)?;
+                let ty = self.resolve_type(&ty)?;
                 let id = self.ids.get(&declaration.id).unwrap();
 
                 HirDecl::struct_(*id, fields, ty, declaration.span)

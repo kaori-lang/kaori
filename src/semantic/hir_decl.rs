@@ -16,36 +16,42 @@ pub enum HirDeclKind {
         right: Box<HirExpr>,
     },
     Function {
-        parameters: Vec<HirDecl>,
+        parameters: Vec<HirParameter>,
         body: Vec<HirNode>,
     },
     Struct {
-        fields: Vec<HirDecl>,
+        fields: Vec<HirField>,
     },
-    Parameter,
-    Field,
+}
+
+#[derive(Debug)]
+pub struct HirParameter {
+    pub id: HirId,
+    pub span: Span,
+    pub ty: HirTy,
+}
+
+#[derive(Debug)]
+pub struct HirField {
+    pub id: HirId,
+    pub span: Span,
+    pub ty: HirTy,
+}
+
+impl HirParameter {
+    pub fn new(id: HirId, ty: HirTy, span: Span) -> HirParameter {
+        HirParameter { id, span, ty }
+    }
+}
+
+impl HirField {
+    pub fn new(id: HirId, ty: HirTy, span: Span) -> HirField {
+        HirField { id, span, ty }
+    }
 }
 
 impl HirDecl {
-    pub fn parameter(id: HirId, ty: HirTy, span: Span) -> HirDecl {
-        HirDecl {
-            id,
-            span,
-            ty,
-            kind: HirDeclKind::Parameter,
-        }
-    }
-
-    pub fn field(id: HirId, ty: HirTy, span: Span) -> HirDecl {
-        HirDecl {
-            id,
-            span,
-            ty,
-            kind: HirDeclKind::Field,
-        }
-    }
-
-    pub fn struct_(id: HirId, fields: Vec<HirDecl>, ty: HirTy, span: Span) -> HirDecl {
+    pub fn struct_(id: HirId, fields: Vec<HirField>, ty: HirTy, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
@@ -67,7 +73,7 @@ impl HirDecl {
 
     pub fn function(
         id: HirId,
-        parameters: Vec<HirDecl>,
+        parameters: Vec<HirParameter>,
         body: Vec<HirNode>,
         ty: HirTy,
         span: Span,
