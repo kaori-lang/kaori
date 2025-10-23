@@ -6,7 +6,6 @@ use super::{hir_expr::HirExpr, hir_id::HirId, hir_node::HirNode, hir_ty::HirTy};
 pub struct HirDecl {
     pub id: HirId,
     pub span: Span,
-    pub ty: HirTy,
     pub kind: HirDeclKind,
 }
 
@@ -14,13 +13,16 @@ pub struct HirDecl {
 pub enum HirDeclKind {
     Variable {
         right: Box<HirExpr>,
+        ty: Option<HirTy>,
     },
     Function {
         parameters: Vec<HirParameter>,
         body: Vec<HirNode>,
+        ty: HirTy,
     },
     Struct {
         fields: Vec<HirField>,
+        ty: HirTy,
     },
 }
 
@@ -55,18 +57,19 @@ impl HirDecl {
         HirDecl {
             id,
             span,
-            ty,
-            kind: HirDeclKind::Struct { fields },
+
+            kind: HirDeclKind::Struct { fields, ty },
         }
     }
 
-    pub fn variable(id: HirId, right: HirExpr, ty: HirTy, span: Span) -> HirDecl {
+    pub fn variable(id: HirId, right: HirExpr, ty: Option<HirTy>, span: Span) -> HirDecl {
         HirDecl {
             id,
             span,
-            ty,
+
             kind: HirDeclKind::Variable {
                 right: Box::new(right),
+                ty,
             },
         }
     }
@@ -81,8 +84,11 @@ impl HirDecl {
         HirDecl {
             id,
             span,
-            ty,
-            kind: HirDeclKind::Function { parameters, body },
+            kind: HirDeclKind::Function {
+                parameters,
+                body,
+                ty,
+            },
         }
     }
 }

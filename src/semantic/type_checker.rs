@@ -30,11 +30,11 @@ impl TypeChecker {
     ) -> Result<HashMap<HirId, TypeDef>, KaoriError> {
         for declaration in declarations.iter() {
             match &declaration.kind {
-                HirDeclKind::Function { .. } => {
-                    self.types.insert(declaration.id, declaration.ty.to_owned());
+                HirDeclKind::Function { ty, .. } => {
+                    self.types.insert(declaration.id, ty.to_owned());
                 }
-                HirDeclKind::Struct { .. } => {
-                    self.types.insert(declaration.id, declaration.ty.to_owned());
+                HirDeclKind::Struct { ty, .. } => {
+                    self.types.insert(declaration.id, ty.to_owned());
                 }
                 _ => (),
             }
@@ -66,25 +66,35 @@ impl TypeChecker {
 
     fn type_check_declaration(&mut self, declaration: &HirDecl) -> Result<TypeDef, KaoriError> {
         let ty = match &declaration.kind {
-            HirDeclKind::Variable { right } => {
+            HirDeclKind::Variable { right, ty } => {
                 let right = self.type_check_expression(right)?;
-                let ty = self.get_type_def(&declaration.ty);
 
-                if right != ty {
-                    return Err(kaori_error!(
-                        declaration.span,
-                        "expected {:#?} type on variable declaration, but found: {:#?}",
-                        ty,
-                        right
-                    ));
+                match ty {
+                    Some(ty) => {
+                        self.types.insert(declaration.id, ty.to_owned());
+
+                        let ty = self.get_type_def(&ty);
+
+                        if right != ty {
+                            return Err(kaori_error!(
+                                declaration.span,
+                                "expected {:#?} type on variable declaration, but found: {:#?}",
+                                ty,
+                                right
+                            ));
+                        }
+
+                        ty
+                    }
+                    _ => right.to_owned(),
                 }
-
-                self.types.insert(declaration.id, declaration.ty.to_owned());
-
-                ty
             }
-            HirDeclKind::Function { body, parameters } => {
-                let return_ty = match &declaration.ty.kind {
+            HirDeclKind::Function {
+                body,
+                parameters,
+                ty,
+            } => {
+                let return_ty = match &ty.kind {
                     HirTyKind::Function { return_ty, .. } => self.get_type_def(return_ty),
                     _ => unreachable!(),
                 };
@@ -128,7 +138,7 @@ impl TypeChecker {
 
                 ty
             }
-            HirDeclKind::Struct { fields } => {
+            HirDeclKind::Struct { fields, .. } => {
                 let fields = fields
                     .iter()
                     .map(|field| {

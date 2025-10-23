@@ -212,7 +212,10 @@ impl Resolver {
 
                 self.symbol_table.declare_variable(id, name.to_owned());
 
-                let ty = self.resolve_type(&ty)?;
+                let ty = match ty {
+                    Some(ty) => Some(self.resolve_type(ty)?),
+                    _ => None,
+                };
 
                 HirDecl::variable(id, right, ty, declaration.span)
             }
