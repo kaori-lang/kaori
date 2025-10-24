@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     error::kaori_error::KaoriError,
     kaori_error,
@@ -9,24 +7,20 @@ use crate::{
 use super::{
     hir_decl::{HirDecl, HirDeclKind},
     hir_expr::{HirExpr, HirExprKind},
-    hir_id::HirId,
     hir_node::HirNode,
     hir_stmt::{HirStmt, HirStmtKind},
     hir_ty::{HirTy, HirTyKind},
-    r#type::Type,
+    r#type::{Type, Types},
 };
 
 #[derive(Debug, Default)]
 pub struct TypeChecker {
     function_return_ty: Type,
-    types: HashMap<HirId, Type>,
+    types: Types,
 }
 
 impl TypeChecker {
-    pub fn type_check(
-        mut self,
-        declarations: &[HirDecl],
-    ) -> Result<HashMap<HirId, Type>, KaoriError> {
+    pub fn type_check(mut self, declarations: &[HirDecl]) -> Result<Types, KaoriError> {
         for declaration in declarations.iter() {
             match &declaration.kind {
                 HirDeclKind::Function {
@@ -34,18 +28,42 @@ impl TypeChecker {
                     return_ty,
                     ..
                 } => {
-                    self.types.insert(declaration.id, ty.to_owned());
+                    let parameters = parameters
+                        .iter()
+                        .map(|parameter| {
+                            let ty = self.create_type(&parameter.ty);
+
+                            self.types.insert(parameter.id, ty.to_owned());
+
+                            ty
+                        })
+                        .collect();
 
                     let return_ty = if let Some(ty) = return_ty {
-                        self.create_type_def(ty)
+                        self.create_type(ty)
                     } else {
                         Type::Void
                     };
 
-                    //self.types.insert(k, v)
+                    let ty = Type::function(parameters, return_ty);
+
+                    self.types.insert(declaration.id, ty);
                 }
                 HirDeclKind::Struct { fields } => {
-                    self.types.insert(declaration.id, ty.to_owned());
+                    let fields = fields
+                        .iter()
+                        .map(|field| {
+                            let ty = self.create_type(&field.ty);
+
+                            self.types.insert(field.id, ty.to_owned());
+
+                            ty
+                        })
+                        .collect();
+
+                    let ty = Type::struct_(fields);
+
+                    self.types.insert(declaration.id, ty);
                 }
                 _ => (),
             }
@@ -75,14 +93,14 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn type_check_declaration(&mut self, declaration: &HirDecl) -> Result<Type, KaoriError> {
-        let ty = match &declaration.kind {
+    fn type_check_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
+        match &declaration.kind {
             HirDeclKind::Variable { right, ty } => {
                 let right = self.type_check_expression(right)?;
 
-                match ty {
+                let ty = match ty {
                     Some(ty) => {
-                        let ty = self.create_type_def(ty);
+                        let ty = self.create_type(ty);
 
                         if right != ty {
                             return Err(kaori_error!(
@@ -96,54 +114,31 @@ impl TypeChecker {
                         ty
                     }
                     _ => right.to_owned(),
-                }
+                };
+
+                self.types.insert(declaration.id, ty);
             }
             HirDeclKind::Function {
-                body,
-                parameters,
-                return_ty,
+                body, return_ty, ..
             } => {
-                for parameter in parameters {
-                    let ty = self.create_type_def(&parameter.ty);
-
-                    self.types.insert(parameter.id, ty);
-                }
-
                 let return_ty = match return_ty {
-                    Some(ty) => self.create_type_def(ty),
+                    Some(ty) => self.types.get(ty.id),
                     _ => Type::Void,
                 };
 
-                self.function_return_ty = return_ty.to_owned();
+                self.function_return_ty = return_ty;
 
                 for node in body {
                     self.type_check_ast_node(node)?;
                 }
-
-                ty
             }
-            HirDeclKind::Struct { fields, .. } => {
-                let fields = fields
-                    .iter()
-                    .map(|field| {
-                        let ty = self.create_type_def(&field.ty);
-
-                        self.types.insert(field.id, ty.to_owned());
-
-                        ty
-                    })
-                    .collect();
-
-                Type::struct_(fields)
-            }
+            HirDeclKind::Struct { .. } => {}
         };
 
-        self.types.insert(declaration.id, ty.to_owned());
-
-        Ok(ty)
+        Ok(())
     }
 
-    fn type_check_statement(&mut self, statement: &HirStmt) -> Result<Type, KaoriError> {
+    fn type_check_statement(&mut self, statement: &HirStmt) -> Result<(), KaoriError> {
         match &statement.kind {
             HirStmtKind::Expression(expression) => {
                 self.type_check_expression(expression)?;
@@ -220,7 +215,7 @@ impl TypeChecker {
             }
         };
 
-        Ok(Type::Void)
+        Ok(())
     }
 
     fn type_check_expression(&mut self, expression: &HirExpr) -> Result<Type, KaoriError> {
@@ -331,11 +326,11 @@ impl TypeChecker {
 
                 *return_ty
             }
-            HirExprKind::Variable(id) => self.types.get(id).unwrap().to_owned(),
+            HirExprKind::Variable(id) => self.types.get(*id),
             HirExprKind::Boolean(..) => Type::Boolean,
             HirExprKind::Number(..) => Type::Number,
             HirExprKind::String(..) => Type::String,
-            HirExprKind::Function(id) => self.types.get(id).unwrap().to_owned(),
+            HirExprKind::Function(id) => self.types.get(*id),
         };
 
         self.types.insert(expression.id, ty.to_owned());
@@ -343,33 +338,20 @@ impl TypeChecker {
         Ok(ty)
     }
 
-    fn get_type_def(&self, id: HirId) -> Type {
-        match self.types.get(k).unwrap() {
-            Type::Struct { fields }
-        }
-    }
-
-    fn create_type_def(&self, ty: &HirTy) -> Type {
+    fn create_type(&mut self, ty: &HirTy) -> Type {
         match &ty.kind {
             HirTyKind::Function {
                 parameters,
                 return_ty,
             } => {
-                let parameters = parameters.iter().map(|parameter| parameter.id).collect();
-
-                let return_ty = return_ty.id;
+                let parameters = parameters.iter().map(|ty| self.create_type(ty)).collect();
+                let return_ty = self.create_type(&return_ty);
 
                 Type::function(parameters, return_ty)
             }
-            HirTyKind::TypeRef(id) => {
-                if let Some(ty) = self.types.get(id) {
-                    ty.to_owned()
-                } else {
-                    Type::type_ref(*id)
-                }
-            }
+            HirTyKind::TypeRef(id) => Type::type_ref(*id),
             HirTyKind::Struct { fields } => {
-                let fields = fields.iter().map(|field| field.id).collect();
+                let fields = fields.iter().map(|ty| self.create_type(ty)).collect();
 
                 Type::struct_(fields)
             }

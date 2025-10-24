@@ -43,10 +43,10 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<HirIr, KaoriError> {
 }
 
 fn build_cfg_ir(hir: HirIr) -> CfgIr {
-    let types_table = hir.types_table;
+    let types = hir.types;
     let declarations = hir.declarations;
 
-    let cfg_builder = CfgBuilder::new(types_table);
+    let cfg_builder = CfgBuilder::new(types);
     let mut cfg_ir = cfg_builder.build_ir(&declarations);
 
     run_jump_threading_optimization(&mut cfg_ir);
