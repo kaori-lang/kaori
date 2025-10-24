@@ -9,5 +9,5 @@ pub mod hir_ir;
 pub mod resolver;
 pub mod symbol;
 pub mod symbol_table;
+pub mod r#type;
 pub mod type_checker;
-pub mod type_def;

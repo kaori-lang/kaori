@@ -237,24 +237,26 @@ impl Resolver {
                     .map(|node| self.resolve_node(node))
                     .collect::<Result<Vec<HirNode>, KaoriError>>()?;
 
-                let ty = self.resolve_type(ty)?;
+                let return_ty = match return_ty {
+                    Some(ty) => Some(self.resolve_type(ty)?),
+                    _ => None,
+                };
 
                 self.exit_function();
 
                 let id = self.ids.get(&declaration.id).unwrap();
 
-                HirDecl::function(*id, parameters, body, ty, declaration.span)
+                HirDecl::function(*id, parameters, body, return_ty, declaration.span)
             }
-            DeclKind::Struct { fields, ty, .. } => {
+            DeclKind::Struct { fields, .. } => {
                 let fields = fields
                     .iter()
                     .map(|field| self.resolve_field(field))
                     .collect::<Result<Vec<HirField>, KaoriError>>()?;
 
-                let ty = self.resolve_type(ty)?;
                 let id = self.ids.get(&declaration.id).unwrap();
 
-                HirDecl::struct_(*id, fields, ty, declaration.span)
+                HirDecl::struct_(*id, fields, declaration.span)
             }
         };
 
@@ -477,7 +479,6 @@ impl Resolver {
             }
             TyKind::Bool => HirTy::bool(ty.span),
             TyKind::Number => HirTy::number(ty.span),
-            TyKind::Void => HirTy::void(ty.span),
         };
 
         Ok(hir_ty)

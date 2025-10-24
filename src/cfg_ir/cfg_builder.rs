@@ -114,7 +114,9 @@ impl CfgBuilder {
             }
 
             HirDeclKind::Function {
-                body, parameters, ..
+                body,
+                parameters,
+                return_ty,
             } => {
                 self.current_bb = *self.functions.get(&declaration.id).unwrap();
 
@@ -129,6 +131,8 @@ impl CfgBuilder {
                 match self.cfg_ir.basic_blocks[self.current_bb.0].terminator {
                     Terminator::Return { .. } => {}
                     _ => {
+                        if let Some(..) = return_ty {}
+
                         let src = self.variables.create_variable(declaration.id);
 
                         self.set_terminator(Terminator::Return { src })

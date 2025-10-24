@@ -21,7 +21,6 @@ pub enum HirTyKind {
     TypeRef(HirId),
     Number,
     Bool,
-    Void,
 }
 
 impl PartialEq for HirTy {
@@ -65,14 +64,6 @@ impl HirTy {
             id: HirId::default(),
             span,
             kind: HirTyKind::Bool,
-        }
-    }
-
-    pub fn void(span: Span) -> HirTy {
-        HirTy {
-            id: HirId::default(),
-            span,
-            kind: HirTyKind::Void,
         }
     }
 
