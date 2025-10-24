@@ -24,7 +24,7 @@ impl FunctionFrame {
 
 type InstructionHandler = fn(&mut VMContext, ip: *const Instruction);
 
-const INSTRUCTION_DISPATCH: [InstructionHandler; 21] = [
+const INSTRUCTION_DISPATCH: [InstructionHandler; 22] = [
     instruction_add,           // 0
     instruction_subtract,      // 1
     instruction_multiply,      // 2
@@ -41,12 +41,14 @@ const INSTRUCTION_DISPATCH: [InstructionHandler; 21] = [
     instruction_move,          // 13
     instruction_call,          // 14
     instruction_return,        // 15
-    instruction_jump,          // 16
-    instruction_jump_if_true,  // 17
-    instruction_jump_if_false, // 18
-    instruction_print,         // 19
-    instruction_halt,          // 20
+    instruction_return_void,   // 16
+    instruction_jump,          // 17
+    instruction_jump_if_true,  // 18
+    instruction_jump_if_false, // 19
+    instruction_print,         // 20
+    instruction_halt,          // 21
 ];
+
 pub struct VMContext {
     pub call_stack: Vec<FunctionFrame>,
     pub constants: *const Value,
@@ -443,6 +445,22 @@ fn instruction_return(ctx: &mut VMContext, ip: *const Instruction) {
         let dest = frame.return_register;
 
         ctx.set_value(dest, value);
+
+        let ip = frame.return_address;
+        let op_code = (*ip).discriminant();
+
+        dispatch!(ctx, ip, op_code);
+    }
+}
+
+#[inline(never)]
+fn instruction_return_void(ctx: &mut VMContext, ip: *const Instruction) {
+    unsafe {
+        let Instruction::ReturnVoid = *ip else {
+            unreachable_unchecked();
+        };
+
+        let frame = ctx.pop_frame();
 
         let ip = frame.return_address;
         let op_code = (*ip).discriminant();

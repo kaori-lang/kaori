@@ -144,9 +144,7 @@ impl CfgBuilder {
                             ));
                         }
 
-                        let src = self.variables.create_variable(declaration.id);
-
-                        self.set_terminator(Terminator::Return { src })
+                        self.set_terminator(Terminator::Return { src: None })
                     }
                 }
 
@@ -255,11 +253,9 @@ impl CfgBuilder {
                 if let Some(expr) = expr {
                     let src = self.visit_expression(expr);
 
-                    self.set_terminator(Terminator::Return { src });
+                    self.set_terminator(Terminator::Return { src: Some(src) });
                 } else {
-                    let src = self.variables.create_variable(statement.id);
-
-                    self.set_terminator(Terminator::Return { src });
+                    self.set_terminator(Terminator::Return { src: None });
                 }
             }
         };

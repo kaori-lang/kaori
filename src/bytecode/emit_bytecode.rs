@@ -88,7 +88,6 @@ impl CodegenContext {
                     self.instructions.push(instruction);
                 }
             }
-
             Terminator::Goto(target) => {
                 if Some(target) != next_bb_id {
                     let instruction = Instruction::jump(0);
@@ -98,13 +97,14 @@ impl CodegenContext {
                     self.instructions.push(instruction);
                 }
             }
-
             Terminator::Return { src } => {
-                let instruction = Instruction::return_(src);
+                let instruction = match src {
+                    Some(src) => Instruction::return_(src),
+                    _ => Instruction::return_void(),
+                };
 
                 self.instructions.push(instruction);
             }
-
             Terminator::None => {}
         };
     }

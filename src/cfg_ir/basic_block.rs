@@ -31,7 +31,7 @@ pub enum Terminator {
     },
     Goto(BlockId),
     Return {
-        src: Variable,
+        src: Option<Variable>,
     },
     None,
 }
@@ -47,7 +47,7 @@ impl Display for Terminator {
                 write!(f, "br {} -> BB{}, BB{}", src, r#true.0, r#false.0)
             }
             Terminator::Goto(target) => write!(f, "goto BB{}", target.0),
-            Terminator::Return { src } => write!(f, "ret {}", src),
+            Terminator::Return { src } => write!(f, "ret {}", 1),
             Terminator::None => write!(f, "<no terminator>"),
         }
     }

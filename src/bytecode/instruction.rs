@@ -80,6 +80,7 @@ pub enum Instruction {
     Return {
         src: i16,
     },
+    ReturnVoid,
     Jump {
         offset: i16,
     },
@@ -224,6 +225,10 @@ impl Instruction {
         Self::Return { src: src.to_i16() }
     }
 
+    pub fn return_void() -> Self {
+        Self::ReturnVoid
+    }
+
     pub fn jump(offset: i16) -> Self {
         Self::Jump { offset }
     }
@@ -299,6 +304,7 @@ impl fmt::Display for Instruction {
                 caller_size,
             } => write!(f, "CALL {}, {}, {}", reg(dest), reg(src), caller_size),
             Self::Return { src } => write!(f, "RET {}", reg(src)),
+            Self::ReturnVoid => write!(f, "RET VOID"),
             Self::Jump { offset } => write!(f, "JMP {}", offset),
             Self::JumpIfTrue { src, offset } => write!(f, "JIT {}, {}", reg(src), offset),
             Self::JumpIfFalse { src, offset } => write!(f, "JIF {}, {}", reg(src), offset),
