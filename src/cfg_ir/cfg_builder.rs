@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
+    error::kaori_error::KaoriError,
+    kaori_error,
     semantic::{
         hir_decl::{HirDecl, HirDeclKind},
         hir_expr::{HirExpr, HirExprKind},
@@ -40,7 +42,7 @@ impl CfgBuilder {
         }
     }
 
-    pub fn build_ir(mut self, declarations: &[HirDecl]) -> CfgIr {
+    pub fn build_ir(mut self, declarations: &[HirDecl]) -> Result<CfgIr, KaoriError> {
         for declaration in declarations {
             if let HirDeclKind::Function { .. } = &declaration.kind {
                 let basic_block = self.create_bb();
@@ -51,10 +53,10 @@ impl CfgBuilder {
         }
 
         for declaration in declarations {
-            self.visit_declaration(declaration);
+            self.visit_declaration(declaration)?;
         }
 
-        self.cfg_ir
+        Ok(self.cfg_ir)
     }
 
     fn emit_instruction(&mut self, instruction: CfgInstruction) {
@@ -89,20 +91,24 @@ impl CfgBuilder {
         id
     }
 
-    fn visit_nodes(&mut self, nodes: &[HirNode]) {
+    fn visit_nodes(&mut self, nodes: &[HirNode]) -> Result<(), KaoriError> {
         for node in nodes {
-            self.visit_ast_node(node);
+            self.visit_ast_node(node)?;
         }
+
+        Ok(())
     }
 
-    fn visit_ast_node(&mut self, node: &HirNode) {
+    fn visit_ast_node(&mut self, node: &HirNode) -> Result<(), KaoriError> {
         match node {
-            HirNode::Declaration(declaration) => self.visit_declaration(declaration),
-            HirNode::Statement(statement) => self.visit_statement(statement),
+            HirNode::Declaration(declaration) => self.visit_declaration(declaration)?,
+            HirNode::Statement(statement) => self.visit_statement(statement)?,
         };
+
+        Ok(())
     }
 
-    fn visit_declaration(&mut self, declaration: &HirDecl) {
+    fn visit_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
         match &declaration.kind {
             HirDeclKind::Variable { right, .. } => {
                 let src = self.visit_expression(right);
@@ -125,13 +131,18 @@ impl CfgBuilder {
                 }
 
                 for node in body {
-                    self.visit_ast_node(node);
+                    self.visit_ast_node(node)?;
                 }
 
                 match self.cfg_ir.basic_blocks[self.current_bb.0].terminator {
                     Terminator::Return { .. } => {}
                     _ => {
-                        if let Some(..) = return_ty {}
+                        if return_ty.is_some() {
+                            return Err(kaori_error!(
+                                declaration.span,
+                                "expected a return statement"
+                            ));
+                        }
 
                         let src = self.variables.create_variable(declaration.id);
 
@@ -142,10 +153,12 @@ impl CfgBuilder {
                 self.variables.reset_variables()
             }
             HirDeclKind::Struct { .. } => {}
-        }
+        };
+
+        Ok(())
     }
 
-    fn visit_statement(&mut self, statement: &HirStmt) {
+    fn visit_statement(&mut self, statement: &HirStmt) -> Result<(), KaoriError> {
         match &statement.kind {
             HirStmtKind::Expression(expression) => {
                 self.visit_expression(expression);
@@ -158,7 +171,7 @@ impl CfgBuilder {
                 self.emit_instruction(instruction);
             }
             HirStmtKind::Block(nodes) => {
-                self.visit_nodes(nodes);
+                self.visit_nodes(nodes)?;
             }
             HirStmtKind::Branch {
                 condition,
@@ -178,12 +191,12 @@ impl CfgBuilder {
                 });
 
                 self.current_bb = then_bb;
-                self.visit_statement(then_branch);
+                self.visit_statement(then_branch)?;
                 self.set_terminator(Terminator::Goto(terminator_block));
 
                 self.current_bb = else_bb;
                 if let Some(branch) = else_branch {
-                    self.visit_statement(branch);
+                    self.visit_statement(branch)?;
                 }
                 self.set_terminator(Terminator::Goto(terminator_block));
 
@@ -196,7 +209,7 @@ impl CfgBuilder {
                 increment,
             } => {
                 if let Some(init) = init {
-                    self.visit_declaration(init);
+                    self.visit_declaration(init)?;
                 }
 
                 let condition_bb = self.create_bb();
@@ -216,13 +229,13 @@ impl CfgBuilder {
 
                 self.current_bb = block_bb;
                 self.active_loops.push(increment_bb, terminator_bb);
-                self.visit_statement(block);
+                self.visit_statement(block)?;
                 self.active_loops.pop();
                 self.set_terminator(Terminator::Goto(increment_bb));
 
                 self.current_bb = increment_bb;
                 if let Some(increment) = increment {
-                    self.visit_statement(increment);
+                    self.visit_statement(increment)?;
                 }
                 self.set_terminator(Terminator::Goto(condition_bb));
 
@@ -250,6 +263,8 @@ impl CfgBuilder {
                 }
             }
         };
+
+        Ok(())
     }
 
     fn visit_logical_or(&mut self, id: HirId, left: &HirExpr, right: &HirExpr) -> Variable {

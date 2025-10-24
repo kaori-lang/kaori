@@ -1,15 +1,14 @@
-def fib(n: number) -> bool {
+function fib(n: number) -> number {
     if n < 2 {
         return n;
     } else {
-        return fib(n - 1) + fib(n - 2);
+        return 1;
     }   
+
+    return 1;
 }
 
 
 def main()  {
-    $n: number = 5;
-
-    print(fib(5) + true);
-    //fib(40);
+  
 }

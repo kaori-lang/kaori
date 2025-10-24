@@ -42,29 +42,30 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<HirIr, KaoriError> {
     Ok(hir)
 }
 
-fn build_cfg_ir(hir: HirIr) -> CfgIr {
+fn build_cfg_ir(hir: HirIr) -> Result<CfgIr, KaoriError> {
     let types = hir.types;
     let declarations = hir.declarations;
 
     let cfg_builder = CfgBuilder::new(types);
-    let mut cfg_ir = cfg_builder.build_ir(&declarations);
+    let mut cfg_ir = cfg_builder.build_ir(&declarations)?;
 
     run_jump_threading_optimization(&mut cfg_ir);
 
-    cfg_ir
+    println!("{}", cfg_ir);
+    Ok(cfg_ir)
 }
 
 pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
     let hir = run_semantic_analysis(&mut ast)?;
-    let cfg_ir = build_cfg_ir(hir);
+    let cfg_ir = build_cfg_ir(hir)?;
 
     let bytecode = emit_bytecode(cfg_ir.cfgs, cfg_ir.basic_blocks, cfg_ir.constants.constants);
 
-    for instruction in &bytecode.instructions {
+    /* for instruction in &bytecode.instructions {
         println!("{}", instruction);
-    }
+    } */
 
     Ok(bytecode)
 }
@@ -80,7 +81,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
 
     let start = Instant::now();
 
-    run_kaori_vm(bytecode.instructions, bytecode.constants);
+    //run_kaori_vm(bytecode.instructions, bytecode.constants);
 
     let elapsed = start.elapsed();
     println!("took: {elapsed:?}");
