@@ -28,10 +28,7 @@ impl Types {
                 parameters,
                 return_ty,
             } => {
-                let parameters = parameters
-                    .into_iter()
-                    .map(|ty| self.resolve_type(ty))
-                    .collect();
+                let parameters = parameters.iter().map(|ty| self.resolve_type(ty)).collect();
 
                 let return_ty = self.resolve_type(return_ty);
 
@@ -40,7 +37,7 @@ impl Types {
 
             Type::Struct { fields } => {
                 let fields = fields
-                    .into_iter()
+                    .iter()
                     .map(|field| self.resolve_type(field))
                     .collect();
 

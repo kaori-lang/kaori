@@ -15,7 +15,7 @@ use super::{
 
 #[derive(Debug, Default)]
 pub struct TypeChecker {
-    function_return_ty: Type,
+    return_ty: Type,
     types: Types,
 }
 
@@ -31,7 +31,7 @@ impl TypeChecker {
                     let parameters = parameters
                         .iter()
                         .map(|parameter| {
-                            let ty = self.create_type(&parameter.ty);
+                            let ty = create_type(&parameter.ty);
 
                             self.types.insert(parameter.id, ty.to_owned());
 
@@ -40,7 +40,7 @@ impl TypeChecker {
                         .collect();
 
                     let return_ty = if let Some(ty) = return_ty {
-                        self.create_type(ty)
+                        create_type(ty)
                     } else {
                         Type::Void
                     };
@@ -53,7 +53,7 @@ impl TypeChecker {
                     let fields = fields
                         .iter()
                         .map(|field| {
-                            let ty = self.create_type(&field.ty);
+                            let ty = create_type(&field.ty);
 
                             self.types.insert(field.id, ty.to_owned());
 
@@ -100,7 +100,7 @@ impl TypeChecker {
 
                 let ty = match ty {
                     Some(ty) => {
-                        let ty = self.create_type(ty);
+                        let ty = create_type(ty);
 
                         if right != ty {
                             return Err(kaori_error!(
@@ -122,11 +122,11 @@ impl TypeChecker {
                 body, return_ty, ..
             } => {
                 let return_ty = match return_ty {
-                    Some(ty) => self.types.get(ty.id),
+                    Some(ty) => create_type(ty),
                     _ => Type::Void,
                 };
 
-                self.function_return_ty = return_ty;
+                self.return_ty = return_ty;
 
                 for node in body {
                     self.type_check_ast_node(node)?;
@@ -198,17 +198,17 @@ impl TypeChecker {
             }
             HirStmtKind::Break => {}
             HirStmtKind::Continue => {}
-            HirStmtKind::Return(expr) => {
-                let ty = match expr {
-                    Some(expr) => self.type_check_expression(expr)?,
+            HirStmtKind::Return(expression) => {
+                let ty = match expression {
+                    Some(expression) => self.type_check_expression(expression)?,
                     _ => Type::Void,
                 };
 
-                if self.function_return_ty != ty {
+                if self.return_ty != ty {
                     return Err(kaori_error!(
                         statement.span,
                         "expected a return type of {:#?}, but found {:#?}",
-                        self.function_return_ty,
+                        self.return_ty,
                         ty
                     ));
                 }
@@ -327,36 +327,36 @@ impl TypeChecker {
                 *return_ty
             }
             HirExprKind::Variable(id) => self.types.get(*id),
+            HirExprKind::Function(id) => self.types.get(*id),
             HirExprKind::Boolean(..) => Type::Boolean,
             HirExprKind::Number(..) => Type::Number,
             HirExprKind::String(..) => Type::String,
-            HirExprKind::Function(id) => self.types.get(*id),
         };
 
         self.types.insert(expression.id, ty.to_owned());
 
         Ok(ty)
     }
+}
 
-    fn create_type(&mut self, ty: &HirTy) -> Type {
-        match &ty.kind {
-            HirTyKind::Function {
-                parameters,
-                return_ty,
-            } => {
-                let parameters = parameters.iter().map(|ty| self.create_type(ty)).collect();
-                let return_ty = self.create_type(&return_ty);
+fn create_type(ty: &HirTy) -> Type {
+    match &ty.kind {
+        HirTyKind::Function {
+            parameters,
+            return_ty,
+        } => {
+            let parameters = parameters.iter().map(create_type).collect();
+            let return_ty = create_type(return_ty);
 
-                Type::function(parameters, return_ty)
-            }
-            HirTyKind::TypeRef(id) => Type::type_ref(*id),
-            HirTyKind::Struct { fields } => {
-                let fields = fields.iter().map(|ty| self.create_type(ty)).collect();
-
-                Type::struct_(fields)
-            }
-            HirTyKind::Bool => Type::Boolean,
-            HirTyKind::Number => Type::Number,
+            Type::function(parameters, return_ty)
         }
+        HirTyKind::TypeRef(id) => Type::type_ref(*id),
+        HirTyKind::Struct { fields } => {
+            let fields = fields.iter().map(create_type).collect();
+
+            Type::struct_(fields)
+        }
+        HirTyKind::Bool => Type::Boolean,
+        HirTyKind::Number => Type::Number,
     }
 }

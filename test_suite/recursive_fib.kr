@@ -1,4 +1,4 @@
-def fib(n: number) -> number {
+def fib(n: number) -> bool {
     if n < 2 {
         return n;
     } else {
@@ -8,5 +8,8 @@ def fib(n: number) -> number {
 
 
 def main()  {
-    fib(40);
+    $n: number = 5;
+
+    print(fib(5) + true);
+    //fib(40);
 }

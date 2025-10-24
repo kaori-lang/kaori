@@ -35,9 +35,9 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<HirIr, KaoriError> {
 
     let type_checker = TypeChecker::default();
 
-    let types_table = type_checker.type_check(&declarations)?;
+    let types = type_checker.type_check(&declarations)?;
 
-    let hir = HirIr::new(declarations, types_table);
+    let hir = HirIr::new(declarations, types);
 
     Ok(hir)
 }

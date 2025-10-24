@@ -7,7 +7,7 @@ use crate::{
         hir_id::HirId,
         hir_node::HirNode,
         hir_stmt::{HirStmt, HirStmtKind},
-        r#type::Type,
+        r#type::Types,
     },
     syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
 };
@@ -30,7 +30,7 @@ pub struct CfgBuilder {
 }
 
 impl CfgBuilder {
-    pub fn new(_types: HashMap<HirId, Type>) -> Self {
+    pub fn new(_types: Types) -> Self {
         Self {
             variables: CfgVariables::default(),
             cfg_ir: CfgIr::default(),
