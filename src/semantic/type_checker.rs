@@ -121,10 +121,7 @@ impl TypeChecker {
             HirDeclKind::Function {
                 body, return_ty, ..
             } => {
-                let return_ty = match return_ty {
-                    Some(ty) => create_type(ty),
-                    _ => Type::Void,
-                };
+                let return_ty = return_ty.as_ref().map_or(Type::Void, create_type);
 
                 self.return_ty = return_ty;
 
@@ -201,7 +198,7 @@ impl TypeChecker {
             HirStmtKind::Return(expression) => {
                 let ty = match expression {
                     Some(expression) => self.type_check_expression(expression)?,
-                    _ => Type::Void,
+                    None => Type::Void,
                 };
 
                 if self.return_ty != ty {

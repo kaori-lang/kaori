@@ -214,7 +214,7 @@ impl Resolver {
 
                 let ty = match ty {
                     Some(ty) => Some(self.resolve_type(ty)?),
-                    _ => None,
+                    None => None,
                 };
 
                 HirDecl::variable(id, right, ty, declaration.span)
