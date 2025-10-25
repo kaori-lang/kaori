@@ -1,14 +1,34 @@
-function fib(n: number) -> number {
+def fib(n: number) -> number {
     if n < 2 {
         return n;
     } else {
-        return 1;
+        return fib(n - 1) + fib(n - 2);
     }   
 
-    return 1;
+    return 0;
 }
 
 
 def main()  {
-  
+    fib(40);
 }
+
+/*
+MOV r1, c1
+CALL r0, c2, 1
+PRT r0
+RET VOID
+
+LT r1, r0, c3
+JIF r1, 2
+RET r0
+SUB r3, r0, c4
+MOV r4, r3
+CALL r2, c2, 4
+SUB r6, r0, c3
+MOV r7, r6
+CALL r5, c2, 7
+ADD r8, r2, r5
+RET r8
+HLT
+*/

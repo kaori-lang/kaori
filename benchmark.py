@@ -20,6 +20,9 @@ scripts = [
     ("Lua Recursive", folder / "recursive_fib.lua", ["lua"]),
     ("Python Iterative", folder / "iterative_fib.py", ["python"]),
     ("Python Recursive", folder / "recursive_fib.py", ["python"]),
+    ("Pypy Iterative", folder / "iterative_fib.py", ["pypy"]),
+    ("Pypy Recursive", folder / "recursive_fib.py", ["pypy"]),
+
 ]
 
 def run_script(path, cmd_list):

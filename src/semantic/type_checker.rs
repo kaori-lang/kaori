@@ -243,27 +243,23 @@ impl TypeChecker {
                 let left_ty = self.type_check_expression(left)?;
                 let right_ty = self.type_check_expression(right)?;
 
-                use BinaryOpKind as Op;
-                use Type as Ty;
-
                 match (&left_ty, operator.kind, &right_ty) {
-                    (
-                        Ty::Number,
-                        Op::Add | Op::Subtract | Op::Multiply | Op::Divide | Op::Modulo,
-                        Ty::Number,
-                    ) => Ty::Number,
+                    (Type::Number, BinaryOpKind::Add, Type::Number) => Type::Number,
+                    (Type::Number, BinaryOpKind::Subtract, Type::Number) => Type::Number,
+                    (Type::Number, BinaryOpKind::Multiply, Type::Number) => Type::Number,
+                    (Type::Number, BinaryOpKind::Divide, Type::Number) => Type::Number,
+                    (Type::Number, BinaryOpKind::Modulo, Type::Number) => Type::Number,
 
-                    (Ty::Boolean, Op::And | Op::Or, Ty::Boolean) => Ty::Boolean,
+                    (Type::Boolean, BinaryOpKind::And, Type::Boolean) => Type::Boolean,
+                    (Type::Boolean, BinaryOpKind::Or, Type::Boolean) => Type::Boolean,
 
-                    (left_ty, Op::Equal | Op::NotEqual, right_ty) if left_ty == right_ty => {
-                        Ty::Boolean
-                    }
+                    (lhs, BinaryOpKind::Equal, rhs) if lhs == rhs => Type::Boolean,
+                    (lhs, BinaryOpKind::NotEqual, rhs) if lhs == rhs => Type::Boolean,
 
-                    (
-                        Ty::Number,
-                        Op::Greater | Op::GreaterEqual | Op::Less | Op::LessEqual,
-                        Ty::Number,
-                    ) => Ty::Boolean,
+                    (Type::Number, BinaryOpKind::Greater, Type::Number) => Type::Boolean,
+                    (Type::Number, BinaryOpKind::GreaterEqual, Type::Number) => Type::Boolean,
+                    (Type::Number, BinaryOpKind::Less, Type::Number) => Type::Boolean,
+                    (Type::Number, BinaryOpKind::LessEqual, Type::Number) => Type::Boolean,
 
                     _ => {
                         return Err(kaori_error!(

@@ -51,7 +51,7 @@ fn build_cfg_ir(hir: HirIr) -> Result<CfgIr, KaoriError> {
 
     run_jump_threading_optimization(&mut cfg_ir);
 
-    println!("{}", cfg_ir);
+    //println!("{}", cfg_ir);
     Ok(cfg_ir)
 }
 
@@ -63,7 +63,7 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 
     let bytecode = emit_bytecode(cfg_ir.cfgs, cfg_ir.basic_blocks, cfg_ir.constants.constants);
 
-    /* for instruction in &bytecode.instructions {
+    /*  for instruction in &bytecode.instructions {
         println!("{}", instruction);
     } */
 
@@ -73,16 +73,8 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
-    /*
-    unsafe {
-         run_vm(&bytecode.instructions, &bytecode.constants);
-     }
-    */
-
     let start = Instant::now();
-
-    //run_kaori_vm(bytecode.instructions, bytecode.constants);
-
+    run_kaori_vm(bytecode.instructions, bytecode.constants);
     let elapsed = start.elapsed();
     println!("took: {elapsed:?}");
 
