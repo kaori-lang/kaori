@@ -476,7 +476,7 @@ fn instruction_print(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked();
         };
 
-        let value = ctx.get_value(src).as_boolean();
+        let value = ctx.get_value(src).as_number();
 
         println!("{}", value);
 
