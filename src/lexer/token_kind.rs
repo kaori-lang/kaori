@@ -76,9 +76,9 @@ impl fmt::Display for TokenKind {
             TokenKind::DivideAssign => "/=",
             TokenKind::ModuloAssign => "%=",
 
-            TokenKind::And => "&&",
-            TokenKind::Or => "||",
-            TokenKind::Not => "!",
+            TokenKind::And => "and",
+            TokenKind::Or => "or",
+            TokenKind::Not => "not",
             TokenKind::NotEqual => "!=",
             TokenKind::Equal => "==",
             TokenKind::Greater => ">",

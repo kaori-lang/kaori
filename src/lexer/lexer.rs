@@ -81,13 +81,16 @@ impl Lexer {
             "break" => TokenKind::Break,
             "continue" => TokenKind::Continue,
             "return" => TokenKind::Return,
-            "def" => TokenKind::Function,
+            "fun" => TokenKind::Function,
             "struct" => TokenKind::Struct,
             "print" => TokenKind::Print,
             "true" => TokenKind::True,
             "false" => TokenKind::False,
             "bool" => TokenKind::Bool,
             "number" => TokenKind::Number,
+            "and" => TokenKind::And,
+            "or" => TokenKind::Or,
+            "not" => TokenKind::Not,
             _ => TokenKind::Identifier,
         };
 
@@ -186,27 +189,7 @@ impl Lexer {
                     TokenKind::Modulo
                 }
             }
-            '&' => {
-                if self.look_ahead("&&") {
-                    TokenKind::And
-                } else {
-                    TokenKind::Invalid
-                }
-            }
-            '|' => {
-                if self.look_ahead("||") {
-                    TokenKind::Or
-                } else {
-                    TokenKind::Invalid
-                }
-            }
-            '!' => {
-                if self.look_ahead("!=") {
-                    TokenKind::NotEqual
-                } else {
-                    TokenKind::Not
-                }
-            }
+            '!' if self.look_ahead("!=") => TokenKind::NotEqual,
             '=' => {
                 if self.look_ahead("==") {
                     TokenKind::Equal
