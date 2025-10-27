@@ -1,4 +1,4 @@
-def foo(n: number) {
+fun foo(n: number) {
     print(n);
     
     if n > 0 {
@@ -7,7 +7,7 @@ def foo(n: number) {
 
 }
 
-def bar(n: number) {
+fun bar(n: number) {
     print(n);
 
     if n > 0 {

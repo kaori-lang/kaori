@@ -1,4 +1,4 @@
-def main() {
+fun main() {
     $iterations = 1000000;
     $max_fib = 40;
 

@@ -1,4 +1,4 @@
-def main()  {
+fun main()  {
     if 1 > 2 { 
         print(1);
     } else if 2 > 3 {

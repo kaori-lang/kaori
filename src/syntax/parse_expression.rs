@@ -209,7 +209,15 @@ impl Parser {
                 self.token_stream.advance();
                 return self.parse_prefix_unary();
             }
-            TokenKind::Minus | TokenKind::Not => self.build_unary_operator(),
+            TokenKind::Not => {
+                let operator = self.build_unary_operator();
+                self.token_stream.advance();
+
+                let right = self.parse_or()?;
+
+                return Ok(Expr::unary(operator, right));
+            }
+            TokenKind::Minus => self.build_unary_operator(),
             _ => return self.parse_primary(),
         };
 

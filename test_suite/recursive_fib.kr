@@ -1,4 +1,4 @@
-def fib(n: number) -> number {
+fun fib(n: number) -> number {
     if n < 2 {
         return n;
     } else {
@@ -9,7 +9,7 @@ def fib(n: number) -> number {
 }
 
 
-def main()  {
+fun main()  {
     fib(40);
 }
 

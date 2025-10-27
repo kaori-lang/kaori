@@ -42,3 +42,7 @@ if __name__ == '__main__':
 
 
 
+
+b = True
+
+if not not b:
