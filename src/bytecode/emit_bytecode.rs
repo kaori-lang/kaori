@@ -34,7 +34,7 @@ pub fn emit_bytecode(
 struct CodegenContext {
     basic_blocks: Vec<BasicBlock>,
     instructions: Vec<Instruction>,
-    bb_start_index: HashMap<BlockId, usize>,
+    bb_start_index: HashMap<usize, usize>,
 }
 
 impl CodegenContext {

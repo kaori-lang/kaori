@@ -9,7 +9,6 @@ use crate::{
         hir_id::HirId,
         hir_node::HirNode,
         hir_stmt::{HirStmt, HirStmtKind},
-        r#type::Types,
     },
     syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
 };
@@ -24,41 +23,55 @@ use super::{
 };
 
 pub fn build_cfgs(declarations: &[HirDecl]) -> Result<Vec<CfgFunction>, KaoriError> {
-    let functions = Vec::new();
+    let mut functions = HashMap::new();
 
     for declaration in declarations {
         if let HirDeclKind::Function { .. } = &declaration.kind {
-            //self.functions.insert(declaration.id, basic_block);
+            let index = functions.len();
+
+            functions.insert(declaration.id, index);
         }
     }
 
+    let mut cfgs = Vec::new();
+
     for declaration in declarations {
-        //self.visit_declaration(declaration)?;
+        if let HirDeclKind::Function { .. } = &declaration.kind {
+            let mut ctx = CfgContext::new(&functions);
+
+            ctx.visit_declaration(declaration)?;
+
+            let cfg = CfgFunction::new(
+                ctx.basic_blocks,
+                ctx.constants.constants,
+                ctx.variables.len(),
+            );
+
+            cfgs.push(cfg);
+        }
     }
 
-    Ok(functions)
+    Ok(cfgs)
 }
 
-pub struct CfgContext {
+pub struct CfgContext<'a> {
     index: usize,
     variables: HashMap<HirId, Operand>,
     constants: CfgConstants,
     basic_blocks: Vec<BasicBlock>,
-    current_bb: usize,
-    functions: HashMap<HirId, usize>,
     active_loops: ActiveLoops,
+    functions: &'a HashMap<HirId, usize>,
 }
 
-impl CfgContext {
-    pub fn new(_types: Types) -> Self {
+impl<'a> CfgContext<'a> {
+    pub fn new(functions: &'a HashMap<HirId, usize>) -> Self {
         Self {
             index: 0,
             variables: HashMap::new(),
             constants: CfgConstants::default(),
             basic_blocks: Vec::new(),
-            current_bb: 0,
-            functions: HashMap::new(),
             active_loops: ActiveLoops::default(),
+            functions,
         }
     }
 
@@ -73,21 +86,17 @@ impl CfgContext {
     fn emit_instruction(&mut self, instruction: CfgInstruction) {
         let basic_block = &mut self.basic_blocks[self.index];
 
-        let Terminator::None = basic_block.terminator else {
-            return;
+        if let Terminator::None = basic_block.terminator {
+            basic_block.instructions.push(instruction);
         };
-
-        basic_block.instructions.push(instruction);
     }
 
     fn set_terminator(&mut self, terminator: Terminator) {
         let basic_block = &mut self.basic_blocks[self.index];
 
-        let Terminator::None = basic_block.terminator else {
-            return;
+        if let Terminator::None = basic_block.terminator {
+            basic_block.terminator = terminator;
         };
-
-        basic_block.terminator = terminator;
     }
 
     fn create_bb(&mut self) -> usize {
@@ -133,7 +142,7 @@ impl CfgContext {
                 parameters,
                 return_ty,
             } => {
-                self.index = *self.functions.get(&declaration.id).unwrap();
+                let _entry_bb = self.create_bb();
 
                 for parameter in parameters {
                     self.create_variable(parameter.id);
@@ -391,21 +400,21 @@ impl CfgContext {
 
                 let arguments_src = arguments
                     .iter()
-                    .map(|argument| (argument.id, self.visit_expression(argument)))
-                    .collect::<Vec<(HirId, Operand)>>();
+                    .map(|argument| self.visit_expression(argument))
+                    .collect::<Vec<Operand>>();
 
                 let src = self.visit_expression(callee);
 
-                let caller_size = 0 as u16;
+                for (index, src) in arguments_src.iter().copied().enumerate() {
+                    let dest = Operand::Variable(index);
 
-                for (id, src) in arguments_src {
-                    let dest = self.create_variable(id);
-                    let instruction = CfgInstruction::move_(dest, src);
+                    let instruction = CfgInstruction::move_arg(dest, src);
 
                     self.emit_instruction(instruction);
                 }
 
-                let instruction = CfgInstruction::call(dest, src, caller_size);
+                let instruction = CfgInstruction::call(dest, src);
+
                 self.emit_instruction(instruction);
 
                 dest
@@ -413,7 +422,7 @@ impl CfgContext {
 
             HirExprKind::Variable(id) => *self
                 .variables
-                .get(&id)
+                .get(id)
                 .expect("Variable not found for HirId"),
 
             HirExprKind::Function(id) => {

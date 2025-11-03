@@ -41,10 +41,16 @@ impl Display for Terminator {
                 r#true,
                 r#false,
             } => {
-                write!(f, "br {} -> BB{}, BB{}", src, r#true, r#false)
+                write!(f, "{}: true -> BB{}; false -> BB{}", src, r#true, r#false)
             }
             Terminator::Goto(target) => write!(f, "goto BB{}", target),
-            Terminator::Return { src } => write!(f, "ret {}", 1),
+            Terminator::Return { src } => {
+                if let Some(operand) = src {
+                    write!(f, "return {}", operand)
+                } else {
+                    write!(f, "return VOID")
+                }
+            }
             Terminator::None => write!(f, "<no terminator>"),
         }
     }
@@ -53,8 +59,8 @@ impl Display for Terminator {
 impl Display for BasicBlock {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         writeln!(f, "BB{}:", self.index)?;
-        for instr in &self.instructions {
-            writeln!(f, "  {}", instr)?;
+        for instruction in &self.instructions {
+            writeln!(f, "  {}", instruction)?;
         }
         writeln!(f, "  {}", self.terminator)
     }

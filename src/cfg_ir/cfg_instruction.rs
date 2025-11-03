@@ -72,10 +72,13 @@ pub enum CfgInstruction {
         dest: Operand,
         src: Operand,
     },
+    MoveArg {
+        dest: Operand,
+        src: Operand,
+    },
     Call {
         dest: Operand,
         src: Operand,
-        caller_size: u16,
     },
     Print {
         src: Operand,
@@ -139,12 +142,12 @@ impl CfgInstruction {
         Self::Move { dest, src }
     }
 
-    pub fn call(dest: Operand, src: Operand, caller_size: u16) -> Self {
-        Self::Call {
-            dest,
-            src,
-            caller_size,
-        }
+    pub fn move_arg(dest: Operand, src: Operand) -> Self {
+        Self::MoveArg { dest, src }
+    }
+
+    pub fn call(dest: Operand, src: Operand) -> Self {
+        Self::Call { dest, src }
     }
 
     pub fn print(src: Operand) -> Self {
@@ -173,12 +176,9 @@ impl Display for CfgInstruction {
             Negate { dest, src } => write!(f, "{} = -{}", dest, src),
             Not { dest, src } => write!(f, "{} = !{}", dest, src),
             Move { dest, src } => write!(f, "{} = {}", dest, src),
-            Call {
-                dest,
-                src,
-                caller_size,
-            } => {
-                write!(f, "{} = call {} ({})", dest, src, caller_size)
+            MoveArg { dest, src } => write!(f, "{} = arg({})", dest, src),
+            Call { dest, src } => {
+                write!(f, "{} = call {}", dest, src)
             }
             Print { src } => write!(f, "print {}", src),
         }
