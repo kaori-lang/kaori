@@ -2,9 +2,7 @@ use std::time::Instant;
 
 use crate::{
     bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode},
-    cfg_ir::{
-        cfg_builder::CfgBuilder, cfg_ir::CfgIr, jump_threading::run_jump_threading_optimization,
-    },
+    cfg_ir::{cfg_builder::CfgBuilder, jump_threading::run_jump_threading_optimization},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},
@@ -62,10 +60,6 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
     let cfg_ir = build_cfg_ir(hir)?;
 
     let bytecode = emit_bytecode(cfg_ir.cfgs, cfg_ir.basic_blocks, cfg_ir.constants.constants);
-
-    /*  for instruction in &bytecode.instructions {
-        println!("{}", instruction);
-    } */
 
     Ok(bytecode)
 }

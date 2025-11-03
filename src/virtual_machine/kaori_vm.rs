@@ -3,19 +3,15 @@ use std::hint::unreachable_unchecked;
 use crate::bytecode::{instruction::Instruction, value::Value};
 
 pub struct FunctionFrame {
-    pub registers: *mut Value,
+    pub base: usize,
     pub return_address: *const Instruction,
     pub return_register: i16,
 }
 
 impl FunctionFrame {
-    pub fn new(
-        registers: *mut Value,
-        return_address: *const Instruction,
-        return_register: i16,
-    ) -> Self {
+    pub fn new(base: usize, return_address: *const Instruction, return_register: i16) -> Self {
         Self {
-            registers,
+            base,
             return_address,
             return_register,
         }
@@ -51,8 +47,9 @@ const INSTRUCTION_DISPATCH: [InstructionHandler; 22] = [
 
 pub struct VMContext {
     pub call_stack: Vec<FunctionFrame>,
-    pub constants: *const Value,
-    pub registers: *mut Value,
+    pub constants: Vec<Value>,
+    pub registers: Vec<Value>,
+    pub registers_ptr: *mut Value,
 }
 
 macro_rules! dispatch {
@@ -90,29 +87,30 @@ macro_rules! dispatch_to {
 }
 
 impl VMContext {
-    pub fn new(constants: *const Value, registers: *mut Value) -> Self {
+    pub fn new(constants: Vec<Value>, registers: Vec<Value>, registers_ptr: *mut Value) -> Self {
         Self {
             call_stack: Vec::new(),
             constants,
             registers,
+            registers_ptr,
         }
     }
 
     #[inline(always)]
     fn get_value(&self, register: i16) -> Value {
-        unsafe {
-            if register < 0 {
-                *self.constants.offset(register as isize)
-            } else {
-                *self.registers.add(register as usize)
-            }
+        if register < 0 {
+            self.constants[-register as usize]
+        } else if register < 1024 {
+            unsafe { *self.registers_ptr.add(register as usize) }
+        } else {
+            panic!("Stack overflow")
         }
     }
 
     #[inline(always)]
     fn set_value(&mut self, register: i16, value: Value) {
         unsafe {
-            *self.registers.add(register as usize) = value;
+            *self.registers_ptr.add(register as usize) = value;
         }
     }
 
@@ -121,7 +119,7 @@ impl VMContext {
         let frame = unsafe { self.call_stack.pop().unwrap_unchecked() };
 
         if let Some(frame) = self.call_stack.last() {
-            self.registers = frame.registers;
+            self.registers_ptr = unsafe { self.registers.as_mut_ptr().add(frame.base) };
         }
 
         frame
@@ -134,11 +132,11 @@ impl VMContext {
         return_address: *const Instruction,
         caller_size: u16,
     ) {
-        let registers = unsafe { self.registers.add(caller_size as usize) };
+        let base = self.call_stack.last().unwrap().base + caller_size as usize;
 
-        self.registers = registers;
+        let frame = FunctionFrame::new(base, return_address, return_register);
 
-        let frame = FunctionFrame::new(registers, return_address, return_register);
+        self.registers_ptr = unsafe { self.registers.as_mut_ptr().add(base) };
 
         self.call_stack.push(frame);
     }
@@ -148,13 +146,9 @@ pub fn run_kaori_vm(instructions: Vec<Instruction>, constants: Vec<Value>) {
     let halt_ip = unsafe { instructions.as_ptr().add(instructions.len() - 1) };
 
     let mut registers = vec![Value::default(); 1024];
-
     let registers_ptr = registers.as_mut_ptr();
-    let constants_ptr = unsafe { constants.as_ptr().add(constants.len() - 1) };
 
-    let mut ctx = VMContext::new(constants_ptr, registers_ptr);
-
-    ctx.push_frame(0, halt_ip, 0);
+    let mut ctx = VMContext::new(constants, registers, registers_ptr);
 
     let ip = instructions.as_ptr();
     let op_code = instructions[0].discriminant();

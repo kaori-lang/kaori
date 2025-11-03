@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::cfg_ir::{
-    basic_block::{BasicBlock, BlockId, Terminator},
+    basic_block::{BasicBlock, Terminator},
     cfg_constants::CfgConstant,
     cfg_instruction::CfgInstruction,
     graph_traversal::reversed_postorder,
@@ -132,34 +132,6 @@ impl CodegenContext {
     }
 }
 
-fn convert_constants(
-    cfg_constants: &[CfgConstant],
-    instructions: &[Instruction],
-    bb_start_index: &HashMap<BlockId, usize>,
-) -> Vec<Value> {
-    let mut constants = cfg_constants
-        .iter()
-        .map(|constant| match constant {
-            CfgConstant::Boolean(v) => Value::boolean(*v),
-            CfgConstant::Number(v) => Value::number(**v),
-            CfgConstant::Function(block_id) => {
-                let idx = *bb_start_index
-                    .get(block_id)
-                    .expect("Missing block ID for function constant");
-                let ptr = unsafe { instructions.as_ptr().add(idx) };
-                Value::instruction(ptr)
-            }
-            _ => todo!("Unhandled constant kind"),
-        })
-        .collect::<Vec<Value>>();
-
-    constants.reverse();
-
-    constants.push(Value::default());
-
-    constants
-}
-
 fn visit_instruction(instruction: &CfgInstruction) -> Instruction {
     match *instruction {
         CfgInstruction::Add { dest, src1, src2 } => Instruction::add(dest, src1, src2),
@@ -185,4 +157,31 @@ fn visit_instruction(instruction: &CfgInstruction) -> Instruction {
         } => Instruction::call(dest, src, caller_size),
         CfgInstruction::Print { src } => Instruction::print(src),
     }
+}
+
+fn convert_constants(
+    cfg_constants: &[CfgConstant],
+    instructions: &[Instruction],
+    bb_start_index: &HashMap<BlockId, usize>,
+) -> Vec<Value> {
+    let mut constants = vec![Value::default()];
+
+    for constant in cfg_constants {
+        let constant = match constant {
+            CfgConstant::Boolean(v) => Value::boolean(*v),
+            CfgConstant::Number(v) => Value::number(**v),
+            CfgConstant::Function(block_id) => {
+                let idx = *bb_start_index
+                    .get(block_id)
+                    .expect("Missing block ID for function constant");
+                let ptr = unsafe { instructions.as_ptr().add(idx) };
+                Value::instruction(ptr)
+            }
+            _ => todo!(),
+        };
+
+        constants.push(constant);
+    }
+
+    constants
 }

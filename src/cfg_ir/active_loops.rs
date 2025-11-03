@@ -1,9 +1,7 @@
-use super::basic_block::BlockId;
-
 #[derive(Debug)]
 pub struct LoopLabel {
-    pub increment_bb: BlockId,
-    pub terminator_bb: BlockId,
+    pub increment_bb_index: usize,
+    pub terminator_bb_index: usize,
 }
 
 #[derive(Default)]
@@ -12,10 +10,10 @@ pub struct ActiveLoops {
 }
 
 impl ActiveLoops {
-    pub fn push(&mut self, increment_bb: BlockId, terminator_bb: BlockId) {
+    pub fn push(&mut self, increment_bb_index: usize, terminator_bb_index: usize) {
         let active_loop = LoopLabel {
-            increment_bb,
-            terminator_bb,
+            increment_bb_index,
+            terminator_bb_index,
         };
 
         self.active_loops.push(active_loop);

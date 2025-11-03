@@ -1,145 +1,145 @@
 use core::fmt;
 use std::fmt::{Display, Formatter};
 
-use super::variable::Variable;
+use super::variable::Operand;
 
 #[derive(Debug, Clone)]
 pub enum CfgInstruction {
     Add {
-        dest: Variable,
-        src1: Variable,
-        src2: Variable,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Subtract {
-        dest: Variable,
-        src1: Variable,
-        src2: Variable,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Multiply {
-        dest: Variable,
-        src1: Variable,
-        src2: Variable,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Divide {
-        dest: Variable,
-        src1: Variable,
-        src2: Variable,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Modulo {
-        dest: Variable,
-        src1: Variable,
-        src2: Variable,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Equal {
-        dest: Variable,
-        src1: Variable,
-        src2: Variable,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     NotEqual {
-        dest: Variable,
-        src1: Variable,
-        src2: Variable,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Greater {
-        dest: Variable,
-        src1: Variable,
-        src2: Variable,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     GreaterEqual {
-        dest: Variable,
-        src1: Variable,
-        src2: Variable,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Less {
-        dest: Variable,
-        src1: Variable,
-        src2: Variable,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     LessEqual {
-        dest: Variable,
-        src1: Variable,
-        src2: Variable,
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
     },
     Negate {
-        dest: Variable,
-        src: Variable,
+        dest: Operand,
+        src: Operand,
     },
     Not {
-        dest: Variable,
-        src: Variable,
+        dest: Operand,
+        src: Operand,
     },
     Move {
-        dest: Variable,
-        src: Variable,
+        dest: Operand,
+        src: Operand,
     },
     Call {
-        dest: Variable,
-        src: Variable,
+        dest: Operand,
+        src: Operand,
         caller_size: u16,
     },
     Print {
-        src: Variable,
+        src: Operand,
     },
 }
 
 impl CfgInstruction {
-    pub fn add(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn add(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Add { dest, src1, src2 }
     }
 
-    pub fn subtract(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn subtract(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Subtract { dest, src1, src2 }
     }
 
-    pub fn multiply(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn multiply(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Multiply { dest, src1, src2 }
     }
 
-    pub fn divide(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn divide(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Divide { dest, src1, src2 }
     }
 
-    pub fn modulo(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn modulo(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Modulo { dest, src1, src2 }
     }
 
-    pub fn equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Equal { dest, src1, src2 }
     }
 
-    pub fn not_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn not_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::NotEqual { dest, src1, src2 }
     }
 
-    pub fn greater(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn greater(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Greater { dest, src1, src2 }
     }
 
-    pub fn greater_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn greater_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::GreaterEqual { dest, src1, src2 }
     }
 
-    pub fn less(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn less(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Less { dest, src1, src2 }
     }
 
-    pub fn less_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn less_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::LessEqual { dest, src1, src2 }
     }
 
-    pub fn negate(dest: Variable, src: Variable) -> Self {
+    pub fn negate(dest: Operand, src: Operand) -> Self {
         Self::Negate { dest, src }
     }
 
-    pub fn not(dest: Variable, src: Variable) -> Self {
+    pub fn not(dest: Operand, src: Operand) -> Self {
         Self::Not { dest, src }
     }
 
-    pub fn move_(dest: Variable, src: Variable) -> Self {
+    pub fn move_(dest: Operand, src: Operand) -> Self {
         Self::Move { dest, src }
     }
 
-    pub fn call(dest: Variable, src: Variable, caller_size: u16) -> Self {
+    pub fn call(dest: Operand, src: Operand, caller_size: u16) -> Self {
         Self::Call {
             dest,
             src,
@@ -147,7 +147,7 @@ impl CfgInstruction {
         }
     }
 
-    pub fn print(src: Variable) -> Self {
+    pub fn print(src: Operand) -> Self {
         Self::Print { src }
     }
 }

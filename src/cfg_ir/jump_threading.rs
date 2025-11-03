@@ -1,38 +1,38 @@
 use std::collections::{HashMap, HashSet};
 
 use super::{
-    basic_block::{BasicBlock, BlockId, Terminator},
-    cfg_ir::CfgIr,
+    basic_block::{BasicBlock, Terminator},
+    cfg_function::CfgFunction,
 };
 
-pub fn run_jump_threading_optimization(cfg_ir: &mut CfgIr) {
-    let mut visited = HashSet::new();
-    let mut nodes = HashMap::new();
+pub fn run_jump_threading_optimization(cfgs: &mut [CfgFunction]) {
+    for cfg in cfgs {
+        let mut visited = HashSet::new();
+        let mut nodes = HashMap::new();
 
-    for cfg in &cfg_ir.cfgs {
-        traverse(*cfg, &mut cfg_ir.basic_blocks, &mut visited, &mut nodes);
+        traverse(0, &mut cfg.basic_blocks, &mut visited, &mut nodes);
     }
 }
 
 fn traverse(
-    id: BlockId,
+    index: usize,
     basic_blocks: &mut [BasicBlock],
-    visited: &mut HashSet<BlockId>,
-    nodes: &mut HashMap<BlockId, BlockId>,
-) -> BlockId {
-    if let Some(id) = visited.get(&id) {
-        if let Some(id) = nodes.get(id) {
-            return *id;
+    visited: &mut HashSet<usize>,
+    nodes: &mut HashMap<usize, usize>,
+) -> usize {
+    if let Some(index) = visited.get(&index) {
+        if let Some(index) = nodes.get(index) {
+            return *index;
         };
 
-        return *id;
+        return *index;
     }
 
-    visited.insert(id);
+    visited.insert(index);
 
-    let basic_block = &basic_blocks[id.0];
+    let basic_block = &basic_blocks[index];
 
-    let (bb_id, terminator) = &match basic_block.terminator {
+    let (bb_index, terminator) = &match basic_block.terminator {
         Terminator::Branch {
             src,
             r#true,
@@ -44,33 +44,33 @@ fn traverse(
                 r#false: traverse(r#false, basic_blocks, visited, nodes),
             };
 
-            (id, terminator)
+            (index, terminator)
         }
         Terminator::Goto(target) => {
             if basic_block.instructions.is_empty() {
                 let terminator = Terminator::Goto(target);
-                let id = traverse(target, basic_blocks, visited, nodes);
+                let index = traverse(target, basic_blocks, visited, nodes);
 
-                (id, terminator)
+                (index, terminator)
             } else {
                 let target = traverse(target, basic_blocks, visited, nodes);
                 let terminator = Terminator::Goto(target);
 
-                (id, terminator)
+                (index, terminator)
             }
         }
         Terminator::Return { src } => {
             let terminator = Terminator::Return { src };
 
-            (id, terminator)
+            (index, terminator)
         }
         _ => unreachable!(),
     };
 
-    nodes.insert(id, *bb_id);
+    nodes.insert(index, *bb_index);
 
-    let basic_block = &mut basic_blocks[id.0];
+    let basic_block = &mut basic_blocks[index];
     basic_block.terminator = *terminator;
 
-    *bb_id
+    *bb_index
 }

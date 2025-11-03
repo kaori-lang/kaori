@@ -6,7 +6,6 @@ use crate::{
 use super::{
     decl::{Decl, Field, Parameter},
     parser::Parser,
-    ty::Ty,
 };
 
 impl Parser {

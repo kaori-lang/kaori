@@ -235,8 +235,6 @@ impl Lexer {
             | TokenKind::MultiplyAssign
             | TokenKind::DivideAssign
             | TokenKind::ModuloAssign
-            | TokenKind::And
-            | TokenKind::Or
             | TokenKind::NotEqual
             | TokenKind::Equal
             | TokenKind::GreaterEqual
@@ -256,6 +254,7 @@ impl Lexer {
 
     pub fn get_next_token(&mut self) -> Result<(), KaoriError> {
         let c = self.source[self.index];
+
         match c {
             '"' => self.string_literal()?,
             '/' if self.look_ahead("/*") => self.multiline_comment(),

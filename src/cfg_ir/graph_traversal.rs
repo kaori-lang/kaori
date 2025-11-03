@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
-use super::basic_block::{BasicBlock, BlockId, Terminator};
+use super::basic_block::{BasicBlock, Terminator};
 
-pub fn reversed_postorder(root: BlockId, basic_blocks: &[BasicBlock]) -> Vec<BlockId> {
+pub fn reversed_postorder(basic_blocks: &[BasicBlock]) -> Vec<usize> {
     let mut visited = HashSet::new();
     let mut postorder = Vec::new();
 
-    traverse(root, basic_blocks, &mut visited, &mut postorder);
+    traverse(0, basic_blocks, &mut visited, &mut postorder);
 
     postorder.reverse();
 
@@ -14,18 +14,18 @@ pub fn reversed_postorder(root: BlockId, basic_blocks: &[BasicBlock]) -> Vec<Blo
 }
 
 fn traverse(
-    id: BlockId,
+    index: usize,
     basic_blocks: &[BasicBlock],
-    visited: &mut HashSet<BlockId>,
-    postorder: &mut Vec<BlockId>,
+    visited: &mut HashSet<usize>,
+    postorder: &mut Vec<usize>,
 ) {
-    if visited.contains(&id) {
+    if visited.contains(&index) {
         return;
     }
 
-    visited.insert(id);
+    visited.insert(index);
 
-    let bb = &basic_blocks[id.0];
+    let bb = &basic_blocks[index];
 
     match bb.terminator {
         Terminator::Branch {
@@ -40,5 +40,5 @@ fn traverse(
         _ => {}
     };
 
-    postorder.push(id);
+    postorder.push(index);
 }

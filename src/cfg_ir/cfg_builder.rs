@@ -15,80 +15,61 @@ use crate::{
 };
 
 use super::{
-    active_loops::ActiveLoops,
-    basic_block::{BasicBlock, BlockId, Terminator},
-    cfg_instruction::CfgInstruction,
-    cfg_ir::CfgIr,
-    cfg_variables::CfgVariables,
-    variable::Variable,
+    active_loops::ActiveLoops, basic_block::Terminator, cfg_function::CfgFunction,
+    cfg_instruction::CfgInstruction, operand::Operand,
 };
 
-pub struct CfgBuilder {
-    variables: CfgVariables,
-    cfg_ir: CfgIr,
-    current_bb: BlockId,
-    functions: HashMap<HirId, BlockId>,
+pub fn build_ir(declarations: &[HirDecl]) -> Result<Vec<CfgFunction>, KaoriError> {
+    let functions = Vec::new();
+
+    for declaration in declarations {
+        if let HirDeclKind::Function { .. } = &declaration.kind {
+            let basic_block = self.create_bb();
+            self.cfg_ir.cfgs.push(basic_block);
+
+            self.functions.insert(declaration.id, basic_block);
+        }
+    }
+
+    for declaration in declarations {
+        self.visit_declaration(declaration)?;
+    }
+
+    Ok(self.cfg_ir)
+}
+
+pub struct CfgContext {
+    variables: HashMap<HirId, Operand>,
+    function: CfgFunction,
+    current_bb: usize,
+    functions: HashMap<HirId, usize>,
     active_loops: ActiveLoops,
 }
 
-impl CfgBuilder {
+impl CfgContext {
     pub fn new(_types: Types) -> Self {
         Self {
-            variables: CfgVariables::default(),
-            cfg_ir: CfgIr::default(),
-            current_bb: BlockId(0),
+            variables: HashMap::new(),
+            function: CfgFunction,
+            current_bb: 0,
             functions: HashMap::new(),
             active_loops: ActiveLoops::default(),
         }
     }
 
-    pub fn build_ir(mut self, declarations: &[HirDecl]) -> Result<CfgIr, KaoriError> {
-        for declaration in declarations {
-            if let HirDeclKind::Function { .. } = &declaration.kind {
-                let basic_block = self.create_bb();
-                self.cfg_ir.cfgs.push(basic_block);
+    pub fn create_variable(&mut self, id: HirId) -> Operand {
+        let variable = Operand::Variable(self.variables.len());
 
-                self.functions.insert(declaration.id, basic_block);
-            }
-        }
+        self.variables.insert(id, variable);
 
-        for declaration in declarations {
-            self.visit_declaration(declaration)?;
-        }
-
-        Ok(self.cfg_ir)
+        variable
     }
 
-    fn emit_instruction(&mut self, instruction: CfgInstruction) {
-        let basic_block = self.cfg_ir.basic_blocks.get_mut(self.current_bb.0).unwrap();
-
-        let Terminator::None = basic_block.terminator else {
-            return;
-        };
-
-        basic_block.instructions.push(instruction);
-    }
-
-    fn set_terminator(&mut self, terminator: Terminator) {
-        let basic_block = self.cfg_ir.basic_blocks.get_mut(self.current_bb.0).unwrap();
-
-        let Terminator::None = basic_block.terminator else {
-            return;
-        };
-
-        basic_block.terminator = terminator;
-    }
-
-    fn create_bb(&mut self) -> BlockId {
-        let size = self.cfg_ir.basic_blocks.len();
-
-        let id = BlockId(size);
-
-        let basic_block = BasicBlock::new(id);
-
-        self.cfg_ir.basic_blocks.push(basic_block);
-
-        id
+    pub fn get_variable(&self, id: HirId) -> Operand {
+        *self
+            .variables
+            .get(&id)
+            .expect("Variable not found for HirId")
     }
 
     fn visit_nodes(&mut self, nodes: &[HirNode]) -> Result<(), KaoriError> {
@@ -112,7 +93,7 @@ impl CfgBuilder {
         match &declaration.kind {
             HirDeclKind::Variable { right, .. } => {
                 let src = self.visit_expression(right);
-                let dest = self.variables.create_variable(declaration.id);
+                let dest = self.create_variable(declaration.id);
 
                 let instruction = CfgInstruction::move_(dest, src);
 
@@ -127,14 +108,14 @@ impl CfgBuilder {
                 self.current_bb = *self.functions.get(&declaration.id).unwrap();
 
                 for parameter in parameters {
-                    self.variables.create_variable(parameter.id);
+                    self.create_variable(parameter.id);
                 }
 
                 for node in body {
                     self.visit_ast_node(node)?;
                 }
 
-                match self.cfg_ir.basic_blocks[self.current_bb.0].terminator {
+                match self.cfg_ir.basic_blocks[self.current_bb].terminator {
                     Terminator::Return { .. } => {}
                     _ => {
                         if return_ty.is_some() {
@@ -147,8 +128,6 @@ impl CfgBuilder {
                         self.set_terminator(Terminator::Return { src: None })
                     }
                 }
-
-                self.variables.reset_variables()
             }
             HirDeclKind::Struct { .. } => {}
         };
@@ -242,12 +221,12 @@ impl CfgBuilder {
             HirStmtKind::Break => {
                 let label = self.active_loops.top();
 
-                self.set_terminator(Terminator::Goto(label.terminator_bb));
+                self.set_terminator(Terminator::Goto(label.terminator_bb_index));
             }
             HirStmtKind::Continue => {
                 let label = self.active_loops.top();
 
-                self.set_terminator(Terminator::Goto(label.increment_bb));
+                self.set_terminator(Terminator::Goto(label.increment_bb_index));
             }
             HirStmtKind::Return(expr) => {
                 if let Some(expr) = expr {
@@ -263,8 +242,8 @@ impl CfgBuilder {
         Ok(())
     }
 
-    fn visit_logical_or(&mut self, id: HirId, left: &HirExpr, right: &HirExpr) -> Variable {
-        let dest = self.variables.create_variable(id);
+    fn visit_logical_or(&mut self, id: HirId, left: &HirExpr, right: &HirExpr) -> Operand {
+        let dest = self.create_variable(id);
 
         let src1 = self.visit_expression(left);
 
@@ -293,7 +272,7 @@ impl CfgBuilder {
     }
 
     fn visit_logical_and(&mut self, id: HirId, left: &HirExpr, right: &HirExpr) -> Variable {
-        let dest = self.variables.create_variable(id);
+        let dest = self.create_variable(id);
 
         let src1 = self.visit_expression(left);
 
@@ -319,7 +298,7 @@ impl CfgBuilder {
         dest
     }
 
-    fn visit_expression(&mut self, expression: &HirExpr) -> Variable {
+    fn visit_expression(&mut self, expression: &HirExpr) -> Operand {
         match &expression.kind {
             HirExprKind::Assign { left, right } => {
                 let dest = self.visit_expression(left);
@@ -341,7 +320,7 @@ impl CfgBuilder {
                 _ => {
                     let src1 = self.visit_expression(left);
                     let src2 = self.visit_expression(right);
-                    let dest = self.variables.create_variable(expression.id);
+                    let dest = self.create_variable(expression.id);
 
                     let instruction = match operator.kind {
                         BinaryOpKind::Add => CfgInstruction::add(dest, src1, src2),
@@ -368,7 +347,7 @@ impl CfgBuilder {
             },
             HirExprKind::Unary { right, operator } => {
                 let src = self.visit_expression(right);
-                let dest = self.variables.create_variable(expression.id);
+                let dest = self.create_variable(expression.id);
 
                 let instruction = match operator.kind {
                     UnaryOpKind::Negate => CfgInstruction::negate(dest, src),
@@ -380,19 +359,19 @@ impl CfgBuilder {
                 dest
             }
             HirExprKind::FunctionCall { callee, arguments } => {
-                let dest = self.variables.create_variable(expression.id);
+                let dest = self.create_variable(expression.id);
 
                 let arguments_src = arguments
                     .iter()
                     .map(|argument| (argument.id, self.visit_expression(argument)))
-                    .collect::<Vec<(HirId, Variable)>>();
+                    .collect::<Vec<(HirId, Operand)>>();
 
                 let src = self.visit_expression(callee);
 
-                let caller_size = (self.variables.next_variable) as u16;
+                let caller_size = (self.next_variable) as u16;
 
                 for (id, src) in arguments_src {
-                    let dest = self.variables.create_variable(id);
+                    let dest = self.create_variable(id);
                     let instruction = CfgInstruction::move_(dest, src);
 
                     self.emit_instruction(instruction);
@@ -404,7 +383,7 @@ impl CfgBuilder {
                 dest
             }
 
-            HirExprKind::Variable(id) => self.variables.get_variable(*id),
+            HirExprKind::Variable(id) => self.get_variable(*id),
 
             HirExprKind::Function(id) => {
                 let value = *self

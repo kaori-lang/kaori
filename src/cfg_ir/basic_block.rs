@@ -1,21 +1,18 @@
-use super::{cfg_instruction::CfgInstruction, variable::Variable};
+use super::{cfg_instruction::CfgInstruction, operand::Operand};
 use core::fmt;
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct BlockId(pub usize);
-
 #[derive(Debug)]
 pub struct BasicBlock {
-    pub id: BlockId,
+    pub index: usize,
     pub instructions: Vec<CfgInstruction>,
     pub terminator: Terminator,
 }
 
 impl BasicBlock {
-    pub fn new(id: BlockId) -> Self {
+    pub fn new(index: usize) -> Self {
         Self {
-            id,
+            index,
             instructions: Vec::new(),
             terminator: Terminator::None,
         }
@@ -25,13 +22,13 @@ impl BasicBlock {
 #[derive(Debug, Clone, Copy)]
 pub enum Terminator {
     Branch {
-        src: Variable,
-        r#true: BlockId,
-        r#false: BlockId,
+        src: Operand,
+        r#true: usize,
+        r#false: usize,
     },
-    Goto(BlockId),
+    Goto(usize),
     Return {
-        src: Option<Variable>,
+        src: Option<Operand>,
     },
     None,
 }
@@ -44,9 +41,9 @@ impl Display for Terminator {
                 r#true,
                 r#false,
             } => {
-                write!(f, "br {} -> BB{}, BB{}", src, r#true.0, r#false.0)
+                write!(f, "br {} -> BB{}, BB{}", src, r#true, r#false)
             }
-            Terminator::Goto(target) => write!(f, "goto BB{}", target.0),
+            Terminator::Goto(target) => write!(f, "goto BB{}", target),
             Terminator::Return { src } => write!(f, "ret {}", 1),
             Terminator::None => write!(f, "<no terminator>"),
         }
@@ -55,7 +52,7 @@ impl Display for Terminator {
 
 impl Display for BasicBlock {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "BB{}:", self.id.0)?;
+        writeln!(f, "BB{}:", self.index)?;
         for instr in &self.instructions {
             writeln!(f, "  {}", instr)?;
         }

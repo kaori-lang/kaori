@@ -1,7 +1,7 @@
 use super::instruction::Instruction;
 
 #[derive(Default, Clone, Copy, Debug)]
-pub struct Value(u64);
+pub struct Value(pub u64);
 
 impl Value {
     #[inline(always)]
@@ -33,4 +33,9 @@ impl Value {
     pub fn as_instruction(&self) -> *const Instruction {
         core::ptr::with_exposed_provenance(self.0 as usize)
     }
+}
+
+pub struct Function {
+    index: usize,
+    frame_size: u8,
 }
