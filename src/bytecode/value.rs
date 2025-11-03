@@ -1,5 +1,3 @@
-use super::instruction::Instruction;
-
 #[derive(Default, Clone, Copy, Debug)]
 pub struct Value(pub u64);
 
@@ -15,8 +13,8 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn instruction(ptr: *const Instruction) -> Self {
-        Self(ptr.expose_provenance() as u64)
+    pub fn function(value: usize) -> Self {
+        Self(value as u64)
     }
 
     #[inline(always)]
@@ -30,12 +28,7 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn as_instruction(&self) -> *const Instruction {
-        core::ptr::with_exposed_provenance(self.0 as usize)
+    pub fn as_function(&self) -> usize {
+        self.0 as usize
     }
-}
-
-pub struct Function {
-    index: usize,
-    frame_size: u8,
 }

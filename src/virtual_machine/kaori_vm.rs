@@ -404,12 +404,7 @@ fn instruction_jump_if_false(ctx: &mut VMContext, ip: *const Instruction) {
 #[inline(never)]
 fn instruction_call(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let Instruction::Call {
-            dest,
-            src,
-            caller_size,
-        } = *ip
-        else {
+        let Instruction::Call { dest, src } = *ip else {
             unreachable_unchecked();
         };
 

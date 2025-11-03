@@ -5,96 +5,27 @@ use crate::cfg_ir::operand::Operand;
 #[derive(Debug, Clone)]
 #[repr(u8, align(2))]
 pub enum Instruction {
-    Add {
-        dest: i16,
-        src1: i16,
-        src2: i16,
-    },
-    Subtract {
-        dest: i16,
-        src1: i16,
-        src2: i16,
-    },
-    Multiply {
-        dest: i16,
-        src1: i16,
-        src2: i16,
-    },
-    Divide {
-        dest: i16,
-        src1: i16,
-        src2: i16,
-    },
-    Modulo {
-        dest: i16,
-        src1: i16,
-        src2: i16,
-    },
-    Equal {
-        dest: i16,
-        src1: i16,
-        src2: i16,
-    },
-    NotEqual {
-        dest: i16,
-        src1: i16,
-        src2: i16,
-    },
-    Greater {
-        dest: i16,
-        src1: i16,
-        src2: i16,
-    },
-    GreaterEqual {
-        dest: i16,
-        src1: i16,
-        src2: i16,
-    },
-    Less {
-        dest: i16,
-        src1: i16,
-        src2: i16,
-    },
-    LessEqual {
-        dest: i16,
-        src1: i16,
-        src2: i16,
-    },
-    Negate {
-        dest: i16,
-        src: i16,
-    },
-    Not {
-        dest: i16,
-        src: i16,
-    },
-    Move {
-        dest: i16,
-        src: i16,
-    },
-    Call {
-        dest: i16,
-        src: i16,
-        caller_size: u16,
-    },
-    Return {
-        src: i16,
-    },
+    Add { dest: i16, src1: i16, src2: i16 },
+    Subtract { dest: i16, src1: i16, src2: i16 },
+    Multiply { dest: i16, src1: i16, src2: i16 },
+    Divide { dest: i16, src1: i16, src2: i16 },
+    Modulo { dest: i16, src1: i16, src2: i16 },
+    Equal { dest: i16, src1: i16, src2: i16 },
+    NotEqual { dest: i16, src1: i16, src2: i16 },
+    Greater { dest: i16, src1: i16, src2: i16 },
+    GreaterEqual { dest: i16, src1: i16, src2: i16 },
+    Less { dest: i16, src1: i16, src2: i16 },
+    LessEqual { dest: i16, src1: i16, src2: i16 },
+    Negate { dest: i16, src: i16 },
+    Not { dest: i16, src: i16 },
+    Move { dest: i16, src: i16 },
+    Call { dest: i16, src: i16 },
+    Return { src: i16 },
     ReturnVoid,
-    Jump {
-        offset: i16,
-    },
-    JumpIfTrue {
-        src: i16,
-        offset: i16,
-    },
-    JumpIfFalse {
-        src: i16,
-        offset: i16,
-    },
-    Print {
-        src: i16,
-    },
+    Jump { offset: i16 },
+    JumpIfTrue { src: i16, offset: i16 },
+    JumpIfFalse { src: i16, offset: i16 },
+    Print { src: i16 },
     // must be the last instruction so count is computed properly
     Halt,
 }
@@ -213,11 +144,10 @@ impl Instruction {
             src: src.to_i16(),
         }
     }
-    pub fn call(dest: Operand, src: Operand, caller_size: u16) -> Self {
+    pub fn call(dest: Operand, src: Operand) -> Self {
         Self::Call {
             dest: dest.to_i16(),
             src: src.to_i16(),
-            caller_size,
         }
     }
 
@@ -298,11 +228,7 @@ impl fmt::Display for Instruction {
             Self::Negate { dest, src } => write!(f, "NEG {}, {}", reg(dest), reg(src)),
             Self::Not { dest, src } => write!(f, "NOT {}, {}", reg(dest), reg(src)),
             Self::Move { dest, src } => write!(f, "MOV {}, {}", reg(dest), reg(src)),
-            Self::Call {
-                dest,
-                src,
-                caller_size,
-            } => write!(f, "CALL {}, {}, {}", reg(dest), reg(src), caller_size),
+            Self::Call { dest, src } => write!(f, "CALL {}, {}", reg(dest), reg(src)),
             Self::Return { src } => write!(f, "RET {}", reg(src)),
             Self::ReturnVoid => write!(f, "RET VOID"),
             Self::Jump { offset } => write!(f, "JMP {}", offset),

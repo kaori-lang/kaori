@@ -176,7 +176,7 @@ impl Display for CfgInstruction {
             Negate { dest, src } => write!(f, "{} = -{}", dest, src),
             Not { dest, src } => write!(f, "{} = !{}", dest, src),
             Move { dest, src } => write!(f, "{} = {}", dest, src),
-            MoveArg { dest, src } => write!(f, "{} = arg({})", dest, src),
+            MoveArg { dest, src } => write!(f, "arg({}) = {}", dest, src),
             Call { dest, src } => {
                 write!(f, "{} = call {}", dest, src)
             }
