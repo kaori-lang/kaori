@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use crate::{
     bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode},
-    cfg_ir::{cfg_builder::CfgBuilder, jump_threading::run_jump_threading_optimization},
+    cfg_ir::jump_threading::run_jump_threading_optimization,
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},

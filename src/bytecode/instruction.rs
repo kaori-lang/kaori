@@ -1,6 +1,6 @@
 use core::fmt;
 
-use crate::cfg_ir::variable::Variable;
+use crate::cfg_ir::operand::Operand;
 
 #[derive(Debug, Clone)]
 #[repr(u8, align(2))]
@@ -105,7 +105,7 @@ impl Instruction {
         (unsafe { *(self as *const Self as *const u8) }) as usize
     }
 
-    pub fn add(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn add(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Add {
             dest: dest.to_i16(),
             src1: src1.to_i16(),
@@ -113,7 +113,7 @@ impl Instruction {
         }
     }
 
-    pub fn subtract(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn subtract(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Subtract {
             dest: dest.to_i16(),
             src1: src1.to_i16(),
@@ -121,7 +121,7 @@ impl Instruction {
         }
     }
 
-    pub fn multiply(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn multiply(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Multiply {
             dest: dest.to_i16(),
             src1: src1.to_i16(),
@@ -129,7 +129,7 @@ impl Instruction {
         }
     }
 
-    pub fn divide(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn divide(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Divide {
             dest: dest.to_i16(),
             src1: src1.to_i16(),
@@ -137,7 +137,7 @@ impl Instruction {
         }
     }
 
-    pub fn modulo(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn modulo(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Modulo {
             dest: dest.to_i16(),
             src1: src1.to_i16(),
@@ -145,7 +145,7 @@ impl Instruction {
         }
     }
 
-    pub fn equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Equal {
             dest: dest.to_i16(),
             src1: src1.to_i16(),
@@ -153,7 +153,7 @@ impl Instruction {
         }
     }
 
-    pub fn not_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn not_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::NotEqual {
             dest: dest.to_i16(),
             src1: src1.to_i16(),
@@ -161,7 +161,7 @@ impl Instruction {
         }
     }
 
-    pub fn greater(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn greater(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Greater {
             dest: dest.to_i16(),
             src1: src1.to_i16(),
@@ -169,7 +169,7 @@ impl Instruction {
         }
     }
 
-    pub fn greater_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn greater_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::GreaterEqual {
             dest: dest.to_i16(),
             src1: src1.to_i16(),
@@ -177,7 +177,7 @@ impl Instruction {
         }
     }
 
-    pub fn less(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn less(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Less {
             dest: dest.to_i16(),
             src1: src1.to_i16(),
@@ -185,7 +185,7 @@ impl Instruction {
         }
     }
 
-    pub fn less_equal(dest: Variable, src1: Variable, src2: Variable) -> Self {
+    pub fn less_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::LessEqual {
             dest: dest.to_i16(),
             src1: src1.to_i16(),
@@ -193,27 +193,27 @@ impl Instruction {
         }
     }
 
-    pub fn negate(dest: Variable, src: Variable) -> Self {
+    pub fn negate(dest: Operand, src: Operand) -> Self {
         Self::Negate {
             dest: dest.to_i16(),
             src: src.to_i16(),
         }
     }
 
-    pub fn not(dest: Variable, src: Variable) -> Self {
+    pub fn not(dest: Operand, src: Operand) -> Self {
         Self::Not {
             dest: dest.to_i16(),
             src: src.to_i16(),
         }
     }
 
-    pub fn move_(dest: Variable, src: Variable) -> Self {
+    pub fn move_(dest: Operand, src: Operand) -> Self {
         Self::Move {
             dest: dest.to_i16(),
             src: src.to_i16(),
         }
     }
-    pub fn call(dest: Variable, src: Variable, caller_size: u16) -> Self {
+    pub fn call(dest: Operand, src: Operand, caller_size: u16) -> Self {
         Self::Call {
             dest: dest.to_i16(),
             src: src.to_i16(),
@@ -221,7 +221,7 @@ impl Instruction {
         }
     }
 
-    pub fn return_(src: Variable) -> Self {
+    pub fn return_(src: Operand) -> Self {
         Self::Return { src: src.to_i16() }
     }
 
@@ -233,20 +233,20 @@ impl Instruction {
         Self::Jump { offset }
     }
 
-    pub fn jump_if_true(src: Variable, offset: i16) -> Self {
+    pub fn jump_if_true(src: Operand, offset: i16) -> Self {
         Self::JumpIfTrue {
             src: src.to_i16(),
             offset,
         }
     }
 
-    pub fn jump_if_false(src: Variable, offset: i16) -> Self {
+    pub fn jump_if_false(src: Operand, offset: i16) -> Self {
         Self::JumpIfFalse {
             src: src.to_i16(),
             offset,
         }
     }
-    pub fn print(src: Variable) -> Self {
+    pub fn print(src: Operand) -> Self {
         Self::Print { src: src.to_i16() }
     }
 }

@@ -15,32 +15,35 @@ use crate::{
 };
 
 use super::{
-    active_loops::ActiveLoops, basic_block::Terminator, cfg_function::CfgFunction,
-    cfg_instruction::CfgInstruction, operand::Operand,
+    active_loops::ActiveLoops,
+    basic_block::{BasicBlock, Terminator},
+    cfg_constants::CfgConstants,
+    cfg_function::CfgFunction,
+    cfg_instruction::CfgInstruction,
+    operand::Operand,
 };
 
-pub fn build_ir(declarations: &[HirDecl]) -> Result<Vec<CfgFunction>, KaoriError> {
+pub fn build_cfgs(declarations: &[HirDecl]) -> Result<Vec<CfgFunction>, KaoriError> {
     let functions = Vec::new();
 
     for declaration in declarations {
         if let HirDeclKind::Function { .. } = &declaration.kind {
-            let basic_block = self.create_bb();
-            self.cfg_ir.cfgs.push(basic_block);
-
-            self.functions.insert(declaration.id, basic_block);
+            //self.functions.insert(declaration.id, basic_block);
         }
     }
 
     for declaration in declarations {
-        self.visit_declaration(declaration)?;
+        //self.visit_declaration(declaration)?;
     }
 
-    Ok(self.cfg_ir)
+    Ok(functions)
 }
 
 pub struct CfgContext {
+    index: usize,
     variables: HashMap<HirId, Operand>,
-    function: CfgFunction,
+    constants: CfgConstants,
+    basic_blocks: Vec<BasicBlock>,
     current_bb: usize,
     functions: HashMap<HirId, usize>,
     active_loops: ActiveLoops,
@@ -49,8 +52,10 @@ pub struct CfgContext {
 impl CfgContext {
     pub fn new(_types: Types) -> Self {
         Self {
+            index: 0,
             variables: HashMap::new(),
-            function: CfgFunction,
+            constants: CfgConstants::default(),
+            basic_blocks: Vec::new(),
             current_bb: 0,
             functions: HashMap::new(),
             active_loops: ActiveLoops::default(),
@@ -65,11 +70,34 @@ impl CfgContext {
         variable
     }
 
-    pub fn get_variable(&self, id: HirId) -> Operand {
-        *self
-            .variables
-            .get(&id)
-            .expect("Variable not found for HirId")
+    fn emit_instruction(&mut self, instruction: CfgInstruction) {
+        let basic_block = &mut self.basic_blocks[self.index];
+
+        let Terminator::None = basic_block.terminator else {
+            return;
+        };
+
+        basic_block.instructions.push(instruction);
+    }
+
+    fn set_terminator(&mut self, terminator: Terminator) {
+        let basic_block = &mut self.basic_blocks[self.index];
+
+        let Terminator::None = basic_block.terminator else {
+            return;
+        };
+
+        basic_block.terminator = terminator;
+    }
+
+    fn create_bb(&mut self) -> usize {
+        let index = self.basic_blocks.len();
+
+        let basic_block = BasicBlock::new(index);
+
+        self.basic_blocks.push(basic_block);
+
+        index
     }
 
     fn visit_nodes(&mut self, nodes: &[HirNode]) -> Result<(), KaoriError> {
@@ -105,7 +133,7 @@ impl CfgContext {
                 parameters,
                 return_ty,
             } => {
-                self.current_bb = *self.functions.get(&declaration.id).unwrap();
+                self.index = *self.functions.get(&declaration.id).unwrap();
 
                 for parameter in parameters {
                     self.create_variable(parameter.id);
@@ -115,7 +143,7 @@ impl CfgContext {
                     self.visit_ast_node(node)?;
                 }
 
-                match self.cfg_ir.basic_blocks[self.current_bb].terminator {
+                match self.basic_blocks[self.index].terminator {
                     Terminator::Return { .. } => {}
                     _ => {
                         if return_ty.is_some() {
@@ -167,17 +195,17 @@ impl CfgContext {
                     r#false: else_bb,
                 });
 
-                self.current_bb = then_bb;
+                self.index = then_bb;
                 self.visit_statement(then_branch)?;
                 self.set_terminator(Terminator::Goto(terminator_block));
 
-                self.current_bb = else_bb;
+                self.index = else_bb;
                 if let Some(branch) = else_branch {
                     self.visit_statement(branch)?;
                 }
                 self.set_terminator(Terminator::Goto(terminator_block));
 
-                self.current_bb = terminator_block;
+                self.index = terminator_block;
             }
             HirStmtKind::Loop {
                 init,
@@ -196,7 +224,7 @@ impl CfgContext {
 
                 self.set_terminator(Terminator::Goto(condition_bb));
 
-                self.current_bb = condition_bb;
+                self.index = condition_bb;
                 let src = self.visit_expression(condition);
                 self.set_terminator(Terminator::Branch {
                     src,
@@ -204,19 +232,19 @@ impl CfgContext {
                     r#false: terminator_bb,
                 });
 
-                self.current_bb = block_bb;
+                self.index = block_bb;
                 self.active_loops.push(increment_bb, terminator_bb);
                 self.visit_statement(block)?;
                 self.active_loops.pop();
                 self.set_terminator(Terminator::Goto(increment_bb));
 
-                self.current_bb = increment_bb;
+                self.index = increment_bb;
                 if let Some(increment) = increment {
                     self.visit_statement(increment)?;
                 }
                 self.set_terminator(Terminator::Goto(condition_bb));
 
-                self.current_bb = terminator_bb;
+                self.index = terminator_bb;
             }
             HirStmtKind::Break => {
                 let label = self.active_loops.top();
@@ -258,7 +286,7 @@ impl CfgContext {
             r#false: src2_bb,
         });
 
-        self.current_bb = src2_bb;
+        self.index = src2_bb;
 
         let src2 = self.visit_expression(right);
 
@@ -266,12 +294,12 @@ impl CfgContext {
 
         self.set_terminator(Terminator::Goto(terminator));
 
-        self.current_bb = terminator;
+        self.index = terminator;
 
         dest
     }
 
-    fn visit_logical_and(&mut self, id: HirId, left: &HirExpr, right: &HirExpr) -> Variable {
+    fn visit_logical_and(&mut self, id: HirId, left: &HirExpr, right: &HirExpr) -> Operand {
         let dest = self.create_variable(id);
 
         let src1 = self.visit_expression(left);
@@ -287,13 +315,13 @@ impl CfgContext {
             r#false: terminator,
         });
 
-        self.current_bb = src2_bb;
+        self.index = src2_bb;
 
         let src2 = self.visit_expression(right);
         self.emit_instruction(CfgInstruction::move_(dest, src2));
         self.set_terminator(Terminator::Goto(terminator));
 
-        self.current_bb = terminator;
+        self.index = terminator;
 
         dest
     }
@@ -368,7 +396,7 @@ impl CfgContext {
 
                 let src = self.visit_expression(callee);
 
-                let caller_size = (self.next_variable) as u16;
+                let caller_size = 0 as u16;
 
                 for (id, src) in arguments_src {
                     let dest = self.create_variable(id);
@@ -383,7 +411,10 @@ impl CfgContext {
                 dest
             }
 
-            HirExprKind::Variable(id) => self.get_variable(*id),
+            HirExprKind::Variable(id) => *self
+                .variables
+                .get(&id)
+                .expect("Variable not found for HirId"),
 
             HirExprKind::Function(id) => {
                 let value = *self
@@ -391,11 +422,11 @@ impl CfgContext {
                     .get(id)
                     .expect("FunctionRef points to a missing variable node");
 
-                self.cfg_ir.constants.push_function(value)
+                self.constants.push_function(value)
             }
-            HirExprKind::String(value) => self.cfg_ir.constants.push_string(value.to_owned()),
-            HirExprKind::Boolean(value) => self.cfg_ir.constants.push_boolean(*value),
-            HirExprKind::Number(value) => self.cfg_ir.constants.push_number(*value),
+            HirExprKind::String(value) => self.constants.push_string(value.to_owned()),
+            HirExprKind::Boolean(value) => self.constants.push_boolean(*value),
+            HirExprKind::Number(value) => self.constants.push_number(*value),
         }
     }
 }

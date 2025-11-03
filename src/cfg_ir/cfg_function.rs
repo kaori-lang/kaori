@@ -2,11 +2,7 @@ use std::fmt::{self, Display, Formatter};
 
 use crate::cfg_ir::graph_traversal::reversed_postorder;
 
-use super::{
-    basic_block::{BasicBlock, Terminator},
-    cfg_constants::CfgConstants,
-    cfg_instruction::CfgInstruction,
-};
+use super::{basic_block::BasicBlock, cfg_constants::CfgConstants};
 
 #[derive(Default)]
 pub struct CfgFunction {
@@ -24,37 +20,5 @@ impl Display for CfgFunction {
         }
 
         Ok(())
-    }
-}
-
-impl CfgFunction {
-    fn emit_instruction(&mut self, index: usize, instruction: CfgInstruction) {
-        let basic_block = &mut self.basic_blocks[index];
-
-        let Terminator::None = basic_block.terminator else {
-            return;
-        };
-
-        basic_block.instructions.push(instruction);
-    }
-
-    fn set_terminator(&mut self, index: usize, terminator: Terminator) {
-        let basic_block = &mut self.basic_blocks[index];
-
-        let Terminator::None = basic_block.terminator else {
-            return;
-        };
-
-        basic_block.terminator = terminator;
-    }
-
-    fn create_bb(&mut self) -> usize {
-        let index = self.basic_blocks.len();
-
-        let basic_block = BasicBlock::new(index);
-
-        self.basic_blocks.push(basic_block);
-
-        index
     }
 }

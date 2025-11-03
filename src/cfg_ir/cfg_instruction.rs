@@ -1,7 +1,7 @@
 use core::fmt;
 use std::fmt::{Display, Formatter};
 
-use super::variable::Operand;
+use super::operand::Operand;
 
 #[derive(Debug, Clone)]
 pub enum CfgInstruction {
