@@ -1,11 +1,11 @@
-use super::{cfg_instruction::CfgInstruction, operand::Operand};
+use super::{instruction::Instruction, operand::Operand};
 use core::fmt;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
 pub struct BasicBlock {
     pub index: usize,
-    pub instructions: Vec<CfgInstruction>,
+    pub instructions: Vec<Instruction>,
     pub terminator: Terminator,
 }
 

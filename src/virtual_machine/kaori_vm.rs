@@ -223,6 +223,8 @@ fn opcode_add(ctx: &mut VMContext, ip: *const u16) {
             unreachable_unchecked();
         };
 
+        let dest = *ip.add(1);
+
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
 

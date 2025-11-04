@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use crate::{
-    bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode, instruction},
+    bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode},
     cfg_ir::{
         build_cfgs::build_cfgs, cfg_function::CfgFunction,
         jump_threading::run_jump_threading_optimization,
@@ -10,7 +10,6 @@ use crate::{
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},
     syntax::{decl::Decl, parser::Parser},
-    virtual_machine::kaori_vm::run_kaori_vm,
 };
 
 fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {
@@ -64,7 +63,7 @@ pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
     let start = Instant::now();
-    run_kaori_vm(bytecode.instructions, bytecode.functions);
+    //run_kaori_vm(bytecode.instructions, bytecode.functions);
     let elapsed = start.elapsed();
     println!("took: {elapsed:?}");
 

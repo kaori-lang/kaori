@@ -34,14 +34,14 @@ pub enum CfgOpcode {
 }
 
 #[derive(Debug, Clone)]
-pub struct CfgInstruction {
+pub struct Instruction {
     pub op_code: CfgOpcode,
     pub dest: Operand,
     pub src1: Operand,
     pub src2: Operand,
 }
 
-impl CfgInstruction {
+impl Instruction {
     // --- Binary operations ---
     pub fn add(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self {
@@ -201,7 +201,7 @@ impl CfgInstruction {
     }
 }
 
-impl Display for CfgInstruction {
+impl Display for Instruction {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         use CfgOpcode::*;
 

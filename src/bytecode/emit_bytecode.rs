@@ -6,13 +6,13 @@ use crate::{
         basic_block::{BasicBlock, Terminator},
         cfg_constants::CfgConstant,
         cfg_function::CfgFunction,
-        cfg_instruction::{CfgInstruction, CfgOpcode},
         graph_traversal::reversed_postorder,
+        instruction::{CfgOpcode, Instruction},
         operand::Operand,
     },
 };
 
-use super::{bytecode::Bytecode, function::Function, instruction::Instruction, value::Value};
+use super::{bytecode::Bytecode, function::Function, value::Value};
 
 pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
     let mut instructions = Vec::new();
@@ -31,7 +31,7 @@ pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
         context.emit_instructions();
     }
 
-    instructions.push(Instruction::Halt);
+    instructions.push(Opcode::Halt as u16);
 
     let mut functions = Vec::new();
 
@@ -52,14 +52,14 @@ pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
 struct CodegenContext<'a> {
     basic_blocks: &'a [BasicBlock],
     frame_size: usize,
-    instructions: &'a mut Vec<Instruction>,
+    instructions: &'a mut Vec<u16>,
 }
 
 impl<'a> CodegenContext<'a> {
     fn new(
         basic_blocks: &'a [BasicBlock],
         frame_size: usize,
-        instructions: &'a mut Vec<Instruction>,
+        instructions: &'a mut Vec<u16>,
     ) -> Self {
         Self {
             basic_blocks,
@@ -94,8 +94,7 @@ impl<'a> CodegenContext<'a> {
         let basic_block = &self.basic_blocks[index];
 
         for instruction in &basic_block.instructions {
-            let instruction = self.visit_instruction(instruction);
-            self.instructions.push(instruction);
+            self.visit_instruction(instruction);
         }
 
         match basic_block.terminator {
@@ -105,49 +104,78 @@ impl<'a> CodegenContext<'a> {
                 r#false,
             } => {
                 if Some(r#true) != next_bb_index {
-                    let instruction = Instruction::jump_if_true(src, 0);
                     let index = self.instructions.len();
                     pending_backpatch.push((index, r#true));
 
-                    self.instructions.push(instruction);
+                    match src {
+                        Operand::Constant(value) => {
+                            self.instructions.push(Opcode::JumpIfTrueK as u16);
+                            self.instructions.push(value as u16);
+                        }
+                        Operand::Variable(value) => {
+                            self.instructions.push(Opcode::JumpIfTrueR as u16);
+                            self.instructions.push(value as u16);
+                        }
+                        _ => {}
+                    }
+
+                    self.instructions.push(0);
                 }
 
                 if Some(r#false) != next_bb_index {
-                    let instruction = Instruction::jump_if_false(src, 0);
                     let index = self.instructions.len();
                     pending_backpatch.push((index, r#false));
 
-                    self.instructions.push(instruction);
+                    match src {
+                        Operand::Constant(value) => {
+                            self.instructions.push(Opcode::JumpIfFalseK as u16);
+                            self.instructions.push(value as u16);
+                        }
+                        Operand::Variable(value) => {
+                            self.instructions.push(Opcode::JumpIfFalseR as u16);
+                            self.instructions.push(value as u16);
+                        }
+                        _ => {}
+                    }
+
+                    self.instructions.push(0);
                 }
             }
             Terminator::Goto(target) => {
                 if Some(target) != next_bb_index {
-                    let instruction = Instruction::jump(0);
                     let index = self.instructions.len();
                     pending_backpatch.push((index, target));
 
-                    self.instructions.push(instruction);
+                    self.instructions.push(Opcode::Jump as u16);
+                    self.instructions.push(0);
                 }
             }
             Terminator::Return { src } => {
-                let instruction = match src {
-                    Some(src) => Instruction::return_(src),
-                    _ => Instruction::return_void(),
+                match src {
+                    Some(Operand::Constant(value)) => {
+                        self.instructions.push(Opcode::ReturnK as u16);
+                        self.instructions.push(value as u16);
+                    }
+                    Some(Operand::Variable(value)) => {
+                        self.instructions.push(Opcode::ReturnR as u16);
+                        self.instructions.push(value as u16);
+                    }
+                    _ => {
+                        self.instructions.push(Opcode::ReturnVoid as u16);
+                    }
                 };
-
-                self.instructions.push(instruction);
             }
             Terminator::None => {}
         };
     }
 
-    fn visit_instruction(&self, instruction: &CfgInstruction) {
-        let CfgInstruction {
+    fn visit_instruction(&mut self, instruction: &Instruction) {
+        let Instruction {
             op_code,
-            dest,
+            mut dest,
             src1,
             src2,
-        } = instruction;
+        } = *instruction;
         use CfgOpcode::*;
         use Operand::*;
 
@@ -219,8 +247,17 @@ impl<'a> CodegenContext<'a> {
             (Move, Variable(_), None) => Opcode::MoveR,
             (Move, Constant(_), None) => Opcode::MoveK,
 
-            (MoveArg, Variable(_), None) => Opcode::MoveR,
-            (MoveArg, Constant(_), None) => Opcode::MoveK,
+            (MoveArg, _, None) => {
+                if let Operand::Variable(value) = dest {
+                    dest = Operand::Variable(self.frame_size + value);
+                }
+
+                match src1 {
+                    Operand::Variable(..) => Opcode::MoveR,
+                    Operand::Constant(..) => Opcode::MoveK,
+                    None => unreachable!("Invalid operand for move"),
+                }
+            }
 
             // === Function and control ===
             (Call, Variable(_), _) => Opcode::CallR,
@@ -235,32 +272,37 @@ impl<'a> CodegenContext<'a> {
                 op_code, src1, src2
             ),
         };
+
+        self.instructions.push(op_code as u16);
+
+        match dest {
+            Constant(value) | Variable(value) => self.instructions.push(value as u16),
+            _ => {}
+        }
+
+        match src1 {
+            Constant(value) | Variable(value) => self.instructions.push(value as u16),
+            _ => {}
+        }
+
+        match src2 {
+            Constant(value) | Variable(value) => self.instructions.push(value as u16),
+            _ => {}
+        }
     }
 }
 
 fn resolve_backpatches(
-    instructions: &mut [Instruction],
+    instructions: &mut [u16],
     pending_backpatch: &[(usize, usize)],
     bb_start_index: &HashMap<usize, usize>,
 ) {
     for (instruction_index, bb_index) in pending_backpatch.iter().copied() {
-        let instruction = &mut instructions[instruction_index];
         let bb_start_index = bb_start_index[&bb_index];
 
-        let new_offset = bb_start_index as i16 - instruction_index as i16;
+        let offset = bb_start_index as i16 - instruction_index as i16;
 
-        match instruction {
-            Instruction::Jump { offset } => {
-                *offset = new_offset;
-            }
-            Instruction::JumpIfTrue { offset, .. } => {
-                *offset = new_offset;
-            }
-            Instruction::JumpIfFalse { offset, .. } => {
-                *offset = new_offset;
-            }
-            _ => {}
-        };
+        instructions[instruction_index + 2] = offset as u16;
     }
 }
 

@@ -18,7 +18,7 @@ use super::{
     basic_block::{BasicBlock, Terminator},
     cfg_constants::CfgConstants,
     cfg_function::CfgFunction,
-    cfg_instruction::CfgInstruction,
+    instruction::Instruction,
     operand::Operand,
 };
 
@@ -83,7 +83,7 @@ impl<'a> CfgContext<'a> {
         variable
     }
 
-    fn emit_instruction(&mut self, instruction: CfgInstruction) {
+    fn emit_instruction(&mut self, instruction: Instruction) {
         let basic_block = &mut self.basic_blocks[self.index];
 
         if let Terminator::None = basic_block.terminator {
@@ -132,7 +132,7 @@ impl<'a> CfgContext<'a> {
                 let src = self.visit_expression(right);
                 let dest = self.create_variable(declaration.id);
 
-                let instruction = CfgInstruction::move_(dest, src);
+                let instruction = Instruction::move_(dest, src);
 
                 self.emit_instruction(instruction);
             }
@@ -180,7 +180,7 @@ impl<'a> CfgContext<'a> {
             HirStmtKind::Print(expression) => {
                 let src = self.visit_expression(expression);
 
-                let instruction = CfgInstruction::print(src);
+                let instruction = Instruction::print(src);
 
                 self.emit_instruction(instruction);
             }
@@ -284,7 +284,7 @@ impl<'a> CfgContext<'a> {
 
         let src1 = self.visit_expression(left);
 
-        self.emit_instruction(CfgInstruction::move_(dest, src1));
+        self.emit_instruction(Instruction::move_(dest, src1));
 
         let src2_bb = self.create_bb();
         let terminator = self.create_bb();
@@ -299,7 +299,7 @@ impl<'a> CfgContext<'a> {
 
         let src2 = self.visit_expression(right);
 
-        self.emit_instruction(CfgInstruction::move_(dest, src2));
+        self.emit_instruction(Instruction::move_(dest, src2));
 
         self.set_terminator(Terminator::Goto(terminator));
 
@@ -313,7 +313,7 @@ impl<'a> CfgContext<'a> {
 
         let src1 = self.visit_expression(left);
 
-        self.emit_instruction(CfgInstruction::move_(dest, src1));
+        self.emit_instruction(Instruction::move_(dest, src1));
 
         let src2_bb = self.create_bb();
         let terminator = self.create_bb();
@@ -327,7 +327,7 @@ impl<'a> CfgContext<'a> {
         self.index = src2_bb;
 
         let src2 = self.visit_expression(right);
-        self.emit_instruction(CfgInstruction::move_(dest, src2));
+        self.emit_instruction(Instruction::move_(dest, src2));
         self.set_terminator(Terminator::Goto(terminator));
 
         self.index = terminator;
@@ -341,7 +341,7 @@ impl<'a> CfgContext<'a> {
                 let dest = self.visit_expression(left);
                 let src = self.visit_expression(right);
 
-                let instruction = CfgInstruction::move_(dest, src);
+                let instruction = Instruction::move_(dest, src);
 
                 self.emit_instruction(instruction);
 
@@ -360,20 +360,18 @@ impl<'a> CfgContext<'a> {
                     let dest = self.create_variable(expression.id);
 
                     let instruction = match operator.kind {
-                        BinaryOpKind::Add => CfgInstruction::add(dest, src1, src2),
-                        BinaryOpKind::Subtract => CfgInstruction::subtract(dest, src1, src2),
-                        BinaryOpKind::Multiply => CfgInstruction::multiply(dest, src1, src2),
-                        BinaryOpKind::Divide => CfgInstruction::divide(dest, src1, src2),
-                        BinaryOpKind::Modulo => CfgInstruction::modulo(dest, src1, src2),
+                        BinaryOpKind::Add => Instruction::add(dest, src1, src2),
+                        BinaryOpKind::Subtract => Instruction::subtract(dest, src1, src2),
+                        BinaryOpKind::Multiply => Instruction::multiply(dest, src1, src2),
+                        BinaryOpKind::Divide => Instruction::divide(dest, src1, src2),
+                        BinaryOpKind::Modulo => Instruction::modulo(dest, src1, src2),
 
-                        BinaryOpKind::Equal => CfgInstruction::equal(dest, src1, src2),
-                        BinaryOpKind::NotEqual => CfgInstruction::not_equal(dest, src1, src2),
-                        BinaryOpKind::Greater => CfgInstruction::greater(dest, src1, src2),
-                        BinaryOpKind::GreaterEqual => {
-                            CfgInstruction::greater_equal(dest, src1, src2)
-                        }
-                        BinaryOpKind::Less => CfgInstruction::less(dest, src1, src2),
-                        BinaryOpKind::LessEqual => CfgInstruction::less_equal(dest, src1, src2),
+                        BinaryOpKind::Equal => Instruction::equal(dest, src1, src2),
+                        BinaryOpKind::NotEqual => Instruction::not_equal(dest, src1, src2),
+                        BinaryOpKind::Greater => Instruction::greater(dest, src1, src2),
+                        BinaryOpKind::GreaterEqual => Instruction::greater_equal(dest, src1, src2),
+                        BinaryOpKind::Less => Instruction::less(dest, src1, src2),
+                        BinaryOpKind::LessEqual => Instruction::less_equal(dest, src1, src2),
                         _ => unreachable!(),
                     };
 
@@ -387,8 +385,8 @@ impl<'a> CfgContext<'a> {
                 let dest = self.create_variable(expression.id);
 
                 let instruction = match operator.kind {
-                    UnaryOpKind::Negate => CfgInstruction::negate(dest, src),
-                    UnaryOpKind::Not => CfgInstruction::not(dest, src),
+                    UnaryOpKind::Negate => Instruction::negate(dest, src),
+                    UnaryOpKind::Not => Instruction::not(dest, src),
                 };
 
                 self.emit_instruction(instruction);
@@ -408,12 +406,12 @@ impl<'a> CfgContext<'a> {
                 for (index, src) in arguments_src.iter().copied().enumerate() {
                     let dest = Operand::Variable(index);
 
-                    let instruction = CfgInstruction::move_arg(dest, src);
+                    let instruction = Instruction::move_arg(dest, src);
 
                     self.emit_instruction(instruction);
                 }
 
-                let instruction = CfgInstruction::call(dest, src);
+                let instruction = Instruction::call(dest, src);
 
                 self.emit_instruction(instruction);
 

@@ -21,7 +21,7 @@ impl Display for Operand {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Variable(id) => write!(f, "r{}", id),
-            Self::Constant(id) => write!(f, "c{}", id),
+            Self::Constant(id) => write!(f, "k{}", id),
             Self::None => Ok(()),
         }
     }
