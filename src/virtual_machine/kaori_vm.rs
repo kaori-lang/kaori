@@ -217,7 +217,7 @@ fn opcode_move(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn opcode_add(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_add(ctx: &mut VMContext, ip: *const u16) {
     unsafe {
         let Instruction::Add { dest, src1, src2 } = *ip else {
             unreachable_unchecked();

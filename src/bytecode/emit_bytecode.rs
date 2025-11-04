@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 
-use crate::cfg_ir::{
-    basic_block::{BasicBlock, Terminator},
-    cfg_constants::CfgConstant,
-    cfg_function::CfgFunction,
-    cfg_instruction::{CfgInstruction, CfgOpcode},
-    graph_traversal::reversed_postorder,
-    operand::Operand,
+use crate::{
+    bytecode::op_code::Opcode,
+    cfg_ir::{
+        basic_block::{BasicBlock, Terminator},
+        cfg_constants::CfgConstant,
+        cfg_function::CfgFunction,
+        cfg_instruction::{CfgInstruction, CfgOpcode},
+        graph_traversal::reversed_postorder,
+        operand::Operand,
+    },
 };
 
 use super::{bytecode::Bytecode, function::Function, instruction::Instruction, value::Value};
@@ -138,64 +141,100 @@ impl<'a> CodegenContext<'a> {
         };
     }
 
-    fn visit_instruction(&self, instruction: &CfgInstruction) -> Instruction {
-        match instruction.op_code {
-            // Arithmetic
-            CfgOpcode::Add => {
-                Instruction::add(instruction.dest, instruction.src1, instruction.src2)
-            }
-            CfgOpcode::Subtract => {
-                Instruction::subtract(instruction.dest, instruction.src1, instruction.src2)
-            }
-            CfgOpcode::Multiply => {
-                Instruction::multiply(instruction.dest, instruction.src1, instruction.src2)
-            }
-            CfgOpcode::Divide => {
-                Instruction::divide(instruction.dest, instruction.src1, instruction.src2)
-            }
-            CfgOpcode::Modulo => {
-                Instruction::modulo(instruction.dest, instruction.src1, instruction.src2)
-            }
-            CfgOpcode::Equal => {
-                Instruction::equal(instruction.dest, instruction.src1, instruction.src2)
-            }
-            CfgOpcode::NotEqual => {
-                Instruction::not_equal(instruction.dest, instruction.src1, instruction.src2)
-            }
-            CfgOpcode::Greater => {
-                Instruction::greater(instruction.dest, instruction.src1, instruction.src2)
-            }
-            CfgOpcode::GreaterEqual => {
-                Instruction::greater_equal(instruction.dest, instruction.src1, instruction.src2)
-            }
-            CfgOpcode::Less => {
-                Instruction::less(instruction.dest, instruction.src1, instruction.src2)
-            }
-            CfgOpcode::LessEqual => {
-                Instruction::less_equal(instruction.dest, instruction.src1, instruction.src2)
-            }
+    fn visit_instruction(&self, instruction: &CfgInstruction) {
+        let CfgInstruction {
+            op_code,
+            dest,
+            src1,
+            src2,
+        } = instruction;
+        use CfgOpcode::*;
+        use Operand::*;
 
-            // Unary
-            CfgOpcode::Negate => Instruction::negate(instruction.dest, instruction.src1),
-            CfgOpcode::Not => Instruction::not(instruction.dest, instruction.src1),
+        let op_code = match (op_code, src1, src2) {
+            // === Arithmetic ===
+            (Add, Variable(_), Variable(_)) => Opcode::AddRR,
+            (Add, Variable(_), Constant(_)) => Opcode::AddRK,
+            (Add, Constant(_), Variable(_)) => Opcode::AddKR,
+            (Add, Constant(_), Constant(_)) => Opcode::AddKK,
 
-            // Data movement
-            CfgOpcode::Move => Instruction::move_(instruction.dest, instruction.src1),
-            CfgOpcode::MoveArg => {
-                if let Operand::Variable(value) = instruction.dest {
-                    let dest = Operand::Variable(self.frame_size + value);
-                    Instruction::move_(dest, instruction.src1)
-                } else {
-                    unreachable!("Wrong operand on move arg dest");
-                }
-            }
+            (Subtract, Variable(_), Variable(_)) => Opcode::SubtractRR,
+            (Subtract, Variable(_), Constant(_)) => Opcode::SubtractRK,
+            (Subtract, Constant(_), Variable(_)) => Opcode::SubtractKR,
+            (Subtract, Constant(_), Constant(_)) => Opcode::SubtractKK,
 
-            // Function call
-            CfgOpcode::Call => Instruction::call(instruction.dest, instruction.src1),
+            (Multiply, Variable(_), Variable(_)) => Opcode::MultiplyRR,
+            (Multiply, Variable(_), Constant(_)) => Opcode::MultiplyRK,
+            (Multiply, Constant(_), Variable(_)) => Opcode::MultiplyKR,
+            (Multiply, Constant(_), Constant(_)) => Opcode::MultiplyKK,
 
-            // Misc
-            CfgOpcode::Print => Instruction::print(instruction.src1),
-        }
+            (Divide, Variable(_), Variable(_)) => Opcode::DivideRR,
+            (Divide, Variable(_), Constant(_)) => Opcode::DivideRK,
+            (Divide, Constant(_), Variable(_)) => Opcode::DivideKR,
+            (Divide, Constant(_), Constant(_)) => Opcode::DivideKK,
+
+            (Modulo, Variable(_), Variable(_)) => Opcode::ModuloRR,
+            (Modulo, Variable(_), Constant(_)) => Opcode::ModuloRK,
+            (Modulo, Constant(_), Variable(_)) => Opcode::ModuloKR,
+            (Modulo, Constant(_), Constant(_)) => Opcode::ModuloKK,
+
+            // === Comparison ===
+            (Equal, Variable(_), Variable(_)) => Opcode::EqualRR,
+            (Equal, Variable(_), Constant(_)) => Opcode::EqualRK,
+            (Equal, Constant(_), Variable(_)) => Opcode::EqualKR,
+            (Equal, Constant(_), Constant(_)) => Opcode::EqualKK,
+
+            (NotEqual, Variable(_), Variable(_)) => Opcode::NotEqualRR,
+            (NotEqual, Variable(_), Constant(_)) => Opcode::NotEqualRK,
+            (NotEqual, Constant(_), Variable(_)) => Opcode::NotEqualKR,
+            (NotEqual, Constant(_), Constant(_)) => Opcode::NotEqualKK,
+
+            (Greater, Variable(_), Variable(_)) => Opcode::GreaterRR,
+            (Greater, Variable(_), Constant(_)) => Opcode::GreaterRK,
+            (Greater, Constant(_), Variable(_)) => Opcode::GreaterKR,
+            (Greater, Constant(_), Constant(_)) => Opcode::GreaterKK,
+
+            (GreaterEqual, Variable(_), Variable(_)) => Opcode::GreaterEqualRR,
+            (GreaterEqual, Variable(_), Constant(_)) => Opcode::GreaterEqualRK,
+            (GreaterEqual, Constant(_), Variable(_)) => Opcode::GreaterEqualKR,
+            (GreaterEqual, Constant(_), Constant(_)) => Opcode::GreaterEqualKK,
+
+            (Less, Variable(_), Variable(_)) => Opcode::LessRR,
+            (Less, Variable(_), Constant(_)) => Opcode::LessRK,
+            (Less, Constant(_), Variable(_)) => Opcode::LessKR,
+            (Less, Constant(_), Constant(_)) => Opcode::LessKK,
+
+            (LessEqual, Variable(_), Variable(_)) => Opcode::LessEqualRR,
+            (LessEqual, Variable(_), Constant(_)) => Opcode::LessEqualRK,
+            (LessEqual, Constant(_), Variable(_)) => Opcode::LessEqualKR,
+            (LessEqual, Constant(_), Constant(_)) => Opcode::LessEqualKK,
+
+            // === Unary ===
+            (Negate, Variable(_), None) => Opcode::NegateR,
+            (Negate, Constant(_), None) => Opcode::NegateK,
+            (Not, Variable(_), None) => Opcode::NotR,
+            (Not, Constant(_), None) => Opcode::NotK,
+
+            // === Data movement ===
+            (Move, Variable(_), None) => Opcode::MoveR,
+            (Move, Constant(_), None) => Opcode::MoveK,
+
+            (MoveArg, Variable(_), None) => Opcode::MoveR,
+            (MoveArg, Constant(_), None) => Opcode::MoveK,
+
+            // === Function and control ===
+            (Call, Variable(_), _) => Opcode::CallR,
+            (Call, Constant(_), _) => Opcode::CallK,
+
+            (Print, Variable(_), _) => Opcode::PrintR,
+            (Print, Constant(_), _) => Opcode::PrintK,
+
+            // === Fallback ===
+            _ => unreachable!(
+                "Invalid operand combination for {:?}: {:?}, {:?}",
+                op_code, src1, src2
+            ),
+        };
     }
 }
 

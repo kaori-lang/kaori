@@ -1,77 +1,88 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Opcode {
-    // Arithmetic
+    // === Arithmetic ===
     AddRR,
     AddRK,
     AddKR,
     AddKK,
-    SubRR,
-    SubRK,
-    SubKR,
-    SubKK,
-    MulRR,
-    MulRK,
-    MulKR,
-    MulKK,
-    DivRR,
-    DivRK,
-    DivKR,
-    DivKK,
-    ModRR,
-    ModRK,
-    ModKR,
-    ModKK,
 
-    // Comparison
-    EqRR,
-    EqRK,
-    EqKR,
-    EqKK,
-    NeRR,
-    NeRK,
-    NeKR,
-    NeKK,
-    GtRR,
-    GtRK,
-    GtKR,
-    GtKK,
-    GeRR,
-    GeRK,
-    GeKR,
-    GeKK,
-    LtRR,
-    LtRK,
-    LtKR,
-    LtKK,
-    LeRR,
-    LeRK,
-    LeKR,
-    LeKK,
+    SubtractRR,
+    SubtractRK,
+    SubtractKR,
+    SubtractKK,
 
-    // Unary
-    NegR,
-    NegK,
+    MultiplyRR,
+    MultiplyRK,
+    MultiplyKR,
+    MultiplyKK,
+
+    DivideRR,
+    DivideRK,
+    DivideKR,
+    DivideKK,
+
+    ModuloRR,
+    ModuloRK,
+    ModuloKR,
+    ModuloKK,
+
+    // === Comparison ===
+    EqualRR,
+    EqualRK,
+    EqualKR,
+    EqualKK,
+
+    NotEqualRR,
+    NotEqualRK,
+    NotEqualKR,
+    NotEqualKK,
+
+    GreaterRR,
+    GreaterRK,
+    GreaterKR,
+    GreaterKK,
+
+    GreaterEqualRR,
+    GreaterEqualRK,
+    GreaterEqualKR,
+    GreaterEqualKK,
+
+    LessRR,
+    LessRK,
+    LessKR,
+    LessKK,
+
+    LessEqualRR,
+    LessEqualRK,
+    LessEqualKR,
+    LessEqualKK,
+
+    // === Unary ===
+    NegateR,
+    NegateK,
     NotR,
     NotK,
 
-    // Data movement
-    MoveRR,
-    MoveRK,
+    // === Data movement ===
+    MoveR,
+    MoveK,
 
-    // Function and return
-    Call,
+    // === Function and return ===
+    CallR,
+    CallK,
     ReturnR,
+    ReturnK,
     ReturnVoid,
 
-    // Control flow
+    // === Control flow ===
     Jump,
     JumpIfTrue,
     JumpIfFalse,
 
-    // IO
+    // === IO ===
     PrintR,
     PrintK,
 
-    // Program termination
+    // === Program termination ===
     Halt,
 }
