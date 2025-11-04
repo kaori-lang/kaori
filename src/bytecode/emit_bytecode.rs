@@ -39,9 +39,9 @@ pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
         let constants = map_cfg_constants(&cfg.constants);
         let frame_size = cfg.allocated_variables;
 
-        let ip = unsafe { instructions.as_ptr().add(functions_start_index[index]) };
+        let bp = unsafe { instructions.as_ptr().add(functions_start_index[index]) };
 
-        let function = Function::new(ip, frame_size as u8, constants);
+        let function = Function::new(bp, frame_size as u8, constants);
 
         functions.push(function);
     }
@@ -302,7 +302,14 @@ fn resolve_backpatches(
 
         let offset = bb_start_index as i16 - instruction_index as i16;
 
-        instructions[instruction_index + 2] = offset as u16;
+        let instruction = instructions[instruction_index];
+        let op_code = Opcode::from(instruction);
+
+        if let Opcode::Jump = op_code {
+            instructions[instruction_index + 1] = offset as u16;
+        } else {
+            instructions[instruction_index + 2] = offset as u16;
+        }
     }
 }
 
