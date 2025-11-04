@@ -4,6 +4,7 @@ use std::fmt::{self, Display, Formatter};
 pub enum Operand {
     Variable(usize),
     Constant(usize),
+    None,
 }
 
 impl Operand {
@@ -11,6 +12,7 @@ impl Operand {
         match self {
             Self::Constant(value) => -((value + 1) as i16),
             Self::Variable(value) => value as i16,
+            Self::None => unreachable!("Tried to convert invalid op"),
         }
     }
 }
@@ -18,8 +20,9 @@ impl Operand {
 impl Display for Operand {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Operand::Variable(id) => write!(f, "r{}", id),
-            Operand::Constant(id) => write!(f, "c{}", id),
+            Self::Variable(id) => write!(f, "r{}", id),
+            Self::Constant(id) => write!(f, "c{}", id),
+            Self::None => Ok(()),
         }
     }
 }

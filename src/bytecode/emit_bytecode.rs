@@ -4,7 +4,7 @@ use crate::cfg_ir::{
     basic_block::{BasicBlock, Terminator},
     cfg_constants::CfgConstant,
     cfg_function::CfgFunction,
-    cfg_instruction::CfgInstruction,
+    cfg_instruction::{CfgInstruction, CfgOpcode},
     graph_traversal::reversed_postorder,
     operand::Operand,
 };
@@ -139,42 +139,62 @@ impl<'a> CodegenContext<'a> {
     }
 
     fn visit_instruction(&self, instruction: &CfgInstruction) -> Instruction {
-        match *instruction {
-            CfgInstruction::Add { dest, src1, src2 } => Instruction::add(dest, src1, src2),
-            CfgInstruction::Subtract { dest, src1, src2 } => {
-                Instruction::subtract(dest, src1, src2)
+        match instruction.op_code {
+            // Arithmetic
+            CfgOpcode::Add => {
+                Instruction::add(instruction.dest, instruction.src1, instruction.src2)
             }
-            CfgInstruction::Multiply { dest, src1, src2 } => {
-                Instruction::multiply(dest, src1, src2)
+            CfgOpcode::Subtract => {
+                Instruction::subtract(instruction.dest, instruction.src1, instruction.src2)
             }
-            CfgInstruction::Divide { dest, src1, src2 } => Instruction::divide(dest, src1, src2),
-            CfgInstruction::Modulo { dest, src1, src2 } => Instruction::modulo(dest, src1, src2),
-            CfgInstruction::Equal { dest, src1, src2 } => Instruction::equal(dest, src1, src2),
-            CfgInstruction::NotEqual { dest, src1, src2 } => {
-                Instruction::not_equal(dest, src1, src2)
+            CfgOpcode::Multiply => {
+                Instruction::multiply(instruction.dest, instruction.src1, instruction.src2)
             }
-            CfgInstruction::Greater { dest, src1, src2 } => Instruction::greater(dest, src1, src2),
-            CfgInstruction::GreaterEqual { dest, src1, src2 } => {
-                Instruction::greater_equal(dest, src1, src2)
+            CfgOpcode::Divide => {
+                Instruction::divide(instruction.dest, instruction.src1, instruction.src2)
             }
-            CfgInstruction::Less { dest, src1, src2 } => Instruction::less(dest, src1, src2),
-            CfgInstruction::LessEqual { dest, src1, src2 } => {
-                Instruction::less_equal(dest, src1, src2)
+            CfgOpcode::Modulo => {
+                Instruction::modulo(instruction.dest, instruction.src1, instruction.src2)
             }
-            CfgInstruction::Negate { dest, src } => Instruction::negate(dest, src),
-            CfgInstruction::Not { dest, src } => Instruction::not(dest, src),
-            CfgInstruction::Move { dest, src } => Instruction::move_(dest, src),
-            CfgInstruction::MoveArg { dest, src } => {
-                if let Operand::Variable(value) = dest {
-                    let dest = Operand::Variable(self.frame_size + value);
+            CfgOpcode::Equal => {
+                Instruction::equal(instruction.dest, instruction.src1, instruction.src2)
+            }
+            CfgOpcode::NotEqual => {
+                Instruction::not_equal(instruction.dest, instruction.src1, instruction.src2)
+            }
+            CfgOpcode::Greater => {
+                Instruction::greater(instruction.dest, instruction.src1, instruction.src2)
+            }
+            CfgOpcode::GreaterEqual => {
+                Instruction::greater_equal(instruction.dest, instruction.src1, instruction.src2)
+            }
+            CfgOpcode::Less => {
+                Instruction::less(instruction.dest, instruction.src1, instruction.src2)
+            }
+            CfgOpcode::LessEqual => {
+                Instruction::less_equal(instruction.dest, instruction.src1, instruction.src2)
+            }
 
-                    Instruction::move_(dest, src)
+            // Unary
+            CfgOpcode::Negate => Instruction::negate(instruction.dest, instruction.src1),
+            CfgOpcode::Not => Instruction::not(instruction.dest, instruction.src1),
+
+            // Data movement
+            CfgOpcode::Move => Instruction::move_(instruction.dest, instruction.src1),
+            CfgOpcode::MoveArg => {
+                if let Operand::Variable(value) = instruction.dest {
+                    let dest = Operand::Variable(self.frame_size + value);
+                    Instruction::move_(dest, instruction.src1)
                 } else {
                     unreachable!("Wrong operand on move arg dest");
                 }
             }
-            CfgInstruction::Call { dest, src } => Instruction::call(dest, src),
-            CfgInstruction::Print { src } => Instruction::print(src),
+
+            // Function call
+            CfgOpcode::Call => Instruction::call(instruction.dest, instruction.src1),
+
+            // Misc
+            CfgOpcode::Print => Instruction::print(instruction.src1),
         }
     }
 }
