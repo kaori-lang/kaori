@@ -33,12 +33,12 @@ pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
     let mut functions = Vec::new();
 
     for (index, cfg) in cfgs.iter().enumerate() {
-        let constants = map_cfg_constants(&cfg.constants, &functions_start_index);
+        let constants = map_cfg_constants(&cfg.constants);
         let frame_size = cfg.allocated_variables;
 
         let ip = unsafe { instructions.as_ptr().add(functions_start_index[index]) };
 
-        let function = Function::new(ip, frame_size, constants);
+        let function = Function::new(ip, frame_size as u8, constants);
 
         functions.push(function);
     }
@@ -205,17 +205,13 @@ fn resolve_backpatches(
     }
 }
 
-fn map_cfg_constants(constants: &[CfgConstant], functions_start_index: &[usize]) -> Vec<Value> {
+fn map_cfg_constants(constants: &[CfgConstant]) -> Vec<Value> {
     constants
         .iter()
         .map(|constant| match constant {
             CfgConstant::Boolean(v) => Value::boolean(*v),
             CfgConstant::Number(v) => Value::number(**v),
-            CfgConstant::Function(index) => {
-                let index = functions_start_index[*index];
-
-                Value::function(index)
-            }
+            CfgConstant::Function(index) => Value::function(*index),
             _ => todo!(),
         })
         .collect()

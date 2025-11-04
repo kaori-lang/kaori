@@ -29,6 +29,7 @@ impl Display for CfgFunction {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         writeln!(f, "Control Flow Graph:")?;
 
+        writeln!(f, "CONSTANTS: {:?}", self.constants)?;
         for index in reversed_postorder(&self.basic_blocks) {
             write!(f, "{}", &self.basic_blocks[index])?;
         }

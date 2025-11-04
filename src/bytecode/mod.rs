@@ -4,4 +4,5 @@ pub mod emit_bytecode;
 
 pub mod function;
 pub mod instruction;
+pub mod op_code;
 pub mod value;

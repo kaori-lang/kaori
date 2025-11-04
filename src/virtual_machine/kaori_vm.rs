@@ -3,19 +3,25 @@ use std::hint::unreachable_unchecked;
 use crate::bytecode::{function::Function, instruction::Instruction, value::Value};
 
 pub struct FunctionFrame {
+    pub size: u8,
     pub registers_ptr: *mut Value,
+    pub constants_ptr: *const Value,
     pub return_address: *const Instruction,
     pub return_register: i16,
 }
 
 impl FunctionFrame {
     pub fn new(
+        size: u8,
         registers_ptr: *mut Value,
+        constants_ptr: *const Value,
         return_address: *const Instruction,
         return_register: i16,
     ) -> Self {
         Self {
+            size,
             registers_ptr,
+            constants_ptr,
             return_address,
             return_register,
         }
@@ -52,9 +58,10 @@ const OPCODE_HANDLERS: [InstructionHandler; 22] = [
 pub struct VMContext<'a> {
     pub functions: &'a [Function],
     pub call_stack: Vec<FunctionFrame>,
-    pub constants: &'a [Value],
     pub registers: Vec<Value>,
+    pub frame_size: u8,
     pub registers_ptr: *mut Value,
+    pub constants_ptr: *const Value,
 }
 
 macro_rules! dispatch {
@@ -94,26 +101,30 @@ macro_rules! dispatch_to {
 impl<'a> VMContext<'a> {
     pub fn new(
         functions: &'a [Function],
-        constants: &'a [Value],
-        mut registers: Vec<Value>,
+        registers: Vec<Value>,
+        frame_size: u8,
+        registers_ptr: *mut Value,
+        constants_ptr: *const Value,
+        main_frame: FunctionFrame,
     ) -> Self {
-        let registers_ptr = registers.as_mut_ptr();
-
         Self {
             functions,
-            call_stack: Vec::new(),
-            constants,
+            call_stack: vec![main_frame],
             registers,
+            frame_size,
             registers_ptr,
+            constants_ptr,
         }
     }
 
     #[inline(always)]
     fn get_value(&self, register: i16) -> Value {
-        if register < 0 {
-            self.constants[-(register + 1) as usize]
-        } else {
-            unsafe { *self.registers_ptr.add(register as usize) }
+        unsafe {
+            if register < 0 {
+                *self.constants_ptr.add(-(register + 1) as usize)
+            } else {
+                *self.registers_ptr.add(register as usize)
+            }
         }
     }
 
@@ -130,6 +141,7 @@ impl<'a> VMContext<'a> {
 
         if let Some(frame) = self.call_stack.last() {
             self.registers_ptr = frame.registers_ptr;
+            self.constants_ptr = frame.constants_ptr;
         }
 
         frame
@@ -140,11 +152,20 @@ impl<'a> VMContext<'a> {
         &mut self,
         return_register: i16,
         return_address: *const Instruction,
-        frame_size: usize,
+        frame_size: u8,
+        constants_ptr: *const Value,
     ) {
-        let registers_ptr = unsafe { self.registers_ptr.add(frame_size) };
+        let size = self.call_stack.last().unwrap().size;
 
-        let frame = FunctionFrame::new(registers_ptr, return_address, return_register);
+        let registers_ptr = unsafe { self.registers_ptr.add(size as usize) };
+
+        let frame = FunctionFrame::new(
+            frame_size,
+            registers_ptr,
+            constants_ptr,
+            return_address,
+            return_register,
+        );
 
         self.registers_ptr = registers_ptr;
 
@@ -153,17 +174,30 @@ impl<'a> VMContext<'a> {
 }
 
 pub fn run_kaori_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
-    let registers = vec![Value::default(); 1024];
-    let constants = &functions[0].constants;
+    let mut registers = vec![Value::default(); 1024];
+    let Function {
+        ip,
+        frame_size,
+        ref constants,
+    } = functions[0];
 
-    let mut ctx = VMContext::new(&functions, constants, registers);
+    let registers_ptr = registers.as_mut_ptr();
+    let constants_ptr = (*constants).as_ptr();
 
     let return_address = unsafe { instructions.as_ptr().add(instructions.len() - 1) };
+    let main_frame =
+        FunctionFrame::new(frame_size, registers_ptr, constants_ptr, return_address, 0);
 
-    ctx.push_frame(0, return_address, 0);
+    let mut ctx = VMContext::new(
+        &functions,
+        registers,
+        frame_size,
+        registers_ptr,
+        constants_ptr,
+        main_frame,
+    );
 
-    let ip = instructions.as_ptr();
-    let op_code = instructions[0].discriminant();
+    let op_code = unsafe { (*ip).discriminant() };
 
     OPCODE_HANDLERS[op_code](&mut ctx, ip);
 }
@@ -433,12 +467,13 @@ fn opcode_call(ctx: &mut VMContext, ip: *const Instruction) {
             frame_size,
             ref constants,
         } = ctx.functions[function_index];
+        let constants_ptr = (*constants).as_ptr();
 
         let op_code = (*ip).discriminant();
 
-        ctx.push_frame(return_register, return_address, frame_size);
+        ctx.push_frame(return_register, return_address, frame_size, constants_ptr);
 
-        ctx.constants = constants;
+        ctx.constants_ptr = constants_ptr;
 
         dispatch!(ctx, ip, op_code);
     }
