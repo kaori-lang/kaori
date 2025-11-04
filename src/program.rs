@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use crate::{
+    bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode, instruction},
     cfg_ir::{
         build_cfgs::build_cfgs, cfg_function::CfgFunction,
         jump_threading::run_jump_threading_optimization,
@@ -9,6 +10,7 @@ use crate::{
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},
     syntax::{decl::Decl, parser::Parser},
+    virtual_machine::kaori_vm::run_kaori_vm,
 };
 
 fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {
@@ -45,7 +47,7 @@ fn run_optimizations(cfgs: &mut [CfgFunction]) {
     run_jump_threading_optimization(cfgs);
 }
 
-pub fn compile_source_code(source: String) -> Result<(), KaoriError> {
+pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
     let hir = run_semantic_analysis(&mut ast)?;
@@ -53,20 +55,16 @@ pub fn compile_source_code(source: String) -> Result<(), KaoriError> {
 
     run_optimizations(&mut cfgs);
 
-    for cfg in cfgs {
-        println!("{cfg}");
-    }
+    let bytecode = emit_bytecode(cfgs);
 
-    //let bytecode = emit_bytecode(cfg_ir.cfgs, cfg_ir.basic_blocks, cfg_ir.constants.constants);
-
-    Ok(())
+    Ok(bytecode)
 }
 
 pub fn run_program(source: String) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
     let start = Instant::now();
-    //run_kaori_vm(bytecode.instructions, bytecode.constants);
+    run_kaori_vm(bytecode.instructions, bytecode.functions);
     let elapsed = start.elapsed();
     println!("took: {elapsed:?}");
 

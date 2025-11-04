@@ -1,17 +1,21 @@
 use std::hint::unreachable_unchecked;
 
-use crate::bytecode::{instruction::Instruction, value::Value};
+use crate::bytecode::{function::Function, instruction::Instruction, value::Value};
 
 pub struct FunctionFrame {
-    pub base: usize,
+    pub registers_ptr: *mut Value,
     pub return_address: *const Instruction,
     pub return_register: i16,
 }
 
 impl FunctionFrame {
-    pub fn new(base: usize, return_address: *const Instruction, return_register: i16) -> Self {
+    pub fn new(
+        registers_ptr: *mut Value,
+        return_address: *const Instruction,
+        return_register: i16,
+    ) -> Self {
         Self {
-            base,
+            registers_ptr,
             return_address,
             return_register,
         }
@@ -20,34 +24,35 @@ impl FunctionFrame {
 
 type InstructionHandler = fn(&mut VMContext, ip: *const Instruction);
 
-const INSTRUCTION_DISPATCH: [InstructionHandler; 22] = [
-    instruction_add,           // 0
-    instruction_subtract,      // 1
-    instruction_multiply,      // 2
-    instruction_divide,        // 3
-    instruction_modulo,        // 4
-    instruction_equal,         // 5
-    instruction_not_equal,     // 6
-    instruction_greater,       // 7
-    instruction_greater_equal, // 8
-    instruction_less,          // 9
-    instruction_less_equal,    // 10
-    instruction_negate,        // 11
-    instruction_not,           // 12
-    instruction_move,          // 13
-    instruction_call,          // 14
-    instruction_return,        // 15
-    instruction_return_void,   // 16
-    instruction_jump,          // 17
-    instruction_jump_if_true,  // 18
-    instruction_jump_if_false, // 19
-    instruction_print,         // 20
-    instruction_halt,          // 21
+const OPCODE_HANDLERS: [InstructionHandler; 22] = [
+    opcode_add,           // 0
+    opcode_subtract,      // 1
+    opcode_multiply,      // 2
+    opcode_divide,        // 3
+    opcode_modulo,        // 4
+    opcode_equal,         // 5
+    opcode_not_equal,     // 6
+    opcode_greater,       // 7
+    opcode_greater_equal, // 8
+    opcode_less,          // 9
+    opcode_less_equal,    // 10
+    opcode_negate,        // 11
+    opcode_not,           // 12
+    opcode_move,          // 13
+    opcode_call,          // 14
+    opcode_return,        // 15
+    opcode_return_void,   // 16
+    opcode_jump,          // 17
+    opcode_jump_if_true,  // 18
+    opcode_jump_if_false, // 19
+    opcode_print,         // 20
+    opcode_halt,          // 21
 ];
 
-pub struct VMContext {
+pub struct VMContext<'a> {
+    pub functions: &'a [Function],
     pub call_stack: Vec<FunctionFrame>,
-    pub constants: Vec<Value>,
+    pub constants: &'a [Value],
     pub registers: Vec<Value>,
     pub registers_ptr: *mut Value,
 }
@@ -57,7 +62,7 @@ macro_rules! dispatch {
         let _: &mut VMContext = $ctx;
         let _: *const Instruction = $ip;
 
-        become INSTRUCTION_DISPATCH[$op_code]($ctx, $ip)
+        become OPCODE_HANDLERS[$op_code]($ctx, $ip)
     };
 }
 
@@ -86,9 +91,16 @@ macro_rules! dispatch_to {
     };
 }
 
-impl VMContext {
-    pub fn new(constants: Vec<Value>, registers: Vec<Value>, registers_ptr: *mut Value) -> Self {
+impl<'a> VMContext<'a> {
+    pub fn new(
+        functions: &'a [Function],
+        constants: &'a [Value],
+        mut registers: Vec<Value>,
+    ) -> Self {
+        let registers_ptr = registers.as_mut_ptr();
+
         Self {
+            functions,
             call_stack: Vec::new(),
             constants,
             registers,
@@ -99,11 +111,9 @@ impl VMContext {
     #[inline(always)]
     fn get_value(&self, register: i16) -> Value {
         if register < 0 {
-            self.constants[-register as usize]
-        } else if register < 1024 {
-            unsafe { *self.registers_ptr.add(register as usize) }
+            self.constants[-(register + 1) as usize]
         } else {
-            panic!("Stack overflow")
+            unsafe { *self.registers_ptr.add(register as usize) }
         }
     }
 
@@ -119,7 +129,7 @@ impl VMContext {
         let frame = unsafe { self.call_stack.pop().unwrap_unchecked() };
 
         if let Some(frame) = self.call_stack.last() {
-            self.registers_ptr = unsafe { self.registers.as_mut_ptr().add(frame.base) };
+            self.registers_ptr = frame.registers_ptr;
         }
 
         frame
@@ -130,34 +140,36 @@ impl VMContext {
         &mut self,
         return_register: i16,
         return_address: *const Instruction,
-        caller_size: u16,
+        frame_size: usize,
     ) {
-        let base = self.call_stack.last().unwrap().base + caller_size as usize;
+        let registers_ptr = unsafe { self.registers_ptr.add(frame_size) };
 
-        let frame = FunctionFrame::new(base, return_address, return_register);
+        let frame = FunctionFrame::new(registers_ptr, return_address, return_register);
 
-        self.registers_ptr = unsafe { self.registers.as_mut_ptr().add(base) };
+        self.registers_ptr = registers_ptr;
 
         self.call_stack.push(frame);
     }
 }
 
-pub fn run_kaori_vm(instructions: Vec<Instruction>, constants: Vec<Value>) {
-    let halt_ip = unsafe { instructions.as_ptr().add(instructions.len() - 1) };
+pub fn run_kaori_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
+    let registers = vec![Value::default(); 1024];
+    let constants = &functions[0].constants;
 
-    let mut registers = vec![Value::default(); 1024];
-    let registers_ptr = registers.as_mut_ptr();
+    let mut ctx = VMContext::new(&functions, constants, registers);
 
-    let mut ctx = VMContext::new(constants, registers, registers_ptr);
+    let return_address = unsafe { instructions.as_ptr().add(instructions.len() - 1) };
+
+    ctx.push_frame(0, return_address, 0);
 
     let ip = instructions.as_ptr();
     let op_code = instructions[0].discriminant();
 
-    INSTRUCTION_DISPATCH[op_code](&mut ctx, ip);
+    OPCODE_HANDLERS[op_code](&mut ctx, ip);
 }
 
 #[inline(never)]
-fn instruction_move(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_move(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Move { dest, src } = *ip else {
             unreachable_unchecked();
@@ -171,7 +183,7 @@ fn instruction_move(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_add(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_add(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Add { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
@@ -187,7 +199,7 @@ fn instruction_add(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_subtract(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_subtract(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Subtract { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
@@ -202,7 +214,7 @@ fn instruction_subtract(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_multiply(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_multiply(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Multiply { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
@@ -216,7 +228,7 @@ fn instruction_multiply(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_divide(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_divide(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Divide { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
@@ -230,7 +242,7 @@ fn instruction_divide(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_modulo(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_modulo(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Modulo { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
@@ -244,7 +256,7 @@ fn instruction_modulo(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_equal(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_equal(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Equal { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
@@ -259,7 +271,7 @@ fn instruction_equal(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_not_equal(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_not_equal(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::NotEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
@@ -273,7 +285,7 @@ fn instruction_not_equal(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_greater(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_greater(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Greater { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
@@ -287,7 +299,7 @@ fn instruction_greater(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_greater_equal(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_greater_equal(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::GreaterEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
@@ -301,7 +313,7 @@ fn instruction_greater_equal(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_less(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_less(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Less { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
@@ -315,7 +327,7 @@ fn instruction_less(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_less_equal(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_less_equal(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::LessEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked();
@@ -329,7 +341,7 @@ fn instruction_less_equal(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_negate(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_negate(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Negate { dest, src } = *ip else {
             unreachable_unchecked();
@@ -342,7 +354,7 @@ fn instruction_negate(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_not(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_not(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Not { dest, src } = *ip else {
             unreachable_unchecked();
@@ -355,7 +367,7 @@ fn instruction_not(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_jump(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_jump(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Jump { offset } = *ip else {
             unreachable_unchecked();
@@ -366,7 +378,7 @@ fn instruction_jump(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_jump_if_true(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_jump_if_true(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::JumpIfTrue { src, offset } = *ip else {
             unreachable_unchecked();
@@ -384,7 +396,7 @@ fn instruction_jump_if_true(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_jump_if_false(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_jump_if_false(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::JumpIfFalse { src, offset } = *ip else {
             unreachable_unchecked();
@@ -402,26 +414,38 @@ fn instruction_jump_if_false(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_call(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_call(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let Instruction::Call { dest, src } = *ip else {
+        let Instruction::Call {
+            dest: return_register,
+            src,
+        } = *ip
+        else {
             unreachable_unchecked();
         };
 
-        let return_register = dest;
         let return_address = ip.add(1);
 
-        let ip = ctx.get_value(src).as_instruction();
+        let function_index = ctx.get_value(src).as_function();
+
+        let Function {
+            ip,
+            frame_size,
+            ref constants,
+        } = ctx.functions[function_index];
+
         let op_code = (*ip).discriminant();
 
-        ctx.push_frame(return_register, return_address, caller_size);
+        ctx.push_frame(return_register, return_address, frame_size);
+
+        ctx.constants = constants;
 
         dispatch!(ctx, ip, op_code);
     }
 }
 
 #[inline(never)]
-fn instruction_return(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_return(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Return { src } = *ip else {
             unreachable_unchecked();
@@ -429,13 +453,14 @@ fn instruction_return(ctx: &mut VMContext, ip: *const Instruction) {
 
         let value = ctx.get_value(src);
 
-        let frame = ctx.pop_frame();
-
-        let dest = frame.return_register;
+        let FunctionFrame {
+            return_address: ip,
+            return_register: dest,
+            ..
+        } = ctx.pop_frame();
 
         ctx.set_value(dest, value);
 
-        let ip = frame.return_address;
         let op_code = (*ip).discriminant();
 
         dispatch!(ctx, ip, op_code);
@@ -443,7 +468,7 @@ fn instruction_return(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_return_void(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_return_void(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::ReturnVoid = *ip else {
             unreachable_unchecked();
@@ -459,7 +484,7 @@ fn instruction_return_void(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_print(ctx: &mut VMContext, ip: *const Instruction) {
+fn opcode_print(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
         let Instruction::Print { src } = *ip else {
             unreachable_unchecked();
@@ -474,4 +499,4 @@ fn instruction_print(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn instruction_halt(_ctx: &mut VMContext, _ip: *const Instruction) {}
+fn opcode_halt(_ctx: &mut VMContext, _ip: *const Instruction) {}

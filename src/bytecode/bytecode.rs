@@ -1,15 +1,15 @@
-use super::{instruction::Instruction, value::Value};
+use super::{function::Function, instruction::Instruction};
 
 pub struct Bytecode {
     pub instructions: Vec<Instruction>,
-    pub constants: Vec<Value>,
+    pub functions: Vec<Function>,
 }
 
 impl Bytecode {
-    pub fn new(instructions: Vec<Instruction>, constants: Vec<Value>) -> Self {
+    pub fn new(instructions: Vec<Instruction>, functions: Vec<Function>) -> Self {
         Self {
             instructions,
-            constants,
+            functions,
         }
     }
 }
