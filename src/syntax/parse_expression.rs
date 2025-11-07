@@ -8,7 +8,7 @@ use super::{
     unary_op::{UnaryOp, UnaryOpKind},
 };
 
-impl Parser {
+impl<'a> Parser<'a> {
     fn build_binary_operator(&mut self) -> BinaryOp {
         let token_kind = self.token_stream.token_kind();
         let span = self.token_stream.span();

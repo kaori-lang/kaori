@@ -1,7 +1,6 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u16)]
 pub enum Opcode {
-    // === Arithmetic ===
     AddRR = 0,
     AddRK = 1,
     AddKR = 2,
@@ -27,7 +26,6 @@ pub enum Opcode {
     ModuloKR = 18,
     ModuloKK = 19,
 
-    // === Comparison ===
     EqualRR = 20,
     EqualRK = 21,
     EqualKR = 22,
@@ -58,35 +56,29 @@ pub enum Opcode {
     LessEqualKR = 42,
     LessEqualKK = 43,
 
-    // === Unary ===
     NegateR = 44,
     NegateK = 45,
     NotR = 46,
     NotK = 47,
 
-    // === Data movement ===
     MoveR = 48,
     MoveK = 49,
 
-    // === Function and return ===
     CallR = 50,
     CallK = 51,
     ReturnR = 52,
     ReturnK = 53,
     ReturnVoid = 54,
 
-    // === Control flow ===
     Jump = 55,
     JumpIfTrueR = 56,
     JumpIfTrueK = 57,
     JumpIfFalseR = 58,
     JumpIfFalseK = 59,
 
-    // === IO ===
     PrintR = 60,
     PrintK = 61,
 
-    // === Program termination ===
     Halt = 62,
 }
 

@@ -1,1 +1,2 @@
-pub mod kaori_vm;
+pub mod vm;
+pub mod vm_context;

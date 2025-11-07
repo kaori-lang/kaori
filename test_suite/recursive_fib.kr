@@ -10,7 +10,7 @@ fun fib(n: number) -> number {
 
 
 fun main()  {
-    print(fib(40));
+    fib(30);
 }
 
 

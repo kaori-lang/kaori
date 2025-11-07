@@ -10,11 +10,11 @@ use crate::{
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},
     syntax::{decl::Decl, parser::Parser},
-    virtual_machine::kaori_vm::run_kaori_vm,
+    virtual_machine::vm::run_vm,
 };
 
-fn run_lexical_analysis(source: String) -> Result<TokenStream, KaoriError> {
-    let lexer = Lexer::new(&source);
+fn run_lexical_analysis(source: &'_ str) -> Result<TokenStream<'_>, KaoriError> {
+    let lexer = Lexer::new(source);
     let tokens = lexer.tokenize()?;
 
     let token_stream = TokenStream::new(source, tokens);
@@ -47,7 +47,7 @@ fn run_optimizations(cfgs: &mut [CfgFunction]) {
     run_jump_threading_optimization(cfgs);
 }
 
-pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
+pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
     let hir = run_semantic_analysis(&mut ast)?;
@@ -62,13 +62,20 @@ pub fn compile_source_code(source: String) -> Result<Bytecode, KaoriError> {
     Ok(bytecode)
 }
 
-pub fn run_program(source: String) -> Result<(), KaoriError> {
+pub fn run_program(source: &str) -> Result<(), KaoriError> {
+    // Start timer
+
+    // Compile and run
     let bytecode = compile_source_code(source)?;
 
     let start = Instant::now();
-    run_kaori_vm(bytecode.bytes, bytecode.functions);
+
+    run_vm(bytecode.bytes, bytecode.functions);
+
+    // Measure elapsed time
     let elapsed = start.elapsed();
-    println!("took: {elapsed:?}");
+
+    println!("{}", elapsed.as_secs_f64() * 1000.0);
 
     Ok(())
 }

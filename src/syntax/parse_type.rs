@@ -2,7 +2,7 @@ use crate::{error::kaori_error::KaoriError, kaori_error, lexer::token_kind::Toke
 
 use super::{parser::Parser, ty::Ty};
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_type(&mut self) -> Result<Ty, KaoriError> {
         let span = self.token_stream.span();
         let kind = self.token_stream.token_kind();

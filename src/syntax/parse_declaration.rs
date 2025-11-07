@@ -8,7 +8,7 @@ use super::{
     parser::Parser,
 };
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
         let span = self.token_stream.span();
 

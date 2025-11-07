@@ -2,7 +2,7 @@ use crate::{error::kaori_error::KaoriError, lexer::token_kind::TokenKind};
 
 use super::{parser::Parser, stmt::Stmt};
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_return_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
 

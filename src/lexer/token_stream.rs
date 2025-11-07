@@ -3,14 +3,14 @@ use crate::{error::kaori_error::KaoriError, kaori_error};
 use super::{span::Span, token::Token, token_kind::TokenKind};
 
 #[derive(Clone)]
-pub struct TokenStream {
-    source: String,
+pub struct TokenStream<'a> {
+    source: &'a str,
     tokens: Vec<Token>,
     index: usize,
 }
 
-impl TokenStream {
-    pub fn new(source: String, tokens: Vec<Token>) -> Self {
+impl<'a> TokenStream<'a> {
+    pub fn new(source: &'a str, tokens: Vec<Token>) -> Self {
         Self {
             source,
             tokens,

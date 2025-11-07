@@ -6,12 +6,12 @@ use crate::{
 
 use super::{ast_node::AstNode, decl::Decl, stmt::Stmt};
 
-pub struct Parser {
-    pub token_stream: TokenStream,
+pub struct Parser<'a> {
+    pub token_stream: TokenStream<'a>,
 }
 
-impl Parser {
-    pub fn new(token_stream: TokenStream) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(token_stream: TokenStream<'a>) -> Self {
         Self { token_stream }
     }
 

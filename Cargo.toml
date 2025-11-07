@@ -12,3 +12,8 @@ mem = "0.5.0"
 
 [profile.release]
 debug = true
+
+[[bench]]
+name = "vm_bench"       
+path = "benches/vm_bench.rs" 
+harness = false           
