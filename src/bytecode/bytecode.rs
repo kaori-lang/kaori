@@ -5,13 +5,21 @@ use super::function::Function;
 use crate::bytecode::op_code::Opcode;
 
 pub struct Bytecode {
-    pub bytes: Vec<u16>,
+    pub bytes: Vec<i16>,
     pub functions: Vec<Function>,
 }
 
 impl Bytecode {
-    pub fn new(bytes: Vec<u16>, functions: Vec<Function>) -> Self {
+    pub fn new(bytes: Vec<i16>, functions: Vec<Function>) -> Self {
         Self { bytes, functions }
+    }
+}
+
+fn fmt_operand(op: i16) -> String {
+    if op >= 0 {
+        format!("r{}", op)
+    } else {
+        format!("k{}", op)
     }
 }
 
@@ -20,225 +28,104 @@ impl Display for Bytecode {
         let mut index = 0;
 
         while index < self.bytes.len() {
-            let op_code = Opcode::from(self.bytes[index]);
+            let opcode = Opcode::from(self.bytes[index] as u16);
 
-            match op_code {
-                // === Arithmetic ===
-                Opcode::AddRR
-                | Opcode::SubtractRR
-                | Opcode::MultiplyRR
-                | Opcode::DivideRR
-                | Opcode::ModuloRR
-                | Opcode::EqualRR
-                | Opcode::NotEqualRR
-                | Opcode::GreaterRR
-                | Opcode::GreaterEqualRR
-                | Opcode::LessRR
-                | Opcode::LessEqualRR => {
+            index += 1;
+
+            match opcode {
+                Opcode::Add
+                | Opcode::Subtract
+                | Opcode::Multiply
+                | Opcode::Divide
+                | Opcode::Modulo
+                | Opcode::Equal
+                | Opcode::NotEqual
+                | Opcode::Greater
+                | Opcode::GreaterEqual
+                | Opcode::Less
+                | Opcode::LessEqual => {
+                    let dst = self.bytes[index];
+                    let lhs = self.bytes[index + 1];
+                    let rhs = self.bytes[index + 2];
+
                     writeln!(
                         f,
-                        "{:?} r{}, r{}, r{}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2],
-                        self.bytes[index + 3]
+                        "{:?} {}, {}, {}",
+                        opcode,
+                        fmt_operand(dst),
+                        fmt_operand(lhs),
+                        fmt_operand(rhs)
                     )?;
-                    index += 4;
-                }
 
-                Opcode::AddRK
-                | Opcode::SubtractRK
-                | Opcode::MultiplyRK
-                | Opcode::DivideRK
-                | Opcode::ModuloRK
-                | Opcode::EqualRK
-                | Opcode::NotEqualRK
-                | Opcode::GreaterRK
-                | Opcode::GreaterEqualRK
-                | Opcode::LessRK
-                | Opcode::LessEqualRK => {
-                    writeln!(
-                        f,
-                        "{:?} r{}, r{}, k{}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2],
-                        self.bytes[index + 3]
-                    )?;
-                    index += 4;
-                }
-
-                Opcode::AddKR
-                | Opcode::SubtractKR
-                | Opcode::MultiplyKR
-                | Opcode::DivideKR
-                | Opcode::ModuloKR
-                | Opcode::EqualKR
-                | Opcode::NotEqualKR
-                | Opcode::GreaterKR
-                | Opcode::GreaterEqualKR
-                | Opcode::LessKR
-                | Opcode::LessEqualKR => {
-                    writeln!(
-                        f,
-                        "{:?} r{}, k{}, r{}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2],
-                        self.bytes[index + 3]
-                    )?;
-                    index += 4;
-                }
-
-                Opcode::AddKK
-                | Opcode::SubtractKK
-                | Opcode::MultiplyKK
-                | Opcode::DivideKK
-                | Opcode::ModuloKK
-                | Opcode::EqualKK
-                | Opcode::NotEqualKK
-                | Opcode::GreaterKK
-                | Opcode::GreaterEqualKK
-                | Opcode::LessKK
-                | Opcode::LessEqualKK => {
-                    writeln!(
-                        f,
-                        "{:?} r{}, k{}, k{}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2],
-                        self.bytes[index + 3]
-                    )?;
-                    index += 4;
-                }
-
-                // === Unary ===
-                Opcode::NegateR | Opcode::NotR => {
-                    writeln!(
-                        f,
-                        "{:?} r{}, r{}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2]
-                    )?;
                     index += 3;
                 }
 
-                Opcode::NegateK | Opcode::NotK => {
-                    writeln!(
-                        f,
-                        "{:?} r{}, k{}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2]
-                    )?;
-                    index += 3;
-                }
+                Opcode::Negate | Opcode::Not => {
+                    let dst = self.bytes[index];
+                    let src = self.bytes[index + 1];
 
-                // === Data movement ===
-                Opcode::MoveR => {
-                    writeln!(
-                        f,
-                        "{:?} r{}, r{}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2]
-                    )?;
-                    index += 3;
-                }
+                    writeln!(f, "{:?} {}, {}", opcode, fmt_operand(dst), fmt_operand(src))?;
 
-                Opcode::MoveK => {
-                    writeln!(
-                        f,
-                        "{:?} r{}, k{}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2]
-                    )?;
-                    index += 3;
-                }
-
-                // === Function and return ===
-                Opcode::CallR => {
-                    writeln!(
-                        f,
-                        "{:?} r{}, r{}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2]
-                    )?;
-                    index += 3;
-                }
-
-                Opcode::CallK => {
-                    writeln!(
-                        f,
-                        "{:?} r{}, k{}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2]
-                    )?;
-                    index += 3;
-                }
-
-                Opcode::ReturnR => {
-                    writeln!(f, "{:?} r{}", op_code, self.bytes[index + 1])?;
                     index += 2;
                 }
 
-                Opcode::ReturnK => {
-                    writeln!(f, "{:?} k{}", op_code, self.bytes[index + 1])?;
+                Opcode::Move => {
+                    let dst = self.bytes[index];
+                    let src = self.bytes[index + 1];
+
+                    writeln!(f, "{:?} {}, {}", opcode, fmt_operand(dst), fmt_operand(src))?;
+
                     index += 2;
+                }
+
+                Opcode::Call => {
+                    let dst = self.bytes[index];
+                    let func = self.bytes[index + 1];
+
+                    writeln!(
+                        f,
+                        "{:?} {}, {}",
+                        opcode,
+                        fmt_operand(dst),
+                        fmt_operand(func)
+                    )?;
+
+                    index += 2;
+                }
+
+                Opcode::Return => {
+                    let value = self.bytes[index];
+                    writeln!(f, "{:?} {}", opcode, fmt_operand(value))?;
+                    index += 1;
                 }
 
                 Opcode::ReturnVoid => {
-                    writeln!(f, "{:?}", op_code)?;
+                    writeln!(f, "{:?}", opcode)?;
+                }
+
+                Opcode::Jump => {
+                    let offset = self.bytes[index];
+                    writeln!(f, "{:?} {}", opcode, offset)?;
                     index += 1;
                 }
 
-                // === Control flow ===
-                Opcode::Jump => {
-                    writeln!(f, "{:?} {}", op_code, self.bytes[index + 1] as i16)?;
+                Opcode::JumpIfTrue | Opcode::JumpIfFalse => {
+                    let cond = self.bytes[index];
+                    let offset = self.bytes[index + 1];
+
+                    writeln!(f, "{:?} {}, {}", opcode, fmt_operand(cond), offset)?;
+
                     index += 2;
                 }
 
-                Opcode::JumpIfTrueR | Opcode::JumpIfFalseR => {
-                    writeln!(
-                        f,
-                        "{:?} r{}, {}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2] as i16
-                    )?;
-                    index += 3;
+                Opcode::Print => {
+                    let value = self.bytes[index];
+                    writeln!(f, "{:?} {}", opcode, fmt_operand(value))?;
+                    index += 1;
                 }
 
-                Opcode::JumpIfTrueK | Opcode::JumpIfFalseK => {
-                    writeln!(
-                        f,
-                        "{:?} k{}, {}",
-                        op_code,
-                        self.bytes[index + 1],
-                        self.bytes[index + 2] as i16
-                    )?;
-                    index += 3;
-                }
-
-                // === IO ===
-                Opcode::PrintR => {
-                    writeln!(f, "{:?} r{}", op_code, self.bytes[index + 1])?;
-                    index += 2;
-                }
-
-                Opcode::PrintK => {
-                    writeln!(f, "{:?} k{}", op_code, self.bytes[index + 1])?;
-                    index += 2;
-                }
-
-                // === Program termination ===
                 Opcode::Halt => {
                     writeln!(f, "Halt")?;
-                    index += 1;
                 }
             }
         }

@@ -56,12 +56,12 @@ fun test_newton() -> bool {
 
 fun main() {
     /* test arithmetic: 1 is an error */
-    if !test_numbers() {
+    if not test_numbers() {
         print(1);
     }
 
     /* test complex arithmetic: 1 is an error */
-    if !test_newton() {
+    if  not test_newton() {
         print(1);
     }
 

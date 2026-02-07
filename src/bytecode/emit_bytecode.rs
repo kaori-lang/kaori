@@ -31,7 +31,7 @@ pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
         context.emit_instructions();
     }
 
-    instructions.push(Opcode::Halt as u16);
+    instructions.push(Opcode::Halt as i16);
 
     let mut functions = Vec::new();
 
@@ -52,14 +52,14 @@ pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
 struct CodegenContext<'a> {
     basic_blocks: &'a [BasicBlock],
     frame_size: usize,
-    instructions: &'a mut Vec<u16>,
+    instructions: &'a mut Vec<i16>,
 }
 
 impl<'a> CodegenContext<'a> {
     fn new(
         basic_blocks: &'a [BasicBlock],
         frame_size: usize,
-        instructions: &'a mut Vec<u16>,
+        instructions: &'a mut Vec<i16>,
     ) -> Self {
         Self {
             basic_blocks,
@@ -107,17 +107,8 @@ impl<'a> CodegenContext<'a> {
                     let index = self.instructions.len();
                     pending_backpatch.push((index, r#true));
 
-                    match src {
-                        Operand::Constant(value) => {
-                            self.instructions.push(Opcode::JumpIfTrueK as u16);
-                            self.instructions.push(value as u16);
-                        }
-                        Operand::Variable(value) => {
-                            self.instructions.push(Opcode::JumpIfTrueR as u16);
-                            self.instructions.push(value as u16);
-                        }
-                        _ => {}
-                    }
+                    self.instructions.push(Opcode::JumpIfTrue as i16);
+                    self.instructions.push(src.to_i16());
 
                     self.instructions.push(0);
                 }
@@ -126,17 +117,8 @@ impl<'a> CodegenContext<'a> {
                     let index = self.instructions.len();
                     pending_backpatch.push((index, r#false));
 
-                    match src {
-                        Operand::Constant(value) => {
-                            self.instructions.push(Opcode::JumpIfFalseK as u16);
-                            self.instructions.push(value as u16);
-                        }
-                        Operand::Variable(value) => {
-                            self.instructions.push(Opcode::JumpIfFalseR as u16);
-                            self.instructions.push(value as u16);
-                        }
-                        _ => {}
-                    }
+                    self.instructions.push(Opcode::JumpIfFalse as i16);
+                    self.instructions.push(src.to_i16());
 
                     self.instructions.push(0);
                 }
@@ -146,24 +128,17 @@ impl<'a> CodegenContext<'a> {
                     let index = self.instructions.len();
                     pending_backpatch.push((index, target));
 
-                    self.instructions.push(Opcode::Jump as u16);
+                    self.instructions.push(Opcode::Jump as i16);
                     self.instructions.push(0);
                 }
             }
             Terminator::Return { src } => {
-                match src {
-                    Some(Operand::Constant(value)) => {
-                        self.instructions.push(Opcode::ReturnK as u16);
-                        self.instructions.push(value as u16);
-                    }
-                    Some(Operand::Variable(value)) => {
-                        self.instructions.push(Opcode::ReturnR as u16);
-                        self.instructions.push(value as u16);
-                    }
-                    _ => {
-                        self.instructions.push(Opcode::ReturnVoid as u16);
-                    }
-                };
+                if let Some(src) = src {
+                    self.instructions.push(Opcode::Return as i16);
+                    self.instructions.push(src.to_i16());
+                } else {
+                    self.instructions.push(Opcode::ReturnVoid as i16);
+                }
             }
             Terminator::None => {}
         };
@@ -177,123 +152,65 @@ impl<'a> CodegenContext<'a> {
             src2,
         } = *instruction;
         use CfgOpcode::*;
-        use Operand::*;
 
-        let op_code = match (op_code, src1, src2) {
+        let op_code = match op_code {
             // === Arithmetic ===
-            (Add, Variable(_), Variable(_)) => Opcode::AddRR,
-            (Add, Variable(_), Constant(_)) => Opcode::AddRK,
-            (Add, Constant(_), Variable(_)) => Opcode::AddKR,
-            (Add, Constant(_), Constant(_)) => Opcode::AddKK,
-
-            (Subtract, Variable(_), Variable(_)) => Opcode::SubtractRR,
-            (Subtract, Variable(_), Constant(_)) => Opcode::SubtractRK,
-            (Subtract, Constant(_), Variable(_)) => Opcode::SubtractKR,
-            (Subtract, Constant(_), Constant(_)) => Opcode::SubtractKK,
-
-            (Multiply, Variable(_), Variable(_)) => Opcode::MultiplyRR,
-            (Multiply, Variable(_), Constant(_)) => Opcode::MultiplyRK,
-            (Multiply, Constant(_), Variable(_)) => Opcode::MultiplyKR,
-            (Multiply, Constant(_), Constant(_)) => Opcode::MultiplyKK,
-
-            (Divide, Variable(_), Variable(_)) => Opcode::DivideRR,
-            (Divide, Variable(_), Constant(_)) => Opcode::DivideRK,
-            (Divide, Constant(_), Variable(_)) => Opcode::DivideKR,
-            (Divide, Constant(_), Constant(_)) => Opcode::DivideKK,
-
-            (Modulo, Variable(_), Variable(_)) => Opcode::ModuloRR,
-            (Modulo, Variable(_), Constant(_)) => Opcode::ModuloRK,
-            (Modulo, Constant(_), Variable(_)) => Opcode::ModuloKR,
-            (Modulo, Constant(_), Constant(_)) => Opcode::ModuloKK,
+            Add => Opcode::Add,
+            Subtract => Opcode::Subtract,
+            Multiply => Opcode::Multiply,
+            Divide => Opcode::Divide,
+            Modulo => Opcode::Modulo,
 
             // === Comparison ===
-            (Equal, Variable(_), Variable(_)) => Opcode::EqualRR,
-            (Equal, Variable(_), Constant(_)) => Opcode::EqualRK,
-            (Equal, Constant(_), Variable(_)) => Opcode::EqualKR,
-            (Equal, Constant(_), Constant(_)) => Opcode::EqualKK,
-
-            (NotEqual, Variable(_), Variable(_)) => Opcode::NotEqualRR,
-            (NotEqual, Variable(_), Constant(_)) => Opcode::NotEqualRK,
-            (NotEqual, Constant(_), Variable(_)) => Opcode::NotEqualKR,
-            (NotEqual, Constant(_), Constant(_)) => Opcode::NotEqualKK,
-
-            (Greater, Variable(_), Variable(_)) => Opcode::GreaterRR,
-            (Greater, Variable(_), Constant(_)) => Opcode::GreaterRK,
-            (Greater, Constant(_), Variable(_)) => Opcode::GreaterKR,
-            (Greater, Constant(_), Constant(_)) => Opcode::GreaterKK,
-
-            (GreaterEqual, Variable(_), Variable(_)) => Opcode::GreaterEqualRR,
-            (GreaterEqual, Variable(_), Constant(_)) => Opcode::GreaterEqualRK,
-            (GreaterEqual, Constant(_), Variable(_)) => Opcode::GreaterEqualKR,
-            (GreaterEqual, Constant(_), Constant(_)) => Opcode::GreaterEqualKK,
-
-            (Less, Variable(_), Variable(_)) => Opcode::LessRR,
-            (Less, Variable(_), Constant(_)) => Opcode::LessRK,
-            (Less, Constant(_), Variable(_)) => Opcode::LessKR,
-            (Less, Constant(_), Constant(_)) => Opcode::LessKK,
-
-            (LessEqual, Variable(_), Variable(_)) => Opcode::LessEqualRR,
-            (LessEqual, Variable(_), Constant(_)) => Opcode::LessEqualRK,
-            (LessEqual, Constant(_), Variable(_)) => Opcode::LessEqualKR,
-            (LessEqual, Constant(_), Constant(_)) => Opcode::LessEqualKK,
+            Equal => Opcode::Equal,
+            NotEqual => Opcode::NotEqual,
+            Greater => Opcode::Greater,
+            GreaterEqual => Opcode::GreaterEqual,
+            Less => Opcode::Less,
+            LessEqual => Opcode::LessEqual,
 
             // === Unary ===
-            (Negate, Variable(_), None) => Opcode::NegateR,
-            (Negate, Constant(_), None) => Opcode::NegateK,
-            (Not, Variable(_), None) => Opcode::NotR,
-            (Not, Constant(_), None) => Opcode::NotK,
+            Negate => Opcode::Negate,
+            Not => Opcode::Not,
 
             // === Data movement ===
-            (Move, Variable(_), None) => Opcode::MoveR,
-            (Move, Constant(_), None) => Opcode::MoveK,
-
-            (MoveArg, _, None) => {
-                if let Operand::Variable(value) = dest {
-                    dest = Operand::Variable(self.frame_size + value);
+            Move | MoveArg => {
+                if let MoveArg = op_code {
+                    if let Operand::Variable(value) = dest {
+                        dest = Operand::Variable(self.frame_size + value);
+                    }
                 }
-
-                match src1 {
-                    Operand::Variable(..) => Opcode::MoveR,
-                    Operand::Constant(..) => Opcode::MoveK,
-                    None => unreachable!("Invalid operand for move"),
-                }
+                Opcode::Move
             }
 
             // === Function and control ===
-            (Call, Variable(_), _) => Opcode::CallR,
-            (Call, Constant(_), _) => Opcode::CallK,
+            Call => Opcode::Call,
+            Print => Opcode::Print,
 
-            (Print, Variable(_), _) => Opcode::PrintR,
-            (Print, Constant(_), _) => Opcode::PrintK,
-
-            // === Fallback ===
-            _ => unreachable!(
-                "Invalid operand combination for {:?}: {:?}, {:?}",
-                op_code, src1, src2
-            ),
+            _ => unreachable!("Unsupported opcode: {:?}", op_code),
         };
 
-        self.instructions.push(op_code as u16);
+        self.instructions.push(op_code as i16);
 
         match dest {
-            Constant(value) | Variable(value) => self.instructions.push(value as u16),
+            Operand::Constant(_) | Operand::Variable(_) => self.instructions.push(dest.to_i16()),
             _ => {}
         }
 
         match src1 {
-            Constant(value) | Variable(value) => self.instructions.push(value as u16),
+            Operand::Constant(_) | Operand::Variable(_) => self.instructions.push(src1.to_i16()),
             _ => {}
         }
 
         match src2 {
-            Constant(value) | Variable(value) => self.instructions.push(value as u16),
+            Operand::Constant(_) | Operand::Variable(_) => self.instructions.push(src2.to_i16()),
             _ => {}
         }
     }
 }
 
 fn resolve_backpatches(
-    instructions: &mut [u16],
+    instructions: &mut [i16],
     pending_backpatch: &[(usize, usize)],
     bb_start_index: &HashMap<usize, usize>,
 ) {
@@ -303,12 +220,12 @@ fn resolve_backpatches(
         let offset = bb_start_index as i16 - instruction_index as i16;
 
         let instruction = instructions[instruction_index];
-        let op_code = Opcode::from(instruction);
+        let op_code = Opcode::from(instruction as u16);
 
         if let Opcode::Jump = op_code {
-            instructions[instruction_index + 1] = offset as u16;
+            instructions[instruction_index + 1] = offset;
         } else {
-            instructions[instruction_index + 2] = offset as u16;
+            instructions[instruction_index + 2] = offset;
         }
     }
 }
