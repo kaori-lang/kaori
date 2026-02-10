@@ -52,13 +52,14 @@ impl<'a> VMContext<'a> {
     }
 
     #[inline(always)]
-    pub fn get_constant_value(&self, index: u16) -> Value {
-        unsafe { *self.constants_ptr.add(index as usize) }
-    }
-
-    #[inline(always)]
-    pub fn get_register_value(&self, index: u16) -> Value {
-        unsafe { *self.registers_ptr.add(index as usize) }
+    pub fn get_value(&self, index: u16) -> Value {
+        unsafe {
+            if index < 0 {
+                *self.constants_ptr.add(index as usize)
+            } else {
+                *self.registers_ptr.add(index as usize)
+            }
+        }
     }
 
     #[inline(always)]

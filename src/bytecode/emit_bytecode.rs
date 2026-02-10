@@ -172,14 +172,13 @@ impl<'a> CodegenContext<'a> {
             // === Unary ===
             Negate => Opcode::Negate,
             Not => Opcode::Not,
-
+            Move => Opcode::Move,
             // === Data movement ===
-            Move | MoveArg => {
-                if let MoveArg = op_code {
-                    if let Operand::Variable(value) = dest {
-                        dest = Operand::Variable(self.frame_size + value);
-                    }
+            MoveArg => {
+                if let Operand::Variable(value) = dest {
+                    dest = Operand::Variable(self.frame_size + value);
                 }
+
                 Opcode::Move
             }
 
