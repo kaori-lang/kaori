@@ -1,6 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 
-use crate::cfg_ir::graph_traversal::reversed_postorder;
+use crate::cfg::graph_traversal::reversed_postorder;
 
 use super::{basic_block::BasicBlock, cfg_constants::CfgConstant};
 

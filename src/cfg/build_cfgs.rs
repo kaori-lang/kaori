@@ -18,7 +18,7 @@ use super::{
     basic_block::{BasicBlock, Terminator},
     cfg_constants::CfgConstants,
     cfg_function::CfgFunction,
-    cfg_instruction::Instruction,
+    instruction::Instruction,
     operand::Operand,
 };
 

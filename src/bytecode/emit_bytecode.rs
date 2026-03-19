@@ -1,18 +1,15 @@
 use std::collections::HashMap;
 
-use crate::{
-    bytecode::op_code::Opcode,
-    cfg_ir::{
-        basic_block::{BasicBlock, Terminator},
-        cfg_constants::CfgConstant,
-        cfg_function::CfgFunction,
-        cfg_instruction::{self, CfgOpcode},
-        graph_traversal::reversed_postorder,
-        operand::Operand,
-    },
+use crate::cfg::{
+    self,
+    basic_block::{BasicBlock, Terminator},
+    cfg_constants::CfgConstant,
+    cfg_function::CfgFunction,
+    graph_traversal::reversed_postorder,
+    operand::Operand,
 };
 
-use super::{bytecode::Bytecode, function::Function, value::Value};
+use super::{bytecode::Bytecode, function::Function, instruction::Instruction, value::Value};
 
 pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
     let mut instructions = Vec::new();
@@ -31,7 +28,7 @@ pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
         context.emit_instructions();
     }
 
-    instructions.push();
+    instructions.push(Instruction::Halt);
 
     let mut functions = Vec::new();
 
@@ -52,14 +49,14 @@ pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
 struct CodegenContext<'a> {
     basic_blocks: &'a [BasicBlock],
     frame_size: usize,
-    instructions: &'a mut Vec<i16>,
+    instructions: &'a mut Vec<Instruction>,
 }
 
 impl<'a> CodegenContext<'a> {
     fn new(
         basic_blocks: &'a [BasicBlock],
         frame_size: usize,
-        instructions: &'a mut Vec<i16>,
+        instructions: &'a mut Vec<Instruction>,
     ) -> Self {
         Self {
             basic_blocks,
@@ -107,20 +104,20 @@ impl<'a> CodegenContext<'a> {
                     let index = self.instructions.len();
                     pending_backpatch.push((index, r#true));
 
-                    self.instructions.push(Opcode::JumpIfTrue as i16);
-                    self.instructions.push(src.to_i16());
-
-                    self.instructions.push(0);
+                    self.instructions.push(Instruction::JumpIfTrue {
+                        src: src.to_i16(),
+                        offset: 0,
+                    });
                 }
 
                 if Some(r#false) != next_bb_index {
                     let index = self.instructions.len();
                     pending_backpatch.push((index, r#false));
 
-                    self.instructions.push(Opcode::JumpIfFalse as i16);
-                    self.instructions.push(src.to_i16());
-
-                    self.instructions.push(0);
+                    self.instructions.push(Instruction::JumpIfFalse {
+                        src: src.to_i16(),
+                        offset: 0,
+                    });
                 }
             }
             Terminator::Goto(target) => {
@@ -128,82 +125,135 @@ impl<'a> CodegenContext<'a> {
                     let index = self.instructions.len();
                     pending_backpatch.push((index, target));
 
-                    self.instructions.push(Opcode::Jump as i16);
-                    self.instructions.push(0);
+                    self.instructions.push(Instruction::Jump { offset: 0 });
                 }
             }
             Terminator::Return { src } => {
                 if let Some(src) = src {
-                    self.instructions.push(Opcode::Return as i16);
-                    self.instructions.push(src.to_i16());
+                    self.instructions
+                        .push(Instruction::Return { src: src.to_i16() });
                 } else {
-                    self.instructions.push(Opcode::ReturnVoid as i16);
+                    self.instructions.push(Instruction::ReturnVoid);
                 }
             }
             Terminator::None => {}
         };
     }
 
-    fn visit_instruction(&mut self, instruction: &cfg_instruction::Instruction) {
-        let cfg_instruction::Instruction {
-            op_code,
-            mut dest,
-            src1,
-            src2,
-        } = *instruction;
-        use CfgOpcode::*;
+    fn visit_instruction(&mut self, instruction: &cfg::Instruction) {
+        let instruction = match instruction {
+            // --- Binary ---
+            cfg::Instruction::Add { dest, src1, src2 } => Instruction::Add {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
 
-        let op_code = match op_code {
-            Add => Opcode::Add,
-            Subtract => Opcode::Subtract,
-            Multiply => Opcode::Multiply,
-            Divide => Opcode::Divide,
-            Modulo => Opcode::Modulo,
-            Equal => Opcode::Equal,
-            NotEqual => Opcode::NotEqual,
-            Greater => Opcode::Greater,
-            GreaterEqual => Opcode::GreaterEqual,
-            Less => Opcode::Less,
-            LessEqual => Opcode::LessEqual,
+            cfg::Instruction::Subtract { dest, src1, src2 } => Instruction::Subtract {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
 
-            Negate => Opcode::Negate,
-            Not => Opcode::Not,
-            Move => Opcode::Move,
-            MoveArg => {
-                if let Operand::Variable(value) = dest {
-                    dest = Operand::Variable(self.frame_size + value);
+            cfg::Instruction::Multiply { dest, src1, src2 } => Instruction::Multiply {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
+
+            cfg::Instruction::Divide { dest, src1, src2 } => Instruction::Divide {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
+
+            cfg::Instruction::Modulo { dest, src1, src2 } => Instruction::Modulo {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
+
+            // --- Comparisons ---
+            cfg::Instruction::Equal { dest, src1, src2 } => Instruction::Equal {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
+
+            cfg::Instruction::NotEqual { dest, src1, src2 } => Instruction::NotEqual {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
+
+            cfg::Instruction::Greater { dest, src1, src2 } => Instruction::Greater {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
+
+            cfg::Instruction::GreaterEqual { dest, src1, src2 } => Instruction::GreaterEqual {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
+
+            cfg::Instruction::Less { dest, src1, src2 } => Instruction::Less {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
+
+            cfg::Instruction::LessEqual { dest, src1, src2 } => Instruction::LessEqual {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
+
+            // --- Unary ---
+            cfg::Instruction::Negate { dest, src } => Instruction::Negate {
+                dest: dest.to_u16(),
+                src: src.to_i16(),
+            },
+
+            cfg::Instruction::Not { dest, src } => Instruction::Not {
+                dest: dest.to_u16(),
+                src: src.to_i16(),
+            },
+
+            // --- Move ---
+            cfg::Instruction::Move { dest, src } => Instruction::Move {
+                dest: dest.to_u16(),
+                src: src.to_i16(),
+            },
+
+            cfg::Instruction::MoveArg { dest, src } => {
+                let dest = match dest {
+                    Operand::Variable(value) => Operand::Variable(self.frame_size + value),
+                    _ => *dest,
+                };
+
+                Instruction::Move {
+                    dest: dest.to_u16(),
+                    src: src.to_i16(),
                 }
-
-                Opcode::Move
             }
 
-            Call => Opcode::Call,
-            Print => Opcode::Print,
+            // --- Call ---
+            cfg::Instruction::Call { dest, func } => Instruction::Call {
+                dest: dest.to_u16(),
+                src: func.to_i16(),
+            },
 
-            _ => unreachable!("Unsupported opcode: {:?}", op_code),
+            // --- Print ---
+            cfg::Instruction::Print { src } => Instruction::Print { src: src.to_i16() },
         };
-
-        self.instructions.push(op_code as i16);
-
-        match dest {
-            Operand::Constant(_) | Operand::Variable(_) => self.instructions.push(dest.to_i16()),
-            _ => {}
-        }
-
-        match src1 {
-            Operand::Constant(_) | Operand::Variable(_) => self.instructions.push(src1.to_i16()),
-            _ => {}
-        }
-
-        match src2 {
-            Operand::Constant(_) | Operand::Variable(_) => self.instructions.push(src2.to_i16()),
-            _ => {}
-        }
+        self.instructions.push(instruction);
     }
 }
 
 fn resolve_backpatches(
-    instructions: &mut [i16],
+    instructions: &mut [Instruction],
     pending_backpatch: &[(usize, usize)],
     bb_start_index: &HashMap<usize, usize>,
 ) {
@@ -212,13 +262,17 @@ fn resolve_backpatches(
 
         let offset = bb_start_index as i16 - instruction_index as i16;
 
-        let instruction = instructions[instruction_index];
-        let op_code = Opcode::from(instruction as u16);
-
-        if let Opcode::Jump = op_code {
-            instructions[instruction_index + 1] = offset;
-        } else {
-            instructions[instruction_index + 2] = offset;
+        match instructions[instruction_index] {
+            Instruction::Jump { .. } => {
+                instructions[instruction_index] = Instruction::Jump { offset };
+            }
+            Instruction::JumpIfTrue { src, .. } => {
+                instructions[instruction_index] = Instruction::JumpIfTrue { src, offset };
+            }
+            Instruction::JumpIfFalse { src, .. } => {
+                instructions[instruction_index] = Instruction::JumpIfFalse { src, offset };
+            }
+            _ => unreachable!("Wrong jump instruction"),
         }
     }
 }

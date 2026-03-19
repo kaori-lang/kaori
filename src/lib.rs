@@ -2,7 +2,7 @@
 #![allow(incomplete_features)]
 
 pub mod bytecode;
-pub mod cfg_ir;
+pub mod cfg;
 pub mod error;
 pub mod lexer;
 pub mod program;
