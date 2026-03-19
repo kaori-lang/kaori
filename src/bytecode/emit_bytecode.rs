@@ -6,8 +6,8 @@ use crate::{
         basic_block::{BasicBlock, Terminator},
         cfg_constants::CfgConstant,
         cfg_function::CfgFunction,
+        cfg_instruction::{self, CfgOpcode},
         graph_traversal::reversed_postorder,
-        instruction::{CfgOpcode, Instruction},
         operand::Operand,
     },
 };
@@ -31,7 +31,7 @@ pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
         context.emit_instructions();
     }
 
-    instructions.push(Opcode::Halt as i16);
+    instructions.push();
 
     let mut functions = Vec::new();
 
@@ -144,8 +144,8 @@ impl<'a> CodegenContext<'a> {
         };
     }
 
-    fn visit_instruction(&mut self, instruction: &Instruction) {
-        let Instruction {
+    fn visit_instruction(&mut self, instruction: &cfg_instruction::Instruction) {
+        let cfg_instruction::Instruction {
             op_code,
             mut dest,
             src1,
@@ -154,14 +154,11 @@ impl<'a> CodegenContext<'a> {
         use CfgOpcode::*;
 
         let op_code = match op_code {
-            // === Arithmetic ===
             Add => Opcode::Add,
             Subtract => Opcode::Subtract,
             Multiply => Opcode::Multiply,
             Divide => Opcode::Divide,
             Modulo => Opcode::Modulo,
-
-            // === Comparison ===
             Equal => Opcode::Equal,
             NotEqual => Opcode::NotEqual,
             Greater => Opcode::Greater,
@@ -169,11 +166,9 @@ impl<'a> CodegenContext<'a> {
             Less => Opcode::Less,
             LessEqual => Opcode::LessEqual,
 
-            // === Unary ===
             Negate => Opcode::Negate,
             Not => Opcode::Not,
             Move => Opcode::Move,
-            // === Data movement ===
             MoveArg => {
                 if let Operand::Variable(value) = dest {
                     dest = Operand::Variable(self.frame_size + value);
@@ -182,7 +177,6 @@ impl<'a> CodegenContext<'a> {
                 Opcode::Move
             }
 
-            // === Function and control ===
             Call => Opcode::Call,
             Print => Opcode::Print,
 

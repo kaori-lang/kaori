@@ -1,4 +1,4 @@
-use super::{instruction::Instruction, operand::Operand};
+use super::{cfg_instruction::Instruction, operand::Operand};
 use core::fmt;
 use std::fmt::{Display, Formatter};
 

@@ -5,33 +5,34 @@ use crate::{
 
 use super::vm_context::VMContext;
 
-type InstructionHandler = fn(&mut VMContext, ip: *const u16);
+type InstructionHandler = fn(&mut VMContext, ip: *const i16);
 
-const OPCODE_HANDLERS: [InstructionHandler; 21] = [
-    opcode_add,           // 0
-    opcode_subtract,      // 1
-    opcode_multiply,      // 2
-    opcode_divide,        // 3
-    opcode_modulo,        // 4
-    opcode_equal,         // 5
-    opcode_not_equal,     // 6
-    opcode_greater,       // 7
-    opcode_greater_equal, // 8
-    opcode_less,          // 9
-    opcode_less_equal,    // 10
-    opcode_negate,        // 11
-    opcode_not,           // 12
-    opcode_move,          // 13
-    opcode_call,          // 14
-    opcode_return,        // 15
-    opcode_jump,          // 16
-    opcode_jump_if_true,  // 17
-    opcode_jump_if_false, // 18
-    opcode_print,         // 19
-    opcode_halt,          // 20
+const OPCODE_HANDLERS: [InstructionHandler; 22] = [
+    opcode_add,
+    opcode_subtract,
+    opcode_multiply,
+    opcode_divide,
+    opcode_modulo,
+    opcode_equal,
+    opcode_not_equal,
+    opcode_greater,
+    opcode_greater_equal,
+    opcode_less,
+    opcode_less_equal,
+    opcode_negate,
+    opcode_not,
+    opcode_move,
+    opcode_call,
+    opcode_return,
+    opcode_return_void,
+    opcode_jump,
+    opcode_jump_if_true,
+    opcode_jump_if_false,
+    opcode_print,
+    opcode_halt,
 ];
 
-pub fn run_vm(bytes: Vec<u16>, functions: Vec<Function>) {
+pub fn run_vm(bytes: Vec<i16>, functions: Vec<Function>) {
     let mut registers = vec![Value::default(); 1024];
     let Function {
         ip,
@@ -61,8 +62,8 @@ pub fn run_vm(bytes: Vec<u16>, functions: Vec<Function>) {
 macro_rules! dispatch {
     ($ctx:expr, $ip: expr) => {{
         let _: &mut VMContext = $ctx;
-        let _: *const u16 = $ip;
-        let op_code: u16 = *$ip;
+        let _: *const i16 = $ip;
+        let op_code: i16 = *$ip;
 
         become OPCODE_HANDLERS[op_code as usize]($ctx, $ip);
     }};
@@ -71,8 +72,8 @@ macro_rules! dispatch {
 macro_rules! dispatch_to {
     ($ctx:expr, $ip:expr, $offset: expr) => {{
         let _: &mut VMContext = $ctx;
-        let _: *const u16 = $ip;
-        let _: u16 = $offset;
+        let _: *const i16 = $ip;
+        let _: i16 = $offset;
 
         let offset = $offset as i16;
 
@@ -82,7 +83,7 @@ macro_rules! dispatch_to {
 }
 
 #[inline(never)]
-fn opcode_move(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_move(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src = *ip.add(2);
@@ -96,7 +97,7 @@ fn opcode_move(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_add(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_add(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src1 = *ip.add(2);
@@ -113,7 +114,7 @@ fn opcode_add(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_subtract(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_subtract(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src1 = *ip.add(2);
@@ -130,7 +131,7 @@ fn opcode_subtract(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_multiply(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_multiply(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src1 = *ip.add(2);
@@ -146,7 +147,7 @@ fn opcode_multiply(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_divide(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_divide(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src1 = *ip.add(2);
@@ -162,7 +163,7 @@ fn opcode_divide(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_modulo(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_modulo(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src1 = *ip.add(2);
@@ -178,7 +179,7 @@ fn opcode_modulo(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_equal(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_equal(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src1 = *ip.add(2);
@@ -194,7 +195,7 @@ fn opcode_equal(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_greater(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_greater(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src1 = *ip.add(2);
@@ -210,7 +211,7 @@ fn opcode_greater(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_greater_equal(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_greater_equal(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src1 = *ip.add(2);
@@ -226,7 +227,7 @@ fn opcode_greater_equal(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_less(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_less(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src1 = *ip.add(2);
@@ -242,7 +243,7 @@ fn opcode_less(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_less_equal(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_less_equal(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src1 = *ip.add(2);
@@ -258,7 +259,7 @@ fn opcode_less_equal(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_not_equal(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_not_equal(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src1 = *ip.add(2);
@@ -274,7 +275,7 @@ fn opcode_not_equal(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_negate(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_negate(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src = *ip.add(2);
@@ -288,7 +289,7 @@ fn opcode_negate(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_not(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_not(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src = *ip.add(2);
@@ -302,7 +303,7 @@ fn opcode_not(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_call(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_call(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let dest = *ip.add(1);
         let src = *ip.add(2);
@@ -325,7 +326,7 @@ fn opcode_call(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_return(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_return(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let src = *ip.add(1);
         let value = ctx.get_value(src);
@@ -343,7 +344,7 @@ fn opcode_return(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_return_void(ctx: &mut VMContext, _ip: *const u16) {
+fn opcode_return_void(ctx: &mut VMContext, _ip: *const i16) {
     unsafe {
         let frame = ctx.pop_frame();
         let ip = frame.return_address;
@@ -353,7 +354,7 @@ fn opcode_return_void(ctx: &mut VMContext, _ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_jump(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_jump(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let offset = *ip.add(1);
 
@@ -362,7 +363,7 @@ fn opcode_jump(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_jump_if_true(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_jump_if_true(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let src = *ip.add(1);
         let offset = *ip.add(2);
@@ -380,7 +381,7 @@ fn opcode_jump_if_true(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_jump_if_false(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_jump_if_false(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let src = *ip.add(1);
         let offset = *ip.add(2);
@@ -398,9 +399,10 @@ fn opcode_jump_if_false(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_print(ctx: &mut VMContext, ip: *const u16) {
+fn opcode_print(ctx: &mut VMContext, ip: *const i16) {
     unsafe {
         let src = *ip.add(1);
+
         let value = ctx.get_value(src).as_number();
 
         println!("{}", value);
@@ -411,4 +413,4 @@ fn opcode_print(ctx: &mut VMContext, ip: *const u16) {
 }
 
 #[inline(never)]
-fn opcode_halt(_ctx: &mut VMContext, _ip: *const u16) {}
+fn opcode_halt(_ctx: &mut VMContext, _ip: *const i16) {}

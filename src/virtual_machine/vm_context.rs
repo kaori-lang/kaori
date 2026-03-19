@@ -4,8 +4,8 @@ pub struct FunctionFrame {
     pub size: u8,
     pub registers_ptr: *mut Value,
     pub constants_ptr: *const Value,
-    pub return_address: *const u16,
-    pub return_register: u16,
+    pub return_address: *const i16,
+    pub return_register: i16,
 }
 
 impl FunctionFrame {
@@ -13,8 +13,8 @@ impl FunctionFrame {
         size: u8,
         registers_ptr: *mut Value,
         constants_ptr: *const Value,
-        return_address: *const u16,
-        return_register: u16,
+        return_address: *const i16,
+        return_register: i16,
     ) -> Self {
         Self {
             size,
@@ -52,10 +52,10 @@ impl<'a> VMContext<'a> {
     }
 
     #[inline(always)]
-    pub fn get_value(&self, index: u16) -> Value {
+    pub fn get_value(&self, index: i16) -> Value {
         unsafe {
             if index < 0 {
-                *self.constants_ptr.add(index as usize)
+                *self.constants_ptr.add(-(index + 1) as usize)
             } else {
                 *self.registers_ptr.add(index as usize)
             }
@@ -63,7 +63,7 @@ impl<'a> VMContext<'a> {
     }
 
     #[inline(always)]
-    pub fn set_value(&mut self, index: u16, value: Value) {
+    pub fn set_value(&mut self, index: i16, value: Value) {
         unsafe {
             *self.registers_ptr.add(index as usize) = value;
         }
@@ -84,8 +84,8 @@ impl<'a> VMContext<'a> {
     #[inline(always)]
     pub fn push_frame(
         &mut self,
-        return_register: u16,
-        return_address: *const u16,
+        return_register: i16,
+        return_address: *const i16,
         frame_size: u8,
         constants_ptr: *const Value,
     ) {

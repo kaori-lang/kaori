@@ -2,7 +2,6 @@ use super::value::Value;
 
 pub struct Function {
     pub ip: *const i16,
-
     pub frame_size: u8,
     pub constants: Vec<Value>,
 }
