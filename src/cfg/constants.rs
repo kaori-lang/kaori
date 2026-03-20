@@ -4,13 +4,13 @@ use std::collections::HashMap;
 use super::operand::Operand;
 
 #[derive(Default)]
-pub struct CfgConstants {
-    pub constants: Vec<CfgConstant>,
-    pub constants_index: HashMap<CfgConstant, usize>,
+pub struct Constants {
+    pub constant_pool: Vec<Constant>,
+    pub constants_index: HashMap<Constant, usize>,
 }
 
-impl CfgConstants {
-    fn push_constant(&mut self, constant: CfgConstant) -> Operand {
+impl Constants {
+    fn push_constant(&mut self, constant: Constant) -> Operand {
         if let Some(index) = self.constants_index.get(&constant) {
             Operand::Constant(*index)
         } else {
@@ -18,31 +18,31 @@ impl CfgConstants {
 
             self.constants_index.insert(constant.to_owned(), index);
 
-            self.constants.push(constant);
+            self.constant_pool.push(constant);
 
             Operand::Constant(index)
         }
     }
 
     pub fn push_function(&mut self, value: usize) -> Operand {
-        self.push_constant(CfgConstant::Function(value))
+        self.push_constant(Constant::Function(value))
     }
 
     pub fn push_string(&mut self, value: String) -> Operand {
-        self.push_constant(CfgConstant::String(value))
+        self.push_constant(Constant::String(value))
     }
 
     pub fn push_number(&mut self, value: f64) -> Operand {
-        self.push_constant(CfgConstant::Number(OrderedFloat(value)))
+        self.push_constant(Constant::Number(OrderedFloat(value)))
     }
 
     pub fn push_boolean(&mut self, value: bool) -> Operand {
-        self.push_constant(CfgConstant::Boolean(value))
+        self.push_constant(Constant::Boolean(value))
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum CfgConstant {
+pub enum Constant {
     String(String),
     Number(OrderedFloat<f64>),
     Boolean(bool),

@@ -3,15 +3,15 @@ use std::collections::HashMap;
 use crate::cfg::{
     self,
     basic_block::{BasicBlock, Terminator},
-    cfg_constants::CfgConstant,
-    cfg_function::CfgFunction,
+    constants::Constant,
+    function::Function,
     graph_traversal::reversed_postorder,
     operand::Operand,
 };
 
-use super::{bytecode::Bytecode, function::Function, instruction::Instruction, value::Value};
+use super::{bytecode::Bytecode, function, instruction::Instruction, value::Value};
 
-pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
+pub fn emit_bytecode(cfgs: Vec<Function>) -> Bytecode {
     let mut instructions = Vec::new();
     let mut functions_start_index = Vec::new();
 
@@ -33,12 +33,12 @@ pub fn emit_bytecode(cfgs: Vec<CfgFunction>) -> Bytecode {
     let mut functions = Vec::new();
 
     for (index, cfg) in cfgs.iter().enumerate() {
-        let constants = map_cfg_constants(&cfg.constants);
+        let constant_pool = map_constant_pool(&cfg.constant_pool);
         let frame_size = cfg.allocated_variables;
 
         let ip = unsafe { instructions.as_ptr().add(functions_start_index[index]) };
 
-        let function = Function::new(ip, frame_size as u8, constants);
+        let function = function::Function::new(ip, frame_size as u8, constant_pool);
 
         functions.push(function);
     }
@@ -277,13 +277,13 @@ fn resolve_backpatches(
     }
 }
 
-fn map_cfg_constants(constants: &[CfgConstant]) -> Vec<Value> {
+fn map_constant_pool(constants: &[Constant]) -> Vec<Value> {
     constants
         .iter()
         .map(|constant| match constant {
-            CfgConstant::Boolean(v) => Value::boolean(*v),
-            CfgConstant::Number(v) => Value::number(**v),
-            CfgConstant::Function(index) => Value::function(*index),
+            Constant::Boolean(v) => Value::boolean(*v),
+            Constant::Number(v) => Value::number(**v),
+            Constant::Function(index) => Value::function(*index),
             _ => todo!(),
         })
         .collect()

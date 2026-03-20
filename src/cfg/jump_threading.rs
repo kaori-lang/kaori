@@ -2,10 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use super::{
     basic_block::{BasicBlock, Terminator},
-    cfg_function::CfgFunction,
+    function::Function,
 };
 
-pub fn run_jump_threading_optimization(cfgs: &mut [CfgFunction]) {
+pub fn run_jump_threading_optimization(cfgs: &mut [Function]) {
     for cfg in cfgs {
         let mut visited = HashSet::new();
         let mut nodes = HashMap::new();

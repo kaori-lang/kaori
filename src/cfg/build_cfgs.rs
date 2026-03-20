@@ -16,13 +16,13 @@ use crate::{
 use super::{
     active_loops::ActiveLoops,
     basic_block::{BasicBlock, Terminator},
-    cfg_constants::CfgConstants,
-    cfg_function::CfgFunction,
+    constants::Constants,
+    function::Function,
     instruction::Instruction,
     operand::Operand,
 };
 
-pub fn build_cfgs(declarations: &[HirDecl]) -> Result<Vec<CfgFunction>, KaoriError> {
+pub fn build_cfgs(declarations: &[HirDecl]) -> Result<Vec<Function>, KaoriError> {
     let mut functions = HashMap::new();
 
     for declaration in declarations {
@@ -41,9 +41,9 @@ pub fn build_cfgs(declarations: &[HirDecl]) -> Result<Vec<CfgFunction>, KaoriErr
 
             ctx.visit_declaration(declaration)?;
 
-            let cfg = CfgFunction::new(
+            let cfg = Function::new(
                 ctx.basic_blocks,
-                ctx.constants.constants,
+                ctx.constants.constant_pool,
                 ctx.variables.len(),
             );
 
@@ -57,7 +57,7 @@ pub fn build_cfgs(declarations: &[HirDecl]) -> Result<Vec<CfgFunction>, KaoriErr
 pub struct CfgContext<'a> {
     index: usize,
     variables: HashMap<HirId, Operand>,
-    constants: CfgConstants,
+    constants: Constants,
     basic_blocks: Vec<BasicBlock>,
     active_loops: ActiveLoops,
     functions: &'a HashMap<HirId, usize>,
@@ -68,7 +68,7 @@ impl<'a> CfgContext<'a> {
         Self {
             index: 0,
             variables: HashMap::new(),
-            constants: CfgConstants::default(),
+            constants: Constants::default(),
             basic_blocks: Vec::new(),
             active_loops: ActiveLoops::default(),
             functions,

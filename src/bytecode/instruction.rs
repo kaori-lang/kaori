@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Debug)]
 pub enum Instruction {
     Add { dest: u16, src1: i16, src2: i16 },
@@ -22,4 +24,151 @@ pub enum Instruction {
     JumpIfFalse { src: i16, offset: i16 },
     Print { src: i16 },
     Halt,
+}
+
+fn fmt_operand(v: i16) -> String {
+    if v < 0 {
+        format!("{}", -v) // constant
+    } else {
+        format!("r{}", v) // register
+    }
+}
+
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Instruction::Add { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "ADD r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
+            Instruction::Subtract { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "SUB r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
+            Instruction::Multiply { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "MUL r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
+            Instruction::Divide { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "DIV r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
+            Instruction::Modulo { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "MOD r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
+            Instruction::Equal { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "EQ r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
+            Instruction::NotEqual { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "NEQ r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
+            Instruction::Greater { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "GT r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
+            Instruction::GreaterEqual { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "GTE r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
+            Instruction::Less { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "LT r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
+            Instruction::LessEqual { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "LTE r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
+            Instruction::Negate { dest, src } => {
+                write!(f, "NEG r{} {}", dest, fmt_operand(*src))
+            }
+            Instruction::Not { dest, src } => {
+                write!(f, "NOT r{} {}", dest, fmt_operand(*src))
+            }
+            Instruction::Move { dest, src } => {
+                write!(f, "MOV r{} {}", dest, fmt_operand(*src))
+            }
+            Instruction::Call { dest, src } => {
+                write!(f, "CALL r{} {}", dest, fmt_operand(*src))
+            }
+            Instruction::Return { src } => {
+                write!(f, "RET {}", fmt_operand(*src))
+            }
+            Instruction::ReturnVoid => {
+                write!(f, "RET")
+            }
+            Instruction::Jump { offset } => {
+                write!(f, "JMP {}", offset)
+            }
+            Instruction::JumpIfTrue { src, offset } => {
+                write!(f, "JMP_IF_TRUE {} {}", fmt_operand(*src), offset)
+            }
+            Instruction::JumpIfFalse { src, offset } => {
+                write!(f, "JMP_IF_FALSE {} {}", fmt_operand(*src), offset)
+            }
+            Instruction::Print { src } => {
+                write!(f, "PRINT {}", fmt_operand(*src))
+            }
+            Instruction::Halt => {
+                write!(f, "HALT")
+            }
+        }
+    }
 }

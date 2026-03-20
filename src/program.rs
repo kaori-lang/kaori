@@ -2,10 +2,7 @@ use std::time::Instant;
 
 use crate::{
     bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode},
-    cfg_ir::{
-        build_cfgs::build_cfgs, cfg_function::CfgFunction,
-        jump_threading::run_jump_threading_optimization,
-    },
+    cfg::{self, build_cfgs::build_cfgs, jump_threading::run_jump_threading_optimization},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},
@@ -42,7 +39,7 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<HirIr, KaoriError> {
     Ok(hir)
 }
 
-fn run_optimizations(cfgs: &mut [CfgFunction]) {
+fn run_optimizations(cfgs: &mut [cfg::function::Function]) {
     run_jump_threading_optimization(cfgs);
 }
 
