@@ -1,6 +1,7 @@
 use std::fmt;
 
 #[derive(Debug)]
+#[repr(u8, align(2))]
 pub enum Instruction {
     Add { dest: u16, src1: i16, src2: i16 },
     Subtract { dest: u16, src1: i16, src2: i16 },
@@ -26,11 +27,17 @@ pub enum Instruction {
     Halt,
 }
 
+impl Instruction {
+    pub const fn discriminant(&self) -> usize {
+        (unsafe { *(self as *const Self as *const u8) }) as usize
+    }
+}
+
 fn fmt_operand(v: i16) -> String {
     if v < 0 {
-        format!("{}", -v) // constant
+        format!("k{}", -(v + 1))
     } else {
-        format!("r{}", v) // register
+        format!("r{}", v)
     }
 }
 

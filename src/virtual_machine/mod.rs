@@ -1,2 +1,2 @@
-//pub mod vm;
-//pub mod vm_context;
+pub mod vm;
+pub mod vm_context;

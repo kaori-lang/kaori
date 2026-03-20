@@ -136,81 +136,69 @@ impl<'a> CodegenContext<'a> {
                     self.instructions.push(Instruction::ReturnVoid);
                 }
             }
-            Terminator::None => {}
+            Terminator::None => {
+                panic!("Terminator missing!")
+            }
         };
     }
 
     fn visit_instruction(&mut self, instruction: &cfg::Instruction) {
         let instruction = match instruction {
-            // --- Binary ---
             cfg::Instruction::Add { dest, src1, src2 } => Instruction::Add {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-
             cfg::Instruction::Subtract { dest, src1, src2 } => Instruction::Subtract {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-
             cfg::Instruction::Multiply { dest, src1, src2 } => Instruction::Multiply {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-
             cfg::Instruction::Divide { dest, src1, src2 } => Instruction::Divide {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-
             cfg::Instruction::Modulo { dest, src1, src2 } => Instruction::Modulo {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-
-            // --- Comparisons ---
             cfg::Instruction::Equal { dest, src1, src2 } => Instruction::Equal {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-
             cfg::Instruction::NotEqual { dest, src1, src2 } => Instruction::NotEqual {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-
             cfg::Instruction::Greater { dest, src1, src2 } => Instruction::Greater {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-
             cfg::Instruction::GreaterEqual { dest, src1, src2 } => Instruction::GreaterEqual {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-
             cfg::Instruction::Less { dest, src1, src2 } => Instruction::Less {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-
             cfg::Instruction::LessEqual { dest, src1, src2 } => Instruction::LessEqual {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-
-            // --- Unary ---
             cfg::Instruction::Negate { dest, src } => Instruction::Negate {
                 dest: dest.to_u16(),
                 src: src.to_i16(),
@@ -220,8 +208,6 @@ impl<'a> CodegenContext<'a> {
                 dest: dest.to_u16(),
                 src: src.to_i16(),
             },
-
-            // --- Move ---
             cfg::Instruction::Move { dest, src } => Instruction::Move {
                 dest: dest.to_u16(),
                 src: src.to_i16(),
@@ -238,16 +224,13 @@ impl<'a> CodegenContext<'a> {
                     src: src.to_i16(),
                 }
             }
-
-            // --- Call ---
             cfg::Instruction::Call { dest, func } => Instruction::Call {
                 dest: dest.to_u16(),
                 src: func.to_i16(),
             },
-
-            // --- Print ---
             cfg::Instruction::Print { src } => Instruction::Print { src: src.to_i16() },
         };
+
         self.instructions.push(instruction);
     }
 }

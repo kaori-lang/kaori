@@ -53,7 +53,7 @@ pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
 
     let bytecode = emit_bytecode(cfgs);
 
-    //println!("{bytecode}");
+    println!("{bytecode}");
 
     Ok(bytecode)
 }
@@ -61,7 +61,6 @@ pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
 pub fn run_program(source: &str) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
-    //println!("{}", bytecode);
     let start = Instant::now();
 
     //run_vm(bytecode.bytes, bytecode.functions);

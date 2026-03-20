@@ -1,5 +1,5 @@
 use crate::{
-    bytecode::{function::Function, value::Value},
+    bytecode::{function::Function, instruction::Instruction, value::Value},
     virtual_machine::vm_context::FunctionFrame,
 };
 
@@ -32,26 +32,32 @@ const OPCODE_HANDLERS: [InstructionHandler; 22] = [
     opcode_halt,
 ];
 
-pub fn run_vm(bytes: Vec<i16>, functions: Vec<Function>) {
+pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
     let mut registers = vec![Value::default(); 1024];
     let Function {
         ip,
         frame_size,
-        ref constants,
+        ref constant_pool,
     } = functions[0];
 
     let registers_ptr = registers.as_mut_ptr();
-    let constants_ptr = (*constants).as_ptr();
+    let constant_pool_ptr = (*constant_pool).as_ptr();
 
-    let return_address = unsafe { bytes.as_ptr().add(bytes.len() - 1) };
-    let main_frame =
-        FunctionFrame::new(frame_size, registers_ptr, constants_ptr, return_address, 0);
+    let return_address = unsafe { instructions.last().unwrap_unchecked() };
+
+    let main_frame = FunctionFrame::new(
+        frame_size,
+        registers_ptr,
+        constant_pool_ptr,
+        return_address,
+        0,
+    );
 
     let mut ctx = VMContext::new(
         &functions,
         registers,
         registers_ptr,
-        constants_ptr,
+        constant_pool_ptr,
         main_frame,
     );
 

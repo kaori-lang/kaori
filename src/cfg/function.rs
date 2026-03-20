@@ -30,6 +30,7 @@ impl Display for Function {
         writeln!(f, "Control Flow Graph:")?;
 
         writeln!(f, "constant pool: {:?}", self.constant_pool)?;
+
         for index in reversed_postorder(&self.basic_blocks) {
             write!(f, "{}", &self.basic_blocks[index])?;
         }

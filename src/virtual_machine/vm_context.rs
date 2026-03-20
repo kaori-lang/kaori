@@ -1,10 +1,10 @@
-use crate::bytecode::{function::Function, value::Value};
+use crate::bytecode::{function::Function, instruction::Instruction, value::Value};
 
 pub struct FunctionFrame {
     pub size: u8,
     pub registers_ptr: *mut Value,
-    pub constants_ptr: *const Value,
-    pub return_address: *const i16,
+    pub constant_pool_ptr: *const Value,
+    pub return_address: *const Instruction,
     pub return_register: i16,
 }
 
@@ -12,14 +12,14 @@ impl FunctionFrame {
     pub fn new(
         size: u8,
         registers_ptr: *mut Value,
-        constants_ptr: *const Value,
-        return_address: *const i16,
+        constant_pool_ptr: *const Value,
+        return_address: *const Instruction,
         return_register: i16,
     ) -> Self {
         Self {
             size,
             registers_ptr,
-            constants_ptr,
+            constant_pool_ptr,
             return_address,
             return_register,
         }
@@ -31,7 +31,7 @@ pub struct VMContext<'a> {
     pub call_stack: Vec<FunctionFrame>,
     pub registers: Vec<Value>,
     pub registers_ptr: *mut Value,
-    pub constants_ptr: *const Value,
+    pub constant_pool_ptr: *const Value,
 }
 
 impl<'a> VMContext<'a> {
@@ -39,7 +39,7 @@ impl<'a> VMContext<'a> {
         functions: &'a [Function],
         registers: Vec<Value>,
         registers_ptr: *mut Value,
-        constants_ptr: *const Value,
+        constant_pool_ptr: *const Value,
         main_frame: FunctionFrame,
     ) -> Self {
         Self {
@@ -47,7 +47,7 @@ impl<'a> VMContext<'a> {
             call_stack: vec![main_frame],
             registers,
             registers_ptr,
-            constants_ptr,
+            constant_pool_ptr,
         }
     }
 
@@ -55,7 +55,7 @@ impl<'a> VMContext<'a> {
     pub fn get_value(&self, index: i16) -> Value {
         unsafe {
             if index < 0 {
-                *self.constants_ptr.add(-(index + 1) as usize)
+                *self.constant_pool_ptr.add(-(index + 1) as usize)
             } else {
                 *self.registers_ptr.add(index as usize)
             }
@@ -75,7 +75,7 @@ impl<'a> VMContext<'a> {
 
         if let Some(frame) = self.call_stack.last() {
             self.registers_ptr = frame.registers_ptr;
-            self.constants_ptr = frame.constants_ptr;
+            self.constant_pool_ptr = frame.constant_pool_ptr;
         }
 
         frame
@@ -85,9 +85,9 @@ impl<'a> VMContext<'a> {
     pub fn push_frame(
         &mut self,
         return_register: i16,
-        return_address: *const i16,
+        return_address: *const Instruction,
         frame_size: u8,
-        constants_ptr: *const Value,
+        constant_pool_ptr: *const Value,
     ) {
         let size = self.call_stack.last().unwrap().size;
 
@@ -96,13 +96,13 @@ impl<'a> VMContext<'a> {
         let frame = FunctionFrame::new(
             frame_size,
             registers_ptr,
-            constants_ptr,
+            constant_pool_ptr,
             return_address,
             return_register,
         );
 
         self.registers_ptr = registers_ptr;
-        self.constants_ptr = constants_ptr;
+        self.constant_pool_ptr = constant_pool_ptr;
 
         self.call_stack.push(frame);
     }

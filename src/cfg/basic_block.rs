@@ -48,7 +48,7 @@ impl Display for Terminator {
                 if let Some(operand) = src {
                     write!(f, "return {}", operand)
                 } else {
-                    write!(f, "return VOID")
+                    write!(f, "return")
                 }
             }
             Terminator::None => write!(f, "<no terminator>"),

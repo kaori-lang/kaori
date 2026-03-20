@@ -5,7 +5,6 @@ use super::operand::Operand;
 
 #[derive(Debug, Clone)]
 pub enum Instruction {
-    // --- Binary arithmetic ---
     Add {
         dest: Operand,
         src1: Operand,
@@ -32,7 +31,6 @@ pub enum Instruction {
         src2: Operand,
     },
 
-    // --- Comparisons ---
     Equal {
         dest: Operand,
         src1: Operand,
@@ -63,8 +61,6 @@ pub enum Instruction {
         src1: Operand,
         src2: Operand,
     },
-
-    // --- Unary ---
     Negate {
         dest: Operand,
         src: Operand,
@@ -73,8 +69,6 @@ pub enum Instruction {
         dest: Operand,
         src: Operand,
     },
-
-    // --- Data movement ---
     Move {
         dest: Operand,
         src: Operand,
@@ -83,8 +77,6 @@ pub enum Instruction {
         dest: Operand,
         src: Operand,
     },
-
-    // --- Effects ---
     Call {
         dest: Operand,
         func: Operand,
@@ -95,7 +87,6 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    // --- Binary ---
     pub fn add(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Add { dest, src1, src2 }
     }
@@ -116,7 +107,6 @@ impl Instruction {
         Self::Modulo { dest, src1, src2 }
     }
 
-    // --- Comparisons ---
     pub fn equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
         Self::Equal { dest, src1, src2 }
     }
@@ -141,7 +131,6 @@ impl Instruction {
         Self::LessEqual { dest, src1, src2 }
     }
 
-    // --- Unary ---
     pub fn negate(dest: Operand, src: Operand) -> Self {
         Self::Negate { dest, src }
     }
@@ -150,7 +139,6 @@ impl Instruction {
         Self::Not { dest, src }
     }
 
-    // --- Moves ---
     pub fn move_(dest: Operand, src: Operand) -> Self {
         Self::Move { dest, src }
     }
@@ -159,7 +147,6 @@ impl Instruction {
         Self::MoveArg { dest, src }
     }
 
-    // --- Effects ---
     pub fn call(dest: Operand, func: Operand) -> Self {
         Self::Call { dest, func }
     }
