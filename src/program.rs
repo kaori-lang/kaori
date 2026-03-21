@@ -7,7 +7,7 @@ use crate::{
     error::kaori_error::KaoriError,
     hir::{hir::Hir, resolver::Resolver, type_checker::TypeChecker},
     lexer::{lexer::Lexer, token_stream::TokenStream},
-    virtual_machine::vm::run_vm,
+    vm::virtual_machine::run_vm,
 };
 
 fn run_lexical_analysis(source: &'_ str) -> Result<TokenStream<'_>, KaoriError> {

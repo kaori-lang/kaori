@@ -2,7 +2,7 @@ use std::hint::unreachable_unchecked;
 
 use crate::{
     bytecode::{function::Function, instruction::Instruction, value::Value},
-    virtual_machine::vm_context::FunctionFrame,
+    vm::vm_context::FunctionFrame,
 };
 
 use super::vm_context::VMContext;
