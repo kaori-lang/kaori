@@ -73,9 +73,9 @@ macro_rules! dispatch {
         let _: *const Instruction = $ip;
 
         let ip: *const Instruction = $ip.add(1);
-        let op_code = (*ip).discriminant();
+        let index = (*ip).discriminant();
 
-        become OPCODE_HANDLERS[op_code as usize]($ctx, $ip);
+        become OPCODE_HANDLERS[index]($ctx, ip);
     }};
 }
 
@@ -87,8 +87,10 @@ macro_rules! dispatch_to {
 
         let offset = $offset as i16;
 
-        let ip = $ip.offset(offset as isize);
-        dispatch!($ctx, ip);
+        let ip: *const Instruction = $ip.offset(offset as isize);
+        let index = (*ip).discriminant();
+
+        become OPCODE_HANDLERS[index]($ctx, ip);
     }};
 }
 
@@ -102,7 +104,6 @@ fn opcode_move(ctx: &mut VMContext, ip: *const Instruction) {
         let value = ctx.get_value(src);
         ctx.set_value(dest, value);
 
-        let ip = ip.add(3);
         dispatch!(ctx, ip);
     }
 }
@@ -318,7 +319,7 @@ fn opcode_call(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let return_address = ip.add(3);
+        let return_address = ip.add(1);
 
         let function_index = ctx.get_value(src).as_function();
 
@@ -331,7 +332,9 @@ fn opcode_call(ctx: &mut VMContext, ip: *const Instruction) {
 
         ctx.push_frame(dest, return_address, frame_size, constants_ptr);
 
-        dispatch!(ctx, ip);
+        let index = (*ip).discriminant();
+
+        become OPCODE_HANDLERS[index](ctx, ip)
     }
 }
 
@@ -344,6 +347,8 @@ fn opcode_return(ctx: &mut VMContext, ip: *const Instruction) {
 
         let value = ctx.get_value(src);
 
+        //println!("{}", value.as_number());
+
         let FunctionFrame {
             return_address: ip,
             return_register: dest,
@@ -352,7 +357,9 @@ fn opcode_return(ctx: &mut VMContext, ip: *const Instruction) {
 
         ctx.set_value(dest, value);
 
-        dispatch!(ctx, ip);
+        let index = (*ip).discriminant();
+
+        become OPCODE_HANDLERS[index](ctx, ip)
     }
 }
 
@@ -363,7 +370,9 @@ fn opcode_return_void(ctx: &mut VMContext, _ip: *const Instruction) {
             return_address: ip, ..
         } = ctx.pop_frame();
 
-        dispatch!(ctx, ip);
+        let index = (*ip).discriminant();
+
+        become OPCODE_HANDLERS[index](ctx, ip)
     }
 }
 

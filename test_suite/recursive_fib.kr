@@ -11,6 +11,7 @@ fun fib(n: number) -> number {
 
 fun main()  {
     fib(30);
+ 
 }
 
 
