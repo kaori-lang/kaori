@@ -5,7 +5,7 @@ pub struct FunctionFrame {
     pub registers_ptr: *mut Value,
     pub constant_pool_ptr: *const Value,
     pub return_address: *const Instruction,
-    pub return_register: i16,
+    pub return_register: u16,
 }
 
 impl FunctionFrame {
@@ -14,7 +14,7 @@ impl FunctionFrame {
         registers_ptr: *mut Value,
         constant_pool_ptr: *const Value,
         return_address: *const Instruction,
-        return_register: i16,
+        return_register: u16,
     ) -> Self {
         Self {
             size,
@@ -84,7 +84,7 @@ impl<'a> VMContext<'a> {
     #[inline(always)]
     pub fn push_frame(
         &mut self,
-        return_register: i16,
+        return_register: u16,
         return_address: *const Instruction,
         frame_size: u8,
         constant_pool_ptr: *const Value,

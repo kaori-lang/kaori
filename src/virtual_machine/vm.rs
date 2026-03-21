@@ -70,8 +70,10 @@ pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
 macro_rules! dispatch {
     ($ctx:expr, $ip: expr) => {{
         let _: &mut VMContext = $ctx;
-        let instruction: *const Instruction = $ip;
-        let op_code = (*instruction).discriminant();
+        let _: *const Instruction = $ip;
+
+        let ip: *const Instruction = $ip.add(1);
+        let op_code = (*ip).discriminant();
 
         become OPCODE_HANDLERS[op_code as usize]($ctx, $ip);
     }};
@@ -80,7 +82,7 @@ macro_rules! dispatch {
 macro_rules! dispatch_to {
     ($ctx:expr, $ip:expr, $offset: expr) => {{
         let _: &mut VMContext = $ctx;
-        let _: *const i16 = $ip;
+        let _: *const Instruction = $ip;
         let _: i16 = $offset;
 
         let offset = $offset as i16;
@@ -106,212 +108,214 @@ fn opcode_move(ctx: &mut VMContext, ip: *const i16) {
 
 #[inline(never)]
 fn opcode_add(ctx: &mut VMContext, ip: *const Instruction) {
-    let Instruction::Add { dest, src1, src2 } = *ip else {
-        unsafe { unreachable_unchecked() }
-    };
+    unsafe {
+        let Instruction::Add { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
 
-    let lhs = ctx.get_value(src1).as_number();
-    let rhs = ctx.get_value(src2).as_number();
+        let lhs = ctx.get_value(src1).as_number();
+        let rhs = ctx.get_value(src2).as_number();
 
-    ctx.set_value(dest, Value::number(lhs + rhs));
+        ctx.set_value(dest, Value::number(lhs + rhs));
 
-    dispatch!(ctx, ip);
+        dispatch!(ctx, ip);
+    }
 }
 
 #[inline(never)]
-fn opcode_subtract(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_subtract(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src1 = *ip.add(2);
-        let src2 = *ip.add(3);
+        let Instruction::Subtract { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
 
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
 
         ctx.set_value(dest, Value::number(lhs - rhs));
 
-        let ip = ip.add(4);
         dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_multiply(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_multiply(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src1 = *ip.add(2);
-        let src2 = *ip.add(3);
+        let Instruction::Multiply { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
 
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
 
         ctx.set_value(dest, Value::number(lhs * rhs));
 
-        dispatch!(ctx, ip.add(4));
+        dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_divide(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_divide(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src1 = *ip.add(2);
-        let src2 = *ip.add(3);
+        let Instruction::Divide { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
 
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
 
         ctx.set_value(dest, Value::number(lhs / rhs));
 
-        dispatch!(ctx, ip.add(4));
+        dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_modulo(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_modulo(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src1 = *ip.add(2);
-        let src2 = *ip.add(3);
+        let Instruction::Modulo { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
 
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
 
         ctx.set_value(dest, Value::number(lhs % rhs));
 
-        dispatch!(ctx, ip.add(4));
+        dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_equal(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_equal(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src1 = *ip.add(2);
-        let src2 = *ip.add(3);
+        let Instruction::Equal { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
 
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
 
         ctx.set_value(dest, Value::boolean(lhs == rhs));
 
-        dispatch!(ctx, ip.add(4));
+        dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_greater(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_greater(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src1 = *ip.add(2);
-        let src2 = *ip.add(3);
+        let Instruction::Greater { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
 
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
 
         ctx.set_value(dest, Value::boolean(lhs > rhs));
 
-        dispatch!(ctx, ip.add(4));
+        dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_greater_equal(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_greater_equal(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src1 = *ip.add(2);
-        let src2 = *ip.add(3);
+        let Instruction::GreaterEqual { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
 
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
 
         ctx.set_value(dest, Value::boolean(lhs >= rhs));
 
-        dispatch!(ctx, ip.add(4));
+        dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_less(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_less(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src1 = *ip.add(2);
-        let src2 = *ip.add(3);
+        let Instruction::Less { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
 
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
 
         ctx.set_value(dest, Value::boolean(lhs < rhs));
 
-        dispatch!(ctx, ip.add(4));
+        dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_less_equal(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_less_equal(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src1 = *ip.add(2);
-        let src2 = *ip.add(3);
+        let Instruction::LessEqual { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
 
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
 
         ctx.set_value(dest, Value::boolean(lhs <= rhs));
 
-        dispatch!(ctx, ip.add(4));
+        dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_not_equal(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_not_equal(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src1 = *ip.add(2);
-        let src2 = *ip.add(3);
+        let Instruction::NotEqual { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
 
         let lhs = ctx.get_value(src1).as_number();
         let rhs = ctx.get_value(src2).as_number();
 
         ctx.set_value(dest, Value::boolean(lhs != rhs));
 
-        dispatch!(ctx, ip.add(4));
+        dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_negate(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_negate(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src = *ip.add(2);
+        let Instruction::Negate { dest, src } = *ip else {
+            unreachable_unchecked()
+        };
 
         let value = ctx.get_value(src).as_number();
         ctx.set_value(dest, Value::number(-value));
 
-        let ip = ip.add(3);
         dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_not(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_not(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src = *ip.add(2);
+        let Instruction::Not { dest, src } = *ip else {
+            unreachable_unchecked()
+        };
 
         let value = ctx.get_value(src).as_boolean();
         ctx.set_value(dest, Value::boolean(!value));
 
-        let ip = ip.add(3);
         dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_call(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_call(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src = *ip.add(2);
+        let Instruction::Call { dest, src } = *ip else {
+            unreachable_unchecked()
+        };
 
         let return_address = ip.add(3);
 
@@ -320,9 +324,9 @@ fn opcode_call(ctx: &mut VMContext, ip: *const i16) {
         let Function {
             ip,
             frame_size,
-            ref constants,
+            ref constant_pool,
         } = ctx.functions[function_index];
-        let constants_ptr = (*constants).as_ptr();
+        let constants_ptr = (*constant_pool).as_ptr();
 
         ctx.push_frame(dest, return_address, frame_size, constants_ptr);
 
@@ -331,9 +335,12 @@ fn opcode_call(ctx: &mut VMContext, ip: *const i16) {
 }
 
 #[inline(never)]
-fn opcode_return(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_return(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let src = *ip.add(1);
+        let Instruction::Return { src } = *ip else {
+            unreachable_unchecked()
+        };
+
         let value = ctx.get_value(src);
 
         let FunctionFrame {
@@ -349,73 +356,68 @@ fn opcode_return(ctx: &mut VMContext, ip: *const i16) {
 }
 
 #[inline(never)]
-fn opcode_return_void(ctx: &mut VMContext, _ip: *const i16) {
+fn opcode_return_void(ctx: &mut VMContext, _ip: *const Instruction) {
     unsafe {
-        let frame = ctx.pop_frame();
-        let ip = frame.return_address;
+        let FunctionFrame {
+            return_address: ip, ..
+        } = ctx.pop_frame();
 
         dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_jump(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_jump(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let offset = *ip.add(1);
+        let Instruction::Jump { offset } = *ip else {
+            unreachable_unchecked()
+        };
 
         dispatch_to!(ctx, ip, offset);
     }
 }
 
 #[inline(never)]
-fn opcode_jump_if_true(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_jump_if_true(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let src = *ip.add(1);
-        let offset = *ip.add(2);
+        let Instruction::JumpIfTrue { src, offset } = *ip else {
+            unreachable_unchecked()
+        };
 
         match ctx.get_value(src).as_boolean() {
-            true => {
-                dispatch_to!(ctx, ip, offset);
-            }
-            false => {
-                let ip = ip.add(3);
-                dispatch!(ctx, ip);
-            }
+            true => dispatch_to!(ctx, ip, offset),
+            false => dispatch!(ctx, ip),
         }
     }
 }
 
 #[inline(never)]
-fn opcode_jump_if_false(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_jump_if_false(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let src = *ip.add(1);
-        let offset = *ip.add(2);
+        let Instruction::JumpIfFalse { src, offset } = *ip else {
+            unreachable_unchecked()
+        };
 
         match ctx.get_value(src).as_boolean() {
-            true => {
-                let ip = ip.add(3);
-                dispatch!(ctx, ip);
-            }
-            false => {
-                dispatch_to!(ctx, ip, offset);
-            }
+            true => dispatch!(ctx, ip),
+            false => dispatch_to!(ctx, ip, offset),
         }
     }
 }
 
 #[inline(never)]
-fn opcode_print(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_print(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let src = *ip.add(1);
+        let Instruction::Print { src } = *ip else {
+            unreachable_unchecked()
+        };
 
         let value = ctx.get_value(src).as_number();
-
         println!("{}", value);
 
-        let ip = ip.add(2);
         dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_halt(_ctx: &mut VMContext, _ip: *const i16) {}
+fn opcode_halt(_ctx: &mut VMContext, _ip: *const Instruction) {}

@@ -17,6 +17,7 @@ pub enum Instruction {
     Negate { dest: u16, src: i16 },
     Not { dest: u16, src: i16 },
     Move { dest: u16, src: i16 },
+    
     Call { dest: u16, src: i16 },
     Return { src: i16 },
     ReturnVoid,

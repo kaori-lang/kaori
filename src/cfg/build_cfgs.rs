@@ -136,7 +136,6 @@ impl<'a> CfgContext<'a> {
 
                 self.emit_instruction(instruction);
             }
-
             HirDeclKind::Function {
                 body,
                 parameters,
