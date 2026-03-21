@@ -1,8 +1,8 @@
-use super::hir_id::HirId;
+use super::node_id::NodeId;
 
 #[derive(Clone)]
 pub struct Symbol {
-    pub id: HirId,
+    pub id: NodeId,
     pub name: String,
     pub kind: SymbolKind,
 }
@@ -15,7 +15,7 @@ pub enum SymbolKind {
 }
 
 impl Symbol {
-    pub fn variable(id: HirId, name: String) -> Symbol {
+    pub fn variable(id: NodeId, name: String) -> Symbol {
         Symbol {
             id,
             name,
@@ -23,7 +23,7 @@ impl Symbol {
         }
     }
 
-    pub fn function(id: HirId, name: String) -> Symbol {
+    pub fn function(id: NodeId, name: String) -> Symbol {
         Symbol {
             id,
             name,
@@ -31,7 +31,7 @@ impl Symbol {
         }
     }
 
-    pub fn struct_(id: HirId, name: String) -> Symbol {
+    pub fn struct_(id: NodeId, name: String) -> Symbol {
         Symbol {
             id,
             name,

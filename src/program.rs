@@ -1,12 +1,12 @@
 use std::time::Instant;
 
 use crate::{
+    ast::{decl::Decl, parser::Parser},
     bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode},
     cfg::{self, build_cfgs::build_cfgs, jump_threading::run_jump_threading_optimization},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
     semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},
-    syntax::{decl::Decl, parser::Parser},
     virtual_machine::vm::run_vm,
 };
 

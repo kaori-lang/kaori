@@ -1,10 +1,10 @@
 use crate::lexer::span::Span;
 
-use super::{assign_op::AssignOp, ast_id::AstId, binary_op::BinaryOp, unary_op::UnaryOp};
+use super::{assign_op::AssignOp, binary_op::BinaryOp, node_id::NodeId, unary_op::UnaryOp};
 
 #[derive(Debug)]
 pub struct Expr {
-    pub id: AstId,
+    pub id: NodeId,
     pub span: Span,
     pub kind: ExprKind,
 }
@@ -40,7 +40,7 @@ impl Expr {
         let span = Span::merge(left.span, right.span);
 
         Expr {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: ExprKind::Binary {
                 operator,
@@ -54,7 +54,7 @@ impl Expr {
         let span = Span::merge(operator.span, right.span);
 
         Expr {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: ExprKind::Unary {
                 operator,
@@ -67,7 +67,7 @@ impl Expr {
         let span = Span::merge(left.span, right.span);
 
         Expr {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: ExprKind::Assign {
                 operator,
@@ -79,7 +79,7 @@ impl Expr {
 
     pub fn identifier(name: String, span: Span) -> Expr {
         Expr {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: ExprKind::Identifier(name),
         }
@@ -89,7 +89,7 @@ impl Expr {
         let span = Span::merge(callee.span, span);
 
         Expr {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: ExprKind::FunctionCall {
                 callee: Box::new(callee),
@@ -100,7 +100,7 @@ impl Expr {
 
     pub fn string_literal(value: String, span: Span) -> Expr {
         Expr {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: ExprKind::StringLiteral(value),
         }
@@ -108,7 +108,7 @@ impl Expr {
 
     pub fn number_literal(value: f64, span: Span) -> Expr {
         Expr {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: ExprKind::NumberLiteral(value),
         }
@@ -116,7 +116,7 @@ impl Expr {
 
     pub fn boolean_literal(value: bool, span: Span) -> Expr {
         Expr {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: ExprKind::BooleanLiteral(value),
         }

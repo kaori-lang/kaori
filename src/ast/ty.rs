@@ -1,10 +1,10 @@
 use crate::lexer::span::Span;
 
-use super::ast_id::AstId;
+use super::node_id::NodeId;
 
 #[derive(Debug, Clone)]
 pub struct Ty {
-    pub id: AstId,
+    pub id: NodeId,
     pub span: Span,
     pub kind: TyKind,
 }
@@ -26,7 +26,7 @@ pub enum TyKind {
 impl Ty {
     pub fn function(parameters: Vec<Ty>, return_ty: Ty, span: Span) -> Ty {
         Ty {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: TyKind::Function {
                 parameters,
@@ -37,7 +37,7 @@ impl Ty {
 
     pub fn struct_(fields: Vec<Ty>, span: Span) -> Ty {
         Ty {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: TyKind::Struct { fields },
         }
@@ -45,7 +45,7 @@ impl Ty {
 
     pub fn number(span: Span) -> Ty {
         Ty {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: TyKind::Number,
         }
@@ -53,7 +53,7 @@ impl Ty {
 
     pub fn bool(span: Span) -> Ty {
         Ty {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: TyKind::Bool,
         }
@@ -61,7 +61,7 @@ impl Ty {
 
     pub fn identifier(name: String, span: Span) -> Ty {
         Ty {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: TyKind::Identifier(name),
         }

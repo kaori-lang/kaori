@@ -1,12 +1,9 @@
 use std::collections::HashMap;
 
 use crate::{
-    error::kaori_error::KaoriError,
-    kaori_error,
-    lexer::span::Span,
-    syntax::{
+    ast::{
+        self,
         assign_op::AssignOpKind,
-        ast_id::AstId,
         ast_node::AstNode,
         binary_op::{BinaryOp, BinaryOpKind},
         decl::{Decl, DeclKind, Field, Parameter},
@@ -14,15 +11,18 @@ use crate::{
         stmt::{Stmt, StmtKind},
         ty::{Ty, TyKind},
     },
+    error::kaori_error::KaoriError,
+    kaori_error,
+    lexer::span::Span,
 };
 
 use super::{
     hir_decl::{HirDecl, HirField, HirParameter},
     hir_expr::{HirExpr, HirExprKind},
-    hir_id::HirId,
     hir_node::HirNode,
     hir_stmt::HirStmt,
     hir_ty::HirTy,
+    node_id::NodeId,
     symbol::SymbolKind,
     symbol_table::SymbolTable,
 };
@@ -32,7 +32,7 @@ pub struct Resolver {
     symbol_table: SymbolTable,
     active_loops: u8,
     local_scope: bool,
-    ids: HashMap<AstId, HirId>,
+    ids: HashMap<ast::node_id::NodeId, NodeId>,
 }
 
 impl Resolver {
@@ -46,8 +46,8 @@ impl Resolver {
         self.local_scope = false;
     }
 
-    pub fn generate_hir_id(&mut self, id: AstId) -> HirId {
-        let hir_id = HirId::default();
+    pub fn generate_hir_id(&mut self, id: ast::node_id::NodeId) -> NodeId {
+        let hir_id = NodeId::default();
 
         self.ids.insert(id, hir_id);
 
@@ -160,7 +160,7 @@ impl Resolver {
             ));
         };
 
-        let id = HirId::default();
+        let id = NodeId::default();
 
         self.symbol_table
             .declare_variable(id, parameter.name.to_owned());
@@ -183,7 +183,7 @@ impl Resolver {
             ));
         };
 
-        let id = HirId::default();
+        let id = NodeId::default();
 
         self.symbol_table
             .declare_variable(id, field.name.to_owned());
@@ -208,7 +208,7 @@ impl Resolver {
                     ));
                 };
 
-                let id = HirId::default();
+                let id = NodeId::default();
 
                 self.symbol_table.declare_variable(id, name.to_owned());
 

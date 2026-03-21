@@ -1,7 +1,7 @@
 use crate::{
+    ast::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
     error::kaori_error::KaoriError,
     kaori_error,
-    syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
 };
 
 use super::{

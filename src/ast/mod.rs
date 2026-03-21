@@ -4,9 +4,9 @@ pub mod parser;
 pub mod binary_op;
 
 pub mod assign_op;
-pub mod ast_id;
 pub mod ast_node;
 pub mod decl;
+pub mod node_id;
 pub mod parse_declaration;
 pub mod parse_expression;
 pub mod parse_statement;

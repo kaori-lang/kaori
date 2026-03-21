@@ -1,10 +1,10 @@
 use crate::lexer::span::Span;
 
-use super::{ast_id::AstId, ast_node::AstNode, expr::Expr, ty::Ty};
+use super::{ast_node::AstNode, expr::Expr, node_id::NodeId, ty::Ty};
 
 #[derive(Debug)]
 pub struct Decl {
-    pub id: AstId,
+    pub id: NodeId,
     pub span: Span,
     pub kind: DeclKind,
 }
@@ -30,7 +30,7 @@ pub enum DeclKind {
 
 #[derive(Debug)]
 pub struct Parameter {
-    pub id: AstId,
+    pub id: NodeId,
     pub span: Span,
     pub name: String,
     pub ty: Ty,
@@ -38,7 +38,7 @@ pub struct Parameter {
 
 #[derive(Debug)]
 pub struct Field {
-    pub id: AstId,
+    pub id: NodeId,
     pub span: Span,
     pub name: String,
     pub ty: Ty,
@@ -47,7 +47,7 @@ pub struct Field {
 impl Parameter {
     pub fn new(name: String, ty: Ty, span: Span) -> Parameter {
         Parameter {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             name,
             ty,
@@ -58,7 +58,7 @@ impl Parameter {
 impl Field {
     pub fn new(name: String, ty: Ty, span: Span) -> Field {
         Field {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             name,
             ty,
@@ -69,7 +69,7 @@ impl Field {
 impl Decl {
     pub fn struct_(name: String, fields: Vec<Field>, span: Span) -> Decl {
         Decl {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
 
             kind: DeclKind::Struct { name, fields },
@@ -78,7 +78,7 @@ impl Decl {
 
     pub fn variable(name: String, right: Expr, ty: Option<Ty>, span: Span) -> Decl {
         Decl {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
 
             kind: DeclKind::Variable { name, right, ty },
@@ -93,7 +93,7 @@ impl Decl {
         span: Span,
     ) -> Decl {
         Decl {
-            id: AstId::default(),
+            id: NodeId::default(),
             span,
             kind: DeclKind::Function {
                 name,

@@ -1,10 +1,10 @@
 use crate::lexer::span::Span;
 
-use super::{hir_decl::HirDecl, hir_expr::HirExpr, hir_id::HirId, hir_node::HirNode};
+use super::{hir_decl::HirDecl, hir_expr::HirExpr, hir_node::HirNode, node_id::NodeId};
 
 #[derive(Debug)]
 pub struct HirStmt {
-    pub id: HirId,
+    pub id: NodeId,
     pub span: Span,
     pub kind: HirStmtKind,
 }
@@ -33,7 +33,7 @@ pub enum HirStmtKind {
 impl HirStmt {
     pub fn print(expr: HirExpr, span: Span) -> HirStmt {
         HirStmt {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirStmtKind::Print(Box::new(expr)),
         }
@@ -46,7 +46,7 @@ impl HirStmt {
         span: Span,
     ) -> HirStmt {
         HirStmt {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirStmtKind::Branch {
                 condition: Box::new(condition),
@@ -64,7 +64,7 @@ impl HirStmt {
         span: Span,
     ) -> HirStmt {
         HirStmt {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirStmtKind::Loop {
                 init,
@@ -77,7 +77,7 @@ impl HirStmt {
 
     pub fn block(nodes: Vec<HirNode>, span: Span) -> HirStmt {
         HirStmt {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirStmtKind::Block(nodes),
         }
@@ -85,7 +85,7 @@ impl HirStmt {
 
     pub fn expression(expr: HirExpr, span: Span) -> HirStmt {
         HirStmt {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirStmtKind::Expression(Box::new(expr)),
         }
@@ -93,7 +93,7 @@ impl HirStmt {
 
     pub fn break_(span: Span) -> HirStmt {
         HirStmt {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirStmtKind::Break,
         }
@@ -101,7 +101,7 @@ impl HirStmt {
 
     pub fn continue_(span: Span) -> HirStmt {
         HirStmt {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirStmtKind::Continue,
         }
@@ -109,7 +109,7 @@ impl HirStmt {
 
     pub fn return_(expr: Option<HirExpr>, span: Span) -> HirStmt {
         HirStmt {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirStmtKind::Return(expr.map(Box::new)),
         }

@@ -1,20 +1,20 @@
 use std::collections::HashMap;
 
-use super::hir_id::HirId;
+use super::node_id::NodeId;
 
 #[derive(Debug, Default)]
 pub struct Types {
-    types: HashMap<HirId, Type>,
+    types: HashMap<NodeId, Type>,
 }
 
 impl Types {
-    pub fn get(&self, id: HirId) -> Type {
+    pub fn get(&self, id: NodeId) -> Type {
         let ty = self.types.get(&id).unwrap();
 
         self.resolve_type(ty)
     }
 
-    pub fn insert(&mut self, id: HirId, ty: Type) {
+    pub fn insert(&mut self, id: NodeId, ty: Type) {
         self.types.insert(id, ty);
     }
 
@@ -63,7 +63,7 @@ pub enum Type {
     Struct {
         fields: Vec<Type>,
     },
-    TypeRef(HirId),
+    TypeRef(NodeId),
 }
 
 impl Type {
@@ -78,7 +78,7 @@ impl Type {
         Type::Struct { fields }
     }
 
-    pub fn type_ref(id: HirId) -> Type {
+    pub fn type_ref(id: NodeId) -> Type {
         Type::TypeRef(id)
     }
 }

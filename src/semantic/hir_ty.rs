@@ -1,10 +1,10 @@
 use crate::lexer::span::Span;
 
-use super::hir_id::HirId;
+use super::node_id::NodeId;
 
 #[derive(Debug, Clone)]
 pub struct HirTy {
-    pub id: HirId,
+    pub id: NodeId,
     pub span: Span,
     pub kind: HirTyKind,
 }
@@ -18,7 +18,7 @@ pub enum HirTyKind {
     Struct {
         fields: Vec<HirTy>,
     },
-    TypeRef(HirId),
+    TypeRef(NodeId),
     Number,
     Bool,
 }
@@ -34,7 +34,7 @@ impl Eq for HirTy {}
 impl HirTy {
     pub fn function(parameters: Vec<HirTy>, return_ty: HirTy, span: Span) -> HirTy {
         HirTy {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirTyKind::Function {
                 parameters,
@@ -45,7 +45,7 @@ impl HirTy {
 
     pub fn struct_(fields: Vec<HirTy>, span: Span) -> HirTy {
         HirTy {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirTyKind::Struct { fields },
         }
@@ -53,7 +53,7 @@ impl HirTy {
 
     pub fn number(span: Span) -> HirTy {
         HirTy {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirTyKind::Number,
         }
@@ -61,13 +61,13 @@ impl HirTy {
 
     pub fn bool(span: Span) -> HirTy {
         HirTy {
-            id: HirId::default(),
+            id: NodeId::default(),
             span,
             kind: HirTyKind::Bool,
         }
     }
 
-    pub fn type_ref(id: HirId, span: Span) -> HirTy {
+    pub fn type_ref(id: NodeId, span: Span) -> HirTy {
         HirTy {
             id,
             span,

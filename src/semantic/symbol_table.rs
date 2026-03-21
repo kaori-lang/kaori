@@ -1,4 +1,4 @@
-use super::{hir_id::HirId, symbol::Symbol};
+use super::{node_id::NodeId, symbol::Symbol};
 
 pub struct SymbolTable {
     pub symbols: Vec<Symbol>,
@@ -29,19 +29,19 @@ impl SymbolTable {
         }
     }
 
-    pub fn declare_variable(&mut self, id: HirId, name: String) {
+    pub fn declare_variable(&mut self, id: NodeId, name: String) {
         let symbol = Symbol::variable(id, name);
 
         self.symbols.push(symbol);
     }
 
-    pub fn declare_function(&mut self, id: HirId, name: String) {
+    pub fn declare_function(&mut self, id: NodeId, name: String) {
         let symbol = Symbol::function(id, name);
 
         self.symbols.push(symbol);
     }
 
-    pub fn declare_struct(&mut self, id: HirId, name: String) {
+    pub fn declare_struct(&mut self, id: NodeId, name: String) {
         let symbol = Symbol::struct_(id, name);
 
         self.symbols.push(symbol);

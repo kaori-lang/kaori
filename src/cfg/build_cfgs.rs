@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
 use crate::{
+    ast::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
     error::kaori_error::KaoriError,
     kaori_error,
     semantic::{
         hir_decl::{HirDecl, HirDeclKind},
         hir_expr::{HirExpr, HirExprKind},
-        hir_id::HirId,
         hir_node::HirNode,
         hir_stmt::{HirStmt, HirStmtKind},
+        node_id::NodeId,
     },
-    syntax::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
 };
 
 use super::{
@@ -56,15 +56,15 @@ pub fn build_cfgs(declarations: &[HirDecl]) -> Result<Vec<Function>, KaoriError>
 
 pub struct CfgContext<'a> {
     index: usize,
-    variables: HashMap<HirId, Operand>,
+    variables: HashMap<NodeId, Operand>,
     constants: Constants,
     basic_blocks: Vec<BasicBlock>,
     active_loops: ActiveLoops,
-    functions: &'a HashMap<HirId, usize>,
+    functions: &'a HashMap<NodeId, usize>,
 }
 
 impl<'a> CfgContext<'a> {
-    pub fn new(functions: &'a HashMap<HirId, usize>) -> Self {
+    pub fn new(functions: &'a HashMap<NodeId, usize>) -> Self {
         Self {
             index: 0,
             variables: HashMap::new(),
@@ -75,7 +75,7 @@ impl<'a> CfgContext<'a> {
         }
     }
 
-    pub fn create_variable(&mut self, id: HirId) -> Operand {
+    pub fn create_variable(&mut self, id: NodeId) -> Operand {
         let variable = Operand::Variable(self.variables.len());
 
         self.variables.insert(id, variable);
@@ -278,7 +278,7 @@ impl<'a> CfgContext<'a> {
         Ok(())
     }
 
-    fn visit_logical_or(&mut self, id: HirId, left: &HirExpr, right: &HirExpr) -> Operand {
+    fn visit_logical_or(&mut self, id: NodeId, left: &HirExpr, right: &HirExpr) -> Operand {
         let dest = self.create_variable(id);
 
         let src1 = self.visit_expression(left);
@@ -307,7 +307,7 @@ impl<'a> CfgContext<'a> {
         dest
     }
 
-    fn visit_logical_and(&mut self, id: HirId, left: &HirExpr, right: &HirExpr) -> Operand {
+    fn visit_logical_and(&mut self, id: NodeId, left: &HirExpr, right: &HirExpr) -> Operand {
         let dest = self.create_variable(id);
 
         let src1 = self.visit_expression(left);
@@ -420,7 +420,7 @@ impl<'a> CfgContext<'a> {
             HirExprKind::Variable(id) => *self
                 .variables
                 .get(id)
-                .expect("Variable not found for HirId"),
+                .expect("Variable not found for NodeId"),
 
             HirExprKind::Function(id) => {
                 let value = *self
