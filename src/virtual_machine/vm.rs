@@ -63,8 +63,8 @@ pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
         main_frame,
     );
 
-    let op_code = unsafe { *ip };
-    OPCODE_HANDLERS[op_code as usize](&mut ctx, ip)
+    let index = unsafe { (*ip).discriminant() };
+    OPCODE_HANDLERS[index](&mut ctx, ip)
 }
 
 macro_rules! dispatch {
@@ -93,10 +93,11 @@ macro_rules! dispatch_to {
 }
 
 #[inline(never)]
-fn opcode_move(ctx: &mut VMContext, ip: *const i16) {
+fn opcode_move(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let dest = *ip.add(1);
-        let src = *ip.add(2);
+        let Instruction::Move { dest, src } = *ip else {
+            unreachable_unchecked()
+        };
 
         let value = ctx.get_value(src);
         ctx.set_value(dest, value);
