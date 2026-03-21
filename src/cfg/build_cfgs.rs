@@ -16,7 +16,7 @@ use crate::{
 use super::{
     active_loops::ActiveLoops,
     basic_block::{BasicBlock, Terminator},
-    constants::Constants,
+    constant_pool::ConstantPool,
     function::Function,
     instruction::Instruction,
     operand::Operand,
@@ -43,7 +43,7 @@ pub fn build_cfgs(declarations: &[Decl]) -> Result<Vec<Function>, KaoriError> {
 
             let cfg = Function::new(
                 ctx.basic_blocks,
-                ctx.constants.constant_pool,
+                ctx.constant_pool.constants,
                 ctx.variables.len(),
             );
 
@@ -57,7 +57,7 @@ pub fn build_cfgs(declarations: &[Decl]) -> Result<Vec<Function>, KaoriError> {
 pub struct CfgContext<'a> {
     index: usize,
     variables: HashMap<NodeId, Operand>,
-    constants: Constants,
+    constant_pool: ConstantPool,
     basic_blocks: Vec<BasicBlock>,
     active_loops: ActiveLoops,
     functions: &'a HashMap<NodeId, usize>,
@@ -68,7 +68,7 @@ impl<'a> CfgContext<'a> {
         Self {
             index: 0,
             variables: HashMap::new(),
-            constants: Constants::default(),
+            constant_pool: ConstantPool::default(),
             basic_blocks: Vec::new(),
             active_loops: ActiveLoops::default(),
             functions,
@@ -428,11 +428,11 @@ impl<'a> CfgContext<'a> {
                     .get(id)
                     .expect("FunctionRef points to a missing variable node");
 
-                self.constants.push_function(value)
+                self.constant_pool.push_function(value)
             }
-            ExprKind::String(value) => self.constants.push_string(value.to_owned()),
-            ExprKind::Boolean(value) => self.constants.push_boolean(*value),
-            ExprKind::Number(value) => self.constants.push_number(*value),
+            ExprKind::String(value) => self.constant_pool.push_string(value.to_owned()),
+            ExprKind::Boolean(value) => self.constant_pool.push_boolean(*value),
+            ExprKind::Number(value) => self.constant_pool.push_number(*value),
         }
     }
 }

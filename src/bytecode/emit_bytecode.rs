@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::cfg::{
     self,
     basic_block::{BasicBlock, Terminator},
-    constants::Constant,
+    constant_pool::Constant,
     function::Function,
     graph_traversal::reversed_postorder,
     operand::Operand,

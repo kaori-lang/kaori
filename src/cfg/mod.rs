@@ -7,7 +7,7 @@ pub mod graph_traversal;
 pub mod instruction;
 //pub mod liveness_analysis;
 pub mod active_loops;
-pub mod constants;
+pub mod constant_pool;
 
 pub mod jump_threading;
 pub mod operand;

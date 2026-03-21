@@ -4,12 +4,12 @@ use std::collections::HashMap;
 use super::operand::Operand;
 
 #[derive(Default)]
-pub struct Constants {
-    pub constant_pool: Vec<Constant>,
+pub struct ConstantPool {
+    pub constants: Vec<Constant>,
     pub constants_index: HashMap<Constant, usize>,
 }
 
-impl Constants {
+impl ConstantPool {
     fn push_constant(&mut self, constant: Constant) -> Operand {
         if let Some(index) = self.constants_index.get(&constant) {
             Operand::Constant(*index)
@@ -18,7 +18,7 @@ impl Constants {
 
             self.constants_index.insert(constant.to_owned(), index);
 
-            self.constant_pool.push(constant);
+            self.constants.push(constant);
 
             Operand::Constant(index)
         }

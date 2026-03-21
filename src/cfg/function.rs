@@ -2,7 +2,7 @@ use std::fmt::{self, Display, Formatter};
 
 use crate::cfg::graph_traversal::reversed_postorder;
 
-use super::{basic_block::BasicBlock, constants::Constant};
+use super::{basic_block::BasicBlock, constant_pool::Constant};
 
 #[derive(Default)]
 pub struct Function {
