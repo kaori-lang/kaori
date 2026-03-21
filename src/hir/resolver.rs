@@ -27,7 +27,7 @@ pub struct Resolver {
     symbol_table: SymbolTable,
     active_loops: u8,
     local_scope: bool,
-    ids: HashMap<ast::node_id::NodeId, NodeId>,
+    ids: HashMap<ast::NodeId, NodeId>,
 }
 
 impl Resolver {
