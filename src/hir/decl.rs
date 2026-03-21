@@ -12,18 +12,15 @@ pub struct Decl {
 #[derive(Debug)]
 pub enum DeclKind {
     Variable {
-        name: String,
-        right: Expr,
+        right: Box<Expr>,
         ty: Option<Ty>,
     },
     Function {
-        name: String,
         parameters: Vec<Parameter>,
         body: Vec<Node>,
         return_ty: Option<Ty>,
     },
     Struct {
-        name: String,
         fields: Vec<Field>,
     },
 }
@@ -32,7 +29,6 @@ pub enum DeclKind {
 pub struct Parameter {
     pub id: NodeId,
     pub span: Span,
-    pub name: String,
     pub ty: Ty,
 }
 
@@ -40,63 +36,54 @@ pub struct Parameter {
 pub struct Field {
     pub id: NodeId,
     pub span: Span,
-    pub name: String,
     pub ty: Ty,
 }
 
 impl Parameter {
-    pub fn new(name: String, ty: Ty, span: Span) -> Parameter {
-        Parameter {
-            id: NodeId::default(),
-            span,
-            name,
-            ty,
-        }
+    pub fn new(id: NodeId, ty: Ty, span: Span) -> Parameter {
+        Parameter { id, span, ty }
     }
 }
 
 impl Field {
-    pub fn new(name: String, ty: Ty, span: Span) -> Field {
-        Field {
-            id: NodeId::default(),
-            span,
-            name,
-            ty,
-        }
+    pub fn new(id: NodeId, ty: Ty, span: Span) -> Field {
+        Field { id, span, ty }
     }
 }
 
 impl Decl {
-    pub fn struct_(name: String, fields: Vec<Field>, span: Span) -> Decl {
+    pub fn struct_(id: NodeId, fields: Vec<Field>, span: Span) -> Decl {
         Decl {
-            id: NodeId::default(),
+            id,
             span,
 
-            kind: DeclKind::Struct { name, fields },
+            kind: DeclKind::Struct { fields },
         }
     }
 
-    pub fn variable(name: String, right: Expr, ty: Option<Ty>, span: Span) -> Decl {
+    pub fn variable(id: NodeId, right: Expr, ty: Option<Ty>, span: Span) -> Decl {
         Decl {
-            id: NodeId::default(),
+            id,
             span,
 
-            kind: DeclKind::Variable { name, right, ty },
+            kind: DeclKind::Variable {
+                right: Box::new(right),
+                ty,
+            },
         }
     }
 
     pub fn function(
-        name: String,
+        id: NodeId,
         parameters: Vec<Parameter>,
         body: Vec<Node>,
         return_ty: Option<Ty>,
         span: Span,
     ) -> Decl {
         Decl {
-            id: NodeId::default(),
+            id,
             span,
             kind: DeclKind::Function {
-                name,
                 parameters,
                 body,
                 return_ty,

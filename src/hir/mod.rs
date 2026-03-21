@@ -1,10 +1,10 @@
-pub mod hir_decl;
-pub mod hir_expr;
-pub mod hir_node;
-pub mod hir_stmt;
-pub mod hir_ty;
+pub mod decl;
+pub mod expr;
+pub mod node;
+pub mod stmt;
+pub mod ty;
 
-pub mod hir_ir;
+pub mod hir;
 pub mod node_id;
 pub mod resolver;
 pub mod symbol;

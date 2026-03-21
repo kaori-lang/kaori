@@ -5,7 +5,7 @@ pub mod ast;
 pub mod bytecode;
 pub mod cfg;
 pub mod error;
+pub mod hir;
 pub mod lexer;
 pub mod program;
-pub mod semantic;
 pub mod virtual_machine;

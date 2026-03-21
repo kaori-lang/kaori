@@ -5,8 +5,8 @@ use crate::{
     bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode},
     cfg::{self, build_cfgs::build_cfgs, jump_threading::run_jump_threading_optimization},
     error::kaori_error::KaoriError,
+    hir::{hir::Hir, resolver::Resolver, type_checker::TypeChecker},
     lexer::{lexer::Lexer, token_stream::TokenStream},
-    semantic::{hir_ir::HirIr, resolver::Resolver, type_checker::TypeChecker},
     virtual_machine::vm::run_vm,
 };
 
@@ -26,7 +26,7 @@ fn run_syntax_analysis(token_stream: TokenStream) -> Result<Vec<Decl>, KaoriErro
     Ok(ast)
 }
 
-fn run_semantic_analysis(ast: &mut [Decl]) -> Result<HirIr, KaoriError> {
+fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Hir, KaoriError> {
     let mut resolver = Resolver::default();
 
     let declarations = resolver.resolve(ast)?;
@@ -35,7 +35,7 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<HirIr, KaoriError> {
 
     let types = type_checker.type_check(&declarations)?;
 
-    let hir = HirIr::new(declarations, types);
+    let hir = Hir::new(declarations, types);
 
     Ok(hir)
 }

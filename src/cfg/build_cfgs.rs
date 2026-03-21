@@ -3,14 +3,14 @@ use std::collections::HashMap;
 use crate::{
     ast::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
     error::kaori_error::KaoriError,
-    kaori_error,
-    semantic::{
-        hir_decl::{HirDecl, HirDeclKind},
-        hir_expr::{HirExpr, HirExprKind},
-        hir_node::HirNode,
-        hir_stmt::{HirStmt, HirStmtKind},
+    hir::{
+        decl::{Decl, DeclKind},
+        expr::{Expr, ExprKind},
+        node::Node,
         node_id::NodeId,
+        stmt::{Stmt, StmtKind},
     },
+    kaori_error,
 };
 
 use super::{
@@ -22,11 +22,11 @@ use super::{
     operand::Operand,
 };
 
-pub fn build_cfgs(declarations: &[HirDecl]) -> Result<Vec<Function>, KaoriError> {
+pub fn build_cfgs(declarations: &[Decl]) -> Result<Vec<Function>, KaoriError> {
     let mut functions = HashMap::new();
 
     for declaration in declarations {
-        if let HirDeclKind::Function { .. } = &declaration.kind {
+        if let DeclKind::Function { .. } = &declaration.kind {
             let index = functions.len();
 
             functions.insert(declaration.id, index);
@@ -36,7 +36,7 @@ pub fn build_cfgs(declarations: &[HirDecl]) -> Result<Vec<Function>, KaoriError>
     let mut cfgs = Vec::new();
 
     for declaration in declarations {
-        if let HirDeclKind::Function { .. } = &declaration.kind {
+        if let DeclKind::Function { .. } = &declaration.kind {
             let mut ctx = CfgContext::new(&functions);
 
             ctx.visit_declaration(declaration)?;
@@ -109,7 +109,7 @@ impl<'a> CfgContext<'a> {
         index
     }
 
-    fn visit_nodes(&mut self, nodes: &[HirNode]) -> Result<(), KaoriError> {
+    fn visit_nodes(&mut self, nodes: &[Node]) -> Result<(), KaoriError> {
         for node in nodes {
             self.visit_ast_node(node)?;
         }
@@ -117,18 +117,18 @@ impl<'a> CfgContext<'a> {
         Ok(())
     }
 
-    fn visit_ast_node(&mut self, node: &HirNode) -> Result<(), KaoriError> {
+    fn visit_ast_node(&mut self, node: &Node) -> Result<(), KaoriError> {
         match node {
-            HirNode::Declaration(declaration) => self.visit_declaration(declaration)?,
-            HirNode::Statement(statement) => self.visit_statement(statement)?,
+            Node::Declaration(declaration) => self.visit_declaration(declaration)?,
+            Node::Statement(statement) => self.visit_statement(statement)?,
         };
 
         Ok(())
     }
 
-    fn visit_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
+    fn visit_declaration(&mut self, declaration: &Decl) -> Result<(), KaoriError> {
         match &declaration.kind {
-            HirDeclKind::Variable { right, .. } => {
+            DeclKind::Variable { right, .. } => {
                 let src = self.visit_expression(right);
                 let dest = self.create_variable(declaration.id);
 
@@ -136,7 +136,7 @@ impl<'a> CfgContext<'a> {
 
                 self.emit_instruction(instruction);
             }
-            HirDeclKind::Function {
+            DeclKind::Function {
                 body,
                 parameters,
                 return_ty,
@@ -165,28 +165,28 @@ impl<'a> CfgContext<'a> {
                     }
                 }
             }
-            HirDeclKind::Struct { .. } => {}
+            DeclKind::Struct { .. } => {}
         };
 
         Ok(())
     }
 
-    fn visit_statement(&mut self, statement: &HirStmt) -> Result<(), KaoriError> {
+    fn visit_statement(&mut self, statement: &Stmt) -> Result<(), KaoriError> {
         match &statement.kind {
-            HirStmtKind::Expression(expression) => {
+            StmtKind::Expression(expression) => {
                 self.visit_expression(expression);
             }
-            HirStmtKind::Print(expression) => {
+            StmtKind::Print(expression) => {
                 let src = self.visit_expression(expression);
 
                 let instruction = Instruction::print(src);
 
                 self.emit_instruction(instruction);
             }
-            HirStmtKind::Block(nodes) => {
+            StmtKind::Block(nodes) => {
                 self.visit_nodes(nodes)?;
             }
-            HirStmtKind::Branch {
+            StmtKind::Branch {
                 condition,
                 then_branch,
                 else_branch,
@@ -215,7 +215,7 @@ impl<'a> CfgContext<'a> {
 
                 self.index = terminator_block;
             }
-            HirStmtKind::Loop {
+            StmtKind::Loop {
                 init,
                 condition,
                 block,
@@ -254,17 +254,17 @@ impl<'a> CfgContext<'a> {
 
                 self.index = terminator_bb;
             }
-            HirStmtKind::Break => {
+            StmtKind::Break => {
                 let label = self.active_loops.top();
 
                 self.set_terminator(Terminator::Goto(label.terminator_bb_index));
             }
-            HirStmtKind::Continue => {
+            StmtKind::Continue => {
                 let label = self.active_loops.top();
 
                 self.set_terminator(Terminator::Goto(label.increment_bb_index));
             }
-            HirStmtKind::Return(expr) => {
+            StmtKind::Return(expr) => {
                 if let Some(expr) = expr {
                     let src = self.visit_expression(expr);
 
@@ -278,7 +278,7 @@ impl<'a> CfgContext<'a> {
         Ok(())
     }
 
-    fn visit_logical_or(&mut self, id: NodeId, left: &HirExpr, right: &HirExpr) -> Operand {
+    fn visit_logical_or(&mut self, id: NodeId, left: &Expr, right: &Expr) -> Operand {
         let dest = self.create_variable(id);
 
         let src1 = self.visit_expression(left);
@@ -307,7 +307,7 @@ impl<'a> CfgContext<'a> {
         dest
     }
 
-    fn visit_logical_and(&mut self, id: NodeId, left: &HirExpr, right: &HirExpr) -> Operand {
+    fn visit_logical_and(&mut self, id: NodeId, left: &Expr, right: &Expr) -> Operand {
         let dest = self.create_variable(id);
 
         let src1 = self.visit_expression(left);
@@ -334,9 +334,9 @@ impl<'a> CfgContext<'a> {
         dest
     }
 
-    fn visit_expression(&mut self, expression: &HirExpr) -> Operand {
+    fn visit_expression(&mut self, expression: &Expr) -> Operand {
         match &expression.kind {
-            HirExprKind::Assign { left, right } => {
+            ExprKind::Assign { left, right } => {
                 let dest = self.visit_expression(left);
                 let src = self.visit_expression(right);
 
@@ -346,7 +346,7 @@ impl<'a> CfgContext<'a> {
 
                 dest
             }
-            HirExprKind::Binary {
+            ExprKind::Binary {
                 operator,
                 left,
                 right,
@@ -379,7 +379,7 @@ impl<'a> CfgContext<'a> {
                     dest
                 }
             },
-            HirExprKind::Unary { right, operator } => {
+            ExprKind::Unary { right, operator } => {
                 let src = self.visit_expression(right);
                 let dest = self.create_variable(expression.id);
 
@@ -392,7 +392,7 @@ impl<'a> CfgContext<'a> {
 
                 dest
             }
-            HirExprKind::FunctionCall { callee, arguments } => {
+            ExprKind::FunctionCall { callee, arguments } => {
                 let dest = self.create_variable(expression.id);
 
                 let arguments_src = arguments
@@ -417,12 +417,12 @@ impl<'a> CfgContext<'a> {
                 dest
             }
 
-            HirExprKind::Variable(id) => *self
+            ExprKind::Variable(id) => *self
                 .variables
                 .get(id)
                 .expect("Variable not found for NodeId"),
 
-            HirExprKind::Function(id) => {
+            ExprKind::Function(id) => {
                 let value = *self
                     .functions
                     .get(id)
@@ -430,9 +430,9 @@ impl<'a> CfgContext<'a> {
 
                 self.constants.push_function(value)
             }
-            HirExprKind::String(value) => self.constants.push_string(value.to_owned()),
-            HirExprKind::Boolean(value) => self.constants.push_boolean(*value),
-            HirExprKind::Number(value) => self.constants.push_number(*value),
+            ExprKind::String(value) => self.constants.push_string(value.to_owned()),
+            ExprKind::Boolean(value) => self.constants.push_boolean(*value),
+            ExprKind::Number(value) => self.constants.push_number(*value),
         }
     }
 }

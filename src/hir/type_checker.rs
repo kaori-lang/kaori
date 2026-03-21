@@ -5,11 +5,11 @@ use crate::{
 };
 
 use super::{
-    hir_decl::{HirDecl, HirDeclKind},
-    hir_expr::{HirExpr, HirExprKind},
-    hir_node::HirNode,
-    hir_stmt::{HirStmt, HirStmtKind},
-    hir_ty::{HirTy, HirTyKind},
+    decl::{Decl, DeclKind},
+    expr::{Expr, ExprKind},
+    node::Node,
+    stmt::{Stmt, StmtKind},
+    ty::{Ty, TyKind},
     r#type::{Type, Types},
 };
 
@@ -20,10 +20,10 @@ pub struct TypeChecker {
 }
 
 impl TypeChecker {
-    pub fn type_check(mut self, declarations: &[HirDecl]) -> Result<Types, KaoriError> {
+    pub fn type_check(mut self, declarations: &[Decl]) -> Result<Types, KaoriError> {
         for declaration in declarations.iter() {
             match &declaration.kind {
-                HirDeclKind::Function {
+                DeclKind::Function {
                     parameters,
                     return_ty,
                     ..
@@ -49,7 +49,7 @@ impl TypeChecker {
 
                     self.types.insert(declaration.id, ty);
                 }
-                HirDeclKind::Struct { fields } => {
+                DeclKind::Struct { fields } => {
                     let fields = fields
                         .iter()
                         .map(|field| {
@@ -76,7 +76,7 @@ impl TypeChecker {
         Ok(self.types)
     }
 
-    fn type_check_nodes(&mut self, nodes: &[HirNode]) -> Result<(), KaoriError> {
+    fn type_check_nodes(&mut self, nodes: &[Node]) -> Result<(), KaoriError> {
         for node in nodes {
             self.type_check_ast_node(node)?;
         }
@@ -84,18 +84,18 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn type_check_ast_node(&mut self, node: &HirNode) -> Result<(), KaoriError> {
+    fn type_check_ast_node(&mut self, node: &Node) -> Result<(), KaoriError> {
         match node {
-            HirNode::Declaration(declaration) => self.type_check_declaration(declaration),
-            HirNode::Statement(statement) => self.type_check_statement(statement),
+            Node::Declaration(declaration) => self.type_check_declaration(declaration),
+            Node::Statement(statement) => self.type_check_statement(statement),
         }?;
 
         Ok(())
     }
 
-    fn type_check_declaration(&mut self, declaration: &HirDecl) -> Result<(), KaoriError> {
+    fn type_check_declaration(&mut self, declaration: &Decl) -> Result<(), KaoriError> {
         match &declaration.kind {
-            HirDeclKind::Variable { right, ty } => {
+            DeclKind::Variable { right, ty } => {
                 let right = self.type_check_expression(right)?;
 
                 let ty = match ty {
@@ -118,7 +118,7 @@ impl TypeChecker {
 
                 self.types.insert(declaration.id, ty);
             }
-            HirDeclKind::Function {
+            DeclKind::Function {
                 body, return_ty, ..
             } => {
                 let return_ty = return_ty.as_ref().map_or(Type::Void, create_type);
@@ -129,24 +129,24 @@ impl TypeChecker {
                     self.type_check_ast_node(node)?;
                 }
             }
-            HirDeclKind::Struct { .. } => {}
+            DeclKind::Struct { .. } => {}
         };
 
         Ok(())
     }
 
-    fn type_check_statement(&mut self, statement: &HirStmt) -> Result<(), KaoriError> {
+    fn type_check_statement(&mut self, statement: &Stmt) -> Result<(), KaoriError> {
         match &statement.kind {
-            HirStmtKind::Expression(expression) => {
+            StmtKind::Expression(expression) => {
                 self.type_check_expression(expression)?;
             }
-            HirStmtKind::Print(expression) => {
+            StmtKind::Print(expression) => {
                 self.type_check_expression(expression)?;
             }
-            HirStmtKind::Block(nodes) => {
+            StmtKind::Block(nodes) => {
                 self.type_check_nodes(nodes)?;
             }
-            HirStmtKind::Branch {
+            StmtKind::Branch {
                 condition,
                 then_branch,
                 else_branch,
@@ -167,7 +167,7 @@ impl TypeChecker {
                     self.type_check_statement(branch)?;
                 }
             }
-            HirStmtKind::Loop {
+            StmtKind::Loop {
                 init,
                 condition,
                 block,
@@ -193,9 +193,9 @@ impl TypeChecker {
                     self.type_check_statement(increment)?;
                 }
             }
-            HirStmtKind::Break => {}
-            HirStmtKind::Continue => {}
-            HirStmtKind::Return(expression) => {
+            StmtKind::Break => {}
+            StmtKind::Continue => {}
+            StmtKind::Return(expression) => {
                 let ty = match expression {
                     Some(expression) => self.type_check_expression(expression)?,
                     None => Type::Void,
@@ -215,9 +215,9 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn type_check_expression(&mut self, expression: &HirExpr) -> Result<Type, KaoriError> {
+    fn type_check_expression(&mut self, expression: &Expr) -> Result<Type, KaoriError> {
         let ty = match &expression.kind {
-            HirExprKind::Assign { left, right } => {
+            ExprKind::Assign { left, right } => {
                 let right_ty = self.type_check_expression(right)?;
                 let left_ty = self.type_check_expression(left)?;
 
@@ -232,7 +232,7 @@ impl TypeChecker {
                     ));
                 }
             }
-            HirExprKind::Binary {
+            ExprKind::Binary {
                 operator,
                 left,
                 right,
@@ -269,7 +269,7 @@ impl TypeChecker {
                     }
                 }
             }
-            HirExprKind::Unary { right, operator } => {
+            ExprKind::Unary { right, operator } => {
                 let right_ty = self.type_check_expression(right)?;
 
                 match (operator.kind, &right_ty) {
@@ -285,7 +285,7 @@ impl TypeChecker {
                     }
                 }
             }
-            HirExprKind::FunctionCall { callee, arguments } => {
+            ExprKind::FunctionCall { callee, arguments } => {
                 let Type::Function {
                     parameters,
                     return_ty,
@@ -319,11 +319,11 @@ impl TypeChecker {
 
                 *return_ty
             }
-            HirExprKind::Variable(id) => self.types.get(*id),
-            HirExprKind::Function(id) => self.types.get(*id),
-            HirExprKind::Boolean(..) => Type::Boolean,
-            HirExprKind::Number(..) => Type::Number,
-            HirExprKind::String(..) => Type::String,
+            ExprKind::Variable(id) => self.types.get(*id),
+            ExprKind::Function(id) => self.types.get(*id),
+            ExprKind::Boolean(..) => Type::Boolean,
+            ExprKind::Number(..) => Type::Number,
+            ExprKind::String(..) => Type::String,
         };
 
         self.types.insert(expression.id, ty.to_owned());
@@ -332,9 +332,9 @@ impl TypeChecker {
     }
 }
 
-fn create_type(ty: &HirTy) -> Type {
+fn create_type(ty: &Ty) -> Type {
     match &ty.kind {
-        HirTyKind::Function {
+        TyKind::Function {
             parameters,
             return_ty,
         } => {
@@ -343,13 +343,13 @@ fn create_type(ty: &HirTy) -> Type {
 
             Type::function(parameters, return_ty)
         }
-        HirTyKind::TypeRef(id) => Type::type_ref(*id),
-        HirTyKind::Struct { fields } => {
+        TyKind::TypeRef(id) => Type::type_ref(*id),
+        TyKind::Struct { fields } => {
             let fields = fields.iter().map(create_type).collect();
 
             Type::struct_(fields)
         }
-        HirTyKind::Bool => Type::Boolean,
-        HirTyKind::Number => Type::Number,
+        TyKind::Bool => Type::Boolean,
+        TyKind::Number => Type::Number,
     }
 }

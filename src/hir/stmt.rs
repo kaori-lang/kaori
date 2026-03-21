@@ -12,20 +12,16 @@ pub struct Stmt {
 #[derive(Debug)]
 pub enum StmtKind {
     Print(Box<Expr>),
-    If {
+    Branch {
         condition: Box<Expr>,
         then_branch: Box<Stmt>,
         else_branch: Option<Box<Stmt>>,
     },
-    WhileLoop {
-        condition: Box<Expr>,
-        block: Box<Stmt>,
-    },
-    ForLoop {
-        init: Box<Decl>,
+    Loop {
+        init: Option<Decl>,
         condition: Expr,
-        increment: Box<Stmt>,
         block: Box<Stmt>,
+        increment: Option<Box<Stmt>>,
     },
     Block(Vec<Node>),
     Expression(Box<Expr>),
@@ -35,19 +31,24 @@ pub enum StmtKind {
 }
 
 impl Stmt {
-    pub fn print(expression: Expr, span: Span) -> Stmt {
+    pub fn print(expr: Expr, span: Span) -> Stmt {
         Stmt {
             id: NodeId::default(),
             span,
-            kind: StmtKind::Print(Box::new(expression)),
+            kind: StmtKind::Print(Box::new(expr)),
         }
     }
 
-    pub fn if_(condition: Expr, then_branch: Stmt, else_branch: Option<Stmt>, span: Span) -> Stmt {
+    pub fn branch_(
+        condition: Expr,
+        then_branch: Stmt,
+        else_branch: Option<Stmt>,
+        span: Span,
+    ) -> Stmt {
         Stmt {
             id: NodeId::default(),
             span,
-            kind: StmtKind::If {
+            kind: StmtKind::Branch {
                 condition: Box::new(condition),
                 then_branch: Box::new(then_branch),
                 else_branch: else_branch.map(Box::new),
@@ -55,26 +56,21 @@ impl Stmt {
         }
     }
 
-    pub fn while_loop(condition: Expr, block: Stmt, span: Span) -> Stmt {
+    pub fn loop_(
+        init: Option<Decl>,
+        condition: Expr,
+        block: Stmt,
+        increment: Option<Stmt>,
+        span: Span,
+    ) -> Stmt {
         Stmt {
             id: NodeId::default(),
             span,
-            kind: StmtKind::WhileLoop {
-                condition: Box::new(condition),
-                block: Box::new(block),
-            },
-        }
-    }
-
-    pub fn for_loop(init: Decl, condition: Expr, increment: Stmt, block: Stmt, span: Span) -> Stmt {
-        Stmt {
-            id: NodeId::default(),
-            span,
-            kind: StmtKind::ForLoop {
-                init: Box::new(init),
+            kind: StmtKind::Loop {
+                init,
                 condition,
-                increment: Box::new(increment),
                 block: Box::new(block),
+                increment: increment.map(Box::new),
             },
         }
     }
@@ -111,11 +107,11 @@ impl Stmt {
         }
     }
 
-    pub fn return_(expression: Option<Expr>, span: Span) -> Stmt {
+    pub fn return_(expr: Option<Expr>, span: Span) -> Stmt {
         Stmt {
             id: NodeId::default(),
             span,
-            kind: StmtKind::Return(expression.map(Box::new)),
+            kind: StmtKind::Return(expr.map(Box::new)),
         }
     }
 }
