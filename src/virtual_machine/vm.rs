@@ -1,3 +1,5 @@
+use std::hint::unreachable_unchecked;
+
 use crate::{
     bytecode::{function::Function, instruction::Instruction, value::Value},
     virtual_machine::vm_context::FunctionFrame,
@@ -5,7 +7,7 @@ use crate::{
 
 use super::vm_context::VMContext;
 
-type InstructionHandler = fn(&mut VMContext, ip: *const i16);
+type InstructionHandler = fn(&mut VMContext, ip: *const Instruction);
 
 const OPCODE_HANDLERS: [InstructionHandler; 22] = [
     opcode_add,
@@ -68,8 +70,8 @@ pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
 macro_rules! dispatch {
     ($ctx:expr, $ip: expr) => {{
         let _: &mut VMContext = $ctx;
-        let _: *const i16 = $ip;
-        let op_code: i16 = *$ip;
+        let instruction: *const Instruction = $ip;
+        let op_code = (*instruction).discriminant();
 
         become OPCODE_HANDLERS[op_code as usize]($ctx, $ip);
     }};
@@ -103,20 +105,17 @@ fn opcode_move(ctx: &mut VMContext, ip: *const i16) {
 }
 
 #[inline(never)]
-fn opcode_add(ctx: &mut VMContext, ip: *const i16) {
-    unsafe {
-        let dest = *ip.add(1);
-        let src1 = *ip.add(2);
-        let src2 = *ip.add(3);
+fn opcode_add(ctx: &mut VMContext, ip: *const Instruction) {
+    let Instruction::Add { dest, src1, src2 } = *ip else {
+        unsafe { unreachable_unchecked() }
+    };
 
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
+    let lhs = ctx.get_value(src1).as_number();
+    let rhs = ctx.get_value(src2).as_number();
 
-        ctx.set_value(dest, Value::number(lhs + rhs));
+    ctx.set_value(dest, Value::number(lhs + rhs));
 
-        let ip = ip.add(4);
-        dispatch!(ctx, ip);
-    }
+    dispatch!(ctx, ip);
 }
 
 #[inline(never)]

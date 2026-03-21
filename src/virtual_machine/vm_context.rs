@@ -63,7 +63,7 @@ impl<'a> VMContext<'a> {
     }
 
     #[inline(always)]
-    pub fn set_value(&mut self, index: i16, value: Value) {
+    pub fn set_value(&mut self, index: u16, value: Value) {
         unsafe {
             *self.registers_ptr.add(index as usize) = value;
         }
