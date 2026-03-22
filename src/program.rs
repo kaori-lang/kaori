@@ -50,6 +50,10 @@ pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
     let hir = run_semantic_analysis(&mut ast)?;
     let mut cfgs = build_cfgs(&hir.declarations)?;
 
+    for cfg in &cfgs {
+        println!("{}", cfg);
+    }
+
     run_optimizations(&mut cfgs);
 
     let bytecode = emit_bytecode(cfgs);

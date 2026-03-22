@@ -27,7 +27,7 @@ impl Function {
 
 impl Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Control Flow Graph:")?;
+        writeln!(f, "Function:")?;
 
         writeln!(f, "constant pool: {:?}", self.constant_pool)?;
 
