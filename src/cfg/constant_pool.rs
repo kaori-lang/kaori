@@ -1,22 +1,23 @@
 use ordered_float::OrderedFloat;
-use std::collections::HashMap;
 
 use super::operand::Operand;
 
 #[derive(Default)]
 pub struct ConstantPool {
     pub constants: Vec<Constant>,
-    pub constants_index: HashMap<Constant, usize>,
 }
 
 impl ConstantPool {
     fn push_constant(&mut self, constant: Constant) -> Operand {
-        if let Some(index) = self.constants_index.get(&constant) {
-            Operand::Constant(*index)
-        } else {
-            let index = self.constants_index.len();
+        let constant_index = self
+            .constants
+            .iter()
+            .position(|constant_| constant == *constant_);
 
-            self.constants_index.insert(constant.to_owned(), index);
+        if let Some(index) = constant_index {
+            Operand::Constant(index)
+        } else {
+            let index = self.constants.len();
 
             self.constants.push(constant);
 
@@ -41,7 +42,7 @@ impl ConstantPool {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Constant {
     String(String),
     Number(OrderedFloat<f64>),

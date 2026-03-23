@@ -91,14 +91,11 @@ impl<'a> CfgContext<'a> {
         };
     }
 
-    fn set_terminator(&mut self, terminator: Terminator) -> Terminator {
+    fn set_terminator(&mut self, terminator: Terminator) {
         let basic_block = &mut self.basic_blocks[self.index];
 
         if let Terminator::None = basic_block.terminator {
             basic_block.terminator = terminator;
-            terminator
-        } else {
-            basic_block.terminator
         }
     }
 
@@ -140,9 +137,7 @@ impl<'a> CfgContext<'a> {
                 self.emit_instruction(instruction);
             }
             DeclKind::Function {
-                body,
-                parameters,
-                return_ty,
+                body, parameters, ..
             } => {
                 let _entry_bb = self.create_bb();
 
@@ -152,18 +147,6 @@ impl<'a> CfgContext<'a> {
 
                 for node in body {
                     self.visit_ast_node(node)?;
-                }
-
-                if let Terminator::Return { .. } = &self.basic_blocks[self.index].terminator {
-                } else {
-                    if return_ty.is_some() {
-                        return Err(kaori_error!(
-                            declaration.span,
-                            "expected a return statement"
-                        ));
-                    }
-
-                    self.set_terminator(Terminator::Return { src: None });
                 }
             }
             DeclKind::Struct { .. } => {}
@@ -206,20 +189,16 @@ impl<'a> CfgContext<'a> {
 
                 self.index = then_bb;
                 self.visit_statement(then_branch)?;
-                let then_terminator = self.set_terminator(Terminator::Goto(terminator_block));
+                self.set_terminator(Terminator::Goto(terminator_block));
 
                 self.index = else_bb;
                 if let Some(branch) = else_branch {
                     self.visit_statement(branch)?;
                 }
 
-                let else_terminator = self.set_terminator(Terminator::Goto(terminator_block));
+                self.set_terminator(Terminator::Goto(terminator_block));
 
-                if matches!(then_terminator, Terminator::Goto(id) if id == terminator_block)
-                    || matches!(else_terminator, Terminator::Goto(id) if id == terminator_block)
-                {
-                    self.index = terminator_block;
-                }
+                self.index = terminator_block;
             }
             StmtKind::Loop {
                 init,
