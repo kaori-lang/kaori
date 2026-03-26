@@ -5,12 +5,12 @@ use super::{
     function::Function,
 };
 
-pub fn run_jump_threading_optimization(cfgs: &mut [Function]) {
-    for cfg in cfgs {
+pub fn run_jump_threading_optimization(functions: &mut [Function]) {
+    for function in functions {
         let mut visited = HashSet::new();
         let mut nodes = HashMap::new();
 
-        traverse(0, &mut cfg.basic_blocks, &mut visited, &mut nodes);
+        traverse(0, &mut function.basic_blocks, &mut visited, &mut nodes);
     }
 }
 

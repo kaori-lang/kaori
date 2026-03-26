@@ -1,5 +1,5 @@
 pub mod basic_block;
-pub mod build_cfgs;
+pub mod build_functions_graph;
 #[allow(clippy::module_inception)]
 pub mod function;
 
@@ -11,5 +11,6 @@ pub mod constant_pool;
 
 pub mod jump_threading;
 pub mod operand;
+pub mod validate_return;
 
 pub use instruction::Instruction;

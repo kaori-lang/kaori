@@ -1,6 +1,6 @@
 use ordered_float::OrderedFloat;
 
-use super::operand::Operand;
+use super::{function::FunctionId, operand::Operand};
 
 #[derive(Default)]
 pub struct ConstantPool {
@@ -25,7 +25,7 @@ impl ConstantPool {
         }
     }
 
-    pub fn push_function(&mut self, value: usize) -> Operand {
+    pub fn push_function(&mut self, value: FunctionId) -> Operand {
         self.push_constant(Constant::Function(value))
     }
 
@@ -47,5 +47,5 @@ pub enum Constant {
     String(String),
     Number(OrderedFloat<f64>),
     Boolean(bool),
-    Function(usize),
+    Function(FunctionId),
 }

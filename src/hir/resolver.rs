@@ -27,7 +27,7 @@ pub struct Resolver {
     symbol_table: SymbolTable,
     active_loops: u8,
     local_scope: bool,
-    ids: HashMap<ast::NodeId, NodeId>,
+    ast_to_hir: HashMap<ast::NodeId, NodeId>,
 }
 
 impl Resolver {
@@ -44,7 +44,7 @@ impl Resolver {
     pub fn generate_id(&mut self, id: ast::node_id::NodeId) -> NodeId {
         let _id = NodeId::default();
 
-        self.ids.insert(id, _id);
+        self.ast_to_hir.insert(id, _id);
 
         _id
     }
@@ -239,7 +239,7 @@ impl Resolver {
 
                 self.exit_function();
 
-                let id = self.ids.get(&declaration.id).unwrap();
+                let id = self.ast_to_hir.get(&declaration.id).unwrap();
 
                 Decl::function(*id, parameters, body, return_ty, declaration.span)
             }
@@ -249,7 +249,7 @@ impl Resolver {
                     .map(|field| self.resolve_field(field))
                     .collect::<Result<Vec<Field>, KaoriError>>()?;
 
-                let id = self.ids.get(&declaration.id).unwrap();
+                let id = self.ast_to_hir.get(&declaration.id).unwrap();
 
                 Decl::struct_(*id, fields, declaration.span)
             }

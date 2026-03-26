@@ -20,8 +20,8 @@ pub enum ExprKind {
         right: Box<Expr>,
     },
     Unary {
-        right: Box<Expr>,
         operator: UnaryOp,
+        right: Box<Expr>,
     },
     Assign {
         left: Box<Expr>,

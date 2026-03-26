@@ -11,17 +11,20 @@ use crate::cfg::{
 
 use super::{bytecode::Bytecode, function, instruction::Instruction, value::Value};
 
-pub fn emit_bytecode(cfgs: Vec<Function>) -> Bytecode {
+pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
     let mut instructions = Vec::new();
-    let mut functions_start_index = Vec::new();
+    let mut fn_id_to_fn_index = HashMap::new();
+    let mut fn_entry_offsets = HashMap::new();
 
-    for cfg in &cfgs {
-        let index = instructions.len();
-        functions_start_index.push(index);
+    for (fn_index, function) in functions.iter().enumerate() {
+        let entry_offset = instructions.len();
 
-        let mut context = CodegenContext::new(
-            &cfg.basic_blocks,
-            cfg.allocated_variables,
+        fn_id_to_fn_index.insert(function.id, fn_index);
+        fn_entry_offsets.insert(function.id, entry_offset);
+
+        let mut context = FunctionContext::new(
+            &function.basic_blocks,
+            function.allocated_variables,
             &mut instructions,
         );
 
@@ -30,29 +33,45 @@ pub fn emit_bytecode(cfgs: Vec<Function>) -> Bytecode {
 
     instructions.push(Instruction::Halt);
 
-    let mut functions = Vec::new();
+    let base_ptr = instructions.as_ptr();
 
-    for (index, cfg) in cfgs.iter().enumerate() {
-        let constant_pool = map_constant_pool(&cfg.constant_pool);
-        let frame_size = cfg.allocated_variables;
+    let compiled_functions = functions
+        .iter()
+        .map(|function| {
+            let constant_pool = function
+                .constant_pool
+                .iter()
+                .map(|constant| match constant {
+                    Constant::Boolean(v) => Value::boolean(*v),
+                    Constant::Number(v) => Value::number(**v),
+                    Constant::Function(id) => {
+                        let function_index = fn_id_to_fn_index.get(id).unwrap();
 
-        let ip = unsafe { instructions.as_ptr().add(functions_start_index[index]) };
+                        Value::function(*function_index)
+                    }
+                    _ => todo!(),
+                })
+                .collect();
 
-        let function = function::Function::new(ip, frame_size as u8, constant_pool);
+            let frame_size = function.allocated_variables;
 
-        functions.push(function);
-    }
+            let entry_offset = *fn_entry_offsets.get(&function.id).unwrap();
+            let ip = unsafe { base_ptr.add(entry_offset) };
 
-    Bytecode::new(instructions, functions)
+            function::Function::new(ip, frame_size as u8, constant_pool)
+        })
+        .collect();
+
+    Bytecode::new(instructions, compiled_functions)
 }
 
-struct CodegenContext<'a> {
+struct FunctionContext<'a> {
     basic_blocks: &'a [BasicBlock],
     frame_size: usize,
     instructions: &'a mut Vec<Instruction>,
 }
 
-impl<'a> CodegenContext<'a> {
+impl<'a> FunctionContext<'a> {
     fn new(
         basic_blocks: &'a [BasicBlock],
         frame_size: usize,
@@ -71,12 +90,11 @@ impl<'a> CodegenContext<'a> {
         let mut pending_backpatch = Vec::new();
         let mut bb_start_index = HashMap::new();
 
-        for (index, bb_index) in basic_blocks.iter().copied().enumerate() {
-            bb_start_index.insert(bb_index, self.instructions.len());
+        for (i, &index) in basic_blocks.iter().enumerate() {
+            bb_start_index.insert(index, self.instructions.len());
 
-            let next_bb_index = basic_blocks.get(index + 1).copied();
-
-            self.visit_block(bb_index, next_bb_index, &mut pending_backpatch);
+            let next_index = basic_blocks.get(i + 1).copied();
+            self.visit_block(index, next_index, &mut pending_backpatch);
         }
 
         resolve_backpatches(self.instructions, &pending_backpatch, &bb_start_index);
@@ -85,7 +103,7 @@ impl<'a> CodegenContext<'a> {
     fn visit_block(
         &mut self,
         index: usize,
-        next_bb_index: Option<usize>,
+        next_index: Option<usize>,
         pending_backpatch: &mut Vec<(usize, usize)>,
     ) {
         let basic_block = &self.basic_blocks[index];
@@ -100,20 +118,18 @@ impl<'a> CodegenContext<'a> {
                 r#true,
                 r#false,
             } => {
-                if Some(r#true) != next_bb_index {
+                if next_index != Some(r#true) {
                     let index = self.instructions.len();
                     pending_backpatch.push((index, r#true));
-
                     self.instructions.push(Instruction::JumpIfTrue {
                         src: src.to_i16(),
                         offset: 0,
                     });
                 }
 
-                if Some(r#false) != next_bb_index {
+                if next_index != Some(r#false) {
                     let index = self.instructions.len();
                     pending_backpatch.push((index, r#false));
-
                     self.instructions.push(Instruction::JumpIfFalse {
                         src: src.to_i16(),
                         offset: 0,
@@ -121,10 +137,9 @@ impl<'a> CodegenContext<'a> {
                 }
             }
             Terminator::Goto(target) => {
-                if Some(target) != next_bb_index {
+                if next_index != Some(target) {
                     let index = self.instructions.len();
                     pending_backpatch.push((index, target));
-
                     self.instructions.push(Instruction::Jump { offset: 0 });
                 }
             }
@@ -258,16 +273,4 @@ fn resolve_backpatches(
             _ => unreachable!("Wrong jump instruction"),
         }
     }
-}
-
-fn map_constant_pool(constants: &[Constant]) -> Vec<Value> {
-    constants
-        .iter()
-        .map(|constant| match constant {
-            Constant::Boolean(v) => Value::boolean(*v),
-            Constant::Number(v) => Value::number(**v),
-            Constant::Function(index) => Value::function(*index),
-            _ => todo!(),
-        })
-        .collect()
 }

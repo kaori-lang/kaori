@@ -1,11 +1,10 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use uuid::Uuid;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct NodeId(usize);
+pub struct NodeId(Uuid);
 
 impl Default for NodeId {
     fn default() -> Self {
-        static COUNTER: AtomicUsize = AtomicUsize::new(0);
-        Self(COUNTER.fetch_add(1, Ordering::Relaxed))
+        Self(Uuid::new_v4())
     }
 }

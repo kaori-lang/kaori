@@ -10,68 +10,69 @@ use crate::{
         node_id::NodeId,
         stmt::{Stmt, StmtKind},
     },
-    kaori_error,
 };
 
 use super::{
     active_loops::ActiveLoops,
     basic_block::{BasicBlock, Terminator},
     constant_pool::ConstantPool,
-    function::Function,
+    function::{Function, FunctionId},
     instruction::Instruction,
     operand::Operand,
 };
 
-pub fn build_cfgs(declarations: &[Decl]) -> Result<Vec<Function>, KaoriError> {
-    let mut functions = HashMap::new();
+pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, KaoriError> {
+    let mut node_to_function = HashMap::new();
 
     for declaration in declarations {
         if let DeclKind::Function { .. } = &declaration.kind {
-            let index = functions.len();
-
-            functions.insert(declaration.id, index);
+            node_to_function.insert(declaration.id, FunctionId::default());
         }
     }
 
-    let mut cfgs = Vec::new();
+    let mut functions = Vec::new();
 
     for declaration in declarations {
-        if let DeclKind::Function { .. } = &declaration.kind {
-            let mut ctx = CfgContext::new(&functions);
+        if let DeclKind::Function { return_ty, .. } = &declaration.kind {
+            let mut ctx = FunctionContext::new(&node_to_function);
 
             ctx.visit_declaration(declaration)?;
 
-            let cfg = Function::new(
+            let id = *node_to_function.get(&declaration.id).unwrap();
+
+            let function = Function::new(
+                id,
                 ctx.basic_blocks,
                 ctx.constant_pool.constants,
                 ctx.variables.len(),
+                declaration.span,
             );
 
-            cfgs.push(cfg);
+            functions.push(function);
         }
     }
 
-    Ok(cfgs)
+    Ok(functions)
 }
 
-pub struct CfgContext<'a> {
+pub struct FunctionContext<'a> {
     index: usize,
     variables: HashMap<NodeId, Operand>,
     constant_pool: ConstantPool,
     basic_blocks: Vec<BasicBlock>,
     active_loops: ActiveLoops,
-    functions: &'a HashMap<NodeId, usize>,
+    node_to_function: &'a HashMap<NodeId, FunctionId>,
 }
 
-impl<'a> CfgContext<'a> {
-    pub fn new(functions: &'a HashMap<NodeId, usize>) -> Self {
+impl<'a> FunctionContext<'a> {
+    pub fn new(node_to_function: &'a HashMap<NodeId, FunctionId>) -> Self {
         Self {
             index: 0,
             variables: HashMap::new(),
             constant_pool: ConstantPool::default(),
             basic_blocks: Vec::new(),
             active_loops: ActiveLoops::default(),
-            functions,
+            node_to_function,
         }
     }
 
@@ -349,7 +350,6 @@ impl<'a> CfgContext<'a> {
                         BinaryOpKind::Multiply => Instruction::multiply(dest, src1, src2),
                         BinaryOpKind::Divide => Instruction::divide(dest, src1, src2),
                         BinaryOpKind::Modulo => Instruction::modulo(dest, src1, src2),
-
                         BinaryOpKind::Equal => Instruction::equal(dest, src1, src2),
                         BinaryOpKind::NotEqual => Instruction::not_equal(dest, src1, src2),
                         BinaryOpKind::Greater => Instruction::greater(dest, src1, src2),
@@ -409,7 +409,7 @@ impl<'a> CfgContext<'a> {
 
             ExprKind::Function(id) => {
                 let value = *self
-                    .functions
+                    .node_to_function
                     .get(id)
                     .expect("FunctionRef points to a missing variable node");
 

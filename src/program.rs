@@ -3,7 +3,10 @@ use std::time::Instant;
 use crate::{
     ast::{decl::Decl, parser::Parser},
     bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode},
-    cfg::{self, build_cfgs::build_cfgs, jump_threading::run_jump_threading_optimization},
+    cfg::{
+        self, build_functions_graph::build_functions_graph,
+        jump_threading::run_jump_threading_optimization,
+    },
     error::kaori_error::KaoriError,
     hir::{hir::Hir, resolver::Resolver, type_checker::TypeChecker},
     lexer::{lexer::Lexer, token_stream::TokenStream},
@@ -40,25 +43,25 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Hir, KaoriError> {
     Ok(hir)
 }
 
-fn run_optimizations(cfgs: &mut [cfg::function::Function]) {
-    run_jump_threading_optimization(cfgs);
+fn run_cfg_analysis(functions: &mut [cfg::function::Function]) {
+    run_jump_threading_optimization(functions);
 }
 
 pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
     let hir = run_semantic_analysis(&mut ast)?;
-    let mut cfgs = build_cfgs(&hir.declarations)?;
+    let mut functions = build_functions_graph(&hir.declarations)?;
 
-    for cfg in &cfgs {
-        println!("{}", cfg);
+    for function in &functions {
+        println!("{}", function);
     }
 
-    run_optimizations(&mut cfgs);
+    run_cfg_analysis(&mut functions);
 
-    let bytecode = emit_bytecode(cfgs);
+    let bytecode = emit_bytecode(functions);
 
-    //println!("{bytecode}");
+    println!("{bytecode}");
 
     Ok(bytecode)
 }
