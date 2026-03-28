@@ -14,13 +14,12 @@ use super::{bytecode::Bytecode, function, instruction::Instruction, value::Value
 pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
     let mut instructions = Vec::new();
     let mut fn_id_to_fn_index = HashMap::new();
-    let mut fn_entry_offsets = HashMap::new();
+    let mut fn_start_end = HashMap::new();
 
     for (fn_index, function) in functions.iter().enumerate() {
-        let entry_offset = instructions.len();
+        let fn_start_index = instructions.len();
 
         fn_id_to_fn_index.insert(function.id, fn_index);
-        fn_entry_offsets.insert(function.id, entry_offset);
 
         let mut context = FunctionContext::new(
             &function.basic_blocks,
@@ -29,6 +28,10 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
         );
 
         context.emit_instructions();
+
+        let fn_end_index = instructions.len() - 1;
+
+        fn_start_end.insert(function.id, (fn_start_index, fn_end_index));
     }
 
     instructions.push(Instruction::Halt);
@@ -55,10 +58,11 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
 
             let frame_size = function.allocated_variables;
 
-            let entry_offset = *fn_entry_offsets.get(&function.id).unwrap();
-            let ip = unsafe { base_ptr.add(entry_offset) };
+            let (start_index, end_index) = *fn_start_end.get(&function.id).unwrap();
+            let start = unsafe { base_ptr.add(start_index) };
+            let end = unsafe { base_ptr.add(end_index) };
 
-            function::Function::new(ip, frame_size as u8, constant_pool)
+            function::Function::new(start, end, frame_size as u8, constant_pool)
         })
         .collect();
 

@@ -37,7 +37,8 @@ const OPCODE_HANDLERS: [InstructionHandler; 22] = [
 pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
     let mut registers = vec![Value::default(); 1024];
     let Function {
-        ip,
+        start,
+        end,
         frame_size,
         ref constant_pool,
     } = functions[0];
@@ -63,8 +64,8 @@ pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
         main_frame,
     );
 
-    let index = unsafe { (*ip).discriminant() };
-    OPCODE_HANDLERS[index](&mut ctx, ip)
+    let index = unsafe { (*start).discriminant() };
+    OPCODE_HANDLERS[index](&mut ctx, start)
 }
 
 macro_rules! dispatch {
@@ -324,7 +325,8 @@ fn opcode_call(ctx: &mut VMContext, ip: *const Instruction) {
         let function_index = ctx.get_value(src).as_function();
 
         let Function {
-            ip,
+            start,
+            end,
             frame_size,
             ref constant_pool,
         } = ctx.functions[function_index];
@@ -332,9 +334,9 @@ fn opcode_call(ctx: &mut VMContext, ip: *const Instruction) {
 
         ctx.push_frame(dest, return_address, frame_size, constants_ptr);
 
-        let index = (*ip).discriminant();
+        let index = (*start).discriminant();
 
-        become OPCODE_HANDLERS[index](ctx, ip)
+        become OPCODE_HANDLERS[index](ctx, start)
     }
 }
 
