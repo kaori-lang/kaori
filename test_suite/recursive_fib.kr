@@ -4,8 +4,6 @@ fun fib(n: number) -> number {
     } else {
         return fib(n - 1) + fib(n - 2);
     }   
-
-    return 0;
 }
 
 

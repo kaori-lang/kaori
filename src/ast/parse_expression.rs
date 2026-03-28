@@ -11,16 +11,13 @@ use super::{
 impl<'a> Parser<'a> {
     fn build_binary_operator(&mut self) -> BinaryOp {
         let token_kind = self.token_stream.token_kind();
-        let span = self.token_stream.span();
 
-        let kind = match token_kind {
+        let op_kind = match token_kind {
             TokenKind::Plus => BinaryOpKind::Add,
             TokenKind::Minus => BinaryOpKind::Subtract,
             TokenKind::Multiply => BinaryOpKind::Multiply,
             TokenKind::Divide => BinaryOpKind::Divide,
             TokenKind::Modulo => BinaryOpKind::Modulo,
-            TokenKind::And => BinaryOpKind::And,
-            TokenKind::Or => BinaryOpKind::Or,
             TokenKind::Equal => BinaryOpKind::Equal,
             TokenKind::NotEqual => BinaryOpKind::NotEqual,
             TokenKind::Greater => BinaryOpKind::Greater,
@@ -30,20 +27,18 @@ impl<'a> Parser<'a> {
             _ => unreachable!(),
         };
 
-        BinaryOp::new(kind, span)
+        BinaryOp::new(op_kind)
     }
 
     fn build_unary_operator(&mut self) -> UnaryOp {
         let token_kind = self.token_stream.token_kind();
-        let span = self.token_stream.span();
 
-        let kind = match token_kind {
+        let op_kind = match token_kind {
             TokenKind::Minus => UnaryOpKind::Negate,
-            TokenKind::Not => UnaryOpKind::Not,
             _ => unreachable!(),
         };
 
-        UnaryOp::new(kind, span)
+        UnaryOp::new(op_kind)
     }
 
     pub fn parse_expression(&mut self) -> Result<Expr, KaoriError> {
@@ -53,10 +48,9 @@ impl<'a> Parser<'a> {
     fn parse_assign(&mut self) -> Result<Expr, KaoriError> {
         let left = self.parse_or()?;
 
-        let kind = self.token_stream.token_kind();
-        let span = self.token_stream.span();
+        let token_kind = self.token_stream.token_kind();
 
-        let operator = match kind {
+        let operator = match token_kind {
             TokenKind::Assign => AssignOpKind::Assign,
             TokenKind::AddAssign => AssignOpKind::AddAssign,
             TokenKind::SubtractAssign => AssignOpKind::SubtractAssign,
@@ -66,7 +60,7 @@ impl<'a> Parser<'a> {
             _ => return Ok(left),
         };
 
-        let operator = AssignOp::new(operator, span);
+        let operator = AssignOp::new(operator);
 
         self.token_stream.advance();
 
@@ -79,18 +73,17 @@ impl<'a> Parser<'a> {
         let mut left = self.parse_and()?;
 
         while !self.token_stream.at_end() {
-            let kind = self.token_stream.token_kind();
+            let token_kind = self.token_stream.token_kind();
 
-            let operator = match kind {
-                TokenKind::Or => self.build_binary_operator(),
-                _ => break,
+            let TokenKind::And = token_kind else {
+                break;
             };
 
             self.token_stream.advance();
 
             let right = self.parse_and()?;
 
-            left = Expr::binary(operator, left, right);
+            left = Expr::logical_or(left, right);
         }
 
         Ok(left)
@@ -100,17 +93,16 @@ impl<'a> Parser<'a> {
         let mut left = self.parse_equality()?;
 
         while !self.token_stream.at_end() {
-            let kind = self.token_stream.token_kind();
+            let token_kind = self.token_stream.token_kind();
 
-            let operator = match kind {
-                TokenKind::And => self.build_binary_operator(),
-                _ => break,
+            let TokenKind::And = token_kind else {
+                break;
             };
 
             self.token_stream.advance();
             let right = self.parse_equality()?;
 
-            left = Expr::binary(operator, left, right);
+            left = Expr::logical_and(left, right);
         }
 
         Ok(left)
@@ -120,9 +112,9 @@ impl<'a> Parser<'a> {
         let mut left = self.parse_comparison()?;
 
         while !self.token_stream.at_end() {
-            let kind = self.token_stream.token_kind();
+            let token_kind = self.token_stream.token_kind();
 
-            let operator = match kind {
+            let operator = match token_kind {
                 TokenKind::Equal | TokenKind::NotEqual => self.build_binary_operator(),
                 _ => break,
             };
@@ -140,9 +132,9 @@ impl<'a> Parser<'a> {
         let mut left = self.parse_term()?;
 
         while !self.token_stream.at_end() {
-            let kind = self.token_stream.token_kind();
+            let token_kind = self.token_stream.token_kind();
 
-            let operator = match kind {
+            let operator = match token_kind {
                 TokenKind::Greater
                 | TokenKind::GreaterEqual
                 | TokenKind::Less
@@ -163,9 +155,9 @@ impl<'a> Parser<'a> {
         let mut left = self.parse_factor()?;
 
         while !self.token_stream.at_end() {
-            let kind = self.token_stream.token_kind();
+            let token_kind = self.token_stream.token_kind();
 
-            let operator = match kind {
+            let operator = match token_kind {
                 TokenKind::Plus | TokenKind::Minus => self.build_binary_operator(),
                 _ => break,
             };
@@ -183,9 +175,9 @@ impl<'a> Parser<'a> {
         let mut left = self.parse_prefix_unary()?;
 
         while !self.token_stream.at_end() {
-            let kind = self.token_stream.token_kind();
+            let token_kind = self.token_stream.token_kind();
 
-            let operator = match kind {
+            let operator = match token_kind {
                 TokenKind::Multiply | TokenKind::Divide | TokenKind::Modulo => {
                     self.build_binary_operator()
                 }
@@ -202,20 +194,19 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_prefix_unary(&mut self) -> Result<Expr, KaoriError> {
-        let kind = self.token_stream.token_kind();
+        let token_kind = self.token_stream.token_kind();
 
-        let operator = match kind {
+        let operator = match token_kind {
             TokenKind::Plus => {
                 self.token_stream.advance();
                 return self.parse_prefix_unary();
             }
             TokenKind::Not => {
-                let operator = self.build_unary_operator();
                 self.token_stream.advance();
 
                 let right = self.parse_or()?;
 
-                return Ok(Expr::unary(operator, right));
+                return Ok(Expr::logical_not(right));
             }
             TokenKind::Minus => self.build_unary_operator(),
             _ => return self.parse_primary(),
@@ -229,10 +220,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_primary(&mut self) -> Result<Expr, KaoriError> {
-        let kind = self.token_stream.token_kind();
+        let token_kind = self.token_stream.token_kind();
         let span = self.token_stream.span();
 
-        let primary = match kind {
+        let primary = match token_kind {
             TokenKind::LeftParen => {
                 self.token_stream.consume(TokenKind::LeftParen)?;
                 let expr = self.parse_expression()?;
@@ -272,7 +263,7 @@ impl<'a> Parser<'a> {
                 return Err(kaori_error!(
                     span,
                     "expected a valid operand, but found: {}",
-                    kind
+                    token_kind
                 ));
             }
         };
@@ -294,9 +285,9 @@ impl<'a> Parser<'a> {
     fn parse_postfix_unary(&mut self) -> Result<Expr, KaoriError> {
         let identifier = self.parse_identifier()?;
 
-        let kind = self.token_stream.token_kind();
+        let token_kind = self.token_stream.token_kind();
 
-        Ok(match kind {
+        Ok(match token_kind {
             TokenKind::LeftParen => self.parse_function_call(identifier)?,
             _ => identifier,
         })

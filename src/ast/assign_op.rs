@@ -1,8 +1,5 @@
-use crate::lexer::span::Span;
-
 #[derive(Debug, Clone, Copy)]
 pub struct AssignOp {
-    pub span: Span,
     pub kind: AssignOpKind,
 }
 
@@ -17,7 +14,7 @@ pub enum AssignOpKind {
 }
 
 impl AssignOp {
-    pub fn new(kind: AssignOpKind, span: Span) -> AssignOp {
-        AssignOp { span, kind }
+    pub fn new(kind: AssignOpKind) -> AssignOp {
+        AssignOp { kind }
     }
 }

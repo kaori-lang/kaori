@@ -1,10 +1,10 @@
 pub mod expr;
 pub mod parser;
 
-pub mod binary_op;
-
 pub mod assign_op;
+pub mod binary_op;
 pub mod decl;
+
 pub mod node;
 pub mod node_id;
 pub mod parse_declaration;

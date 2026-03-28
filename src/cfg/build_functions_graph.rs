@@ -264,62 +264,6 @@ impl<'a> FunctionContext<'a> {
         Ok(())
     }
 
-    fn visit_logical_or(&mut self, id: NodeId, left: &Expr, right: &Expr) -> Operand {
-        let dest = self.create_variable(id);
-
-        let src1 = self.visit_expression(left);
-
-        self.emit_instruction(Instruction::move_(dest, src1));
-
-        let src2_bb = self.create_bb();
-        let terminator = self.create_bb();
-
-        self.set_terminator(Terminator::Branch {
-            src: dest,
-            r#true: terminator,
-            r#false: src2_bb,
-        });
-
-        self.index = src2_bb;
-
-        let src2 = self.visit_expression(right);
-
-        self.emit_instruction(Instruction::move_(dest, src2));
-
-        self.set_terminator(Terminator::Goto(terminator));
-
-        self.index = terminator;
-
-        dest
-    }
-
-    fn visit_logical_and(&mut self, id: NodeId, left: &Expr, right: &Expr) -> Operand {
-        let dest = self.create_variable(id);
-
-        let src1 = self.visit_expression(left);
-
-        self.emit_instruction(Instruction::move_(dest, src1));
-
-        let src2_bb = self.create_bb();
-        let terminator = self.create_bb();
-
-        self.set_terminator(Terminator::Branch {
-            src: dest,
-            r#true: src2_bb,
-            r#false: terminator,
-        });
-
-        self.index = src2_bb;
-
-        let src2 = self.visit_expression(right);
-        self.emit_instruction(Instruction::move_(dest, src2));
-        self.set_terminator(Terminator::Goto(terminator));
-
-        self.index = terminator;
-
-        dest
-    }
-
     fn visit_expression(&mut self, expression: &Expr) -> Operand {
         match &expression.kind {
             ExprKind::Assign { left, right } => {
@@ -332,45 +276,102 @@ impl<'a> FunctionContext<'a> {
 
                 dest
             }
+            ExprKind::LogicalAnd { left, right } => {
+                let dest = self.create_variable(expression.id);
+
+                let src1 = self.visit_expression(left);
+
+                self.emit_instruction(Instruction::move_(dest, src1));
+
+                let src2_bb = self.create_bb();
+                let terminator = self.create_bb();
+
+                self.set_terminator(Terminator::Branch {
+                    src: dest,
+                    r#true: src2_bb,
+                    r#false: terminator,
+                });
+
+                self.index = src2_bb;
+
+                let src2 = self.visit_expression(right);
+                self.emit_instruction(Instruction::move_(dest, src2));
+                self.set_terminator(Terminator::Goto(terminator));
+
+                self.index = terminator;
+
+                dest
+            }
+            ExprKind::LogicalOr { left, right } => {
+                let dest = self.create_variable(expression.id);
+
+                let src1 = self.visit_expression(left);
+
+                self.emit_instruction(Instruction::move_(dest, src1));
+
+                let src2_bb = self.create_bb();
+                let terminator = self.create_bb();
+
+                self.set_terminator(Terminator::Branch {
+                    src: dest,
+                    r#true: terminator,
+                    r#false: src2_bb,
+                });
+
+                self.index = src2_bb;
+
+                let src2 = self.visit_expression(right);
+
+                self.emit_instruction(Instruction::move_(dest, src2));
+
+                self.set_terminator(Terminator::Goto(terminator));
+
+                self.index = terminator;
+
+                dest
+            }
+            ExprKind::LogicalNot { expr } => {
+                let src = self.visit_expression(expr);
+                let dest = self.create_variable(expression.id);
+
+                self.emit_instruction(Instruction::Not { dest, src });
+
+                dest
+            }
             ExprKind::Binary {
                 operator,
                 left,
                 right,
-            } => match operator.kind {
-                BinaryOpKind::And => self.visit_logical_and(expression.id, left, right),
-                BinaryOpKind::Or => self.visit_logical_or(expression.id, left, right),
-                _ => {
-                    let src1 = self.visit_expression(left);
-                    let src2 = self.visit_expression(right);
-                    let dest = self.create_variable(expression.id);
+            } => {
+                let src1 = self.visit_expression(left);
+                let src2 = self.visit_expression(right);
+                let dest = self.create_variable(expression.id);
 
-                    let instruction = match operator.kind {
-                        BinaryOpKind::Add => Instruction::add(dest, src1, src2),
-                        BinaryOpKind::Subtract => Instruction::subtract(dest, src1, src2),
-                        BinaryOpKind::Multiply => Instruction::multiply(dest, src1, src2),
-                        BinaryOpKind::Divide => Instruction::divide(dest, src1, src2),
-                        BinaryOpKind::Modulo => Instruction::modulo(dest, src1, src2),
-                        BinaryOpKind::Equal => Instruction::equal(dest, src1, src2),
-                        BinaryOpKind::NotEqual => Instruction::not_equal(dest, src1, src2),
-                        BinaryOpKind::Greater => Instruction::greater(dest, src1, src2),
-                        BinaryOpKind::GreaterEqual => Instruction::greater_equal(dest, src1, src2),
-                        BinaryOpKind::Less => Instruction::less(dest, src1, src2),
-                        BinaryOpKind::LessEqual => Instruction::less_equal(dest, src1, src2),
-                        _ => unreachable!(),
-                    };
+                let instruction = match operator.kind {
+                    BinaryOpKind::Add => Instruction::add(dest, src1, src2),
+                    BinaryOpKind::Subtract => Instruction::subtract(dest, src1, src2),
+                    BinaryOpKind::Multiply => Instruction::multiply(dest, src1, src2),
+                    BinaryOpKind::Divide => Instruction::divide(dest, src1, src2),
+                    BinaryOpKind::Modulo => Instruction::modulo(dest, src1, src2),
+                    BinaryOpKind::Equal => Instruction::equal(dest, src1, src2),
+                    BinaryOpKind::NotEqual => Instruction::not_equal(dest, src1, src2),
+                    BinaryOpKind::Greater => Instruction::greater(dest, src1, src2),
+                    BinaryOpKind::GreaterEqual => Instruction::greater_equal(dest, src1, src2),
+                    BinaryOpKind::Less => Instruction::less(dest, src1, src2),
+                    BinaryOpKind::LessEqual => Instruction::less_equal(dest, src1, src2),
+                    _ => unreachable!(),
+                };
 
-                    self.emit_instruction(instruction);
+                self.emit_instruction(instruction);
 
-                    dest
-                }
-            },
+                dest
+            }
             ExprKind::Unary { right, operator } => {
                 let src = self.visit_expression(right);
                 let dest = self.create_variable(expression.id);
 
                 let instruction = match operator.kind {
                     UnaryOpKind::Negate => Instruction::negate(dest, src),
-                    UnaryOpKind::Not => Instruction::not(dest, src),
                 };
 
                 self.emit_instruction(instruction);

@@ -232,6 +232,54 @@ impl TypeChecker {
                     ));
                 }
             }
+            ExprKind::LogicalAnd { left, right } => {
+                let left_ty = self.type_check_expression(left)?;
+                let right_ty = self.type_check_expression(right)?;
+
+                match (&left_ty, &right_ty) {
+                    (Type::Boolean, Type::Boolean) => Type::Boolean,
+                    _ => {
+                        return Err(kaori_error!(
+                            expression.span,
+                            "expected boolean && boolean, but found {:#?} and {:#?}",
+                            left_ty,
+                            right_ty
+                        ));
+                    }
+                }
+            }
+
+            ExprKind::LogicalOr { left, right } => {
+                let left_ty = self.type_check_expression(left)?;
+                let right_ty = self.type_check_expression(right)?;
+
+                match (&left_ty, &right_ty) {
+                    (Type::Boolean, Type::Boolean) => Type::Boolean,
+                    _ => {
+                        return Err(kaori_error!(
+                            expression.span,
+                            "expected boolean || boolean, but found {:#?} and {:#?}",
+                            left_ty,
+                            right_ty
+                        ));
+                    }
+                }
+            }
+
+            ExprKind::LogicalNot { expr } => {
+                let ty = self.type_check_expression(expr)?;
+
+                match ty {
+                    Type::Boolean => Type::Boolean,
+                    _ => {
+                        return Err(kaori_error!(
+                            expression.span,
+                            "expected boolean for ! operator, but found {:#?}",
+                            ty
+                        ));
+                    }
+                }
+            }
             ExprKind::Binary {
                 operator,
                 left,
@@ -246,9 +294,6 @@ impl TypeChecker {
                     (Type::Number, BinaryOpKind::Multiply, Type::Number) => Type::Number,
                     (Type::Number, BinaryOpKind::Divide, Type::Number) => Type::Number,
                     (Type::Number, BinaryOpKind::Modulo, Type::Number) => Type::Number,
-
-                    (Type::Boolean, BinaryOpKind::And, Type::Boolean) => Type::Boolean,
-                    (Type::Boolean, BinaryOpKind::Or, Type::Boolean) => Type::Boolean,
 
                     (lhs, BinaryOpKind::Equal, rhs) if lhs == rhs => Type::Boolean,
                     (lhs, BinaryOpKind::NotEqual, rhs) if lhs == rhs => Type::Boolean,
@@ -274,7 +319,6 @@ impl TypeChecker {
 
                 match (operator.kind, &right_ty) {
                     (UnaryOpKind::Negate, Type::Number) => Type::Number,
-                    (UnaryOpKind::Not, Type::Boolean) => Type::Boolean,
                     _ => {
                         return Err(kaori_error!(
                             expression.span,

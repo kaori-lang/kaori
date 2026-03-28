@@ -347,8 +347,6 @@ fn opcode_return(ctx: &mut VMContext, ip: *const Instruction) {
 
         let value = ctx.get_value(src);
 
-        //println!("{}", value.as_number());
-
         let FunctionFrame {
             return_address: ip,
             return_register: dest,

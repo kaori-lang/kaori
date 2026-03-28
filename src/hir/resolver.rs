@@ -386,11 +386,30 @@ impl Resolver {
                     _ => return Ok(Expr::assign(left, right, expression.span)),
                 };
 
-                let operator = BinaryOp::new(operator_kind, operator.span);
+                let operator = BinaryOp::new(operator_kind);
 
                 let right = Expr::binary(operator, left.to_owned(), right.to_owned(), right.span);
 
                 Expr::assign(left, right, expression.span)
+            }
+            ast::ExprKind::LogicalAnd { left, right } => {
+                let left = self.resolve_expression(left)?;
+                let right = self.resolve_expression(right)?;
+
+                Expr::logical_and(left, right, expression.span)
+            }
+
+            ast::ExprKind::LogicalOr { left, right } => {
+                let left = self.resolve_expression(left)?;
+                let right = self.resolve_expression(right)?;
+
+                Expr::logical_or(left, right, expression.span)
+            }
+
+            ast::ExprKind::LogicalNot { expr } => {
+                let expr = self.resolve_expression(expr)?;
+
+                Expr::logical_not(expr, expression.span)
             }
             ast::ExprKind::Binary {
                 left,

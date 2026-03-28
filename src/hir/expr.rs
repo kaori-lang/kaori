@@ -19,6 +19,17 @@ pub enum ExprKind {
         left: Box<Expr>,
         right: Box<Expr>,
     },
+    LogicalAnd {
+        left: Box<Expr>,
+        right: Box<Expr>,
+    },
+    LogicalOr {
+        left: Box<Expr>,
+        right: Box<Expr>,
+    },
+    LogicalNot {
+        expr: Box<Expr>,
+    },
     Unary {
         operator: UnaryOp,
         right: Box<Expr>,
@@ -47,6 +58,38 @@ impl Expr {
                 operator,
                 left: Box::new(left),
                 right: Box::new(right),
+            },
+        }
+    }
+
+    pub fn logical_and(left: Expr, right: Expr, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::LogicalAnd {
+                left: Box::new(left),
+                right: Box::new(right),
+            },
+        }
+    }
+
+    pub fn logical_or(left: Expr, right: Expr, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::LogicalOr {
+                left: Box::new(left),
+                right: Box::new(right),
+            },
+        }
+    }
+
+    pub fn logical_not(expr: Expr, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::LogicalNot {
+                expr: Box::new(expr),
             },
         }
     }

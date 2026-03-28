@@ -1,8 +1,5 @@
-use crate::lexer::span::Span;
-
 #[derive(Debug, Clone, Copy)]
 pub struct BinaryOp {
-    pub span: Span,
     pub kind: BinaryOpKind,
 }
 
@@ -13,8 +10,6 @@ pub enum BinaryOpKind {
     Multiply,
     Divide,
     Modulo,
-    And,
-    Or,
     Equal,
     NotEqual,
     Greater,
@@ -24,7 +19,7 @@ pub enum BinaryOpKind {
 }
 
 impl BinaryOp {
-    pub fn new(kind: BinaryOpKind, span: Span) -> BinaryOp {
-        BinaryOp { span, kind }
+    pub fn new(kind: BinaryOpKind) -> BinaryOp {
+        BinaryOp { kind }
     }
 }
