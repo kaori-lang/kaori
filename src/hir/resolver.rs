@@ -19,7 +19,6 @@ use super::{
     stmt::Stmt,
     symbol::SymbolKind,
     symbol_table::SymbolTable,
-    ty::Ty,
 };
 
 #[derive(Default)]
@@ -160,9 +159,7 @@ impl Resolver {
         self.symbol_table
             .declare_variable(id, parameter.name.to_owned());
 
-        let ty = self.resolve_type(&parameter.ty)?;
-
-        Ok(Parameter::new(id, ty, parameter.span))
+        Ok(Parameter::new(id, parameter.span))
     }
 
     fn resolve_field(&mut self, field: &ast::Field) -> Result<Field, KaoriError> {
@@ -183,16 +180,14 @@ impl Resolver {
         self.symbol_table
             .declare_variable(id, field.name.to_owned());
 
-        let ty = self.resolve_type(&field.ty)?;
-
-        Ok(Field::new(id, ty, field.span))
+        Ok(Field::new(id, field.span))
     }
 
     fn resolve_declaration(&mut self, declaration: &ast::Decl) -> Result<Decl, KaoriError> {
         self.resolve_declaration_scope(declaration)?;
 
         let _decl = match &declaration.kind {
-            ast::DeclKind::Variable { name, right, ty } => {
+            ast::DeclKind::Variable { name, right } => {
                 let right = self.resolve_expression(right)?;
 
                 if self.symbol_table.search_current_scope(name).is_some() {
@@ -207,18 +202,10 @@ impl Resolver {
 
                 self.symbol_table.declare_variable(id, name.to_owned());
 
-                let ty = match ty {
-                    Some(ty) => Some(self.resolve_type(ty)?),
-                    None => None,
-                };
-
-                Decl::variable(id, right, ty, declaration.span)
+                Decl::variable(id, right, declaration.span)
             }
             ast::DeclKind::Function {
-                parameters,
-                body,
-                return_ty,
-                ..
+                parameters, body, ..
             } => {
                 self.enter_function();
 
@@ -232,16 +219,11 @@ impl Resolver {
                     .map(|node| self.resolve_node(node))
                     .collect::<Result<Vec<Node>, KaoriError>>()?;
 
-                let return_ty = match return_ty {
-                    Some(ty) => Some(self.resolve_type(ty)?),
-                    _ => None,
-                };
-
                 self.exit_function();
 
                 let id = self.ast_to_hir.get(&declaration.id).unwrap();
 
-                Decl::function(*id, parameters, body, return_ty, declaration.span)
+                Decl::function(*id, parameters, body, declaration.span)
             }
             ast::DeclKind::Struct { fields, .. } => {
                 let fields = fields
@@ -454,46 +436,5 @@ impl Resolver {
         };
 
         Ok(_expr)
-    }
-
-    fn resolve_type(&mut self, ty: &ast::Ty) -> Result<Ty, KaoriError> {
-        let _ty = match &ty.kind {
-            ast::TyKind::Function {
-                parameters,
-                return_ty,
-            } => {
-                let parameters = parameters
-                    .iter()
-                    .map(|parameter| self.resolve_type(parameter))
-                    .collect::<Result<Vec<Ty>, KaoriError>>()?;
-
-                let return_ty = self.resolve_type(return_ty)?;
-
-                Ty::function(parameters, return_ty, ty.span)
-            }
-            ast::TyKind::Struct { fields } => {
-                let fields = fields
-                    .iter()
-                    .map(|field| self.resolve_type(field))
-                    .collect::<Result<Vec<Ty>, KaoriError>>()?;
-
-                Ty::struct_(fields, ty.span)
-            }
-            ast::TyKind::Identifier(name) => {
-                let Some(symbol) = self.symbol_table.search(name) else {
-                    return Err(kaori_error!(ty.span, "{} type is not declared", name));
-                };
-
-                let SymbolKind::Struct = symbol.kind else {
-                    return Err(kaori_error!(ty.span, "{} is not a valid type", name));
-                };
-
-                Ty::type_ref(symbol.id, ty.span)
-            }
-            ast::TyKind::Bool => Ty::bool(ty.span),
-            ast::TyKind::Number => Ty::number(ty.span),
-        };
-
-        Ok(_ty)
     }
 }

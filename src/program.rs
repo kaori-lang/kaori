@@ -1,17 +1,16 @@
 use std::time::Instant;
 
 use crate::{
-    ast::{decl::Decl, parser::Parser},
+    ast::{self, parser::Parser},
     bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode},
     cfg::{
         self, build_functions_graph::build_functions_graph,
         jump_threading::run_jump_threading_optimization,
-        validate_functions_return::validate_functions_return,
     },
     error::kaori_error::KaoriError,
-    hir::{hir::Hir, resolver::Resolver, type_checker::TypeChecker},
+    hir::{decl::Decl, resolver::Resolver},
     lexer::{lexer::Lexer, token_stream::TokenStream},
-    vm::virtual_machine::run_vm,
+    vm::typed_vm::run_typed_vm,
 };
 
 fn run_lexical_analysis(source: &'_ str) -> Result<TokenStream<'_>, KaoriError> {
@@ -22,7 +21,7 @@ fn run_lexical_analysis(source: &'_ str) -> Result<TokenStream<'_>, KaoriError> 
     Ok(token_stream)
 }
 
-fn run_syntax_analysis(token_stream: TokenStream) -> Result<Vec<Decl>, KaoriError> {
+fn run_syntax_analysis(token_stream: TokenStream) -> Result<Vec<ast::Decl>, KaoriError> {
     let mut parser = Parser::new(token_stream);
 
     let ast = parser.parse()?;
@@ -30,22 +29,15 @@ fn run_syntax_analysis(token_stream: TokenStream) -> Result<Vec<Decl>, KaoriErro
     Ok(ast)
 }
 
-fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Hir, KaoriError> {
+fn run_semantic_analysis(ast: &mut [ast::Decl]) -> Result<Vec<Decl>, KaoriError> {
     let mut resolver = Resolver::default();
 
     let declarations = resolver.resolve(ast)?;
 
-    let type_checker = TypeChecker::default();
-
-    let types = type_checker.type_check(&declarations)?;
-
-    let hir = Hir::new(declarations, types);
-
-    Ok(hir)
+    Ok(declarations)
 }
 
 fn run_cfg_analysis(functions: &mut [cfg::function::Function]) -> Result<(), KaoriError> {
-    validate_functions_return(functions)?;
     run_jump_threading_optimization(functions);
 
     Ok(())
@@ -54,8 +46,8 @@ fn run_cfg_analysis(functions: &mut [cfg::function::Function]) -> Result<(), Kao
 pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
-    let hir = run_semantic_analysis(&mut ast)?;
-    let mut functions = build_functions_graph(&hir.declarations)?;
+    let declarations = run_semantic_analysis(&mut ast)?;
+    let mut functions = build_functions_graph(&declarations)?;
 
     run_cfg_analysis(&mut functions)?;
 
@@ -71,7 +63,7 @@ pub fn run_program(source: &str) -> Result<(), KaoriError> {
 
     let start = Instant::now();
 
-    run_vm(bytecode.instructions, bytecode.functions);
+    run_typed_vm(bytecode.instructions, bytecode.functions);
 
     let elapsed = start.elapsed();
 

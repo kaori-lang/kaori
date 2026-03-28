@@ -1,6 +1,6 @@
 use crate::lexer::span::Span;
 
-use super::{expr::Expr, node::Node, node_id::NodeId, ty::Ty};
+use super::{expr::Expr, node::Node, node_id::NodeId};
 
 #[derive(Debug)]
 pub struct Decl {
@@ -14,13 +14,11 @@ pub enum DeclKind {
     Variable {
         name: String,
         right: Expr,
-        ty: Option<Ty>,
     },
     Function {
         name: String,
         parameters: Vec<Parameter>,
         body: Vec<Node>,
-        return_ty: Option<Ty>,
     },
     Struct {
         name: String,
@@ -33,7 +31,6 @@ pub struct Parameter {
     pub id: NodeId,
     pub span: Span,
     pub name: String,
-    pub ty: Ty,
 }
 
 #[derive(Debug)]
@@ -41,27 +38,24 @@ pub struct Field {
     pub id: NodeId,
     pub span: Span,
     pub name: String,
-    pub ty: Ty,
 }
 
 impl Parameter {
-    pub fn new(name: String, ty: Ty, span: Span) -> Parameter {
+    pub fn new(name: String, span: Span) -> Parameter {
         Parameter {
             id: NodeId::default(),
             span,
             name,
-            ty,
         }
     }
 }
 
 impl Field {
-    pub fn new(name: String, ty: Ty, span: Span) -> Field {
+    pub fn new(name: String, span: Span) -> Field {
         Field {
             id: NodeId::default(),
             span,
             name,
-            ty,
         }
     }
 }
@@ -76,22 +70,16 @@ impl Decl {
         }
     }
 
-    pub fn variable(name: String, right: Expr, ty: Option<Ty>, span: Span) -> Decl {
+    pub fn variable(name: String, right: Expr, span: Span) -> Decl {
         Decl {
             id: NodeId::default(),
             span,
 
-            kind: DeclKind::Variable { name, right, ty },
+            kind: DeclKind::Variable { name, right },
         }
     }
 
-    pub fn function(
-        name: String,
-        parameters: Vec<Parameter>,
-        body: Vec<Node>,
-        return_ty: Option<Ty>,
-        span: Span,
-    ) -> Decl {
+    pub fn function(name: String, parameters: Vec<Parameter>, body: Vec<Node>, span: Span) -> Decl {
         Decl {
             id: NodeId::default(),
             span,
@@ -99,7 +87,6 @@ impl Decl {
                 name,
                 parameters,
                 body,
-                return_ty,
             },
         }
     }

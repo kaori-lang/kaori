@@ -4,8 +4,7 @@ use std::{env::args, process::ExitCode};
 use std::{fs, time::Instant};
 
 use kaori::program::run_program;
-
-/* fn main() -> ExitCode {
+fn main() -> ExitCode {
     let source_to_run = args().nth(1);
 
     if source_to_run.is_none() {
@@ -26,10 +25,10 @@ use kaori::program::run_program;
 
     eprintln!("Error: Could not read the file by the given path.");
     ExitCode::FAILURE
-} */
+}
 
-fn main() {
-    let source_to_run = "test_suite/recursive_fib.kr";
+/* fn main() {
+    let source_to_run = "test_suite/iterative_fib.kr";
 
     match fs::read_to_string(source_to_run) {
         Ok(source) => {
@@ -40,3 +39,4 @@ fn main() {
         Err(_) => eprintln!("Error: Could not read the file by the given path."),
     };
 }
+ */

@@ -33,7 +33,7 @@ pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, Kao
     let mut functions = Vec::new();
 
     for declaration in declarations {
-        if let DeclKind::Function { return_ty, .. } = &declaration.kind {
+        if let DeclKind::Function { .. } = &declaration.kind {
             let mut ctx = FunctionContext::new(&node_to_function);
 
             ctx.visit_declaration(declaration)?;
@@ -45,8 +45,6 @@ pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, Kao
                 ctx.basic_blocks,
                 ctx.constant_pool.constants,
                 ctx.variables.len(),
-                return_ty.is_some(),
-                declaration.span,
             );
 
             functions.push(function);

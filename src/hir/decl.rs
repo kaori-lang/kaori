@@ -1,6 +1,6 @@
 use crate::lexer::span::Span;
 
-use super::{expr::Expr, node::Node, node_id::NodeId, ty::Ty};
+use super::{expr::Expr, node::Node, node_id::NodeId};
 
 #[derive(Debug)]
 pub struct Decl {
@@ -13,12 +13,10 @@ pub struct Decl {
 pub enum DeclKind {
     Variable {
         right: Box<Expr>,
-        ty: Option<Ty>,
     },
     Function {
         parameters: Vec<Parameter>,
         body: Vec<Node>,
-        return_ty: Option<Ty>,
     },
     Struct {
         fields: Vec<Field>,
@@ -29,25 +27,23 @@ pub enum DeclKind {
 pub struct Parameter {
     pub id: NodeId,
     pub span: Span,
-    pub ty: Ty,
 }
 
 #[derive(Debug)]
 pub struct Field {
     pub id: NodeId,
     pub span: Span,
-    pub ty: Ty,
 }
 
 impl Parameter {
-    pub fn new(id: NodeId, ty: Ty, span: Span) -> Parameter {
-        Parameter { id, span, ty }
+    pub fn new(id: NodeId, span: Span) -> Parameter {
+        Parameter { id, span }
     }
 }
 
 impl Field {
-    pub fn new(id: NodeId, ty: Ty, span: Span) -> Field {
-        Field { id, span, ty }
+    pub fn new(id: NodeId, span: Span) -> Field {
+        Field { id, span }
     }
 }
 
@@ -61,33 +57,22 @@ impl Decl {
         }
     }
 
-    pub fn variable(id: NodeId, right: Expr, ty: Option<Ty>, span: Span) -> Decl {
+    pub fn variable(id: NodeId, right: Expr, span: Span) -> Decl {
         Decl {
             id,
             span,
 
             kind: DeclKind::Variable {
                 right: Box::new(right),
-                ty,
             },
         }
     }
 
-    pub fn function(
-        id: NodeId,
-        parameters: Vec<Parameter>,
-        body: Vec<Node>,
-        return_ty: Option<Ty>,
-        span: Span,
-    ) -> Decl {
+    pub fn function(id: NodeId, parameters: Vec<Parameter>, body: Vec<Node>, span: Span) -> Decl {
         Decl {
             id,
             span,
-            kind: DeclKind::Function {
-                parameters,
-                body,
-                return_ty,
-            },
+            kind: DeclKind::Function { parameters, body },
         }
     }
 }

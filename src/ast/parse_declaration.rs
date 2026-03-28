@@ -18,18 +18,11 @@ impl<'a> Parser<'a> {
 
         self.token_stream.consume(TokenKind::Identifier)?;
 
-        let ty = if self.token_stream.token_kind() == TokenKind::Colon {
-            self.token_stream.consume(TokenKind::Colon)?;
-            Some(self.parse_type()?)
-        } else {
-            None
-        };
-
         self.token_stream.consume(TokenKind::Assign)?;
 
         let right = self.parse_expression()?;
 
-        Ok(Decl::variable(name, right, ty, span))
+        Ok(Decl::variable(name, right, span))
     }
 
     pub fn parse_function_declaration(&mut self) -> Result<Decl, KaoriError> {
@@ -48,14 +41,6 @@ impl<'a> Parser<'a> {
 
         self.token_stream.consume(TokenKind::RightParen)?;
 
-        let return_ty = if self.token_stream.token_kind() == TokenKind::ThinArrow {
-            self.token_stream.consume(TokenKind::ThinArrow)?;
-
-            Some(self.parse_type()?)
-        } else {
-            None
-        };
-
         let mut body = Vec::new();
 
         self.token_stream.consume(TokenKind::LeftBrace)?;
@@ -68,7 +53,7 @@ impl<'a> Parser<'a> {
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Decl::function(name, parameters, body, return_ty, span))
+        Ok(Decl::function(name, parameters, body, span))
     }
 
     pub fn parse_function_parameter(&mut self) -> Result<Parameter, KaoriError> {
@@ -78,13 +63,11 @@ impl<'a> Parser<'a> {
         self.token_stream.consume(TokenKind::Identifier)?;
         self.token_stream.consume(TokenKind::Colon)?;
 
-        let ty = self.parse_type()?;
-
         let end = self.token_stream.span();
 
         let span = Span::merge(start, end);
 
-        Ok(Parameter::new(name, ty, span))
+        Ok(Parameter::new(name, span))
     }
 
     pub fn parse_struct_field(&mut self) -> Result<Field, KaoriError> {
@@ -93,13 +76,12 @@ impl<'a> Parser<'a> {
         let name = self.token_stream.lexeme().to_owned();
         self.token_stream.consume(TokenKind::Identifier)?;
         self.token_stream.consume(TokenKind::Colon)?;
-        let ty = self.parse_type()?;
 
         let end = self.token_stream.span();
 
         let span = Span::merge(start, end);
 
-        Ok(Field::new(name, ty, span))
+        Ok(Field::new(name, span))
     }
 
     pub fn parse_struct_declaration(&mut self) -> Result<Decl, KaoriError> {

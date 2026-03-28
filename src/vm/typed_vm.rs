@@ -34,7 +34,7 @@ const OPCODE_HANDLERS: [InstructionHandler; 22] = [
     opcode_halt,
 ];
 
-pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
+pub fn run_typed_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
     let mut registers = vec![Value::default(); 1024];
     let Function {
         start,
@@ -116,8 +116,8 @@ fn opcode_add(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
 
         ctx.set_value(dest, Value::number(lhs + rhs));
 
@@ -132,8 +132,8 @@ fn opcode_subtract(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
 
         ctx.set_value(dest, Value::number(lhs - rhs));
 
@@ -148,8 +148,8 @@ fn opcode_multiply(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
 
         ctx.set_value(dest, Value::number(lhs * rhs));
 
@@ -164,8 +164,8 @@ fn opcode_divide(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
 
         ctx.set_value(dest, Value::number(lhs / rhs));
 
@@ -180,8 +180,8 @@ fn opcode_modulo(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
 
         ctx.set_value(dest, Value::number(lhs % rhs));
 
@@ -196,10 +196,26 @@ fn opcode_equal(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
 
         ctx.set_value(dest, Value::boolean(lhs == rhs));
+
+        dispatch!(ctx, ip);
+    }
+}
+
+#[inline(never)]
+fn opcode_not_equal(ctx: &mut VMContext, ip: *const Instruction) {
+    unsafe {
+        let Instruction::NotEqual { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
+
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
+
+        ctx.set_value(dest, Value::boolean(lhs != rhs));
 
         dispatch!(ctx, ip);
     }
@@ -212,8 +228,8 @@ fn opcode_greater(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
 
         ctx.set_value(dest, Value::boolean(lhs > rhs));
 
@@ -228,8 +244,8 @@ fn opcode_greater_equal(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
 
         ctx.set_value(dest, Value::boolean(lhs >= rhs));
 
@@ -244,8 +260,8 @@ fn opcode_less(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
 
         ctx.set_value(dest, Value::boolean(lhs < rhs));
 
@@ -260,26 +276,10 @@ fn opcode_less_equal(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
 
         ctx.set_value(dest, Value::boolean(lhs <= rhs));
-
-        dispatch!(ctx, ip);
-    }
-}
-
-#[inline(never)]
-fn opcode_not_equal(ctx: &mut VMContext, ip: *const Instruction) {
-    unsafe {
-        let Instruction::NotEqual { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-
-        let lhs = ctx.get_value(src1).as_number();
-        let rhs = ctx.get_value(src2).as_number();
-
-        ctx.set_value(dest, Value::boolean(lhs != rhs));
 
         dispatch!(ctx, ip);
     }
@@ -292,7 +292,7 @@ fn opcode_negate(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let value = ctx.get_value(src).as_number();
+        let value = ctx.get_value(src).expect_number();
         ctx.set_value(dest, Value::number(-value));
 
         dispatch!(ctx, ip);
@@ -306,7 +306,7 @@ fn opcode_not(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let value = ctx.get_value(src).as_boolean();
+        let value = ctx.get_value(src).expect_boolean();
         ctx.set_value(dest, Value::boolean(!value));
 
         dispatch!(ctx, ip);
@@ -322,7 +322,7 @@ fn opcode_call(ctx: &mut VMContext, ip: *const Instruction) {
 
         let return_address = ip.add(1);
 
-        let function_index = ctx.get_value(src).as_function();
+        let function_index = ctx.get_value(src).expect_function();
 
         let Function {
             start,
@@ -330,6 +330,7 @@ fn opcode_call(ctx: &mut VMContext, ip: *const Instruction) {
             ref constant_pool,
             ..
         } = ctx.functions[function_index];
+
         let constants_ptr = (*constant_pool).as_ptr();
 
         ctx.push_frame(dest, return_address, frame_size, constants_ptr);
@@ -394,7 +395,7 @@ fn opcode_jump_if_true(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        match ctx.get_value(src).as_boolean() {
+        match ctx.get_value(src).expect_boolean() {
             true => dispatch_to!(ctx, ip, offset),
             false => dispatch!(ctx, ip),
         }
@@ -408,7 +409,7 @@ fn opcode_jump_if_false(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        match ctx.get_value(src).as_boolean() {
+        match ctx.get_value(src).expect_boolean() {
             true => dispatch!(ctx, ip),
             false => dispatch_to!(ctx, ip, offset),
         }
@@ -422,7 +423,7 @@ fn opcode_print(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let value = ctx.get_value(src).as_number();
+        let value = ctx.get_value(src).expect_number();
         println!("{}", value);
 
         dispatch!(ctx, ip);

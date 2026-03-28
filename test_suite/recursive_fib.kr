@@ -8,7 +8,7 @@ fun fib(n: number) -> number {
 
 
 fun main()  {
-    fib(35);
+    fib(30);
 
  
 }
