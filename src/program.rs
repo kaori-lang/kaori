@@ -53,9 +53,9 @@ pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
     let hir = run_semantic_analysis(&mut ast)?;
     let mut functions = build_functions_graph(&hir.declarations)?;
 
-    for function in &functions {
+    /*  for function in &functions {
         println!("{}", function);
-    }
+    } */
 
     run_cfg_analysis(&mut functions);
 

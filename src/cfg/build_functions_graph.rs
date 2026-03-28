@@ -359,7 +359,6 @@ impl<'a> FunctionContext<'a> {
                     BinaryOpKind::GreaterEqual => Instruction::greater_equal(dest, src1, src2),
                     BinaryOpKind::Less => Instruction::less(dest, src1, src2),
                     BinaryOpKind::LessEqual => Instruction::less_equal(dest, src1, src2),
-                    _ => unreachable!(),
                 };
 
                 self.emit_instruction(instruction);
