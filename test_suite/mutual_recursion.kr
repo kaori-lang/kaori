@@ -1,4 +1,4 @@
-fun foo(n: number) {
+fun foo(n) {
     print(n);
     
     if n > 0 {
@@ -7,7 +7,7 @@ fun foo(n: number) {
 
 }
 
-fun bar(n: number) {
+fun bar(n) {
     print(n);
 
     if n > 0 {

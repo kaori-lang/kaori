@@ -1,4 +1,4 @@
-fun fib(n: number) -> number {
+fun fib(n) {
     if n < 2 {
         return n;
     } else {

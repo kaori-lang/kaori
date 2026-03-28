@@ -1,6 +1,6 @@
 /* test primitive vars. & operations */
 
-fun test_numbers() -> bool {
+fun test_numbers() {
     $a = 10.0;
     $b = -2.0;
 
@@ -30,7 +30,7 @@ fun test_numbers() -> bool {
 }
 
 
-fun test_newton() -> bool {
+fun test_newton() {
     /* approximate magnitude of the 2-D vector of <x, y> using Newton's Method */
     $x = 8.0;
     $y = 4.0;
@@ -64,7 +64,5 @@ fun main() {
     if  not test_newton() {
         print(1);
     }
-
-   
 }
 

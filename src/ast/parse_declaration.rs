@@ -61,7 +61,6 @@ impl<'a> Parser<'a> {
 
         let name = self.token_stream.lexeme().to_owned();
         self.token_stream.consume(TokenKind::Identifier)?;
-        self.token_stream.consume(TokenKind::Colon)?;
 
         let end = self.token_stream.span();
 
@@ -75,7 +74,6 @@ impl<'a> Parser<'a> {
 
         let name = self.token_stream.lexeme().to_owned();
         self.token_stream.consume(TokenKind::Identifier)?;
-        self.token_stream.consume(TokenKind::Colon)?;
 
         let end = self.token_stream.span();
 

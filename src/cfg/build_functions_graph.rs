@@ -148,6 +148,8 @@ impl<'a> FunctionContext<'a> {
                 for node in body {
                     self.visit_ast_node(node)?;
                 }
+
+                self.set_terminator(Terminator::Return { src: None });
             }
             DeclKind::Struct { .. } => {}
         };
