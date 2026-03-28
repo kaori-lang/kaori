@@ -88,7 +88,7 @@ impl<'a> FunctionContext<'a> {
     fn emit_instruction(&mut self, instruction: Instruction) {
         let basic_block = &mut self.basic_blocks[self.index];
 
-        if let Terminator::None = basic_block.terminator {
+        if basic_block.terminator.is_none() {
             basic_block.instructions.push(instruction);
         };
     }
@@ -96,8 +96,8 @@ impl<'a> FunctionContext<'a> {
     fn set_terminator(&mut self, terminator: Terminator) {
         let basic_block = &mut self.basic_blocks[self.index];
 
-        if let Terminator::None = basic_block.terminator {
-            basic_block.terminator = terminator;
+        if basic_block.terminator.is_none() {
+            basic_block.terminator = Some(terminator);
         }
     }
 

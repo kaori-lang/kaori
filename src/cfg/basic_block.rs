@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter};
 pub struct BasicBlock {
     pub index: usize,
     pub instructions: Vec<Instruction>,
-    pub terminator: Terminator,
+    pub terminator: Option<Terminator>,
 }
 
 impl BasicBlock {
@@ -14,7 +14,7 @@ impl BasicBlock {
         Self {
             index,
             instructions: Vec::new(),
-            terminator: Terminator::None,
+            terminator: None,
         }
     }
 }
@@ -30,7 +30,6 @@ pub enum Terminator {
     Return {
         src: Option<Operand>,
     },
-    None,
 }
 
 impl Display for Terminator {
@@ -51,7 +50,6 @@ impl Display for Terminator {
                     write!(f, "return")
                 }
             }
-            Terminator::None => write!(f, "<no terminator>"),
         }
     }
 }
@@ -62,6 +60,11 @@ impl Display for BasicBlock {
         for instruction in &self.instructions {
             writeln!(f, "  {}", instruction)?;
         }
-        writeln!(f, "  {}", self.terminator)
+
+        if let Some(terminator) = self.terminator {
+            writeln!(f, "  {}", terminator)
+        } else {
+            write!(f, "<no terminator>")
+        }
     }
 }

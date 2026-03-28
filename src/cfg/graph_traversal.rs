@@ -27,18 +27,20 @@ fn traverse(
 
     let bb = &basic_blocks[index];
 
-    match bb.terminator {
-        Terminator::Branch {
-            r#true, r#false, ..
-        } => {
-            traverse(r#false, basic_blocks, visited, postorder);
-            traverse(r#true, basic_blocks, visited, postorder);
+    if let Some(terminator) = bb.terminator {
+        match terminator {
+            Terminator::Branch {
+                r#true, r#false, ..
+            } => {
+                traverse(r#false, basic_blocks, visited, postorder);
+                traverse(r#true, basic_blocks, visited, postorder);
+            }
+            Terminator::Goto(target) => {
+                traverse(target, basic_blocks, visited, postorder);
+            }
+            Terminator::Return { .. } => {}
         }
-        Terminator::Goto(target) => {
-            traverse(target, basic_blocks, visited, postorder);
-        }
-        _ => {}
-    };
+    }
 
     postorder.push(index);
 }

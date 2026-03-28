@@ -116,7 +116,11 @@ impl<'a> FunctionContext<'a> {
             self.visit_instruction(instruction);
         }
 
-        match basic_block.terminator {
+        let Some(terminator) = basic_block.terminator else {
+            panic!("Terminator missing!");
+        };
+
+        match terminator {
             Terminator::Branch {
                 src,
                 r#true,
@@ -154,9 +158,6 @@ impl<'a> FunctionContext<'a> {
                 } else {
                     self.instructions.push(Instruction::ReturnVoid);
                 }
-            }
-            Terminator::None => {
-                panic!("Terminator missing!")
             }
         };
     }

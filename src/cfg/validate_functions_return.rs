@@ -9,11 +9,11 @@ pub fn validate_functions_return(functions: &mut [Function]) -> Result<(), Kaori
         for index in reversed_postorder {
             let basic_block = &mut function.basic_blocks[index];
 
-            if let Terminator::None = basic_block.terminator {
+            if basic_block.terminator.is_none() {
                 if function.return_required {
                     return Err(kaori_error!(function.span, "return statement is required"));
                 } else {
-                    basic_block.terminator = Terminator::Return { src: None };
+                    basic_block.terminator = Some(Terminator::Return { src: None });
                 }
             }
         }

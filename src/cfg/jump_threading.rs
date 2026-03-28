@@ -32,7 +32,11 @@ fn traverse(
 
     let basic_block = &basic_blocks[index];
 
-    let (bb_index, terminator) = &match basic_block.terminator {
+    let Some(terminator) = basic_block.terminator else {
+        panic!("Terminator missing!");
+    };
+
+    let (bb_index, terminator) = match terminator {
         Terminator::Branch {
             src,
             r#true,
@@ -64,13 +68,12 @@ fn traverse(
 
             (index, terminator)
         }
-        _ => unreachable!(),
     };
 
-    nodes.insert(index, *bb_index);
+    nodes.insert(index, bb_index);
 
     let basic_block = &mut basic_blocks[index];
-    basic_block.terminator = *terminator;
+    basic_block.terminator = Some(terminator);
 
-    *bb_index
+    bb_index
 }
