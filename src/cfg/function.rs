@@ -20,6 +20,7 @@ pub struct Function {
     pub basic_blocks: Vec<BasicBlock>,
     pub constant_pool: Vec<Constant>,
     pub allocated_variables: usize,
+    pub return_required: bool,
     pub span: Span,
 }
 
@@ -29,6 +30,7 @@ impl Function {
         basic_blocks: Vec<BasicBlock>,
         constant_pool: Vec<Constant>,
         allocated_variables: usize,
+        return_required: bool,
         span: Span,
     ) -> Self {
         Self {
@@ -36,6 +38,7 @@ impl Function {
             basic_blocks,
             constant_pool,
             allocated_variables,
+            return_required,
             span,
         }
     }

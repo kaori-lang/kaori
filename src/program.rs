@@ -6,6 +6,7 @@ use crate::{
     cfg::{
         self, build_functions_graph::build_functions_graph,
         jump_threading::run_jump_threading_optimization,
+        validate_functions_return::validate_functions_return,
     },
     error::kaori_error::KaoriError,
     hir::{hir::Hir, resolver::Resolver, type_checker::TypeChecker},
@@ -43,8 +44,11 @@ fn run_semantic_analysis(ast: &mut [Decl]) -> Result<Hir, KaoriError> {
     Ok(hir)
 }
 
-fn run_cfg_analysis(functions: &mut [cfg::function::Function]) {
+fn run_cfg_analysis(functions: &mut [cfg::function::Function]) -> Result<(), KaoriError> {
+    validate_functions_return(functions)?;
     run_jump_threading_optimization(functions);
+
+    Ok(())
 }
 
 pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
@@ -53,15 +57,11 @@ pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
     let hir = run_semantic_analysis(&mut ast)?;
     let mut functions = build_functions_graph(&hir.declarations)?;
 
-    /*  for function in &functions {
-        println!("{}", function);
-    } */
-
-    run_cfg_analysis(&mut functions);
+    run_cfg_analysis(&mut functions)?;
 
     let bytecode = emit_bytecode(functions);
 
-    println!("{bytecode}");
+    //println!("{bytecode}");
 
     Ok(bytecode)
 }

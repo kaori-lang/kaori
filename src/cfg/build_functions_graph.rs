@@ -45,6 +45,7 @@ pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, Kao
                 ctx.basic_blocks,
                 ctx.constant_pool.constants,
                 ctx.variables.len(),
+                return_ty.is_some(),
                 declaration.span,
             );
 

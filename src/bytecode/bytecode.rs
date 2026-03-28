@@ -25,7 +25,7 @@ impl fmt::Display for Bytecode {
             let start_idx = unsafe { function.start.offset_from(base_ptr) as usize };
             let end_idx = unsafe { function.end.offset_from(base_ptr) as usize };
 
-            for instruction in self.instructions[start_idx..=end_idx].iter() {
+            for instruction in self.instructions[start_idx..end_idx].iter() {
                 writeln!(f, "   {}", instruction)?;
             }
 

@@ -11,5 +11,6 @@ pub mod constant_pool;
 
 pub mod jump_threading;
 pub mod operand;
+pub mod validate_functions_return;
 
 pub use instruction::Instruction;

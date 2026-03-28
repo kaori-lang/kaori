@@ -29,7 +29,7 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
 
         context.emit_instructions();
 
-        let fn_end_index = instructions.len() - 1;
+        let fn_end_index = instructions.len();
 
         fn_start_end.insert(function.id, (fn_start_index, fn_end_index));
     }
