@@ -2,7 +2,7 @@ use std::fmt::{self, Display, Formatter};
 
 use uuid::Uuid;
 
-use crate::{cfg::graph_traversal::reversed_postorder, lexer::span::Span};
+use crate::cfg::graph_traversal::reversed_postorder;
 
 use super::{basic_block::BasicBlock, constant_pool::Constant};
 
@@ -19,7 +19,7 @@ pub struct Function {
     pub id: FunctionId,
     pub basic_blocks: Vec<BasicBlock>,
     pub constant_pool: Vec<Constant>,
-    pub allocated_variables: usize,
+    pub registers_count: usize,
 }
 
 impl Function {
@@ -27,13 +27,13 @@ impl Function {
         id: FunctionId,
         basic_blocks: Vec<BasicBlock>,
         constant_pool: Vec<Constant>,
-        allocated_variables: usize,
+        registers_count: usize,
     ) -> Self {
         Self {
             id,
             basic_blocks,
             constant_pool,
-            allocated_variables,
+            registers_count,
         }
     }
 }

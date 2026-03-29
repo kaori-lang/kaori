@@ -23,7 +23,7 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
 
         let mut context = FunctionContext::new(
             &function.basic_blocks,
-            function.allocated_variables,
+            function.registers_count,
             &mut instructions,
         );
 
@@ -56,7 +56,7 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
                 })
                 .collect();
 
-            let frame_size = function.allocated_variables;
+            let frame_size = function.registers_count;
 
             let (start_index, end_index) = *fn_start_end.get(&function.id).unwrap();
             let start = unsafe { base_ptr.add(start_index) };

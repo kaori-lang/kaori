@@ -38,7 +38,7 @@ pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
     let mut registers = vec![Value::default(); 1024];
     let Function {
         start,
-        frame_size,
+        registers_count,
         ref constant_pool,
         ..
     } = functions[0];
@@ -49,7 +49,7 @@ pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
     let return_address = unsafe { instructions.last().unwrap_unchecked() };
 
     let main_frame = FunctionFrame::new(
-        frame_size,
+        registers_count,
         registers_ptr,
         constant_pool_ptr,
         return_address,
@@ -326,14 +326,14 @@ fn opcode_call(ctx: &mut VMContext, ip: *const Instruction) {
 
         let Function {
             start,
-            frame_size,
+            registers_count,
             ref constant_pool,
             ..
         } = ctx.functions[function_index];
 
         let constants_ptr = (*constant_pool).as_ptr();
 
-        ctx.push_frame(dest, return_address, frame_size, constants_ptr);
+        ctx.push_frame(dest, return_address, registers_count, constants_ptr);
 
         let index = (*start).discriminant();
 

@@ -1,7 +1,7 @@
 use crate::bytecode::{function::Function, instruction::Instruction, value::Value};
 
 pub struct FunctionFrame {
-    pub size: u8,
+    pub registers_count: u8,
     pub registers_ptr: *mut Value,
     pub constant_pool_ptr: *const Value,
     pub return_address: *const Instruction,
@@ -10,14 +10,14 @@ pub struct FunctionFrame {
 
 impl FunctionFrame {
     pub fn new(
-        size: u8,
+        registers_count: u8,
         registers_ptr: *mut Value,
         constant_pool_ptr: *const Value,
         return_address: *const Instruction,
         return_register: u16,
     ) -> Self {
         Self {
-            size,
+            registers_count,
             registers_ptr,
             constant_pool_ptr,
             return_address,
@@ -86,15 +86,15 @@ impl<'a> VMContext<'a> {
         &mut self,
         return_register: u16,
         return_address: *const Instruction,
-        frame_size: u8,
+        registers_count: u8,
         constant_pool_ptr: *const Value,
     ) {
-        let size = self.call_stack.last().unwrap().size;
+        let registers_count = self.call_stack.last().unwrap().registers_count;
 
-        let registers_ptr = unsafe { self.registers_ptr.add(size as usize) };
+        let registers_ptr = unsafe { self.registers_ptr.add(registers_count as usize) };
 
         let frame = FunctionFrame::new(
-            frame_size,
+            registers_count,
             registers_ptr,
             constant_pool_ptr,
             return_address,
