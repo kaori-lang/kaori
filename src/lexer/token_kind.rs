@@ -38,6 +38,7 @@ pub enum TokenKind {
 
     // Keywords
     Function,
+    Let,
     Struct,
     For,
     While,
@@ -49,8 +50,6 @@ pub enum TokenKind {
     Print,
     True,
     False,
-    Bool,
-    Number,
 
     Identifier,
     StringLiteral,
@@ -97,7 +96,8 @@ impl fmt::Display for TokenKind {
             TokenKind::LeftBrace => "{",
             TokenKind::RightBrace => "}",
 
-            TokenKind::Function => "func",
+            TokenKind::Function => "fun",
+            TokenKind::Let => "let",
             TokenKind::For => "for",
             TokenKind::While => "while",
             TokenKind::Break => "break",
@@ -109,8 +109,6 @@ impl fmt::Display for TokenKind {
             TokenKind::Print => "print",
             TokenKind::True => "true",
             TokenKind::False => "false",
-            TokenKind::Bool => "bool",
-            TokenKind::Number => "number",
 
             TokenKind::Identifier => "identifier",
             TokenKind::StringLiteral => "string",

@@ -1,18 +1,11 @@
 
 
-fun foo() {
-    true and false;
-
-    true or false;
-
-    return;
-}
-
-
 fun main()  {
     print(1);
 
   
     return;
 }
+
+
 

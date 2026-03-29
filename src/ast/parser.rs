@@ -52,13 +52,13 @@ impl<'a> Parser<'a> {
         let declaration = match self.token_stream.token_kind() {
             TokenKind::Function => Some(self.parse_function_declaration()?),
             TokenKind::Struct => Some(self.parse_struct_declaration()?),
-            TokenKind::Dollar => Some(self.parse_variable_declaration()?),
+            TokenKind::Let => Some(self.parse_variable_declaration()?),
             _ => None,
         };
 
         #[allow(clippy::single_match)]
         match token_kind {
-            TokenKind::Dollar => {
+            TokenKind::Let => {
                 self.token_stream.consume(TokenKind::Semicolon)?;
             }
             _ => (),

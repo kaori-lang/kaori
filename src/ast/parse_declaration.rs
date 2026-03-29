@@ -12,7 +12,7 @@ impl<'a> Parser<'a> {
     pub fn parse_variable_declaration(&mut self) -> Result<Decl, KaoriError> {
         let span = self.token_stream.span();
 
-        self.token_stream.consume(TokenKind::Dollar)?;
+        self.token_stream.consume(TokenKind::Let)?;
 
         let name = self.token_stream.lexeme().to_owned();
 

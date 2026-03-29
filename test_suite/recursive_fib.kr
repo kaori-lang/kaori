@@ -9,8 +9,6 @@ fun fib(n) {
 
 fun main()  {
     fib(30);
-
- 
 }
 
 

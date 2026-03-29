@@ -1,14 +1,14 @@
 /* test primitive vars. & operations */
 
 fun test_numbers() {
-    $a = 10.0;
-    $b = -2.0;
+    let a = 10.0;
+    let b = -2.0;
 
     // test arithmetic
-    $sum_a_b = a + b;
-    $diff_a_b = a - b;
-    $prod_a_b = a * b;
-    $quot_a_b = a / b;
+    let sum_a_b = a + b;
+    let diff_a_b = a - b;
+    let prod_a_b = a * b;
+    let quot_a_b = a / b;
 
     if sum_a_b != 8.0 {
         return false;
@@ -29,24 +29,23 @@ fun test_numbers() {
     return true;
 }
 
-
 fun test_newton() {
     /* approximate magnitude of the 2-D vector of <x, y> using Newton's Method */
-    $x = 8.0;
-    $y = 4.0;
+    let x = 8.0;
+    let y = 4.0;
 
-    $dist_squ = x * x + y * y;
-    $guess = 7.25;
+    let dist_squ = x * x + y * y;
+    let guess = 7.25;
 
-    for $iter = 0; iter < 4; iter += 1 {
-        guess = 0.5 * ( guess + dist_squ / guess );
+    for let iter = 0; iter < 4; iter += 1 {
+        guess = 0.5 * (guess + dist_squ / guess);
     }
 
     /* max allowed error in magnitude approximation */
-    $max_elipson = 0.01;
+    let max_elipson = 0.01;
 
     /* expected answer: D_target = sqrt(80) */
-    $target_answer = 8.944;
+    let target_answer = 8.944;
 
     print(guess);
     print(target_answer);
@@ -61,8 +60,7 @@ fun main() {
     }
 
     /* test complex arithmetic: 1 is an error */
-    if  not test_newton() {
+    if not test_newton() {
         print(1);
     }
 }
-
