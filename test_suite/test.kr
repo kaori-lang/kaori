@@ -1,7 +1,10 @@
 
 
 fun main()  {
-    print(1);
+    Foo {
+        a: 5,
+        a: a
+    };
 
   
 }

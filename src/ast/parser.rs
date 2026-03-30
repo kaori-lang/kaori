@@ -82,9 +82,13 @@ impl<'a> Parser<'a> {
 
             _ => {
                 let statement = self.parse_expression_statement();
-                self.token_stream.consume(TokenKind::Semicolon)?;
 
-                statement
+                if statement.is_ok() {
+                    self.token_stream.consume(TokenKind::Semicolon)?;
+                    statement
+                } else {
+                    statement
+                }
             }
         }?;
 

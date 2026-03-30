@@ -42,7 +42,9 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_expression(&mut self) -> Result<Expr, KaoriError> {
-        self.parse_assign()
+        let assign = self.parse_assign()?;
+
+        Ok(assign)
     }
 
     fn parse_assign(&mut self) -> Result<Expr, KaoriError> {
@@ -209,7 +211,11 @@ impl<'a> Parser<'a> {
                 return Ok(Expr::logical_not(right));
             }
             TokenKind::Minus => self.build_unary_operator(),
-            _ => return self.parse_primary(),
+            _ => {
+                let primary = self.parse_primary()?;
+
+                return Ok(primary);
+            }
         };
 
         self.token_stream.advance();
@@ -256,7 +262,18 @@ impl<'a> Parser<'a> {
 
                 Expr::string_literal(value, span)
             }
-            TokenKind::Identifier => self.parse_postfix_unary()?,
+            TokenKind::Identifier => {
+                if self
+                    .token_stream
+                    .look_ahead(&[TokenKind::Identifier, TokenKind::LeftBrace])
+                {
+                    self.parse_struct_literal()?
+                } else {
+                    let identifier = self.parse_identifier()?;
+
+                    self.parse_postfix_unary(identifier)?
+                }
+            }
             _ => {
                 let span = self.token_stream.span();
 
@@ -282,20 +299,18 @@ impl<'a> Parser<'a> {
         Ok(identifier)
     }
 
-    fn parse_postfix_unary(&mut self) -> Result<Expr, KaoriError> {
-        let identifier = self.parse_identifier()?;
-
+    fn parse_postfix_unary(&mut self, operand: Expr) -> Result<Expr, KaoriError> {
         let token_kind = self.token_stream.token_kind();
 
         Ok(match token_kind {
-            TokenKind::LeftParen => self.parse_function_call(identifier)?,
-
-            _ => identifier,
+            TokenKind::LeftParen => self.parse_function_call(operand)?,
+            _ => operand,
         })
     }
 
     fn parse_struct_literal_field(&mut self) -> Result<(Expr, Expr), KaoriError> {
         let identifier = self.parse_identifier()?;
+        self.token_stream.consume(TokenKind::Colon)?;
         let expr = self.parse_expression()?;
 
         Ok((identifier, expr))
@@ -317,10 +332,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_function_call(&mut self, callee: Expr) -> Result<Expr, KaoriError> {
-        if self.token_stream.token_kind() != TokenKind::LeftParen {
-            return Ok(callee);
-        }
-
         self.token_stream.consume(TokenKind::LeftParen)?;
 
         let arguments =
@@ -332,6 +343,6 @@ impl<'a> Parser<'a> {
 
         let callee = Expr::function_call(callee, arguments, span);
 
-        self.parse_function_call(callee)
+        self.parse_postfix_unary(callee)
     }
 }

@@ -433,6 +433,7 @@ impl Resolver {
                     }
                 }
             }
+            ast::ExprKind::StructLiteral { identifier, fields } => todo!(),
         };
 
         Ok(_expr)
