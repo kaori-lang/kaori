@@ -18,8 +18,7 @@ impl Value {
     #[inline(always)]
     pub fn number(value: f64) -> Self {
         let bits = value.to_bits();
-        // All finite f64 and normal NaNs have top 2 bits as 00 (exponent never all-ones with sign=1)
-        // so storing bits directly with TAG_NUMBER (0b00) is safe — the tag adds nothing
+
         debug_assert!(bits & TAG_MASK == 0, "f64 bits collide with tag");
         Self(bits | TAG_NUMBER)
     }

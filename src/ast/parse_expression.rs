@@ -289,8 +289,31 @@ impl<'a> Parser<'a> {
 
         Ok(match token_kind {
             TokenKind::LeftParen => self.parse_function_call(identifier)?,
+
             _ => identifier,
         })
+    }
+
+    fn parse_struct_literal_field(&mut self) -> Result<(Expr, Expr), KaoriError> {
+        let identifier = self.parse_identifier()?;
+        let expr = self.parse_expression()?;
+
+        Ok((identifier, expr))
+    }
+
+    fn parse_struct_literal(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        let identifier = self.parse_identifier()?;
+
+        self.token_stream.consume(TokenKind::LeftBrace)?;
+
+        let fields =
+            self.parse_comma_separator(Parser::parse_struct_literal_field, TokenKind::RightBrace)?;
+
+        self.token_stream.consume(TokenKind::RightBrace)?;
+
+        Ok(Expr::struct_literal(identifier, fields, span))
     }
 
     fn parse_function_call(&mut self, callee: Expr) -> Result<Expr, KaoriError> {

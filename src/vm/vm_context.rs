@@ -89,9 +89,12 @@ impl<'a> VMContext<'a> {
         registers_count: u8,
         constant_pool_ptr: *const Value,
     ) {
-        let registers_count = self.call_stack.last().unwrap().registers_count;
+        let current_function_registers_count = self.call_stack.last().unwrap().registers_count;
 
-        let registers_ptr = unsafe { self.registers_ptr.add(registers_count as usize) };
+        let registers_ptr = unsafe {
+            self.registers_ptr
+                .add(current_function_registers_count as usize)
+        };
 
         let frame = FunctionFrame::new(
             registers_count,

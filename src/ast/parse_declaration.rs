@@ -1,7 +1,4 @@
-use crate::{
-    error::kaori_error::KaoriError,
-    lexer::{span::Span, token_kind::TokenKind},
-};
+use crate::{error::kaori_error::KaoriError, lexer::token_kind::TokenKind};
 
 use super::{
     decl::{Decl, Field, Parameter},
@@ -57,27 +54,19 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_function_parameter(&mut self) -> Result<Parameter, KaoriError> {
-        let start = self.token_stream.span();
+        let span = self.token_stream.span();
 
         let name = self.token_stream.lexeme().to_owned();
         self.token_stream.consume(TokenKind::Identifier)?;
-
-        let end = self.token_stream.span();
-
-        let span = Span::merge(start, end);
 
         Ok(Parameter::new(name, span))
     }
 
     pub fn parse_struct_field(&mut self) -> Result<Field, KaoriError> {
-        let start = self.token_stream.span();
+        let span = self.token_stream.span();
 
         let name = self.token_stream.lexeme().to_owned();
         self.token_stream.consume(TokenKind::Identifier)?;
-
-        let end = self.token_stream.span();
-
-        let span = Span::merge(start, end);
 
         Ok(Field::new(name, span))
     }
