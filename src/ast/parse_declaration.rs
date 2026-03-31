@@ -70,23 +70,4 @@ impl<'a> Parser<'a> {
 
         Ok(Field::new(name, span))
     }
-
-    pub fn parse_struct_declaration(&mut self) -> Result<Decl, KaoriError> {
-        let span = self.token_stream.span();
-
-        self.token_stream.consume(TokenKind::Struct)?;
-
-        let name = self.token_stream.lexeme().to_owned();
-
-        self.token_stream.consume(TokenKind::Identifier)?;
-
-        self.token_stream.consume(TokenKind::LeftBrace)?;
-
-        let fields =
-            self.parse_comma_separator(Parser::parse_struct_field, TokenKind::RightBrace)?;
-
-        self.token_stream.consume(TokenKind::RightBrace)?;
-
-        Ok(Decl::struct_(name, fields, span))
-    }
 }

@@ -37,7 +37,7 @@ impl<'a> TokenStream<'a> {
 
             Err(kaori_error!(
                 span,
-                "expected {}, but found {}",
+                "expected {} and found {}",
                 expected,
                 found,
             ))

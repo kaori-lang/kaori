@@ -39,7 +39,6 @@ pub enum TokenKind {
     // Keywords
     Function,
     Let,
-    Struct,
     For,
     While,
     Break,
@@ -105,7 +104,6 @@ impl fmt::Display for TokenKind {
             TokenKind::If => "if",
             TokenKind::Else => "else",
             TokenKind::Return => "return",
-            TokenKind::Struct => "struct",
             TokenKind::Print => "print",
             TokenKind::True => "true",
             TokenKind::False => "false",

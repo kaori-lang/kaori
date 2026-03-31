@@ -51,7 +51,6 @@ impl<'a> Parser<'a> {
 
         let declaration = match self.token_stream.token_kind() {
             TokenKind::Function => Some(self.parse_function_declaration()?),
-            TokenKind::Struct => Some(self.parse_struct_declaration()?),
             TokenKind::Let => Some(self.parse_variable_declaration()?),
             _ => None,
         };

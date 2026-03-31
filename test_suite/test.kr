@@ -1,12 +1,17 @@
 
+fun bar(n) {
+    return n + 2;
+}
+
+fun foo(n) {
+    let bar = 5;
+
+    return bar;
+}
 
 fun main()  {
-    Foo {
-        a: 5,
-        a: a
-    };
-
-  
+   
+    print(foo(5)(10));
 }
 
 

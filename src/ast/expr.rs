@@ -44,8 +44,7 @@ pub enum ExprKind {
     StringLiteral(String),
     NumberLiteral(f64),
     BooleanLiteral(bool),
-    StructLiteral {
-        identifier: Box<Expr>,
+    DictLiteral {
         fields: Vec<(Expr, Expr)>,
     },
 }
@@ -173,14 +172,11 @@ impl Expr {
         }
     }
 
-    pub fn struct_literal(identifier: Expr, fields: Vec<(Expr, Expr)>, span: Span) -> Expr {
+    pub fn dict_literal(identifier: Expr, fields: Vec<(Expr, Expr)>, span: Span) -> Expr {
         Expr {
             id: NodeId::default(),
             span,
-            kind: ExprKind::StructLiteral {
-                identifier: Box::new(identifier),
-                fields,
-            },
+            kind: ExprKind::DictLiteral { fields },
         }
     }
 }

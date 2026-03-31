@@ -83,7 +83,6 @@ impl Lexer {
             "return" => TokenKind::Return,
             "fun" => TokenKind::Function,
             "let" => TokenKind::Let,
-            "struct" => TokenKind::Struct,
             "print" => TokenKind::Print,
             "true" => TokenKind::True,
             "false" => TokenKind::False,

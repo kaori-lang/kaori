@@ -151,7 +151,6 @@ impl<'a> FunctionContext<'a> {
 
                 self.set_terminator(Terminator::Return { src: None });
             }
-            DeclKind::Struct { .. } => {}
         };
 
         Ok(())

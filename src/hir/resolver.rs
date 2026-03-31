@@ -68,7 +68,7 @@ impl Resolver {
     fn resolve_declaration_scope(&self, declaration: &ast::Decl) -> Result<(), KaoriError> {
         let has_error = match &declaration.kind {
             ast::DeclKind::Function { .. } if self.local_scope => true,
-            ast::DeclKind::Struct { .. } if self.local_scope => true,
+
             ast::DeclKind::Variable { .. } if !self.local_scope => true,
             _ => false,
         };
@@ -100,19 +100,6 @@ impl Resolver {
                     let id = self.generate_id(declaration.id);
 
                     self.symbol_table.declare_function(id, name.to_owned());
-                }
-                ast::DeclKind::Struct { name, .. } => {
-                    if self.symbol_table.search_current_scope(name).is_some() {
-                        return Err(kaori_error!(
-                            declaration.span,
-                            "{} is already declared",
-                            name
-                        ));
-                    }
-
-                    let id = self.generate_id(declaration.id);
-
-                    self.symbol_table.declare_struct(id, name.to_owned());
                 }
                 _ => (),
             };
@@ -224,16 +211,6 @@ impl Resolver {
                 let id = self.ast_to_hir.get(&declaration.id).unwrap();
 
                 Decl::function(*id, parameters, body, declaration.span)
-            }
-            ast::DeclKind::Struct { fields, .. } => {
-                let fields = fields
-                    .iter()
-                    .map(|field| self.resolve_field(field))
-                    .collect::<Result<Vec<Field>, KaoriError>>()?;
-
-                let id = self.ast_to_hir.get(&declaration.id).unwrap();
-
-                Decl::struct_(*id, fields, declaration.span)
             }
         };
 
@@ -433,7 +410,7 @@ impl Resolver {
                     }
                 }
             }
-            ast::ExprKind::StructLiteral { identifier, fields } => todo!(),
+            ast::ExprKind::DictLiteral { identifier, fields } => todo!(),
         };
 
         Ok(_expr)
