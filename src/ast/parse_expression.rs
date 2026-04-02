@@ -263,17 +263,11 @@ impl<'a> Parser<'a> {
                 Expr::string_literal(value, span)
             }
             TokenKind::Identifier => {
-                if self
-                    .token_stream
-                    .look_ahead(&[TokenKind::Identifier, TokenKind::LeftBrace])
-                {
-                    self.parse_dict_literal()?
-                } else {
-                    let identifier = self.parse_identifier()?;
+                let identifier = self.parse_identifier()?;
 
-                    self.parse_postfix_unary(identifier)?
-                }
+                self.parse_postfix_unary(identifier)?
             }
+            TokenKind::LeftBrace => self.parse_dict_literal()?,
             _ => {
                 let span = self.token_stream.span();
 
@@ -308,18 +302,21 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_dict_literal_field(&mut self) -> Result<(Expr, Expr), KaoriError> {
+    fn parse_dict_literal_field(&mut self) -> Result<(Expr, Option<Expr>), KaoriError> {
         let identifier = self.parse_identifier()?;
-        self.token_stream.consume(TokenKind::Colon)?;
-        let expr = self.parse_expression()?;
 
-        Ok((identifier, expr))
+        if self.token_stream.token_kind() == TokenKind::Colon {
+            self.token_stream.consume(TokenKind::Colon)?;
+            let expr = self.parse_expression()?;
+
+            Ok((identifier, Some(expr)))
+        } else {
+            Ok((identifier, None))
+        }
     }
 
     fn parse_dict_literal(&mut self) -> Result<Expr, KaoriError> {
         let span = self.token_stream.span();
-
-        let identifier = self.parse_identifier()?;
 
         self.token_stream.consume(TokenKind::LeftBrace)?;
 
@@ -328,7 +325,7 @@ impl<'a> Parser<'a> {
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Expr::dict_literal(identifier, fields, span))
+        Ok(Expr::dict_literal(fields, span))
     }
 
     fn parse_function_call(&mut self, callee: Expr) -> Result<Expr, KaoriError> {

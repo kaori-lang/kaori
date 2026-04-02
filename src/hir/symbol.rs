@@ -11,7 +11,6 @@ pub struct Symbol {
 pub enum SymbolKind {
     Variable,
     Function,
-    Struct,
 }
 
 impl Symbol {
@@ -28,14 +27,6 @@ impl Symbol {
             id,
             name,
             kind: SymbolKind::Function,
-        }
-    }
-
-    pub fn struct_(id: NodeId, name: String) -> Symbol {
-        Symbol {
-            id,
-            name,
-            kind: SymbolKind::Struct,
         }
     }
 }

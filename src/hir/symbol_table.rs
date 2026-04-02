@@ -41,12 +41,6 @@ impl SymbolTable {
         self.symbols.push(symbol);
     }
 
-    pub fn declare_struct(&mut self, id: NodeId, name: String) {
-        let symbol = Symbol::struct_(id, name);
-
-        self.symbols.push(symbol);
-    }
-
     pub fn search_current_scope(&self, name: &str) -> Option<&Symbol> {
         let ptr = *self.scopes_ptr.last().unwrap();
 

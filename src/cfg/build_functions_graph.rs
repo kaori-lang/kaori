@@ -418,6 +418,7 @@ impl<'a> FunctionContext<'a> {
             ExprKind::String(value) => self.constant_pool.push_string(value.to_owned()),
             ExprKind::Boolean(value) => self.constant_pool.push_boolean(*value),
             ExprKind::Number(value) => self.constant_pool.push_number(*value),
+            ExprKind::DictLiteral { fields } => todo!(),
         }
     }
 }

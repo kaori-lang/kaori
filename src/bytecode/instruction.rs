@@ -16,7 +16,9 @@ pub enum Instruction {
     LessEqual { dest: u16, src1: i16, src2: i16 },
     Negate { dest: u16, src: i16 },
     Not { dest: u16, src: i16 },
+
     Move { dest: u16, src: i16 },
+    SetField { dest: u16, key: i16, value: i16 },
     Call { dest: u16, src: i16 },
     Return { src: i16 },
     ReturnVoid,

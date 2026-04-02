@@ -47,6 +47,9 @@ pub enum ExprKind {
     String(String),
     Number(f64),
     Boolean(bool),
+    DictLiteral {
+        fields: Vec<(String, Expr)>,
+    },
 }
 
 impl Expr {
@@ -164,6 +167,14 @@ impl Expr {
             id: NodeId::default(),
             span,
             kind: ExprKind::Boolean(value),
+        }
+    }
+
+    pub fn dict_literal(fields: Vec<(String, Expr)>, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::DictLiteral { fields },
         }
     }
 }

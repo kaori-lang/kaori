@@ -2,6 +2,7 @@ const TAG_MASK: u64 = 0b11;
 const TAG_NUMBER: u64 = 0b00;
 const TAG_BOOLEAN: u64 = 0b01;
 const TAG_FUNCTION: u64 = 0b10;
+const TAG_OBJECT: u64 = 0b11;
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ValueKind {
@@ -9,6 +10,7 @@ pub enum ValueKind {
     Number,
     Boolean,
     Function,
+    Object,
 }
 
 #[derive(Default, Clone, Copy, Debug)]
@@ -19,7 +21,11 @@ impl Value {
     pub fn number(value: f64) -> Self {
         let bits = value.to_bits();
 
-        debug_assert!(bits & TAG_MASK == 0, "f64 bits collide with tag");
+        debug_assert!(
+            bits & TAG_MASK == 0,
+            "f64 bits collide with tag (this scheme is not safe for all floats)"
+        );
+
         Self(bits | TAG_NUMBER)
     }
 
@@ -34,11 +40,17 @@ impl Value {
     }
 
     #[inline(always)]
+    pub fn object(value: usize) -> Self {
+        Self((value as u64) << 2 | TAG_OBJECT)
+    }
+
+    #[inline(always)]
     pub fn kind(self) -> ValueKind {
         match self.0 & TAG_MASK {
             TAG_NUMBER => ValueKind::Number,
             TAG_BOOLEAN => ValueKind::Boolean,
             TAG_FUNCTION => ValueKind::Function,
+            TAG_OBJECT => ValueKind::Object,
             _ => unreachable!(),
         }
     }
@@ -56,6 +68,11 @@ impl Value {
     #[inline(always)]
     pub fn is_function(self) -> bool {
         self.0 & TAG_MASK == TAG_FUNCTION
+    }
+
+    #[inline(always)]
+    pub fn is_object(self) -> bool {
+        self.0 & TAG_MASK == TAG_OBJECT
     }
 
     #[inline(always)]
@@ -81,6 +98,12 @@ impl Value {
     }
 
     #[inline(always)]
+    pub fn expect_object(self) -> usize {
+        assert!(self.is_object(), "expected Object, got {:?}", self.kind());
+        self.as_object()
+    }
+
+    #[inline(always)]
     pub fn as_number(self) -> f64 {
         f64::from_bits(self.0 & !TAG_MASK)
     }
@@ -92,6 +115,11 @@ impl Value {
 
     #[inline(always)]
     pub fn as_function(self) -> usize {
+        (self.0 >> 2) as usize
+    }
+
+    #[inline(always)]
+    pub fn as_object(self) -> usize {
         (self.0 >> 2) as usize
     }
 }

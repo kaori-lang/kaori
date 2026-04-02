@@ -14,7 +14,7 @@ pub mod stmt;
 
 pub mod unary_op;
 
-pub use decl::{Decl, DeclKind, Field, Parameter};
+pub use decl::{Decl, DeclKind, Parameter};
 pub use expr::{Expr, ExprKind};
 pub use node::Node;
 pub use node_id::NodeId;

@@ -1,3 +1,24 @@
+/*
+
+let Foo = {
+    x,
+    y
+}
+
+
+fun Foo.new(x, y) {
+    {
+        x,
+        y
+    }
+}
+
+fun Foo.add(self) {
+    return self.x + self.y
+}
+
+
+Foo.add()
 
 fun bar(n) {
     return n + 2;
@@ -8,10 +29,17 @@ fun foo(n) {
 
     return bar;
 }
+*/
+
+
+
 
 fun main()  {
-   
-    print(foo(5)(10));
+    
+    let a = {
+        a: 8,
+        b: 7
+    };
 }
 
 

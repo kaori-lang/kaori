@@ -29,26 +29,9 @@ pub struct Parameter {
     pub name: String,
 }
 
-#[derive(Debug)]
-pub struct Field {
-    pub id: NodeId,
-    pub span: Span,
-    pub name: String,
-}
-
 impl Parameter {
     pub fn new(name: String, span: Span) -> Parameter {
         Parameter {
-            id: NodeId::default(),
-            span,
-            name,
-        }
-    }
-}
-
-impl Field {
-    pub fn new(name: String, span: Span) -> Field {
-        Field {
             id: NodeId::default(),
             span,
             name,

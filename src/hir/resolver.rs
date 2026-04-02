@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    decl::{Decl, Field, Parameter},
+    decl::{Decl, Parameter},
     expr::{Expr, ExprKind},
     node::Node,
     node_id::NodeId,
@@ -147,27 +147,6 @@ impl Resolver {
             .declare_variable(id, parameter.name.to_owned());
 
         Ok(Parameter::new(id, parameter.span))
-    }
-
-    fn resolve_field(&mut self, field: &ast::Field) -> Result<Field, KaoriError> {
-        if self
-            .symbol_table
-            .search_current_scope(&field.name)
-            .is_some()
-        {
-            return Err(kaori_error!(
-                field.span,
-                "struct can't have fields with the same name: {}",
-                field.name,
-            ));
-        };
-
-        let id = NodeId::default();
-
-        self.symbol_table
-            .declare_variable(id, field.name.to_owned());
-
-        Ok(Field::new(id, field.span))
     }
 
     fn resolve_declaration(&mut self, declaration: &ast::Decl) -> Result<Decl, KaoriError> {
@@ -397,6 +376,27 @@ impl Resolver {
             ast::ExprKind::NumberLiteral(value) => Expr::number(*value, expression.span),
             ast::ExprKind::BooleanLiteral(value) => Expr::boolean(*value, expression.span),
             ast::ExprKind::StringLiteral(value) => Expr::string(value.to_owned(), expression.span),
+            ast::ExprKind::DictLiteral { fields } => {
+                let fields = fields
+                    .iter()
+                    .map(|(key, value)| {
+                        let value = match value {
+                            Some(value) => self.resolve_expression(value),
+                            None => self.resolve_expression(key),
+                        }?;
+
+                        let key = if let ast::ExprKind::Identifier(key) = &key.kind {
+                            key.to_owned()
+                        } else {
+                            unreachable!("Dict literal key should be an identifier!")
+                        };
+
+                        Ok((key, value))
+                    })
+                    .collect::<Result<Vec<(String, Expr)>, KaoriError>>()?;
+
+                Expr::dict_literal(fields, expression.span)
+            }
             ast::ExprKind::Identifier(name) => {
                 let Some(symbol) = self.symbol_table.search(name) else {
                     return Err(kaori_error!(expression.span, "{} is not declared", name));
@@ -405,12 +405,8 @@ impl Resolver {
                 match symbol.kind {
                     SymbolKind::Function => Expr::function(symbol.id, expression.span),
                     SymbolKind::Variable => Expr::variable(symbol.id, expression.span),
-                    SymbolKind::Struct => {
-                        return Err(kaori_error!(expression.span, "{} is not a value", name));
-                    }
                 }
             }
-            ast::ExprKind::DictLiteral { identifier, fields } => todo!(),
         };
 
         Ok(_expr)

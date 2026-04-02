@@ -1,7 +1,7 @@
 use crate::{error::kaori_error::KaoriError, lexer::token_kind::TokenKind};
 
 use super::{
-    decl::{Decl, Field, Parameter},
+    decl::{Decl, Parameter},
     parser::Parser,
 };
 
@@ -60,14 +60,5 @@ impl<'a> Parser<'a> {
         self.token_stream.consume(TokenKind::Identifier)?;
 
         Ok(Parameter::new(name, span))
-    }
-
-    pub fn parse_struct_field(&mut self) -> Result<Field, KaoriError> {
-        let span = self.token_stream.span();
-
-        let name = self.token_stream.lexeme().to_owned();
-        self.token_stream.consume(TokenKind::Identifier)?;
-
-        Ok(Field::new(name, span))
     }
 }
