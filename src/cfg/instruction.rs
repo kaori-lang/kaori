@@ -77,6 +77,14 @@ pub enum Instruction {
         dest: Operand,
         src: Operand,
     },
+    CreateDict {
+        dest: Operand,
+    },
+    SetField {
+        dest: Operand,
+        key: Operand,
+        value: Operand,
+    },
     Call {
         dest: Operand,
         func: Operand,
@@ -147,6 +155,14 @@ impl Instruction {
         Self::MoveArg { dest, src }
     }
 
+    pub fn create_dict(dest: Operand) -> Self {
+        Self::CreateDict { dest }
+    }
+
+    pub fn set_field(dest: Operand, key: Operand, value: Operand) -> Self {
+        Self::SetField { dest, key, value }
+    }
+
     pub fn call(dest: Operand, func: Operand) -> Self {
         Self::Call { dest, func }
     }
@@ -179,7 +195,10 @@ impl Display for Instruction {
 
             Move { dest, src } => write!(f, "{} = {}", dest, src),
             MoveArg { dest, src } => write!(f, "arg({}) = {}", dest, src),
-
+            CreateDict { dest } => write!(f, "{} = {{}}", dest),
+            SetField { dest, key, value } => {
+                write!(f, "{}[{}] = {}", dest, key, value)
+            }
             Call { dest, func } => write!(f, "{} = call {}", dest, func),
             Print { src } => write!(f, "print {}", src),
         }

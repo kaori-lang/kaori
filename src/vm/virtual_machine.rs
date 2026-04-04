@@ -424,8 +424,10 @@ fn opcode_print(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let value = ctx.get_value(src).expect_string();
-        println!("{}", ctx.heap.get_string(value));
+        let index = ctx.get_value(src).expect_string();
+
+        let string_object = ctx.heap.get_string(index);
+        println!("{}", string_object);
 
         dispatch!(ctx, ip);
     }

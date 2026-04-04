@@ -418,7 +418,20 @@ impl<'a> FunctionContext<'a> {
             ExprKind::String(value) => self.constant_pool.push_string(value.to_owned()),
             ExprKind::Boolean(value) => self.constant_pool.push_boolean(*value),
             ExprKind::Number(value) => self.constant_pool.push_number(*value),
-            ExprKind::DictLiteral { fields } => todo!(),
+            ExprKind::DictLiteral { fields } => {
+                let dest = self.create_variable(expression.id);
+
+                self.emit_instruction(Instruction::create_dict(dest));
+
+                for (key, value) in fields {
+                    let key = self.constant_pool.push_string(key.to_owned());
+                    let value = self.visit_expression(value);
+
+                    self.emit_instruction(Instruction::set_field(dest, key, value));
+                }
+
+                dest
+            }
         }
     }
 }

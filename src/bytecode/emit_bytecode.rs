@@ -9,7 +9,7 @@ use crate::{
         graph_traversal::reversed_postorder,
         operand::Operand,
     },
-    vm::heap::{Heap, HeapObject},
+    vm::heap::Heap,
 };
 
 use super::{bytecode::Bytecode, function, instruction::Instruction, value::Value};
@@ -57,11 +57,7 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
 
                         Value::function(*function_index)
                     }
-                    Constant::String(value) => {
-                        let value = heap.allocate_string(value.to_owned());
-
-                        value
-                    }
+                    Constant::String(value) => heap.allocate_string(value.to_owned()),
                 })
                 .collect();
 
