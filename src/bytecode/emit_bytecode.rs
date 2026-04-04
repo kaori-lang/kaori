@@ -15,37 +15,22 @@ use crate::{
 use super::{bytecode::Bytecode, function, instruction::Instruction, value::Value};
 
 pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
-    let mut instructions = Vec::new();
     let mut fn_id_to_fn_index = HashMap::new();
-    let mut fn_start_end = HashMap::new();
 
-    for (fn_index, function) in functions.iter().enumerate() {
-        let fn_start_index = instructions.len();
-
-        fn_id_to_fn_index.insert(function.id, fn_index);
-
-        let mut context = FunctionContext::new(
-            &function.basic_blocks,
-            function.registers_count,
-            &mut instructions,
-        );
-
-        context.emit_instructions();
-
-        let fn_end_index = instructions.len();
-
-        fn_start_end.insert(function.id, (fn_start_index, fn_end_index));
+    for (index, function) in functions.iter().enumerate() {
+        fn_id_to_fn_index.insert(function.id, index);
     }
-
-    instructions.push(Instruction::Halt);
-
-    let base_ptr = instructions.as_ptr();
 
     let mut heap = Heap::new();
 
-    let compiled_functions = functions
+    let functions = functions
         .iter()
         .map(|function| {
+            let mut context =
+                FunctionContext::new(&function.basic_blocks, function.registers_count);
+
+            context.emit_instructions();
+
             let constant_pool = function
                 .constant_pool
                 .iter()
@@ -61,35 +46,27 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
                 })
                 .collect();
 
-            let frame_size = function.registers_count;
+            let registers_count = function.registers_count;
 
-            let (start_index, end_index) = *fn_start_end.get(&function.id).unwrap();
-            let start = unsafe { base_ptr.add(start_index) };
-            let end = unsafe { base_ptr.add(end_index) };
-
-            function::Function::new(start, end, frame_size as u8, constant_pool)
+            function::Function::new(context.instructions, registers_count as u8, constant_pool)
         })
         .collect();
 
-    Bytecode::new(instructions, compiled_functions, heap)
+    Bytecode::new(functions, heap)
 }
 
 struct FunctionContext<'a> {
-    basic_blocks: &'a [BasicBlock],
-    frame_size: usize,
-    instructions: &'a mut Vec<Instruction>,
+    pub basic_blocks: &'a [BasicBlock],
+    pub registers_count: usize,
+    pub instructions: Vec<Instruction>,
 }
 
 impl<'a> FunctionContext<'a> {
-    fn new(
-        basic_blocks: &'a [BasicBlock],
-        frame_size: usize,
-        instructions: &'a mut Vec<Instruction>,
-    ) -> Self {
+    fn new(basic_blocks: &'a [BasicBlock], registers_count: usize) -> Self {
         Self {
             basic_blocks,
-            frame_size,
-            instructions,
+            registers_count,
+            instructions: Vec::new(),
         }
     }
 
@@ -106,7 +83,7 @@ impl<'a> FunctionContext<'a> {
             self.visit_block(index, next_index, &mut pending_backpatch);
         }
 
-        resolve_backpatches(self.instructions, &pending_backpatch, &bb_start_index);
+        resolve_backpatches(&mut self.instructions, &pending_backpatch, &bb_start_index);
     }
 
     fn visit_block(
@@ -240,7 +217,7 @@ impl<'a> FunctionContext<'a> {
 
             cfg::Instruction::MoveArg { dest, src } => {
                 let dest = match dest {
-                    Operand::Variable(value) => Operand::Variable(self.frame_size + value),
+                    Operand::Variable(value) => Operand::Variable(self.registers_count + value),
                     _ => *dest,
                 };
 
@@ -249,6 +226,14 @@ impl<'a> FunctionContext<'a> {
                     src: src.to_i16(),
                 }
             }
+            cfg::Instruction::SetField { dest, key, value } => Instruction::SetField {
+                dest: dest.to_u16(),
+                key: key.to_i16(),
+                value: value.to_i16(),
+            },
+            cfg::Instruction::CreateDict { dest } => Instruction::CreateDict {
+                dest: dest.to_u16(),
+            },
             cfg::Instruction::Call { dest, func } => Instruction::Call {
                 dest: dest.to_u16(),
                 src: func.to_i16(),

@@ -9,7 +9,7 @@ use super::{heap::Heap, vm_context::VMContext};
 
 type InstructionHandler = fn(&mut VMContext, ip: *const Instruction);
 
-const OPCODE_HANDLERS: [InstructionHandler; 22] = [
+const OPCODE_HANDLERS: [InstructionHandler; 24] = [
     opcode_add,
     opcode_subtract,
     opcode_multiply,
@@ -24,6 +24,8 @@ const OPCODE_HANDLERS: [InstructionHandler; 22] = [
     opcode_negate,
     opcode_not,
     opcode_move,
+    opcode_create_dict,
+    opcode_set_field,
     opcode_call,
     opcode_return,
     opcode_return_void,
@@ -34,10 +36,10 @@ const OPCODE_HANDLERS: [InstructionHandler; 22] = [
     opcode_halt,
 ];
 
-pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>, heap: Heap) {
+pub fn run_vm(functions: Vec<Function>, heap: Heap) {
     let mut registers = vec![Value::default(); 1024];
     let Function {
-        start,
+        instructions,
         registers_count,
         ref constant_pool,
         ..
@@ -424,14 +426,52 @@ fn opcode_print(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let index = ctx.get_value(src).expect_string();
+        let string_ref = ctx.get_value(src);
+        let string = ctx.heap.get_string(string_ref);
 
-        let string_object = ctx.heap.get_string(index);
-        println!("{}", string_object);
+        println!("{}", string);
 
         dispatch!(ctx, ip);
     }
 }
 
 #[inline(never)]
-fn opcode_halt(_ctx: &mut VMContext, _ip: *const Instruction) {}
+fn opcode_create_dict(ctx: &mut VMContext, ip: *const Instruction) {
+    unsafe {
+        let Instruction::CreateDict { dest } = *ip else {
+            unreachable_unchecked()
+        };
+
+        let value = ctx.heap.allocate_dict();
+
+        ctx.set_value(dest, value);
+
+        dispatch!(ctx, ip);
+    }
+}
+
+#[inline(never)]
+fn opcode_set_field(ctx: &mut VMContext, ip: *const Instruction) {
+    unsafe {
+        let Instruction::SetField { dest, key, value } = *ip else {
+            unreachable_unchecked()
+        };
+
+        let string_ref = ctx.get_value(key);
+        let key = ctx.heap.get_string(string_ref).to_owned();
+
+        let value = ctx.get_value(value);
+
+        let dict_ref = ctx.get_value(dest as i16);
+        let dict = ctx.heap.get_dict(dict_ref);
+
+        dict.insert(key, value);
+
+        dispatch!(ctx, ip);
+    }
+}
+
+#[inline(never)]
+fn opcode_halt(ctx: &mut VMContext, _ip: *const Instruction) {
+    println!("End {:#?}", ctx.heap);
+}

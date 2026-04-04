@@ -31,12 +31,13 @@ fun foo(n) {
 }
 */
 
-
+fun foo() {
+    return 1 + 2;
+}
 
 fun main()  {
-    let a = "hello world";
-
-    print(2 + 2);
+    let c = 7;
+    let foo = {a: 5, b: 6, c};    
 }
 
 

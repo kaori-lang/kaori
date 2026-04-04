@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hint::unreachable_unchecked};
 
 use crate::bytecode::value::Value;
 
@@ -9,6 +9,7 @@ pub enum HeapObject {
     Vec(Vec<Value>),
 }
 
+#[derive(Debug)]
 pub struct Heap {
     objects: Vec<HeapObject>,
 }
@@ -29,25 +30,41 @@ impl Heap {
     }
 
     #[inline(always)]
-    pub fn allocate_dict(&mut self, d: HashMap<String, Value>) -> Value {
+    pub fn allocate_dict(&mut self) -> Value {
         let index = self.objects.len();
-        self.objects.push(HeapObject::Dict(d));
+        let dict = HashMap::new();
+
+        self.objects.push(HeapObject::Dict(dict));
 
         Value::dict(index)
     }
 
     #[inline(always)]
-    pub fn allocate_vec(&mut self, v: Vec<Value>) -> Value {
+    pub fn allocate_vec(&mut self) -> Value {
         let index = self.objects.len();
-        self.objects.push(HeapObject::Vec(v));
+
+        let vec = Vec::new();
+
+        self.objects.push(HeapObject::Vec(vec));
 
         Value::vec(index)
     }
 
-    pub fn get_string(&self, index: usize) -> &str {
+    pub fn get_string(&self, value: Value) -> &str {
+        let index = value.expect_string();
+
         match &self.objects[index] {
-            HeapObject::String(s) => s,
-            _ => unsafe { std::hint::unreachable_unchecked() },
+            HeapObject::String(object) => object,
+            _ => unsafe { unreachable_unchecked() },
+        }
+    }
+
+    pub fn get_dict(&mut self, value: Value) -> &mut HashMap<String, Value> {
+        let index = value.expect_dict();
+
+        match &mut self.objects[index] {
+            HeapObject::Dict(object) => object,
+            _ => unsafe { unreachable_unchecked() },
         }
     }
 }

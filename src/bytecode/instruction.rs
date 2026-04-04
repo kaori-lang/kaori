@@ -16,9 +16,9 @@ pub enum Instruction {
     LessEqual { dest: u16, src1: i16, src2: i16 },
     Negate { dest: u16, src: i16 },
     Not { dest: u16, src: i16 },
-
     Move { dest: u16, src: i16 },
-    //SetField { dest: u16, key: i16, value: i16 },
+    CreateDict { dest: u16 },
+    SetField { dest: u16, key: i16, value: i16 },
     Call { dest: u16, src: i16 },
     Return { src: i16 },
     ReturnVoid,
@@ -37,9 +37,9 @@ impl Instruction {
 
 fn fmt_operand(v: i16) -> String {
     if v < 0 {
-        format!("k{}", -(v + 1))
+        format!("k{}", -(v + 1)) // constant
     } else {
-        format!("r{}", v)
+        format!("r{}", v) // register
     }
 }
 
@@ -91,6 +91,7 @@ impl fmt::Display for Instruction {
                     fmt_operand(*src2)
                 )
             }
+
             Instruction::Equal { dest, src1, src2 } => {
                 write!(
                     f,
@@ -145,24 +146,42 @@ impl fmt::Display for Instruction {
                     fmt_operand(*src2)
                 )
             }
+
             Instruction::Negate { dest, src } => {
                 write!(f, "NEG r{} {}", dest, fmt_operand(*src))
             }
             Instruction::Not { dest, src } => {
                 write!(f, "NOT r{} {}", dest, fmt_operand(*src))
             }
+
             Instruction::Move { dest, src } => {
                 write!(f, "MOV r{} {}", dest, fmt_operand(*src))
             }
+
+            Instruction::CreateDict { dest } => {
+                write!(f, "NEWDICT r{}", dest)
+            }
+            Instruction::SetField { dest, key, value } => {
+                write!(
+                    f,
+                    "SETFIELD r{} {} {}",
+                    dest,
+                    fmt_operand(*key),
+                    fmt_operand(*value)
+                )
+            }
+
             Instruction::Call { dest, src } => {
                 write!(f, "CALL r{} {}", dest, fmt_operand(*src))
             }
+
             Instruction::Return { src } => {
                 write!(f, "RET {}", fmt_operand(*src))
             }
             Instruction::ReturnVoid => {
                 write!(f, "RET")
             }
+
             Instruction::Jump { offset } => {
                 write!(f, "JMP {}", offset)
             }
@@ -172,9 +191,11 @@ impl fmt::Display for Instruction {
             Instruction::JumpIfFalse { src, offset } => {
                 write!(f, "JMP_IF_FALSE {} {}", fmt_operand(*src), offset)
             }
+
             Instruction::Print { src } => {
                 write!(f, "PRINT {}", fmt_operand(*src))
             }
+
             Instruction::Halt => {
                 write!(f, "HALT")
             }

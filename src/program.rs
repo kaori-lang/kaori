@@ -10,7 +10,6 @@ use crate::{
     error::kaori_error::KaoriError,
     hir::{decl::Decl, resolver::Resolver},
     lexer::{lexer::Lexer, token_stream::TokenStream},
-    vm::virtual_machine::run_vm,
 };
 
 fn run_lexical_analysis(source: &'_ str) -> Result<TokenStream<'_>, KaoriError> {
@@ -64,7 +63,7 @@ pub fn run_program(source: &str) -> Result<(), KaoriError> {
 
     let start = Instant::now();
 
-    run_vm(bytecode.instructions, bytecode.functions, bytecode.heap);
+    //run_vm(bytecode.functions, bytecode.heap);
 
     let elapsed = start.elapsed();
 
