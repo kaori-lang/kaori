@@ -1,5 +1,7 @@
 use crate::bytecode::{function::Function, instruction::Instruction, value::Value};
 
+use super::heap::Heap;
+
 pub struct FunctionFrame {
     pub registers_count: u8,
     pub registers_ptr: *mut Value,
@@ -32,6 +34,7 @@ pub struct VMContext<'a> {
     pub registers: Vec<Value>,
     pub registers_ptr: *mut Value,
     pub constant_pool_ptr: *const Value,
+    pub heap: Heap,
 }
 
 impl<'a> VMContext<'a> {
@@ -40,6 +43,7 @@ impl<'a> VMContext<'a> {
         registers: Vec<Value>,
         registers_ptr: *mut Value,
         constant_pool_ptr: *const Value,
+        heap: Heap,
         main_frame: FunctionFrame,
     ) -> Self {
         Self {
@@ -47,6 +51,7 @@ impl<'a> VMContext<'a> {
             call_stack: vec![main_frame],
             registers,
             registers_ptr,
+            heap,
             constant_pool_ptr,
         }
     }

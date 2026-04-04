@@ -5,7 +5,7 @@ use crate::{
     vm::vm_context::FunctionFrame,
 };
 
-use super::vm_context::VMContext;
+use super::{heap::Heap, vm_context::VMContext};
 
 type InstructionHandler = fn(&mut VMContext, ip: *const Instruction);
 
@@ -34,7 +34,7 @@ const OPCODE_HANDLERS: [InstructionHandler; 22] = [
     opcode_halt,
 ];
 
-pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
+pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>, heap: Heap) {
     let mut registers = vec![Value::default(); 1024];
     let Function {
         start,
@@ -61,6 +61,7 @@ pub fn run_vm(instructions: Vec<Instruction>, functions: Vec<Function>) {
         registers,
         registers_ptr,
         constant_pool_ptr,
+        heap,
         main_frame,
     );
 
@@ -423,8 +424,8 @@ fn opcode_print(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let value = ctx.get_value(src).expect_number();
-        println!("{}", value);
+        let value = ctx.get_value(src).expect_string();
+        println!("{}", ctx.heap.get_string(value));
 
         dispatch!(ctx, ip);
     }

@@ -33,13 +33,10 @@ fun foo(n) {
 
 
 
-
 fun main()  {
-    
-    let a = {
-        a: 8,
-        b: 7
-    };
+    let a = "hello world";
+
+    print(2 + 2);
 }
 
 

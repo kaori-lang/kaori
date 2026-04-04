@@ -2,9 +2,11 @@ use std::collections::HashMap;
 
 use crate::bytecode::value::Value;
 
+#[derive(Debug)]
 pub enum HeapObject {
     String(String),
-    HashMap(HashMap<String, Value>),
+    Dict(HashMap<String, Value>),
+    Vec(Vec<Value>),
 }
 
 pub struct Heap {
@@ -18,11 +20,34 @@ impl Heap {
         }
     }
 
-    pub fn allocate(&mut self, object: HeapObject) -> Value {
+    #[inline(always)]
+    pub fn allocate_string(&mut self, s: String) -> Value {
         let index = self.objects.len();
+        self.objects.push(HeapObject::String(s));
 
-        self.objects.push(object);
+        Value::string(index)
+    }
 
-        Value::object(index)
+    #[inline(always)]
+    pub fn allocate_dict(&mut self, d: HashMap<String, Value>) -> Value {
+        let index = self.objects.len();
+        self.objects.push(HeapObject::Dict(d));
+
+        Value::dict(index)
+    }
+
+    #[inline(always)]
+    pub fn allocate_vec(&mut self, v: Vec<Value>) -> Value {
+        let index = self.objects.len();
+        self.objects.push(HeapObject::Vec(v));
+
+        Value::vec(index)
+    }
+
+    pub fn get_string(&self, index: usize) -> &str {
+        match &self.objects[index] {
+            HeapObject::String(s) => s,
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
     }
 }

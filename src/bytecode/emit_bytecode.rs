@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 
-use crate::cfg::{
-    self,
-    basic_block::{BasicBlock, Terminator},
-    constant_pool::Constant,
-    function::Function,
-    graph_traversal::reversed_postorder,
-    operand::Operand,
+use crate::{
+    cfg::{
+        self,
+        basic_block::{BasicBlock, Terminator},
+        constant_pool::Constant,
+        function::Function,
+        graph_traversal::reversed_postorder,
+        operand::Operand,
+    },
+    vm::heap::{Heap, HeapObject},
 };
 
 use super::{bytecode::Bytecode, function, instruction::Instruction, value::Value};
@@ -38,6 +41,8 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
 
     let base_ptr = instructions.as_ptr();
 
+    let mut heap = Heap::new();
+
     let compiled_functions = functions
         .iter()
         .map(|function| {
@@ -52,7 +57,11 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
 
                         Value::function(*function_index)
                     }
-                    _ => todo!(),
+                    Constant::String(value) => {
+                        let value = heap.allocate_string(value.to_owned());
+
+                        value
+                    }
                 })
                 .collect();
 
@@ -66,7 +75,7 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
         })
         .collect();
 
-    Bytecode::new(instructions, compiled_functions)
+    Bytecode::new(instructions, compiled_functions, heap)
 }
 
 struct FunctionContext<'a> {

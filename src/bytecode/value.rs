@@ -1,19 +1,24 @@
-const TAG_MASK: u64 = 0b11;
-const TAG_NUMBER: u64 = 0b00;
-const TAG_BOOLEAN: u64 = 0b01;
-const TAG_FUNCTION: u64 = 0b10;
-const TAG_OBJECT: u64 = 0b11;
+const TAG_MASK: u64 = 0b111;
+const TAG_NUMBER: u64 = 0b000;
+const TAG_BOOLEAN: u64 = 0b001;
+const TAG_FUNCTION: u64 = 0b010;
 
-#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+// heap object subtypes
+const TAG_STRING: u64 = 0b011;
+const TAG_DICT: u64 = 0b100;
+const TAG_VEC: u64 = 0b101;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueKind {
-    #[default]
     Number,
     Boolean,
     Function,
-    Object,
+    String,
+    Dict,
+    Vec,
 }
 
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Value(u64);
 
 impl Value {
@@ -23,7 +28,7 @@ impl Value {
 
         debug_assert!(
             bits & TAG_MASK == 0,
-            "f64 bits collide with tag (this scheme is not safe for all floats)"
+            "f64 bits collide with tag (not safe for all floats)"
         );
 
         Self(bits | TAG_NUMBER)
@@ -31,17 +36,27 @@ impl Value {
 
     #[inline(always)]
     pub fn boolean(value: bool) -> Self {
-        Self((value as u64) << 2 | TAG_BOOLEAN)
+        Self((value as u64) << 3 | TAG_BOOLEAN)
     }
 
     #[inline(always)]
-    pub fn function(value: usize) -> Self {
-        Self((value as u64) << 2 | TAG_FUNCTION)
+    pub fn function(index: usize) -> Self {
+        Self((index as u64) << 3 | TAG_FUNCTION)
     }
 
     #[inline(always)]
-    pub fn object(value: usize) -> Self {
-        Self((value as u64) << 2 | TAG_OBJECT)
+    pub fn string(index: usize) -> Self {
+        Self((index as u64) << 3 | TAG_STRING)
+    }
+
+    #[inline(always)]
+    pub fn dict(index: usize) -> Self {
+        Self((index as u64) << 3 | TAG_DICT)
+    }
+
+    #[inline(always)]
+    pub fn vec(index: usize) -> Self {
+        Self((index as u64) << 3 | TAG_VEC)
     }
 
     #[inline(always)]
@@ -50,8 +65,10 @@ impl Value {
             TAG_NUMBER => ValueKind::Number,
             TAG_BOOLEAN => ValueKind::Boolean,
             TAG_FUNCTION => ValueKind::Function,
-            TAG_OBJECT => ValueKind::Object,
-            _ => unreachable!(),
+            TAG_STRING => ValueKind::String,
+            TAG_DICT => ValueKind::Dict,
+            TAG_VEC => ValueKind::Vec,
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 
@@ -59,20 +76,25 @@ impl Value {
     pub fn is_number(self) -> bool {
         self.0 & TAG_MASK == TAG_NUMBER
     }
-
     #[inline(always)]
     pub fn is_boolean(self) -> bool {
         self.0 & TAG_MASK == TAG_BOOLEAN
     }
-
     #[inline(always)]
     pub fn is_function(self) -> bool {
         self.0 & TAG_MASK == TAG_FUNCTION
     }
-
     #[inline(always)]
-    pub fn is_object(self) -> bool {
-        self.0 & TAG_MASK == TAG_OBJECT
+    pub fn is_string(self) -> bool {
+        self.0 & TAG_MASK == TAG_STRING
+    }
+    #[inline(always)]
+    pub fn is_dict(self) -> bool {
+        self.0 & TAG_MASK == TAG_DICT
+    }
+    #[inline(always)]
+    pub fn is_vec(self) -> bool {
+        self.0 & TAG_MASK == TAG_VEC
     }
 
     #[inline(always)]
@@ -98,10 +120,24 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn expect_object(self) -> usize {
-        assert!(self.is_object(), "expected Object, got {:?}", self.kind());
-        self.as_object()
+    pub fn expect_string(self) -> usize {
+        assert!(self.is_string(), "expected String, got {:?}", self.kind());
+        self.as_string()
     }
+
+    #[inline(always)]
+    pub fn expect_dict(self) -> usize {
+        assert!(self.is_dict(), "expected Dict, got {:?}", self.kind());
+        self.as_dict()
+    }
+
+    #[inline(always)]
+    pub fn expect_vec(self) -> usize {
+        assert!(self.is_vec(), "expected Vec, got {:?}", self.kind());
+        self.as_vec()
+    }
+
+    // -------- raw accessors --------
 
     #[inline(always)]
     pub fn as_number(self) -> f64 {
@@ -110,16 +146,26 @@ impl Value {
 
     #[inline(always)]
     pub fn as_boolean(self) -> bool {
-        (self.0 >> 2) != 0
+        (self.0 >> 3) != 0
     }
 
     #[inline(always)]
     pub fn as_function(self) -> usize {
-        (self.0 >> 2) as usize
+        (self.0 >> 3) as usize
     }
 
     #[inline(always)]
-    pub fn as_object(self) -> usize {
-        (self.0 >> 2) as usize
+    pub fn as_string(self) -> usize {
+        (self.0 >> 3) as usize
+    }
+
+    #[inline(always)]
+    pub fn as_dict(self) -> usize {
+        (self.0 >> 3) as usize
+    }
+
+    #[inline(always)]
+    pub fn as_vec(self) -> usize {
+        (self.0 >> 3) as usize
     }
 }

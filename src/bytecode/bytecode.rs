@@ -1,16 +1,20 @@
+use crate::vm::heap::Heap;
+
 use super::{function::Function, instruction::Instruction};
 
 use std::fmt;
 pub struct Bytecode {
     pub instructions: Vec<Instruction>,
     pub functions: Vec<Function>,
+    pub heap: Heap,
 }
 
 impl Bytecode {
-    pub fn new(instructions: Vec<Instruction>, functions: Vec<Function>) -> Self {
+    pub fn new(instructions: Vec<Instruction>, functions: Vec<Function>, heap: Heap) -> Self {
         Self {
             instructions,
             functions,
+            heap,
         }
     }
 }
