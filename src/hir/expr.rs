@@ -43,6 +43,10 @@ pub enum ExprKind {
         callee: Box<Expr>,
         arguments: Vec<Expr>,
     },
+    MemberAccess {
+        object: Box<Expr>,
+        property: Box<Expr>,
+    },
     Function(NodeId),
     String(String),
     Number(f64),
@@ -134,6 +138,17 @@ impl Expr {
             kind: ExprKind::FunctionCall {
                 callee: Box::new(callee),
                 arguments,
+            },
+        }
+    }
+
+    pub fn member_access(object: Expr, property: Expr, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::MemberAccess {
+                object: Box::new(object),
+                property: Box::new(property),
             },
         }
     }

@@ -401,7 +401,7 @@ impl<'a> FunctionContext<'a> {
 
                 dest
             }
-
+            ExprKind::MemberAccess { object, property } => todo!(),
             ExprKind::Variable(id) => *self
                 .variables
                 .get(id)

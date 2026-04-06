@@ -373,6 +373,12 @@ impl Resolver {
 
                 Expr::function_call(callee, arguments, expression.span)
             }
+            ast::ExprKind::MemberAccess { object, property } => {
+                let object = self.resolve_expression(object)?;
+                let property = self.resolve_expression(property)?;
+
+                Expr::member_access(object, property, expression.span)
+            }
             ast::ExprKind::NumberLiteral(value) => Expr::number(*value, expression.span),
             ast::ExprKind::BooleanLiteral(value) => Expr::boolean(*value, expression.span),
             ast::ExprKind::StringLiteral(value) => Expr::string(value.to_owned(), expression.span),
