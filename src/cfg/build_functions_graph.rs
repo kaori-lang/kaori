@@ -77,15 +77,12 @@ impl<'a> FunctionContext<'a> {
 
     pub fn create_variable(&mut self, id: NodeId) -> Operand {
         let variable = Operand::Variable(self.variables.len());
-
         self.variables.insert(id, variable);
-
         variable
     }
 
     fn emit_instruction(&mut self, instruction: Instruction) {
         let basic_block = &mut self.basic_blocks[self.index];
-
         if basic_block.terminator.is_none() {
             basic_block.instructions.push(instruction);
         };
@@ -93,7 +90,6 @@ impl<'a> FunctionContext<'a> {
 
     fn set_terminator(&mut self, terminator: Terminator) {
         let basic_block = &mut self.basic_blocks[self.index];
-
         if basic_block.terminator.is_none() {
             basic_block.terminator = Some(terminator);
         }
@@ -101,11 +97,8 @@ impl<'a> FunctionContext<'a> {
 
     fn create_bb(&mut self) -> usize {
         let index = self.basic_blocks.len();
-
         let basic_block = BasicBlock::new(index);
-
         self.basic_blocks.push(basic_block);
-
         index
     }
 
@@ -113,7 +106,6 @@ impl<'a> FunctionContext<'a> {
         for node in nodes {
             self.visit_ast_node(node)?;
         }
-
         Ok(())
     }
 
@@ -122,7 +114,6 @@ impl<'a> FunctionContext<'a> {
             Node::Declaration(declaration) => self.visit_declaration(declaration)?,
             Node::Statement(statement) => self.visit_statement(statement)?,
         };
-
         Ok(())
     }
 
@@ -131,8 +122,7 @@ impl<'a> FunctionContext<'a> {
             DeclKind::Variable { right, .. } => {
                 let src = self.visit_expression(right);
                 let dest = self.create_variable(declaration.id);
-
-                let instruction = Instruction::move_(dest, src);
+                let instruction = Instruction::Move { dest, src };
 
                 self.emit_instruction(instruction);
             }
@@ -163,9 +153,7 @@ impl<'a> FunctionContext<'a> {
             }
             StmtKind::Print(expression) => {
                 let src = self.visit_expression(expression);
-
-                let instruction = Instruction::print(src);
-
+                let instruction = Instruction::Print { src };
                 self.emit_instruction(instruction);
             }
             StmtKind::Block(nodes) => {
@@ -242,18 +230,15 @@ impl<'a> FunctionContext<'a> {
             }
             StmtKind::Break => {
                 let label = self.active_loops.top();
-
                 self.set_terminator(Terminator::Goto(label.terminator_bb_index));
             }
             StmtKind::Continue => {
                 let label = self.active_loops.top();
-
                 self.set_terminator(Terminator::Goto(label.increment_bb_index));
             }
             StmtKind::Return(expr) => {
                 if let Some(expr) = expr {
                     let src = self.visit_expression(expr);
-
                     self.set_terminator(Terminator::Return { src: Some(src) });
                 } else {
                     self.set_terminator(Terminator::Return { src: None });
@@ -269,9 +254,7 @@ impl<'a> FunctionContext<'a> {
             ExprKind::Assign { left, right } => {
                 let dest = self.visit_expression(left);
                 let src = self.visit_expression(right);
-
-                let instruction = Instruction::move_(dest, src);
-
+                let instruction = Instruction::Move { dest, src };
                 self.emit_instruction(instruction);
 
                 dest
@@ -280,8 +263,7 @@ impl<'a> FunctionContext<'a> {
                 let dest = self.create_variable(expression.id);
 
                 let src1 = self.visit_expression(left);
-
-                self.emit_instruction(Instruction::move_(dest, src1));
+                self.emit_instruction(Instruction::Move { dest, src: src1 });
 
                 let src2_bb = self.create_bb();
                 let terminator = self.create_bb();
@@ -295,9 +277,9 @@ impl<'a> FunctionContext<'a> {
                 self.index = src2_bb;
 
                 let src2 = self.visit_expression(right);
-                self.emit_instruction(Instruction::move_(dest, src2));
-                self.set_terminator(Terminator::Goto(terminator));
+                self.emit_instruction(Instruction::Move { dest, src: src2 });
 
+                self.set_terminator(Terminator::Goto(terminator));
                 self.index = terminator;
 
                 dest
@@ -306,8 +288,7 @@ impl<'a> FunctionContext<'a> {
                 let dest = self.create_variable(expression.id);
 
                 let src1 = self.visit_expression(left);
-
-                self.emit_instruction(Instruction::move_(dest, src1));
+                self.emit_instruction(Instruction::Move { dest, src: src1 });
 
                 let src2_bb = self.create_bb();
                 let terminator = self.create_bb();
@@ -321,11 +302,9 @@ impl<'a> FunctionContext<'a> {
                 self.index = src2_bb;
 
                 let src2 = self.visit_expression(right);
-
-                self.emit_instruction(Instruction::move_(dest, src2));
+                self.emit_instruction(Instruction::Move { dest, src: src2 });
 
                 self.set_terminator(Terminator::Goto(terminator));
-
                 self.index = terminator;
 
                 dest
@@ -333,8 +312,9 @@ impl<'a> FunctionContext<'a> {
             ExprKind::LogicalNot { expr } => {
                 let src = self.visit_expression(expr);
                 let dest = self.create_variable(expression.id);
+                let instruction = Instruction::Not { dest, src };
 
-                self.emit_instruction(Instruction::Not { dest, src });
+                self.emit_instruction(instruction);
 
                 dest
             }
@@ -348,17 +328,17 @@ impl<'a> FunctionContext<'a> {
                 let dest = self.create_variable(expression.id);
 
                 let instruction = match operator.kind {
-                    BinaryOpKind::Add => Instruction::add(dest, src1, src2),
-                    BinaryOpKind::Subtract => Instruction::subtract(dest, src1, src2),
-                    BinaryOpKind::Multiply => Instruction::multiply(dest, src1, src2),
-                    BinaryOpKind::Divide => Instruction::divide(dest, src1, src2),
-                    BinaryOpKind::Modulo => Instruction::modulo(dest, src1, src2),
-                    BinaryOpKind::Equal => Instruction::equal(dest, src1, src2),
-                    BinaryOpKind::NotEqual => Instruction::not_equal(dest, src1, src2),
-                    BinaryOpKind::Greater => Instruction::greater(dest, src1, src2),
-                    BinaryOpKind::GreaterEqual => Instruction::greater_equal(dest, src1, src2),
-                    BinaryOpKind::Less => Instruction::less(dest, src1, src2),
-                    BinaryOpKind::LessEqual => Instruction::less_equal(dest, src1, src2),
+                    BinaryOpKind::Add => Instruction::Add { dest, src1, src2 },
+                    BinaryOpKind::Subtract => Instruction::Subtract { dest, src1, src2 },
+                    BinaryOpKind::Multiply => Instruction::Multiply { dest, src1, src2 },
+                    BinaryOpKind::Divide => Instruction::Divide { dest, src1, src2 },
+                    BinaryOpKind::Modulo => Instruction::Modulo { dest, src1, src2 },
+                    BinaryOpKind::Equal => Instruction::Equal { dest, src1, src2 },
+                    BinaryOpKind::NotEqual => Instruction::NotEqual { dest, src1, src2 },
+                    BinaryOpKind::Greater => Instruction::Greater { dest, src1, src2 },
+                    BinaryOpKind::GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
+                    BinaryOpKind::Less => Instruction::Less { dest, src1, src2 },
+                    BinaryOpKind::LessEqual => Instruction::LessEqual { dest, src1, src2 },
                 };
 
                 self.emit_instruction(instruction);
@@ -370,7 +350,7 @@ impl<'a> FunctionContext<'a> {
                 let dest = self.create_variable(expression.id);
 
                 let instruction = match operator.kind {
-                    UnaryOpKind::Negate => Instruction::negate(dest, src),
+                    UnaryOpKind::Negate => Instruction::Negate { dest, src },
                 };
 
                 self.emit_instruction(instruction);
@@ -389,19 +369,28 @@ impl<'a> FunctionContext<'a> {
 
                 for (index, src) in arguments_src.iter().copied().enumerate() {
                     let dest = Operand::Variable(index);
-
-                    let instruction = Instruction::move_arg(dest, src);
+                    let instruction = Instruction::MoveArg { dest, src };
 
                     self.emit_instruction(instruction);
                 }
 
-                let instruction = Instruction::call(dest, src);
+                let instruction = Instruction::Call { dest, func: src };
 
                 self.emit_instruction(instruction);
 
                 dest
             }
-            ExprKind::MemberAccess { object, property } => todo!(),
+            ExprKind::MemberAccess { object, property } => {
+                let dest = self.create_variable(expression.id);
+
+                let object = self.visit_expression(object);
+                let key = self.visit_expression(property);
+                let instruction = Instruction::GetField { dest, object, key };
+
+                self.emit_instruction(instruction);
+
+                dest
+            }
             ExprKind::Variable(id) => *self
                 .variables
                 .get(id)
@@ -420,14 +409,16 @@ impl<'a> FunctionContext<'a> {
             ExprKind::Number(value) => self.constant_pool.push_number(*value),
             ExprKind::DictLiteral { fields } => {
                 let dest = self.create_variable(expression.id);
+                let instruction = Instruction::CreateDict { dest };
 
-                self.emit_instruction(Instruction::create_dict(dest));
+                self.emit_instruction(instruction);
 
                 for (key, value) in fields {
                     let key = self.constant_pool.push_string(key.to_owned());
                     let value = self.visit_expression(value);
 
-                    self.emit_instruction(Instruction::set_field(dest, key, value));
+                    let instruction = Instruction::SetField { dest, key, value };
+                    self.emit_instruction(instruction);
                 }
 
                 dest

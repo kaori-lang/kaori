@@ -240,6 +240,7 @@ impl<'a> FunctionContext<'a> {
                 key: key.to_i16(),
                 value: value.to_i16(),
             },
+            cfg::Instruction::GetField { dest, object, key } => todo!(),
             cfg::Instruction::CreateDict { dest } => Instruction::CreateDict {
                 dest: dest.to_u16(),
             },

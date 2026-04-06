@@ -85,6 +85,11 @@ pub enum Instruction {
         key: Operand,
         value: Operand,
     },
+    GetField {
+        dest: Operand,
+        object: Operand,
+        key: Operand,
+    },
     Call {
         dest: Operand,
         func: Operand,
@@ -93,82 +98,10 @@ pub enum Instruction {
         src: Operand,
     },
 }
-
-impl Instruction {
-    pub fn add(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::Add { dest, src1, src2 }
-    }
-
-    pub fn subtract(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::Subtract { dest, src1, src2 }
-    }
-
-    pub fn multiply(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::Multiply { dest, src1, src2 }
-    }
-
-    pub fn divide(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::Divide { dest, src1, src2 }
-    }
-
-    pub fn modulo(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::Modulo { dest, src1, src2 }
-    }
-
-    pub fn equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::Equal { dest, src1, src2 }
-    }
-
-    pub fn not_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::NotEqual { dest, src1, src2 }
-    }
-
-    pub fn greater(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::Greater { dest, src1, src2 }
-    }
-
-    pub fn greater_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::GreaterEqual { dest, src1, src2 }
-    }
-
-    pub fn less(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::Less { dest, src1, src2 }
-    }
-
-    pub fn less_equal(dest: Operand, src1: Operand, src2: Operand) -> Self {
-        Self::LessEqual { dest, src1, src2 }
-    }
-
-    pub fn negate(dest: Operand, src: Operand) -> Self {
-        Self::Negate { dest, src }
-    }
-
-    pub fn not(dest: Operand, src: Operand) -> Self {
-        Self::Not { dest, src }
-    }
-
-    pub fn move_(dest: Operand, src: Operand) -> Self {
-        Self::Move { dest, src }
-    }
-
-    pub fn move_arg(dest: Operand, src: Operand) -> Self {
-        Self::MoveArg { dest, src }
-    }
-
-    pub fn create_dict(dest: Operand) -> Self {
-        Self::CreateDict { dest }
-    }
-
-    pub fn set_field(dest: Operand, key: Operand, value: Operand) -> Self {
-        Self::SetField { dest, key, value }
-    }
-
-    pub fn call(dest: Operand, func: Operand) -> Self {
-        Self::Call { dest, func }
-    }
-
-    pub fn print(src: Operand) -> Self {
-        Self::Print { src }
+fn fmt_operand(op: &Operand) -> String {
+    match op {
+        Operand::Variable(i) => format!("r{}", i),
+        Operand::Constant(i) => format!("k{}", i),
     }
 }
 
@@ -177,30 +110,153 @@ impl Display for Instruction {
         use Instruction::*;
 
         match self {
-            Add { dest, src1, src2 } => write!(f, "{} = {} + {}", dest, src1, src2),
-            Subtract { dest, src1, src2 } => write!(f, "{} = {} - {}", dest, src1, src2),
-            Multiply { dest, src1, src2 } => write!(f, "{} = {} * {}", dest, src1, src2),
-            Divide { dest, src1, src2 } => write!(f, "{} = {} / {}", dest, src1, src2),
-            Modulo { dest, src1, src2 } => write!(f, "{} = {} % {}", dest, src1, src2),
-
-            Equal { dest, src1, src2 } => write!(f, "{} = {} == {}", dest, src1, src2),
-            NotEqual { dest, src1, src2 } => write!(f, "{} = {} != {}", dest, src1, src2),
-            Greater { dest, src1, src2 } => write!(f, "{} = {} > {}", dest, src1, src2),
-            GreaterEqual { dest, src1, src2 } => write!(f, "{} = {} >= {}", dest, src1, src2),
-            Less { dest, src1, src2 } => write!(f, "{} = {} < {}", dest, src1, src2),
-            LessEqual { dest, src1, src2 } => write!(f, "{} = {} <= {}", dest, src1, src2),
-
-            Negate { dest, src } => write!(f, "{} = -{}", dest, src),
-            Not { dest, src } => write!(f, "{} = !{}", dest, src),
-
-            Move { dest, src } => write!(f, "{} = {}", dest, src),
-            MoveArg { dest, src } => write!(f, "arg({}) = {}", dest, src),
-            CreateDict { dest } => write!(f, "{} = {{}}", dest),
-            SetField { dest, key, value } => {
-                write!(f, "{}[{}] = {}", dest, key, value)
+            Add { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "ADD {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
             }
-            Call { dest, func } => write!(f, "{} = call {}", dest, func),
-            Print { src } => write!(f, "print {}", src),
+            Subtract { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "SUB {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
+            }
+            Multiply { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "MUL {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
+            }
+            Divide { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "DIV {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
+            }
+            Modulo { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "MOD {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
+            }
+
+            Equal { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "EQ {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
+            }
+            NotEqual { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "NEQ {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
+            }
+            Greater { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "GT {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
+            }
+            GreaterEqual { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "GTE {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
+            }
+            Less { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "LT {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
+            }
+            LessEqual { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "LTE {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
+            }
+
+            Negate { dest, src } => {
+                write!(f, "NEG {} {}", fmt_operand(dest), fmt_operand(src))
+            }
+            Not { dest, src } => {
+                write!(f, "NOT {} {}", fmt_operand(dest), fmt_operand(src))
+            }
+
+            Move { dest, src } => {
+                write!(f, "MOV {} {}", fmt_operand(dest), fmt_operand(src))
+            }
+
+            MoveArg { dest, src } => {
+                write!(f, "MOV_ARG {} {}", fmt_operand(dest), fmt_operand(src))
+            }
+
+            CreateDict { dest } => {
+                write!(f, "NEWDICT {}", fmt_operand(dest))
+            }
+
+            SetField { dest, key, value } => {
+                write!(
+                    f,
+                    "SETFIELD {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(key),
+                    fmt_operand(value)
+                )
+            }
+
+            GetField { dest, object, key } => {
+                write!(
+                    f,
+                    "GETFIELD {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(object),
+                    fmt_operand(key)
+                )
+            }
+
+            Call { dest, func } => {
+                write!(f, "CALL {} {}", fmt_operand(dest), fmt_operand(func))
+            }
+
+            Print { src } => {
+                write!(f, "PRINT {}", fmt_operand(src))
+            }
         }
     }
 }
