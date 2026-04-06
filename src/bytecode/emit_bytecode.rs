@@ -5,16 +5,15 @@ use crate::{
         self,
         basic_block::{BasicBlock, Terminator},
         constant_pool::Constant,
-        function::Function,
         graph_traversal::reversed_postorder,
         operand::Operand,
     },
     vm::heap::Heap,
 };
 
-use super::{bytecode::Bytecode, function, instruction::Instruction, value::Value};
+use super::{bytecode::Bytecode, function::Function, instruction::Instruction, value::Value};
 
-pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
+pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Bytecode {
     let mut fn_id_to_fn_index = HashMap::new();
 
     for (index, function) in functions.iter().enumerate() {
@@ -23,13 +22,13 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
 
     let mut heap = Heap::new();
 
-    let functions = functions
+    let mut functions = functions
         .iter()
         .map(|function| {
             let mut context =
                 FunctionContext::new(&function.basic_blocks, function.registers_count);
 
-            context.emit_instructions();
+            let instructions = context.emit_instructions();
 
             let constant_pool = function
                 .constant_pool
@@ -46,11 +45,15 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
                 })
                 .collect();
 
-            let registers_count = function.registers_count;
+            let registers_count = function.registers_count as u8;
 
-            function::Function::new(context.instructions, registers_count as u8, constant_pool)
+            Function::new(instructions, registers_count, constant_pool)
         })
-        .collect();
+        .collect::<Vec<Function>>();
+
+    if let Some(main) = functions.first_mut() {
+        main.instructions.push(Instruction::Halt);
+    }
 
     Bytecode::new(functions, heap)
 }
@@ -58,7 +61,6 @@ pub fn emit_bytecode(functions: Vec<Function>) -> Bytecode {
 struct FunctionContext<'a> {
     pub basic_blocks: &'a [BasicBlock],
     pub registers_count: usize,
-    pub instructions: Vec<Instruction>,
 }
 
 impl<'a> FunctionContext<'a> {
@@ -66,24 +68,27 @@ impl<'a> FunctionContext<'a> {
         Self {
             basic_blocks,
             registers_count,
-            instructions: Vec::new(),
         }
     }
 
-    fn emit_instructions(&mut self) {
+    fn emit_instructions(&mut self) -> Vec<Instruction> {
+        let mut instructions = Vec::new();
+
         let basic_blocks = reversed_postorder(self.basic_blocks);
 
         let mut pending_backpatch = Vec::new();
         let mut bb_start_index = HashMap::new();
 
         for (i, &index) in basic_blocks.iter().enumerate() {
-            bb_start_index.insert(index, self.instructions.len());
+            bb_start_index.insert(index, instructions.len());
 
             let next_index = basic_blocks.get(i + 1).copied();
-            self.visit_block(index, next_index, &mut pending_backpatch);
+            self.visit_block(index, next_index, &mut pending_backpatch, &mut instructions);
         }
 
-        resolve_backpatches(&mut self.instructions, &pending_backpatch, &bb_start_index);
+        resolve_backpatches(&mut instructions, &pending_backpatch, &bb_start_index);
+
+        instructions
     }
 
     fn visit_block(
@@ -91,11 +96,12 @@ impl<'a> FunctionContext<'a> {
         index: usize,
         next_index: Option<usize>,
         pending_backpatch: &mut Vec<(usize, usize)>,
+        instructions: &mut Vec<Instruction>,
     ) {
         let basic_block = &self.basic_blocks[index];
 
         for instruction in &basic_block.instructions {
-            self.visit_instruction(instruction);
+            self.visit_instruction(instruction, instructions);
         }
 
         let Some(terminator) = basic_block.terminator else {
@@ -109,18 +115,18 @@ impl<'a> FunctionContext<'a> {
                 r#false,
             } => {
                 if next_index != Some(r#true) {
-                    let index = self.instructions.len();
+                    let index = instructions.len();
                     pending_backpatch.push((index, r#true));
-                    self.instructions.push(Instruction::JumpIfTrue {
+                    instructions.push(Instruction::JumpIfTrue {
                         src: src.to_i16(),
                         offset: 0,
                     });
                 }
 
                 if next_index != Some(r#false) {
-                    let index = self.instructions.len();
+                    let index = instructions.len();
                     pending_backpatch.push((index, r#false));
-                    self.instructions.push(Instruction::JumpIfFalse {
+                    instructions.push(Instruction::JumpIfFalse {
                         src: src.to_i16(),
                         offset: 0,
                     });
@@ -128,23 +134,26 @@ impl<'a> FunctionContext<'a> {
             }
             Terminator::Goto(target) => {
                 if next_index != Some(target) {
-                    let index = self.instructions.len();
+                    let index = instructions.len();
                     pending_backpatch.push((index, target));
-                    self.instructions.push(Instruction::Jump { offset: 0 });
+                    instructions.push(Instruction::Jump { offset: 0 });
                 }
             }
             Terminator::Return { src } => {
                 if let Some(src) = src {
-                    self.instructions
-                        .push(Instruction::Return { src: src.to_i16() });
+                    instructions.push(Instruction::Return { src: src.to_i16() });
                 } else {
-                    self.instructions.push(Instruction::ReturnVoid);
+                    instructions.push(Instruction::ReturnVoid);
                 }
             }
         };
     }
 
-    fn visit_instruction(&mut self, instruction: &cfg::Instruction) {
+    fn visit_instruction(
+        &mut self,
+        instruction: &cfg::Instruction,
+        instructions: &mut Vec<Instruction>,
+    ) {
         let instruction = match instruction {
             cfg::Instruction::Add { dest, src1, src2 } => Instruction::Add {
                 dest: dest.to_u16(),
@@ -241,7 +250,7 @@ impl<'a> FunctionContext<'a> {
             cfg::Instruction::Print { src } => Instruction::Print { src: src.to_i16() },
         };
 
-        self.instructions.push(instruction);
+        instructions.push(instruction);
     }
 }
 

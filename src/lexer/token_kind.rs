@@ -14,10 +14,6 @@ pub enum TokenKind {
     MultiplyAssign,
     DivideAssign,
     ModuloAssign,
-
-    And,
-    Or,
-    Not,
     NotEqual,
     Equal,
     Greater,
@@ -30,6 +26,7 @@ pub enum TokenKind {
     Semicolon,
     Colon,
     ThinArrow,
+    Dot,
 
     LeftParen,
     RightParen,
@@ -37,6 +34,9 @@ pub enum TokenKind {
     RightBrace,
 
     // Keywords
+    And,
+    Or,
+    Not,
     Function,
     Let,
     For,
@@ -89,6 +89,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Semicolon => ";",
             TokenKind::Colon => ":",
             TokenKind::ThinArrow => "->",
+            TokenKind::Dot => ".", // <-- added here
 
             TokenKind::LeftParen => "(",
             TokenKind::RightParen => ")",

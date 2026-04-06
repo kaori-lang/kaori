@@ -217,6 +217,7 @@ impl Lexer {
             ',' => TokenKind::Comma,
             ';' => TokenKind::Semicolon,
             ':' => TokenKind::Colon,
+            '.' => TokenKind::Dot,
             _ => TokenKind::Invalid,
         };
 

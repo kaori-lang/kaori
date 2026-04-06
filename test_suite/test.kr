@@ -35,10 +35,13 @@ fun foo() {
     return 1 + 2;
 }
 
+
+
 fun main()  {
-    let c = 7;
-    let foo = {a: 5, b: 6, c};    
+    let foo = {a: 1, b: 2, c: {a: 3, b: 4}};    
 }
+
+
 
 
 

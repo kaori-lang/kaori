@@ -159,12 +159,12 @@ impl fmt::Display for Instruction {
             }
 
             Instruction::CreateDict { dest } => {
-                write!(f, "NEWDICT r{}", dest)
+                write!(f, "CREATE_DICT r{}", dest)
             }
             Instruction::SetField { dest, key, value } => {
                 write!(
                     f,
-                    "SETFIELD r{} {} {}",
+                    "SET_FIELD r{} {} {}",
                     dest,
                     fmt_operand(*key),
                     fmt_operand(*value)

@@ -2,8 +2,6 @@ const TAG_MASK: u64 = 0b111;
 const TAG_NUMBER: u64 = 0b000;
 const TAG_BOOLEAN: u64 = 0b001;
 const TAG_FUNCTION: u64 = 0b010;
-
-// heap object subtypes
 const TAG_STRING: u64 = 0b011;
 const TAG_DICT: u64 = 0b100;
 const TAG_VEC: u64 = 0b101;
@@ -136,8 +134,6 @@ impl Value {
         assert!(self.is_vec(), "expected Vec, got {:?}", self.kind());
         self.as_vec()
     }
-
-    // -------- raw accessors --------
 
     #[inline(always)]
     pub fn as_number(self) -> f64 {

@@ -41,9 +41,8 @@ pub fn run_vm(functions: Vec<Function>, heap: Heap) {
     let Function {
         instructions,
         registers_count,
-        ref constant_pool,
-        ..
-    } = functions[0];
+        constant_pool,
+    } = &functions[0];
 
     let registers_ptr = registers.as_mut_ptr();
     let constant_pool_ptr = (*constant_pool).as_ptr();
@@ -51,7 +50,7 @@ pub fn run_vm(functions: Vec<Function>, heap: Heap) {
     let return_address = unsafe { instructions.last().unwrap_unchecked() };
 
     let main_frame = FunctionFrame::new(
-        registers_count,
+        *registers_count,
         registers_ptr,
         constant_pool_ptr,
         return_address,
@@ -67,8 +66,10 @@ pub fn run_vm(functions: Vec<Function>, heap: Heap) {
         main_frame,
     );
 
-    let index = unsafe { (*start).discriminant() };
-    OPCODE_HANDLERS[index](&mut ctx, start)
+    let index = instructions[0].discriminant();
+    let entry = instructions.as_ptr();
+
+    OPCODE_HANDLERS[index](&mut ctx, entry)
 }
 
 macro_rules! dispatch {
@@ -328,19 +329,18 @@ fn opcode_call(ctx: &mut VMContext, ip: *const Instruction) {
         let function_index = ctx.get_value(src).expect_function();
 
         let Function {
-            start,
+            instructions,
             registers_count,
-            ref constant_pool,
-            ..
-        } = ctx.functions[function_index];
-
+            constant_pool,
+        } = &ctx.functions[function_index];
         let constants_ptr = (*constant_pool).as_ptr();
 
-        ctx.push_frame(dest, return_address, registers_count, constants_ptr);
+        ctx.push_frame(dest, return_address, *registers_count, constants_ptr);
 
-        let index = (*start).discriminant();
+        let index = instructions[0].discriminant();
+        let ip = instructions.as_ptr();
 
-        become OPCODE_HANDLERS[index](ctx, start)
+        become OPCODE_HANDLERS[index](ctx, ip)
     }
 }
 
@@ -472,6 +472,4 @@ fn opcode_set_field(ctx: &mut VMContext, ip: *const Instruction) {
 }
 
 #[inline(never)]
-fn opcode_halt(ctx: &mut VMContext, _ip: *const Instruction) {
-    println!("End {:#?}", ctx.heap);
-}
+fn opcode_halt(_ctx: &mut VMContext, _ip: *const Instruction) {}
