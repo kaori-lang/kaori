@@ -31,8 +31,11 @@ fun foo(n) {
 }
 */
 
+fun foo() {
+
+}
 fun main()  {
-    let d = {1: "abc", 2: 5 *10};
+    let d = {1: "abc", 2: 5 *10, 3: foo, 4: main, 5: {"a": 1, "b": 8.9494}};
     print(d);
     
 

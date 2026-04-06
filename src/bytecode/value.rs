@@ -24,14 +24,10 @@ impl Value {
     pub fn number(value: f64) -> Self {
         let bits = value.to_bits();
 
-        debug_assert!(
-            bits & TAG_MASK == 0,
-            "f64 bits collide with tag (not safe for all floats)"
-        );
+        let shifted = bits >> 3;
 
-        Self(bits | TAG_NUMBER)
+        Self((shifted << 3) | TAG_NUMBER)
     }
-
     #[inline(always)]
     pub fn boolean(value: bool) -> Self {
         Self((value as u64) << 3 | TAG_BOOLEAN)
@@ -137,7 +133,10 @@ impl Value {
 
     #[inline(always)]
     pub fn as_number(self) -> f64 {
-        f64::from_bits(self.0 & !TAG_MASK)
+        let bits = self.0 >> 3;
+
+        // restore (fill lost bits with 0)
+        f64::from_bits(bits << 3)
     }
 
     #[inline(always)]
