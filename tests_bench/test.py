@@ -1,4 +1,4 @@
-import dis
+""" import dis
 
 class Foo:
     def __init__(self, a, b, c):
@@ -13,4 +13,12 @@ def example():
 
 
 
-dis.dis(example)
+dis.dis(example) """
+
+
+def foo():
+    return 5 * 2 * "a"
+
+a = {{"a": 2} : foo()}
+
+print(a)

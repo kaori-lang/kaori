@@ -33,8 +33,7 @@ fun foo(n) {
 
 fun main()  {
     let a = 5;
-    let b = 7;
-    let c = 7;
+
 
     a.b.c;
 }

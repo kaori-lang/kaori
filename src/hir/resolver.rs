@@ -375,6 +375,7 @@ impl Resolver {
             }
             ast::ExprKind::MemberAccess { object, property } => {
                 let object = self.resolve_expression(object)?;
+
                 let property = self.resolve_expression(property)?;
 
                 Expr::member_access(object, property, expression.span)
@@ -391,15 +392,11 @@ impl Resolver {
                             None => self.resolve_expression(key),
                         }?;
 
-                        let key = if let ast::ExprKind::Identifier(key) = &key.kind {
-                            key.to_owned()
-                        } else {
-                            unreachable!("Dict literal key should be an identifier!")
-                        };
+                        let key = self.resolve_expression(key)?;
 
                         Ok((key, value))
                     })
-                    .collect::<Result<Vec<(String, Expr)>, KaoriError>>()?;
+                    .collect::<Result<Vec<(Expr, Expr)>, KaoriError>>()?;
 
                 Expr::dict_literal(fields, expression.span)
             }

@@ -52,7 +52,7 @@ pub enum ExprKind {
     Number(f64),
     Boolean(bool),
     DictLiteral {
-        fields: Vec<(String, Expr)>,
+        fields: Vec<(Expr, Expr)>,
     },
 }
 
@@ -185,7 +185,7 @@ impl Expr {
         }
     }
 
-    pub fn dict_literal(fields: Vec<(String, Expr)>, span: Span) -> Expr {
+    pub fn dict_literal(fields: Vec<(Expr, Expr)>, span: Span) -> Expr {
         Expr {
             id: NodeId::default(),
             span,

@@ -294,7 +294,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_dict_literal_field(&mut self) -> Result<(Expr, Option<Expr>), KaoriError> {
-        let identifier = self.parse_identifier()?;
+        let identifier = self.parse_expression()?;
 
         if self.token_stream.token_kind() == TokenKind::Colon {
             self.token_stream.consume(TokenKind::Colon)?;
@@ -347,7 +347,12 @@ impl<'a> Parser<'a> {
     fn parse_member_access(&mut self, object: Expr) -> Result<Expr, KaoriError> {
         self.token_stream.consume(TokenKind::Dot)?;
 
-        let property = self.parse_identifier()?;
+        let property = Expr::string_literal(
+            self.token_stream.lexeme().to_owned(),
+            self.token_stream.span(),
+        );
+
+        self.token_stream.consume(TokenKind::Identifier)?;
 
         let member_access = Expr::member_access(object, property);
 
