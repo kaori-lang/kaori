@@ -1,39 +1,44 @@
 use std::hint::unreachable_unchecked;
 
 use crate::{
-    bytecode::{function::Function, instruction::Instruction, value::Value},
-    vm::vm_context::FunctionFrame,
+    bytecode::{
+        function::Function,
+        instruction::Instruction,
+        value::{Value, ValueKind},
+    },
+    vm::{debug_value::DebugValue, vm_context::FunctionFrame},
 };
 
 use super::{heap::Heap, vm_context::VMContext};
 
 type InstructionHandler = fn(&mut VMContext, ip: *const Instruction);
 
-const OPCODE_HANDLERS: [InstructionHandler; 24] = [
-    opcode_add,
-    opcode_subtract,
-    opcode_multiply,
-    opcode_divide,
-    opcode_modulo,
-    opcode_equal,
-    opcode_not_equal,
-    opcode_greater,
-    opcode_greater_equal,
-    opcode_less,
-    opcode_less_equal,
-    opcode_negate,
-    opcode_not,
-    opcode_move,
-    opcode_create_dict,
-    opcode_set_field,
-    opcode_call,
-    opcode_return,
-    opcode_return_void,
-    opcode_jump,
-    opcode_jump_if_true,
-    opcode_jump_if_false,
-    opcode_print,
-    opcode_halt,
+const OPCODE_HANDLERS: [InstructionHandler; 25] = [
+    opcode_add,           // 0
+    opcode_subtract,      // 1
+    opcode_multiply,      // 2
+    opcode_divide,        // 3
+    opcode_modulo,        // 4
+    opcode_equal,         // 5
+    opcode_not_equal,     // 6
+    opcode_greater,       // 7
+    opcode_greater_equal, // 8
+    opcode_less,          // 9
+    opcode_less_equal,    // 10
+    opcode_negate,        // 11
+    opcode_not,           // 12
+    opcode_move,          // 13
+    opcode_create_dict,   // 14
+    opcode_set_field,     // 15
+    opcode_get_field,     // 16 ✅ FIX
+    opcode_call,          // 17
+    opcode_return,        // 18
+    opcode_return_void,   // 19
+    opcode_jump,          // 20
+    opcode_jump_if_true,  // 21
+    opcode_jump_if_false, // 22
+    opcode_print,         // 23
+    opcode_halt,          // 24
 ];
 
 pub fn run_vm(functions: Vec<Function>, heap: Heap) {
@@ -426,10 +431,13 @@ fn opcode_print(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        let string_ref = ctx.get_value(src);
-        let string = ctx.heap.get_string(string_ref);
+        let value = ctx.get_value(src);
+        let debug_value = DebugValue {
+            value,
+            heap: &ctx.heap,
+        };
 
-        println!("{}", string);
+        println!("{:?}", debug_value);
 
         dispatch!(ctx, ip);
     }
@@ -453,19 +461,30 @@ fn opcode_create_dict(ctx: &mut VMContext, ip: *const Instruction) {
 #[inline(never)]
 fn opcode_set_field(ctx: &mut VMContext, ip: *const Instruction) {
     unsafe {
-        let Instruction::SetField { dest, key, value } = *ip else {
+        let Instruction::SetField { object, key, value } = *ip else {
             unreachable_unchecked()
         };
 
-        let string_ref = ctx.get_value(key);
-        let key = ctx.heap.get_string(string_ref).to_owned();
-
+        let key = ctx.get_value(key);
         let value = ctx.get_value(value);
 
-        let dict_ref = ctx.get_value(dest as i16);
-        let dict = ctx.heap.get_dict(dict_ref);
+        let dict_ref = ctx.get_value(object as i16);
+        let dict = ctx.heap.get_mut_dict(dict_ref);
 
         dict.insert(key, value);
+
+        dispatch!(ctx, ip);
+    }
+}
+
+#[inline(never)]
+fn opcode_get_field(ctx: &mut VMContext, ip: *const Instruction) {
+    unsafe {
+        let Instruction::GetField { dest, object, key } = *ip else {
+            unreachable_unchecked()
+        };
+
+        todo!();
 
         dispatch!(ctx, ip);
     }

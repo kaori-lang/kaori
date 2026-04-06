@@ -18,7 +18,8 @@ pub enum Instruction {
     Not { dest: u16, src: i16 },
     Move { dest: u16, src: i16 },
     CreateDict { dest: u16 },
-    SetField { dest: u16, key: i16, value: i16 },
+    SetField { object: u16, key: i16, value: i16 },
+    GetField { dest: u16, object: i16, key: i16 },
     Call { dest: u16, src: i16 },
     Return { src: i16 },
     ReturnVoid,
@@ -161,13 +162,22 @@ impl fmt::Display for Instruction {
             Instruction::CreateDict { dest } => {
                 write!(f, "CREATE_DICT r{}", dest)
             }
-            Instruction::SetField { dest, key, value } => {
+            Instruction::SetField { object, key, value } => {
                 write!(
                     f,
                     "SET_FIELD r{} {} {}",
-                    dest,
+                    object,
                     fmt_operand(*key),
                     fmt_operand(*value)
+                )
+            }
+            Instruction::GetField { dest, object, key } => {
+                write!(
+                    f,
+                    "GET_FIELD r{} {} {}",
+                    dest,
+                    fmt_operand(*object),
+                    fmt_operand(*key)
                 )
             }
 

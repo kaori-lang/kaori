@@ -2,14 +2,12 @@ use std::{collections::HashMap, hint::unreachable_unchecked};
 
 use crate::bytecode::value::Value;
 
-#[derive(Debug)]
 pub enum HeapObject {
     String(String),
-    Dict(HashMap<String, Value>),
+    Dict(HashMap<Value, Value>),
     Vec(Vec<Value>),
 }
 
-#[derive(Debug)]
 pub struct Heap {
     objects: Vec<HeapObject>,
 }
@@ -59,10 +57,19 @@ impl Heap {
         }
     }
 
-    pub fn get_dict(&mut self, value: Value) -> &mut HashMap<String, Value> {
+    pub fn get_mut_dict(&mut self, value: Value) -> &mut HashMap<Value, Value> {
         let index = value.expect_dict();
 
         match &mut self.objects[index] {
+            HeapObject::Dict(object) => object,
+            _ => unsafe { unreachable_unchecked() },
+        }
+    }
+
+    pub fn get_dict(&self, value: Value) -> &HashMap<Value, Value> {
+        let index = value.expect_dict();
+
+        match &self.objects[index] {
             HeapObject::Dict(object) => object,
             _ => unsafe { unreachable_unchecked() },
         }

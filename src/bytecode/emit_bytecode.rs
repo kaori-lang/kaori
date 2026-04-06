@@ -235,12 +235,16 @@ impl<'a> FunctionContext<'a> {
                     src: src.to_i16(),
                 }
             }
-            cfg::Instruction::SetField { dest, key, value } => Instruction::SetField {
-                dest: dest.to_u16(),
+            cfg::Instruction::SetField { object, key, value } => Instruction::SetField {
+                object: object.to_u16(),
                 key: key.to_i16(),
                 value: value.to_i16(),
             },
-            cfg::Instruction::GetField { dest, object, key } => todo!(),
+            cfg::Instruction::GetField { dest, object, key } => Instruction::GetField {
+                dest: dest.to_u16(),
+                object: object.to_i16(),
+                key: key.to_i16(),
+            },
             cfg::Instruction::CreateDict { dest } => Instruction::CreateDict {
                 dest: dest.to_u16(),
             },

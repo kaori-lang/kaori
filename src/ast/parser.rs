@@ -71,7 +71,6 @@ impl<'a> Parser<'a> {
 
         let statement = match token_kind {
             TokenKind::Print => self.parse_print_statement(),
-            TokenKind::LeftBrace => self.parse_block_statement(),
             TokenKind::If => self.parse_if_statement(),
             TokenKind::While => self.parse_while_loop_statement(),
             TokenKind::For => self.parse_for_loop_statement(),

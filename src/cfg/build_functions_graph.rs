@@ -414,10 +414,14 @@ impl<'a> FunctionContext<'a> {
                 self.emit_instruction(instruction);
 
                 for (key, value) in fields {
-                    let key = self.constant_pool.push_string(key.to_owned());
+                    let key = self.visit_expression(key);
                     let value = self.visit_expression(value);
 
-                    let instruction = Instruction::SetField { dest, key, value };
+                    let instruction = Instruction::SetField {
+                        object: dest,
+                        key,
+                        value,
+                    };
                     self.emit_instruction(instruction);
                 }
 

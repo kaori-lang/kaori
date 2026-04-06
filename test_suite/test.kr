@@ -32,10 +32,10 @@ fun foo(n) {
 */
 
 fun main()  {
-    let a = 5;
+    let d = {1: "abc", 2: 5 *10};
+    print(d);
+    
 
-
-    a.b.c;
 }
 
 

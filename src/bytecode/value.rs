@@ -16,7 +16,7 @@ pub enum ValueKind {
     Vec,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct Value(u64);
 
 impl Value {

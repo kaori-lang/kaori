@@ -81,7 +81,7 @@ pub enum Instruction {
         dest: Operand,
     },
     SetField {
-        dest: Operand,
+        object: Operand,
         key: Operand,
         value: Operand,
     },
@@ -230,11 +230,11 @@ impl Display for Instruction {
                 write!(f, "NEWDICT {}", fmt_operand(dest))
             }
 
-            SetField { dest, key, value } => {
+            SetField { object, key, value } => {
                 write!(
                     f,
                     "SETFIELD {} {} {}",
-                    fmt_operand(dest),
+                    fmt_operand(object),
                     fmt_operand(key),
                     fmt_operand(value)
                 )
