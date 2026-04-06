@@ -293,15 +293,6 @@ impl<'a> Parser<'a> {
         Ok(identifier)
     }
 
-    fn parse_postfix_unary(&mut self, operand: Expr) -> Result<Expr, KaoriError> {
-        let token_kind = self.token_stream.token_kind();
-
-        Ok(match token_kind {
-            TokenKind::LeftParen => self.parse_function_call(operand)?,
-            _ => operand,
-        })
-    }
-
     fn parse_dict_literal_field(&mut self) -> Result<(Expr, Option<Expr>), KaoriError> {
         let identifier = self.parse_identifier()?;
 
@@ -328,6 +319,16 @@ impl<'a> Parser<'a> {
         Ok(Expr::dict_literal(fields, span))
     }
 
+    fn parse_postfix_unary(&mut self, operand: Expr) -> Result<Expr, KaoriError> {
+        let token_kind = self.token_stream.token_kind();
+
+        Ok(match token_kind {
+            TokenKind::LeftParen => self.parse_function_call(operand)?,
+            TokenKind::Dot => self.parse_member_access(operand)?,
+            _ => operand,
+        })
+    }
+
     fn parse_function_call(&mut self, callee: Expr) -> Result<Expr, KaoriError> {
         self.token_stream.consume(TokenKind::LeftParen)?;
 
@@ -338,8 +339,18 @@ impl<'a> Parser<'a> {
 
         self.token_stream.consume(TokenKind::RightParen)?;
 
-        let callee = Expr::function_call(callee, arguments, span);
+        let function_call = Expr::function_call(callee, arguments, span);
 
-        self.parse_postfix_unary(callee)
+        self.parse_postfix_unary(function_call)
+    }
+
+    fn parse_member_access(&mut self, object: Expr) -> Result<Expr, KaoriError> {
+        self.token_stream.consume(TokenKind::Dot)?;
+
+        let property = self.parse_identifier()?;
+
+        let member_access = Expr::member_access(object, property);
+
+        self.parse_postfix_unary(member_access)
     }
 }

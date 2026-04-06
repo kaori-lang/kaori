@@ -41,6 +41,10 @@ pub enum ExprKind {
         callee: Box<Expr>,
         arguments: Vec<Expr>,
     },
+    MemberAccess {
+        object: Box<Expr>,
+        property: Box<Expr>,
+    },
     StringLiteral(String),
     NumberLiteral(f64),
     BooleanLiteral(bool),
@@ -144,6 +148,19 @@ impl Expr {
             kind: ExprKind::FunctionCall {
                 callee: Box::new(callee),
                 arguments,
+            },
+        }
+    }
+
+    pub fn member_access(object: Expr, property: Expr) -> Expr {
+        let span = Span::merge(object.span, property.span);
+
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::MemberAccess {
+                object: Box::new(object),
+                property: Box::new(property),
             },
         }
     }
