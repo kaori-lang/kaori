@@ -239,6 +239,7 @@ impl Lexer {
             | TokenKind::MultiplyAssign
             | TokenKind::DivideAssign
             | TokenKind::ModuloAssign
+            | TokenKind::DeclareAssign
             | TokenKind::NotEqual
             | TokenKind::Equal
             | TokenKind::GreaterEqual

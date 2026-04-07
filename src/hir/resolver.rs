@@ -69,7 +69,6 @@ impl Resolver {
         let has_error = match &declaration.kind {
             ast::DeclKind::Function { .. } if self.local_scope => true,
 
-            ast::DeclKind::Variable { .. } if !self.local_scope => true,
             _ => false,
         };
 
@@ -153,23 +152,6 @@ impl Resolver {
         self.resolve_declaration_scope(declaration)?;
 
         let _decl = match &declaration.kind {
-            ast::DeclKind::Variable { name, right } => {
-                let right = self.resolve_expression(right)?;
-
-                if self.symbol_table.search_current_scope(name).is_some() {
-                    return Err(kaori_error!(
-                        declaration.span,
-                        "{} is already declared",
-                        name
-                    ));
-                };
-
-                let id = NodeId::default();
-
-                self.symbol_table.declare_variable(id, name.to_owned());
-
-                Decl::variable(id, right, declaration.span)
-            }
             ast::DeclKind::Function {
                 parameters, body, ..
             } => {
@@ -298,7 +280,7 @@ impl Resolver {
         Ok(_stmt)
     }
 
-    fn resolve_expression(&self, expression: &ast::Expr) -> Result<Expr, KaoriError> {
+    fn resolve_expression(&mut self, expression: &ast::Expr) -> Result<Expr, KaoriError> {
         let _expr = match &expression.kind {
             ast::ExprKind::DeclareAssign { left, right } => {
                 let right = self.resolve_expression(right)?;
@@ -318,7 +300,7 @@ impl Resolver {
 
                 self.symbol_table.declare_variable(id, name.to_owned());
 
-                todo!()
+                Expr::declare_assign(id, right, expression.span)
             }
             ast::ExprKind::Assign {
                 operator,

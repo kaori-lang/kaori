@@ -180,7 +180,6 @@ impl fmt::Display for Instruction {
                     fmt_operand(*key)
                 )
             }
-
             Instruction::Call { dest, src } => {
                 write!(f, "CALL r{} {}", dest, fmt_operand(*src))
             }

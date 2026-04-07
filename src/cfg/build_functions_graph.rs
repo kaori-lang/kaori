@@ -119,13 +119,6 @@ impl<'a> FunctionContext<'a> {
 
     fn visit_declaration(&mut self, declaration: &Decl) -> Result<(), KaoriError> {
         match &declaration.kind {
-            DeclKind::Variable { right, .. } => {
-                let src = self.visit_expression(right);
-                let dest = self.create_variable(declaration.id);
-                let instruction = Instruction::Move { dest, src };
-
-                self.emit_instruction(instruction);
-            }
             DeclKind::Function {
                 body, parameters, ..
             } => {
@@ -251,6 +244,15 @@ impl<'a> FunctionContext<'a> {
 
     fn visit_expression(&mut self, expression: &Expr) -> Operand {
         match &expression.kind {
+            ExprKind::DeclareAssign { right } => {
+                let src = self.visit_expression(right);
+                let dest = self.create_variable(expression.id);
+                let instruction = Instruction::Move { dest, src };
+
+                self.emit_instruction(instruction);
+
+                dest
+            }
             ExprKind::Assign { left, right } => {
                 let dest = self.visit_expression(left);
                 let src = self.visit_expression(right);

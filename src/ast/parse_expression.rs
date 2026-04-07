@@ -59,6 +59,13 @@ impl<'a> Parser<'a> {
             TokenKind::MultiplyAssign => AssignOpKind::MultiplyAssign,
             TokenKind::DivideAssign => AssignOpKind::DivideAssign,
             TokenKind::ModuloAssign => AssignOpKind::ModuloAssign,
+            TokenKind::DeclareAssign => {
+                self.token_stream.advance();
+
+                let right = self.parse_or()?;
+
+                return Ok(Expr::declare_assign(left, right));
+            }
             _ => return Ok(left),
         };
 

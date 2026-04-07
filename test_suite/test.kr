@@ -20,22 +20,13 @@ fun main()  {
 }
 */
 
-fun Cat(name, age, color) {
-    return {   
-        name,
-        age,
-        color,
-    };
-}
-
-fun greet(self) {
-    print(self);
-}
 
 fun main()  {
-    //let cat = Cat("meow", 5, "black");
-    greet();
+    cat := 5;
+    print(cat);
 }
+
+
 
 
 

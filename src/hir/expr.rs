@@ -38,6 +38,9 @@ pub enum ExprKind {
         left: Box<Expr>,
         right: Box<Expr>,
     },
+    DeclareAssign {
+        right: Box<Expr>,
+    },
     Variable(NodeId),
     FunctionCall {
         callee: Box<Expr>,
@@ -118,6 +121,16 @@ impl Expr {
             span,
             kind: ExprKind::Assign {
                 left: Box::new(left),
+                right: Box::new(right),
+            },
+        }
+    }
+
+    pub fn declare_assign(id: NodeId, right: Expr, span: Span) -> Expr {
+        Expr {
+            id,
+            span,
+            kind: ExprKind::DeclareAssign {
                 right: Box::new(right),
             },
         }

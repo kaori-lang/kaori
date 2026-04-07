@@ -1,6 +1,6 @@
 use crate::lexer::span::Span;
 
-use super::{expr::Expr, node::Node, node_id::NodeId};
+use super::{node::Node, node_id::NodeId};
 
 #[derive(Debug)]
 pub struct Decl {
