@@ -50,6 +50,7 @@ pub enum ExprKind {
         object: Box<Expr>,
         property: Box<Expr>,
     },
+    Parameter(NodeId),
     Function(NodeId),
     String(String),
     Number(f64),
@@ -136,14 +137,6 @@ impl Expr {
         }
     }
 
-    pub fn variable(id: NodeId, span: Span) -> Expr {
-        Expr {
-            id: NodeId::default(),
-            span,
-            kind: ExprKind::Variable(id),
-        }
-    }
-
     pub fn function_call(callee: Expr, arguments: Vec<Expr>, span: Span) -> Expr {
         Expr {
             id: NodeId::default(),
@@ -163,6 +156,22 @@ impl Expr {
                 object: Box::new(object),
                 property: Box::new(property),
             },
+        }
+    }
+
+    pub fn variable(id: NodeId, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Variable(id),
+        }
+    }
+
+    pub fn parameter(id: NodeId, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Parameter(id),
         }
     }
 

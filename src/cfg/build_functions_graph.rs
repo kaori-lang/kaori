@@ -107,13 +107,11 @@ impl<'a> FunctionContext<'a> {
 
     fn visit_declaration(&mut self, declaration: &Decl) -> Result<(), KaoriError> {
         match &declaration.kind {
-            DeclKind::Function {
-                body, parameters, ..
-            } => {
+            DeclKind::Function { body, parameters } => {
                 let _entry_bb = self.create_bb();
 
                 for parameter in parameters {
-                    self.create_variable(parameter.id);
+                    self.visit_expression(parameter);
                 }
 
                 for statement in body {
@@ -234,6 +232,7 @@ impl<'a> FunctionContext<'a> {
 
     fn visit_expression(&mut self, expression: &Expr) -> Operand {
         match &expression.kind {
+            ExprKind::Parameter(id) => self.create_variable(*id),
             ExprKind::DeclareAssign { right } => {
                 let src = self.visit_expression(right);
                 let dest = self.create_variable(expression.id);

@@ -29,7 +29,7 @@ use kaori::program::run_program;
 } */
 
 fn main() {
-    let source_to_run = "test_suite/mutual_recursion.kr";
+    let source_to_run = "test_suite/test.kr";
 
     match fs::read_to_string(source_to_run) {
         Ok(source) => {

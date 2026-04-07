@@ -18,10 +18,12 @@ fun main()  {
         print(i);
     }
 
-    
+    struct_literal_example := {a: 5, 5: 7};
 
     cat := Cat("meow", 5, "black");
-    print(cat.name);
+
+
+    greet(cat);
 }
 
 

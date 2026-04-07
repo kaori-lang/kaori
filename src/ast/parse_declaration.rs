@@ -1,9 +1,6 @@
 use crate::{error::kaori_error::KaoriError, lexer::token_kind::TokenKind};
 
-use super::{
-    decl::{Decl, Parameter},
-    parser::Parser,
-};
+use super::{Expr, decl::Decl, parser::Parser};
 
 impl<'a> Parser<'a> {
     pub fn parse_function_declaration(&mut self) -> Result<Decl, KaoriError> {
@@ -37,12 +34,12 @@ impl<'a> Parser<'a> {
         Ok(Decl::function(name, parameters, body, span))
     }
 
-    pub fn parse_function_parameter(&mut self) -> Result<Parameter, KaoriError> {
+    fn parse_function_parameter(&mut self) -> Result<Expr, KaoriError> {
+        let name = self.token_stream.lexeme().to_owned();
         let span = self.token_stream.span();
 
-        let name = self.token_stream.lexeme().to_owned();
         self.token_stream.consume(TokenKind::Identifier)?;
 
-        Ok(Parameter::new(name, span))
+        Ok(Expr::parameter(name, span))
     }
 }

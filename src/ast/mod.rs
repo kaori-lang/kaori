@@ -13,7 +13,7 @@ pub mod stmt;
 
 pub mod unary_op;
 
-pub use decl::{Decl, DeclKind, Parameter};
+pub use decl::{Decl, DeclKind};
 pub use expr::{Expr, ExprKind};
 
 pub use node_id::NodeId;

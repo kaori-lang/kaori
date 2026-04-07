@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    decl::{Decl, Parameter},
+    decl::Decl,
     expr::{Expr, ExprKind},
     node_id::NodeId,
     stmt::Stmt,
@@ -66,21 +66,6 @@ impl Resolver {
         ))
     }
 
-    fn resolve_declaration_scope(&self, declaration: &ast::Decl) -> Result<(), KaoriError> {
-        let has_error = match &declaration.kind {
-            ast::DeclKind::Function { .. } => self.local_scope,
-        };
-
-        if has_error {
-            Err(kaori_error!(
-                declaration.span,
-                "expected declaration to be made in the correct scope"
-            ))
-        } else {
-            Ok(())
-        }
-    }
-
     pub fn resolve(&mut self, declarations: &mut [ast::Decl]) -> Result<Vec<Decl>, KaoriError> {
         self.resolve_main_function(declarations)?;
 
@@ -110,30 +95,7 @@ impl Resolver {
         Ok(declarations)
     }
 
-    fn resolve_parameter(&mut self, parameter: &ast::Parameter) -> Result<Parameter, KaoriError> {
-        if self
-            .symbol_table
-            .search_current_scope(&parameter.name)
-            .is_some()
-        {
-            return Err(kaori_error!(
-                parameter.span,
-                "function can't have parameters with the same name: {}",
-                parameter.name,
-            ));
-        };
-
-        let id = NodeId::default();
-
-        self.symbol_table
-            .declare_variable(id, parameter.name.to_owned());
-
-        Ok(Parameter::new(id, parameter.span))
-    }
-
     fn resolve_declaration(&mut self, declaration: &ast::Decl) -> Result<Decl, KaoriError> {
-        self.resolve_declaration_scope(declaration)?;
-
         let _decl = match &declaration.kind {
             ast::DeclKind::Function {
                 parameters, body, ..
@@ -142,8 +104,8 @@ impl Resolver {
 
                 let parameters = parameters
                     .iter()
-                    .map(|parameter| self.resolve_parameter(parameter))
-                    .collect::<Result<Vec<Parameter>, KaoriError>>()?;
+                    .map(|parameter| self.resolve_expression(parameter))
+                    .collect::<Result<Vec<Expr>, KaoriError>>()?;
 
                 let body = body
                     .iter()
@@ -265,6 +227,21 @@ impl Resolver {
 
     fn resolve_expression(&mut self, expression: &ast::Expr) -> Result<Expr, KaoriError> {
         let _expr = match &expression.kind {
+            ast::ExprKind::Parameter(name) => {
+                if self.symbol_table.search_current_scope(name).is_some() {
+                    return Err(kaori_error!(
+                        expression.span,
+                        "function can't have parameters with the same name: {}",
+                        name,
+                    ));
+                };
+
+                let id = NodeId::default();
+
+                self.symbol_table.declare_variable(id, name.to_owned());
+
+                Expr::parameter(id, expression.span)
+            }
             ast::ExprKind::DeclareAssign { left, right } => {
                 let right = self.resolve_expression(right)?;
 
@@ -293,7 +270,7 @@ impl Resolver {
                 let right = self.resolve_expression(right)?;
                 let left = self.resolve_expression(left)?;
 
-                let ExprKind::Variable(..) = &left.kind else {
+                let ExprKind::Variable(_) = &left.kind else {
                     return Err(kaori_error!(
                         left.span,
                         "expected a valid left hand side to assign values to"

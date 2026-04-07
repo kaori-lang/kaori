@@ -293,11 +293,9 @@ impl<'a> Parser<'a> {
         let name = self.token_stream.lexeme().to_owned();
         let span = self.token_stream.span();
 
-        let identifier = Expr::identifier(name, span);
-
         self.token_stream.consume(TokenKind::Identifier)?;
 
-        Ok(identifier)
+        Ok(Expr::identifier(name, span))
     }
 
     fn parse_dict_literal_field(&mut self) -> Result<(Expr, Option<Expr>), KaoriError> {

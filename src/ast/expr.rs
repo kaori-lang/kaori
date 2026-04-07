@@ -41,6 +41,7 @@ pub enum ExprKind {
         right: Box<Expr>,
     },
     Identifier(String),
+    Parameter(String),
     FunctionCall {
         callee: Box<Expr>,
         arguments: Vec<Expr>,
@@ -153,6 +154,14 @@ impl Expr {
             id: NodeId::default(),
             span,
             kind: ExprKind::Identifier(name),
+        }
+    }
+
+    pub fn parameter(name: String, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Parameter(name),
         }
     }
 

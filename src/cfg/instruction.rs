@@ -98,6 +98,7 @@ pub enum Instruction {
         src: Operand,
     },
 }
+
 fn fmt_operand(op: &Operand) -> String {
     match op {
         Operand::Variable(i) => format!("r{}", i),
