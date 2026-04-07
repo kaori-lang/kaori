@@ -1,77 +1,72 @@
-use std::{collections::HashMap, hint::unreachable_unchecked};
+use std::collections::HashMap;
 
 use crate::bytecode::value::Value;
 
-pub enum HeapObject {
-    String(String),
-    Dict(HashMap<Value, Value>),
-    Vec(Vec<Value>),
-}
-
+#[derive(Default)]
 pub struct Heap {
-    objects: Vec<HeapObject>,
+    strings: Vec<String>,
+    strings_interned: HashMap<String, usize>,
+    dicts: Vec<HashMap<Value, Value>>,
+    vecs: Vec<Vec<Value>>,
 }
 
 impl Heap {
-    pub fn new() -> Self {
-        Self {
-            objects: Vec::new(),
-        }
-    }
-
     #[inline(always)]
     pub fn allocate_string(&mut self, s: String) -> Value {
-        let index = self.objects.len();
-        self.objects.push(HeapObject::String(s));
+        if let Some(index) = self.strings_interned.get(&s) {
+            return Value::string(*index);
+        }
+
+        let index = self.strings.len();
+        self.strings.push(s.to_owned());
+        self.strings_interned.insert(s, index);
 
         Value::string(index)
     }
 
     #[inline(always)]
     pub fn allocate_dict(&mut self) -> Value {
-        let index = self.objects.len();
-        let dict = HashMap::new();
-
-        self.objects.push(HeapObject::Dict(dict));
+        let index = self.dicts.len();
+        self.dicts.push(HashMap::new());
 
         Value::dict(index)
     }
 
     #[inline(always)]
     pub fn allocate_vec(&mut self) -> Value {
-        let index = self.objects.len();
-
-        let vec = Vec::new();
-
-        self.objects.push(HeapObject::Vec(vec));
+        let index = self.vecs.len();
+        self.vecs.push(Vec::new());
 
         Value::vec(index)
     }
 
+    #[inline(always)]
     pub fn get_string(&self, value: Value) -> &str {
         let index = value.expect_string();
-
-        match &self.objects[index] {
-            HeapObject::String(object) => object,
-            _ => unsafe { unreachable_unchecked() },
-        }
+        &self.strings[index]
     }
 
+    #[inline(always)]
     pub fn get_mut_dict(&mut self, value: Value) -> &mut HashMap<Value, Value> {
         let index = value.expect_dict();
-
-        match &mut self.objects[index] {
-            HeapObject::Dict(object) => object,
-            _ => unsafe { unreachable_unchecked() },
-        }
+        &mut self.dicts[index]
     }
 
+    #[inline(always)]
     pub fn get_dict(&self, value: Value) -> &HashMap<Value, Value> {
         let index = value.expect_dict();
+        &self.dicts[index]
+    }
 
-        match &self.objects[index] {
-            HeapObject::Dict(object) => object,
-            _ => unsafe { unreachable_unchecked() },
-        }
+    #[inline(always)]
+    pub fn get_mut_vec(&mut self, value: Value) -> &mut Vec<Value> {
+        let index = value.expect_vec();
+        &mut self.vecs[index]
+    }
+
+    #[inline(always)]
+    pub fn get_vec(&self, value: Value) -> &Vec<Value> {
+        let index = value.expect_vec();
+        &self.vecs[index]
     }
 }

@@ -34,9 +34,7 @@ fun greet(self) {
 
 fun main()  {
     let cat = Cat("meow", 5, "black");
-    print(cat);
-    print("hello");
-
+    print(greet(cat));
 }
 
 

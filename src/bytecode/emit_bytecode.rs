@@ -20,7 +20,7 @@ pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Bytecode {
         fn_id_to_fn_index.insert(function.id, index);
     }
 
-    let mut heap = Heap::new();
+    let mut heap = Heap::default();
 
     let mut functions = functions
         .iter()
