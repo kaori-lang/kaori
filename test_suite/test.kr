@@ -1,29 +1,27 @@
-/*
+
+
 fun Cat(name, age, color) {
-    {   
+    return {   
         name,
         age,
-        color
-        get_name
+        color,
+    };
+}
+
+fun greet(self) {
+    print(self);
+}
+
+
+fun main()  {
+    for i := 0; i < 5; i += 1 {
+        print(i);
     }
-}
 
-fun get_name(self) {
-    return self.name;
-}
-
-fun main()  {
-    let cat = Cat("meow", 5, "black");
     
-    cat.get_name(cat);
 
-}
-*/
-
-
-fun main()  {
-    cat := 5;
-    print(cat);
+    cat := Cat("meow", 5, "black");
+    print(cat.name);
 }
 
 

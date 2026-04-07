@@ -49,12 +49,14 @@ impl Resolver {
 
     fn resolve_main_function(&mut self, declarations: &mut [ast::Decl]) -> Result<(), KaoriError> {
         for (index, declaration) in declarations.iter().enumerate() {
-            if let ast::DeclKind::Function { name, .. } = &declaration.kind
-                && name == "main"
-            {
-                declarations.swap(0, index);
+            match &declaration.kind {
+                ast::DeclKind::Function { name, .. } => {
+                    if name == "main" {
+                        declarations.swap(0, index);
 
-                return Ok(());
+                        return Ok(());
+                    }
+                }
             }
         }
 
@@ -66,9 +68,7 @@ impl Resolver {
 
     fn resolve_declaration_scope(&self, declaration: &ast::Decl) -> Result<(), KaoriError> {
         let has_error = match &declaration.kind {
-            ast::DeclKind::Function { .. } if self.local_scope => true,
-
-            _ => false,
+            ast::DeclKind::Function { .. } => self.local_scope,
         };
 
         if has_error {
@@ -99,7 +99,6 @@ impl Resolver {
 
                     self.symbol_table.declare_function(id, name.to_owned());
                 }
-                _ => {}
             };
         }
 
@@ -276,7 +275,7 @@ impl Resolver {
                     ));
                 };
 
-                if self.symbol_table.search_current_scope(&name).is_some() {
+                if self.symbol_table.search_current_scope(name).is_some() {
                     return Err(kaori_error!(left.span, "{} is already declared", name));
                 };
 

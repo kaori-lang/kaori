@@ -24,29 +24,33 @@ pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, Kao
     let mut node_to_function = HashMap::new();
 
     for declaration in declarations {
-        if let DeclKind::Function { .. } = &declaration.kind {
-            node_to_function.insert(declaration.id, FunctionId::default());
+        match &declaration.kind {
+            DeclKind::Function { .. } => {
+                node_to_function.insert(declaration.id, FunctionId::default());
+            }
         }
     }
 
     let mut functions = Vec::new();
 
     for declaration in declarations {
-        if let DeclKind::Function { .. } = &declaration.kind {
-            let mut ctx = FunctionContext::new(&node_to_function);
+        match &declaration.kind {
+            DeclKind::Function { .. } => {
+                let mut ctx = FunctionContext::new(&node_to_function);
 
-            ctx.visit_declaration(declaration)?;
+                ctx.visit_declaration(declaration)?;
 
-            let id = *node_to_function.get(&declaration.id).unwrap();
+                let id = *node_to_function.get(&declaration.id).unwrap();
 
-            let function = Function::new(
-                id,
-                ctx.basic_blocks,
-                ctx.constant_pool.constants,
-                ctx.variables.len(),
-            );
+                let function = Function::new(
+                    id,
+                    ctx.basic_blocks,
+                    ctx.constant_pool.constants,
+                    ctx.variables.len(),
+                );
 
-            functions.push(function);
+                functions.push(function);
+            }
         }
     }
 
