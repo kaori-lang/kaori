@@ -29,12 +29,12 @@ fun Cat(name, age, color) {
 }
 
 fun greet(self) {
-    return self.name;
+    print(self);
 }
 
 fun main()  {
-    let cat = Cat("meow", 5, "black");
-    print(greet(cat));
+    //let cat = Cat("meow", 5, "black");
+    greet();
 }
 
 

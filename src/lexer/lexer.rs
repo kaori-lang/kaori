@@ -82,7 +82,6 @@ impl Lexer {
             "continue" => TokenKind::Continue,
             "return" => TokenKind::Return,
             "fun" => TokenKind::Function,
-            "let" => TokenKind::Let,
             "print" => TokenKind::Print,
             "true" => TokenKind::True,
             "false" => TokenKind::False,
@@ -216,7 +215,13 @@ impl Lexer {
             '$' => TokenKind::Dollar,
             ',' => TokenKind::Comma,
             ';' => TokenKind::Semicolon,
-            ':' => TokenKind::Colon,
+            ':' => {
+                if self.look_ahead(":=") {
+                    TokenKind::DeclareAssign
+                } else {
+                    TokenKind::Colon
+                }
+            }
             '.' => TokenKind::Dot,
             _ => TokenKind::Invalid,
         };

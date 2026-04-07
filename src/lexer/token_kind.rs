@@ -9,6 +9,7 @@ pub enum TokenKind {
     Modulo,
 
     Assign,
+    DeclareAssign,
     AddAssign,
     SubtractAssign,
     MultiplyAssign,
@@ -38,7 +39,6 @@ pub enum TokenKind {
     Or,
     Not,
     Function,
-    Let,
     For,
     While,
     Break,
@@ -68,6 +68,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Modulo => "%",
 
             TokenKind::Assign => "=",
+            TokenKind::DeclareAssign => ":=",
             TokenKind::AddAssign => "+=",
             TokenKind::SubtractAssign => "-=",
             TokenKind::MultiplyAssign => "*=",
@@ -89,7 +90,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Semicolon => ";",
             TokenKind::Colon => ":",
             TokenKind::ThinArrow => "->",
-            TokenKind::Dot => ".", // <-- added here
+            TokenKind::Dot => ".",
 
             TokenKind::LeftParen => "(",
             TokenKind::RightParen => ")",
@@ -97,7 +98,6 @@ impl fmt::Display for TokenKind {
             TokenKind::RightBrace => "}",
 
             TokenKind::Function => "fun",
-            TokenKind::Let => "let",
             TokenKind::For => "for",
             TokenKind::While => "while",
             TokenKind::Break => "break",

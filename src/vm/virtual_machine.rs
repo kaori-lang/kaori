@@ -1,11 +1,7 @@
 use std::hint::unreachable_unchecked;
 
 use crate::{
-    bytecode::{
-        function::Function,
-        instruction::Instruction,
-        value::{Value, ValueKind},
-    },
+    bytecode::{function::Function, instruction::Instruction, value::Value},
     vm::{debug_value::DebugValue, vm_context::FunctionFrame},
 };
 
@@ -30,7 +26,7 @@ const OPCODE_HANDLERS: [InstructionHandler; 25] = [
     opcode_move,          // 13
     opcode_create_dict,   // 14
     opcode_set_field,     // 15
-    opcode_get_field,     // 16 ✅ FIX
+    opcode_get_field,     // 16
     opcode_call,          // 17
     opcode_return,        // 18
     opcode_return_void,   // 19
