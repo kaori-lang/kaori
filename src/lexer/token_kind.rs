@@ -7,6 +7,7 @@ pub enum TokenKind {
     Multiply,
     Divide,
     Modulo,
+    Power, // NEW
 
     Assign,
     DeclareAssign,
@@ -15,6 +16,8 @@ pub enum TokenKind {
     MultiplyAssign,
     DivideAssign,
     ModuloAssign,
+    PowerAssign, // NEW
+
     NotEqual,
     Equal,
     Greater,
@@ -66,6 +69,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Multiply => "*",
             TokenKind::Divide => "/",
             TokenKind::Modulo => "%",
+            TokenKind::Power => "**",
 
             TokenKind::Assign => "=",
             TokenKind::DeclareAssign => ":=",
@@ -74,6 +78,7 @@ impl fmt::Display for TokenKind {
             TokenKind::MultiplyAssign => "*=",
             TokenKind::DivideAssign => "/=",
             TokenKind::ModuloAssign => "%=",
+            TokenKind::PowerAssign => "**=",
 
             TokenKind::And => "and",
             TokenKind::Or => "or",

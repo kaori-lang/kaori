@@ -22,8 +22,8 @@ fun main()  {
 
     cat := Cat("meow", 5, "black");
 
-
-    greet(cat);
+    
+    greet("hello");
 }
 
 

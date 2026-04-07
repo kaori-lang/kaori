@@ -202,6 +202,10 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
+    fn parse_power(&mut self) -> Result<Expr, KaoriError> {
+        todo!()
+    }
+
     fn parse_prefix_unary(&mut self) -> Result<Expr, KaoriError> {
         let token_kind = self.token_stream.token_kind();
 

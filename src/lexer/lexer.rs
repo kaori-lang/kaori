@@ -166,7 +166,11 @@ impl Lexer {
                 }
             }
             '*' => {
-                if self.look_ahead("*=") {
+                if self.look_ahead("**=") {
+                    TokenKind::PowerAssign
+                } else if self.look_ahead("**") {
+                    TokenKind::Power
+                } else if self.look_ahead("*=") {
                     TokenKind::MultiplyAssign
                 } else {
                     TokenKind::Multiply
@@ -234,12 +238,14 @@ impl Lexer {
         }
 
         let size = match kind {
+            TokenKind::PowerAssign => 3,
             TokenKind::AddAssign
             | TokenKind::SubtractAssign
             | TokenKind::MultiplyAssign
             | TokenKind::DivideAssign
             | TokenKind::ModuloAssign
             | TokenKind::DeclareAssign
+            | TokenKind::Power
             | TokenKind::NotEqual
             | TokenKind::Equal
             | TokenKind::GreaterEqual
