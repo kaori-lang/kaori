@@ -113,7 +113,7 @@ impl<'a> Parser<'a> {
 
         self.token_stream.consume(TokenKind::For)?;
 
-        let init = self.parse_variable_declaration()?;
+        let init = self.parse_expression()?;
 
         self.token_stream.consume(TokenKind::Semicolon)?;
 

@@ -11,10 +11,6 @@ pub struct Decl {
 
 #[derive(Debug)]
 pub enum DeclKind {
-    Variable {
-        name: String,
-        right: Expr,
-    },
     Function {
         name: String,
         parameters: Vec<Parameter>,
@@ -40,15 +36,6 @@ impl Parameter {
 }
 
 impl Decl {
-    pub fn variable(name: String, right: Expr, span: Span) -> Decl {
-        Decl {
-            id: NodeId::default(),
-            span,
-
-            kind: DeclKind::Variable { name, right },
-        }
-    }
-
     pub fn function(name: String, parameters: Vec<Parameter>, body: Vec<Node>, span: Span) -> Decl {
         Decl {
             id: NodeId::default(),

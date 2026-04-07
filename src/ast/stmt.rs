@@ -22,7 +22,7 @@ pub enum StmtKind {
         block: Box<Stmt>,
     },
     ForLoop {
-        init: Box<Decl>,
+        init: Expr,
         condition: Expr,
         increment: Box<Stmt>,
         block: Box<Stmt>,
@@ -66,12 +66,12 @@ impl Stmt {
         }
     }
 
-    pub fn for_loop(init: Decl, condition: Expr, increment: Stmt, block: Stmt, span: Span) -> Stmt {
+    pub fn for_loop(init: Expr, condition: Expr, increment: Stmt, block: Stmt, span: Span) -> Stmt {
         Stmt {
             id: NodeId::default(),
             span,
             kind: StmtKind::ForLoop {
-                init: Box::new(init),
+                init,
                 condition,
                 increment: Box::new(increment),
                 block: Box::new(block),

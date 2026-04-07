@@ -36,6 +36,10 @@ pub enum ExprKind {
         left: Box<Expr>,
         right: Box<Expr>,
     },
+    DeclareAssign {
+        left: Box<Expr>,
+        right: Box<Expr>,
+    },
     Identifier(String),
     FunctionCall {
         callee: Box<Expr>,
@@ -125,6 +129,19 @@ impl Expr {
             span,
             kind: ExprKind::Assign {
                 operator,
+                left: Box::new(left),
+                right: Box::new(right),
+            },
+        }
+    }
+
+    pub fn declare_assign(left: Expr, right: Expr) -> Expr {
+        let span = Span::merge(left.span, right.span);
+
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::DeclareAssign {
                 left: Box::new(left),
                 right: Box::new(right),
             },

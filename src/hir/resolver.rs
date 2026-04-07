@@ -253,7 +253,7 @@ impl Resolver {
             } => {
                 self.symbol_table.enter_scope();
 
-                let init = Some(self.resolve_declaration(init)?);
+                let init = Some(self.resolve_expression(init)?);
                 let condition = self.resolve_expression(condition)?;
                 let increment = Some(self.resolve_statement(increment)?);
 
@@ -300,6 +300,26 @@ impl Resolver {
 
     fn resolve_expression(&self, expression: &ast::Expr) -> Result<Expr, KaoriError> {
         let _expr = match &expression.kind {
+            ast::ExprKind::DeclareAssign { left, right } => {
+                let right = self.resolve_expression(right)?;
+
+                let ast::ExprKind::Identifier(name) = &left.kind else {
+                    return Err(kaori_error!(
+                        left.span,
+                        "expected identifier to declare variables",
+                    ));
+                };
+
+                if self.symbol_table.search_current_scope(&name).is_some() {
+                    return Err(kaori_error!(left.span, "{} is already declared", name));
+                };
+
+                let id = NodeId::default();
+
+                self.symbol_table.declare_variable(id, name.to_owned());
+
+                todo!()
+            }
             ast::ExprKind::Assign {
                 operator,
                 left,

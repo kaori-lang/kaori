@@ -47,20 +47,10 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_declaration(&mut self) -> Result<Option<Decl>, KaoriError> {
-        let token_kind = self.token_stream.token_kind();
-
         let declaration = match self.token_stream.token_kind() {
             TokenKind::Function => Some(self.parse_function_declaration()?),
-            TokenKind::Let => Some(self.parse_variable_declaration()?),
-            _ => None,
-        };
 
-        #[allow(clippy::single_match)]
-        match token_kind {
-            TokenKind::Let => {
-                self.token_stream.consume(TokenKind::Semicolon)?;
-            }
-            _ => (),
+            _ => None,
         };
 
         Ok(declaration)

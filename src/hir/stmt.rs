@@ -1,6 +1,6 @@
 use crate::lexer::span::Span;
 
-use super::{decl::Decl, expr::Expr, node::Node, node_id::NodeId};
+use super::{expr::Expr, node::Node, node_id::NodeId};
 
 #[derive(Debug)]
 pub struct Stmt {
@@ -18,7 +18,7 @@ pub enum StmtKind {
         else_branch: Option<Box<Stmt>>,
     },
     Loop {
-        init: Option<Decl>,
+        init: Option<Expr>,
         condition: Expr,
         block: Box<Stmt>,
         increment: Option<Box<Stmt>>,
@@ -57,7 +57,7 @@ impl Stmt {
     }
 
     pub fn loop_(
-        init: Option<Decl>,
+        init: Option<Expr>,
         condition: Expr,
         block: Stmt,
         increment: Option<Stmt>,

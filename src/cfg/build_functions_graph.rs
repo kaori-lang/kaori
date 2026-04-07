@@ -196,7 +196,7 @@ impl<'a> FunctionContext<'a> {
                 increment,
             } => {
                 if let Some(init) = init {
-                    self.visit_declaration(init)?;
+                    self.visit_expression(init);
                 }
 
                 let condition_bb = self.create_bb();
