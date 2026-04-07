@@ -47,13 +47,15 @@ pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
 
-    //println!("{:#?}", ast);
-
     let declarations = run_semantic_analysis(&mut ast)?;
     let mut functions = build_functions_graph(&declarations)?;
 
     run_cfg_analysis(&mut functions)?;
 
+    /*  for function in functions.iter() {
+           println!("{}", function);
+       }
+    */
     let bytecode = emit_bytecode(functions);
 
     println!("{bytecode}");

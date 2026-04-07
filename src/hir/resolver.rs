@@ -101,7 +101,7 @@ impl Resolver {
 
                     self.symbol_table.declare_function(id, name.to_owned());
                 }
-                _ => (),
+                _ => {}
             };
         }
 
@@ -392,7 +392,12 @@ impl Resolver {
                             None => self.resolve_expression(key),
                         }?;
 
-                        let key = self.resolve_expression(key)?;
+                        let key = match &key.kind {
+                            ast::ExprKind::Identifier(name) => {
+                                Expr::string(name.to_owned(), key.span)
+                            }
+                            _ => self.resolve_expression(key)?,
+                        };
 
                         Ok((key, value))
                     })

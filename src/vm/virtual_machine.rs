@@ -484,7 +484,14 @@ fn opcode_get_field(ctx: &mut VMContext, ip: *const Instruction) {
             unreachable_unchecked()
         };
 
-        todo!();
+        let object = ctx.get_value(object);
+        let key = ctx.get_value(key);
+
+        let dict = ctx.heap.get_dict(object);
+
+        let value = dict.get(&key).unwrap();
+
+        ctx.set_value(dest, *value);
 
         dispatch!(ctx, ip);
     }

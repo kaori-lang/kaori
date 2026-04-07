@@ -260,7 +260,7 @@ impl<'a> Parser<'a> {
                 let value = self.token_stream.lexeme().to_owned();
                 self.token_stream.advance();
 
-                Expr::string_literal(value, span)
+                Expr::string_literal(value[1..value.len() - 1].to_owned(), span)
             }
             TokenKind::Identifier => {
                 let identifier = self.parse_identifier()?;

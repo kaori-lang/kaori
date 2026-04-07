@@ -135,7 +135,6 @@ impl Value {
     pub fn as_number(self) -> f64 {
         let bits = self.0 >> 3;
 
-        // restore (fill lost bits with 0)
         f64::from_bits(bits << 3)
     }
 

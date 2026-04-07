@@ -1,43 +1,41 @@
 /*
-
-let Foo = {
-    x,
-    y
-}
-
-
-fun Foo.new(x, y) {
-    {
-        x,
-        y
+fun Cat(name, age, color) {
+    {   
+        name,
+        age,
+        color
+        get_name
     }
 }
 
-fun Foo.add(self) {
-    return self.x + self.y
+fun get_name(self) {
+    return self.name;
 }
 
+fun main()  {
+    let cat = Cat("meow", 5, "black");
+    
+    cat.get_name(cat);
 
-Foo.add()
-
-fun bar(n) {
-    return n + 2;
-}
-
-fun foo(n) {
-    let bar = 5;
-
-    return bar;
 }
 */
 
-fun foo() {
-
+fun Cat(name, age, color) {
+    return {   
+        name,
+        age,
+        color,
+    };
 }
+
+fun greet(self) {
+    return self.name;
+}
+
 fun main()  {
-    let d = {1: "abc", 2: 5 *10, 3: foo, 4: main, 5: {"a": 1, "b": 8.9494}};
-    print(d);
-    
+    let cat = Cat("meow", 5, "black");
+    print(cat);
+    print("hello");
 
 }
 
