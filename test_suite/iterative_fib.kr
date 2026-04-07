@@ -1,17 +1,15 @@
 fun main() {
-    let iterations = 1000000;
-    let max_fib = 30;
+    iterations := 1000000;
+    max_fib := 30;
 
-    for let i = 0; i < iterations; i += 1 {
-        let a = 0;
-        let b = 1;
+    for i := 0; i < iterations; i += 1 {
+        a := 0;
+        b := 1;
 
-        for let j = 0; j < max_fib; j += 1 {
-            let temp = a + b;
+        for j := 0; j < max_fib; j += 1 {
+            temp := a + b;
             a = b;
             b = temp;
         }
     }
-
-
 }

@@ -17,6 +17,6 @@ fun bar(n) {
 }
 
 
-def main() {
-    print(foo(10));
+fun main() {
+    foo(10);
 }

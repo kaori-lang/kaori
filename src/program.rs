@@ -59,7 +59,7 @@ pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
     */
     let bytecode = emit_bytecode(functions);
 
-    println!("{bytecode}");
+    //println!("{bytecode}");
 
     Ok(bytecode)
 }

@@ -1,14 +1,14 @@
 /* test primitive vars. & operations */
 
 fun test_numbers() {
-    let a = 10.0;
-    let b = -2.0;
+    a := 10.0;
+    b := -2.0;
 
     // test arithmetic
-    let sum_a_b = a + b;
-    let diff_a_b = a - b;
-    let prod_a_b = a * b;
-    let quot_a_b = a / b;
+    sum_a_b := a + b;
+    diff_a_b := a - b;
+    prod_a_b := a * b;
+    quot_a_b := a / b;
 
     if sum_a_b != 8.0 {
         return false;
@@ -31,21 +31,21 @@ fun test_numbers() {
 
 fun test_newton() {
     /* approximate magnitude of the 2-D vector of <x, y> using Newton's Method */
-    let x = 8.0;
-    let y = 4.0;
+    x := 8.0;
+    y := 4.0;
 
-    let dist_squ = x * x + y * y;
-    let guess = 7.25;
+    dist_squ := x * x + y * y;
+    guess := 7.25;
 
-    for let iter = 0; iter < 4; iter += 1 {
+    for iter := 0; iter < 4; iter += 1 {
         guess = 0.5 * (guess + dist_squ / guess);
     }
 
     /* max allowed error in magnitude approximation */
-    let max_elipson = 0.01;
+    max_elipson := 0.01;
 
     /* expected answer: D_target = sqrt(80) */
-    let target_answer = 8.944;
+    target_answer := 8.944;
 
     print(guess);
     print(target_answer);
