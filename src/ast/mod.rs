@@ -5,7 +5,6 @@ pub mod assign_op;
 pub mod binary_op;
 pub mod decl;
 
-pub mod node;
 pub mod node_id;
 pub mod parse_declaration;
 pub mod parse_expression;
@@ -16,6 +15,6 @@ pub mod unary_op;
 
 pub use decl::{Decl, DeclKind, Parameter};
 pub use expr::{Expr, ExprKind};
-pub use node::Node;
+
 pub use node_id::NodeId;
 pub use stmt::{Stmt, StmtKind};

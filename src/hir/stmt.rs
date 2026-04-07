@@ -1,6 +1,6 @@
 use crate::lexer::span::Span;
 
-use super::{expr::Expr, node::Node, node_id::NodeId};
+use super::{expr::Expr, node_id::NodeId};
 
 #[derive(Debug)]
 pub struct Stmt {
@@ -23,7 +23,7 @@ pub enum StmtKind {
         block: Box<Stmt>,
         increment: Option<Box<Stmt>>,
     },
-    Block(Vec<Node>),
+    Block(Vec<Stmt>),
     Expression(Box<Expr>),
     Break,
     Continue,
@@ -75,11 +75,11 @@ impl Stmt {
         }
     }
 
-    pub fn block(nodes: Vec<Node>, span: Span) -> Stmt {
+    pub fn block(statements: Vec<Stmt>, span: Span) -> Stmt {
         Stmt {
             id: NodeId::default(),
             span,
-            kind: StmtKind::Block(nodes),
+            kind: StmtKind::Block(statements),
         }
     }
 

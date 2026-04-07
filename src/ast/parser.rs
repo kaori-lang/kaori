@@ -4,7 +4,7 @@ use crate::{
     lexer::{token_kind::TokenKind, token_stream::TokenStream},
 };
 
-use super::{decl::Decl, node::Node, stmt::Stmt};
+use super::{decl::Decl, stmt::Stmt};
 
 pub struct Parser<'a> {
     pub token_stream: TokenStream<'a>,
@@ -33,17 +33,6 @@ impl<'a> Parser<'a> {
         }
 
         Ok(declarations)
-    }
-
-    pub fn parse_ast_node(&mut self) -> Result<Node, KaoriError> {
-        let declaration = self.parse_declaration()?;
-
-        Ok(if let Some(declaration) = declaration {
-            Node::from(declaration)
-        } else {
-            let statement = self.parse_statement()?;
-            Node::from(statement)
-        })
     }
 
     pub fn parse_declaration(&mut self) -> Result<Option<Decl>, KaoriError> {

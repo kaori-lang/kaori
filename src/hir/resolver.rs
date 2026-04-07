@@ -14,7 +14,6 @@ use crate::{
 use super::{
     decl::{Decl, Parameter},
     expr::{Expr, ExprKind},
-    node::Node,
     node_id::NodeId,
     stmt::Stmt,
     symbol::SymbolKind,
@@ -112,21 +111,6 @@ impl Resolver {
         Ok(declarations)
     }
 
-    fn resolve_node(&mut self, node: &ast::Node) -> Result<Node, KaoriError> {
-        let node = match node {
-            ast::Node::Declaration(declaration) => {
-                let declaration = self.resolve_declaration(declaration)?;
-                Node::from(declaration)
-            }
-            ast::Node::Statement(statement) => {
-                let statement = self.resolve_statement(statement)?;
-                Node::from(statement)
-            }
-        };
-
-        Ok(node)
-    }
-
     fn resolve_parameter(&mut self, parameter: &ast::Parameter) -> Result<Parameter, KaoriError> {
         if self
             .symbol_table
@@ -164,8 +148,8 @@ impl Resolver {
 
                 let body = body
                     .iter()
-                    .map(|node| self.resolve_node(node))
-                    .collect::<Result<Vec<Node>, KaoriError>>()?;
+                    .map(|stmt| self.resolve_statement(stmt))
+                    .collect::<Result<Vec<Stmt>, KaoriError>>()?;
 
                 self.exit_function();
 
@@ -190,17 +174,17 @@ impl Resolver {
 
                 Stmt::print(expr, statement.span)
             }
-            ast::StmtKind::Block(nodes) => {
+            ast::StmtKind::Block(statements) => {
                 self.symbol_table.enter_scope();
 
-                let nodes = nodes
+                let statements = statements
                     .iter()
-                    .map(|node| self.resolve_node(node))
-                    .collect::<Result<Vec<Node>, KaoriError>>()?;
+                    .map(|stmt| self.resolve_statement(stmt))
+                    .collect::<Result<Vec<Stmt>, KaoriError>>()?;
 
                 self.symbol_table.exit_scope();
 
-                Stmt::block(nodes, statement.span)
+                Stmt::block(statements, statement.span)
             }
             ast::StmtKind::If {
                 condition,
@@ -323,7 +307,7 @@ impl Resolver {
                     AssignOpKind::MultiplyAssign => BinaryOpKind::Multiply,
                     AssignOpKind::DivideAssign => BinaryOpKind::Divide,
                     AssignOpKind::ModuloAssign => BinaryOpKind::Modulo,
-                    _ => return Ok(Expr::assign(left, right, expression.span)),
+                    AssignOpKind::Assign => return Ok(Expr::assign(left, right, expression.span)),
                 };
 
                 let operator = BinaryOp::new(operator_kind);

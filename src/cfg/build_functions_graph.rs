@@ -6,7 +6,6 @@ use crate::{
     hir::{
         decl::{Decl, DeclKind},
         expr::{Expr, ExprKind},
-        node::Node,
         node_id::NodeId,
         stmt::{Stmt, StmtKind},
     },
@@ -102,21 +101,6 @@ impl<'a> FunctionContext<'a> {
         index
     }
 
-    fn visit_nodes(&mut self, nodes: &[Node]) -> Result<(), KaoriError> {
-        for node in nodes {
-            self.visit_ast_node(node)?;
-        }
-        Ok(())
-    }
-
-    fn visit_ast_node(&mut self, node: &Node) -> Result<(), KaoriError> {
-        match node {
-            Node::Declaration(declaration) => self.visit_declaration(declaration)?,
-            Node::Statement(statement) => self.visit_statement(statement)?,
-        };
-        Ok(())
-    }
-
     fn visit_declaration(&mut self, declaration: &Decl) -> Result<(), KaoriError> {
         match &declaration.kind {
             DeclKind::Function {
@@ -128,8 +112,8 @@ impl<'a> FunctionContext<'a> {
                     self.create_variable(parameter.id);
                 }
 
-                for node in body {
-                    self.visit_ast_node(node)?;
+                for statement in body {
+                    self.visit_statement(statement)?;
                 }
 
                 self.set_terminator(Terminator::Return { src: None });
@@ -149,8 +133,10 @@ impl<'a> FunctionContext<'a> {
                 let instruction = Instruction::Print { src };
                 self.emit_instruction(instruction);
             }
-            StmtKind::Block(nodes) => {
-                self.visit_nodes(nodes)?;
+            StmtKind::Block(statements) => {
+                for stmt in statements {
+                    self.visit_statement(stmt)?;
+                }
             }
             StmtKind::Branch {
                 condition,

@@ -56,19 +56,19 @@ impl<'a> Parser<'a> {
     pub fn parse_block_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
 
-        let mut nodes = Vec::new();
+        let mut statements = Vec::new();
 
         self.token_stream.consume(TokenKind::LeftBrace)?;
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
         {
-            let node = self.parse_ast_node()?;
-            nodes.push(node);
+            let statement = self.parse_statement()?;
+            statements.push(statement);
         }
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Stmt::block(nodes, span))
+        Ok(Stmt::block(statements, span))
     }
 
     pub fn parse_if_statement(&mut self) -> Result<Stmt, KaoriError> {

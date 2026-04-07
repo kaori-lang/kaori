@@ -1,6 +1,6 @@
 use crate::lexer::span::Span;
 
-use super::{node::Node, node_id::NodeId};
+use super::{node_id::NodeId, stmt::Stmt};
 
 #[derive(Debug)]
 pub struct Decl {
@@ -13,7 +13,7 @@ pub struct Decl {
 pub enum DeclKind {
     Function {
         parameters: Vec<Parameter>,
-        body: Vec<Node>,
+        body: Vec<Stmt>,
     },
 }
 
@@ -42,7 +42,7 @@ impl Field {
 }
 
 impl Decl {
-    pub fn function(id: NodeId, parameters: Vec<Parameter>, body: Vec<Node>, span: Span) -> Decl {
+    pub fn function(id: NodeId, parameters: Vec<Parameter>, body: Vec<Stmt>, span: Span) -> Decl {
         Decl {
             id,
             span,

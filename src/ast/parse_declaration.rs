@@ -28,8 +28,8 @@ impl<'a> Parser<'a> {
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
         {
-            let node = self.parse_ast_node()?;
-            body.push(node);
+            let statement = self.parse_statement()?;
+            body.push(statement);
         }
 
         self.token_stream.consume(TokenKind::RightBrace)?;

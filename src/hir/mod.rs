@@ -1,6 +1,5 @@
 pub mod decl;
 pub mod expr;
-pub mod node;
 pub mod stmt;
 
 pub mod node_id;
