@@ -60,6 +60,7 @@ impl<'a> Parser<'a> {
             TokenKind::MultiplyAssign => AssignOpKind::MultiplyAssign,
             TokenKind::DivideAssign => AssignOpKind::DivideAssign,
             TokenKind::ModuloAssign => AssignOpKind::ModuloAssign,
+            TokenKind::PowerAssign => AssignOpKind::PowerAssign,
             TokenKind::DeclareAssign => {
                 self.token_stream.advance();
 
