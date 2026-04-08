@@ -9,3 +9,4 @@ def example():
 dis.dis(example)
 
 
+print(2 ** 3 + 4)

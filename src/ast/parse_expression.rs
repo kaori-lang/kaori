@@ -215,7 +215,7 @@ impl<'a> Parser<'a> {
             };
 
             self.token_stream.advance();
-            let right = self.parse_prefix_unary()?;
+            let right = self.parse_power()?;
 
             left = Expr::binary(operator, left, right);
         }
