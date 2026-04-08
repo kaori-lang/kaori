@@ -9,32 +9,33 @@ use super::{heap::Heap, vm_context::VMContext};
 
 type InstructionHandler = fn(&mut VMContext, ip: *const Instruction);
 
-const OPCODE_HANDLERS: [InstructionHandler; 25] = [
-    opcode_add,           // 0
-    opcode_subtract,      // 1
-    opcode_multiply,      // 2
-    opcode_divide,        // 3
-    opcode_modulo,        // 4
-    opcode_equal,         // 5
-    opcode_not_equal,     // 6
-    opcode_greater,       // 7
-    opcode_greater_equal, // 8
-    opcode_less,          // 9
-    opcode_less_equal,    // 10
-    opcode_negate,        // 11
-    opcode_not,           // 12
-    opcode_move,          // 13
-    opcode_create_dict,   // 14
-    opcode_set_field,     // 15
-    opcode_get_field,     // 16
-    opcode_call,          // 17
-    opcode_return,        // 18
-    opcode_return_void,   // 19
-    opcode_jump,          // 20
-    opcode_jump_if_true,  // 21
-    opcode_jump_if_false, // 22
-    opcode_print,         // 23
-    opcode_halt,          // 24
+const OPCODE_HANDLERS: [InstructionHandler; 26] = [
+    opcode_add,
+    opcode_subtract,
+    opcode_multiply,
+    opcode_divide,
+    opcode_modulo,
+    opcode_power,
+    opcode_equal,
+    opcode_not_equal,
+    opcode_greater,
+    opcode_greater_equal,
+    opcode_less,
+    opcode_less_equal,
+    opcode_negate,
+    opcode_not,
+    opcode_move,
+    opcode_create_dict,
+    opcode_set_field,
+    opcode_get_field,
+    opcode_call,
+    opcode_return,
+    opcode_return_void,
+    opcode_jump,
+    opcode_jump_if_true,
+    opcode_jump_if_false,
+    opcode_print,
+    opcode_halt,
 ];
 
 pub fn run_vm(functions: Vec<Function>, heap: Heap) {
@@ -189,6 +190,22 @@ fn opcode_modulo(ctx: &mut VMContext, ip: *const Instruction) {
         let rhs = ctx.get_value(src2).expect_number();
 
         ctx.set_value(dest, Value::number(lhs % rhs));
+
+        dispatch!(ctx, ip);
+    }
+}
+
+#[inline(never)]
+fn opcode_power(ctx: &mut VMContext, ip: *const Instruction) {
+    unsafe {
+        let Instruction::Power { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
+
+        let lhs = ctx.get_value(src1).expect_number();
+        let rhs = ctx.get_value(src2).expect_number();
+
+        ctx.set_value(dest, Value::number(lhs.powf(rhs)));
 
         dispatch!(ctx, ip);
     }

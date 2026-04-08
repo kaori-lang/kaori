@@ -180,7 +180,11 @@ impl<'a> FunctionContext<'a> {
                 src1: src1.to_i16(),
                 src2: src2.to_i16(),
             },
-            cfg::Instruction::Power { dest, src1, src2 } => {}
+            cfg::Instruction::Power { dest, src1, src2 } => Instruction::Power {
+                dest: dest.to_u16(),
+                src1: src1.to_i16(),
+                src2: src2.to_i16(),
+            },
             cfg::Instruction::Equal { dest, src1, src2 } => Instruction::Equal {
                 dest: dest.to_u16(),
                 src1: src1.to_i16(),
