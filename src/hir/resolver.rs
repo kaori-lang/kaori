@@ -283,6 +283,7 @@ impl Resolver {
                     AssignOpKind::MultiplyAssign => BinaryOpKind::Multiply,
                     AssignOpKind::DivideAssign => BinaryOpKind::Divide,
                     AssignOpKind::ModuloAssign => BinaryOpKind::Modulo,
+                    AssignOpKind::PowerAssign => BinaryOpKind::Power,
                     AssignOpKind::Assign => return Ok(Expr::assign(left, right, expression.span)),
                 };
 

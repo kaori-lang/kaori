@@ -16,6 +16,7 @@ pub enum BinaryOpKind {
     GreaterEqual,
     Less,
     LessEqual,
+    Power,
 }
 
 impl BinaryOp {

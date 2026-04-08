@@ -8,6 +8,7 @@ pub enum Instruction {
     Multiply { dest: u16, src1: i16, src2: i16 },
     Divide { dest: u16, src1: i16, src2: i16 },
     Modulo { dest: u16, src1: i16, src2: i16 },
+    Power { dest: u16, src1: i16, src2: i16 },
     Equal { dest: u16, src1: i16, src2: i16 },
     NotEqual { dest: u16, src1: i16, src2: i16 },
     Greater { dest: u16, src1: i16, src2: i16 },
@@ -92,7 +93,15 @@ impl fmt::Display for Instruction {
                     fmt_operand(*src2)
                 )
             }
-
+            Instruction::Power { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "POW r{} {} {}",
+                    dest,
+                    fmt_operand(*src1),
+                    fmt_operand(*src2)
+                )
+            }
             Instruction::Equal { dest, src1, src2 } => {
                 write!(
                     f,

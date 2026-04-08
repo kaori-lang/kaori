@@ -30,7 +30,11 @@ pub enum Instruction {
         src1: Operand,
         src2: Operand,
     },
-
+    Power {
+        dest: Operand,
+        src1: Operand,
+        src2: Operand,
+    },
     Equal {
         dest: Operand,
         src1: Operand,
@@ -61,6 +65,7 @@ pub enum Instruction {
         src1: Operand,
         src2: Operand,
     },
+
     Negate {
         dest: Operand,
         src: Operand,
@@ -156,7 +161,15 @@ impl Display for Instruction {
                     fmt_operand(src2)
                 )
             }
-
+            Power { dest, src1, src2 } => {
+                write!(
+                    f,
+                    "POW {} {} {}",
+                    fmt_operand(dest),
+                    fmt_operand(src1),
+                    fmt_operand(src2)
+                )
+            }
             Equal { dest, src1, src2 } => {
                 write!(
                     f,

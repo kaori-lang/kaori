@@ -330,6 +330,7 @@ impl<'a> FunctionContext<'a> {
                     BinaryOpKind::GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
                     BinaryOpKind::Less => Instruction::Less { dest, src1, src2 },
                     BinaryOpKind::LessEqual => Instruction::LessEqual { dest, src1, src2 },
+                    BinaryOpKind::Power => Instruction::Power { dest, src1, src2 },
                 };
 
                 self.emit_instruction(instruction);
