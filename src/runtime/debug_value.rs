@@ -1,8 +1,9 @@
 use std::fmt;
 
-use crate::bytecode::value::{Value, ValueKind};
-
-use super::gc::Gc;
+use super::{
+    gc::Gc,
+    value::{Value, ValueKind},
+};
 
 pub struct DebugValue<'a> {
     pub value: Value,

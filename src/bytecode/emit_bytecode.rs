@@ -1,19 +1,15 @@
 use std::collections::HashMap;
 
-use crate::{
-    cfg::{
-        self,
-        basic_block::{BasicBlock, Terminator},
-        constant_pool::Constant,
-        graph_traversal::reversed_postorder,
-        operand::Operand,
-    },
-    vm::gc::Gc,
+use crate::cfg::{
+    self,
+    basic_block::{BasicBlock, Terminator},
+    graph_traversal::reversed_postorder,
+    operand::Operand,
 };
 
-use super::{bytecode::Bytecode, function::Function, instruction::Instruction, value::Value};
+use super::{Constant, function::Function, instruction::Instruction};
 
-pub fn emit_bytecode(functions: Vec<cfg::Function>, gc: &mut Gc) -> Bytecode {
+pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Vec<Function> {
     let mut fn_id_to_fn_index = HashMap::new();
 
     for (index, function) in functions.iter().enumerate() {
@@ -32,14 +28,14 @@ pub fn emit_bytecode(functions: Vec<cfg::Function>, gc: &mut Gc) -> Bytecode {
                 .constant_pool
                 .iter()
                 .map(|constant| match constant {
-                    Constant::Boolean(v) => Value::boolean(*v),
-                    Constant::Number(v) => Value::number(**v),
-                    Constant::Function(id) => {
+                    cfg::Constant::Boolean(value) => Constant::Boolean(*value),
+                    cfg::Constant::Number(value) => Constant::Number(**value),
+                    cfg::Constant::Function(id) => {
                         let function_index = fn_id_to_fn_index.get(id).unwrap();
 
-                        Value::function(*function_index)
+                        Constant::Function(*function_index)
                     }
-                    Constant::String(value) => gc.allocate_string(value),
+                    cfg::Constant::String(value) => Constant::String(value.to_owned()),
                 })
                 .collect();
 
@@ -53,7 +49,7 @@ pub fn emit_bytecode(functions: Vec<cfg::Function>, gc: &mut Gc) -> Bytecode {
         main.instructions.push(Instruction::Halt);
     }
 
-    Bytecode::new(functions)
+    functions
 }
 
 struct FunctionContext<'a> {

@@ -1,11 +1,11 @@
 use std::hint::unreachable_unchecked;
 
 use crate::{
-    bytecode::{function::Function, instruction::Instruction, value::Value},
-    vm::{debug_value::DebugValue, vm_context::FunctionFrame},
+    bytecode::instruction::Instruction,
+    runtime::{debug_value::DebugValue, value::Value, vm_context::FunctionFrame},
 };
 
-use super::{gc::Gc, vm_context::VMContext};
+use super::{function::Function, gc::Gc, vm_context::VMContext};
 
 type InstructionHandler = fn(&mut VMContext, ip: *const Instruction, gc: &mut Gc);
 

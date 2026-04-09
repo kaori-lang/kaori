@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::bytecode::value::Value;
+use super::value::Value;
 
 #[derive(Default)]
 pub struct Gc {
@@ -123,6 +123,12 @@ struct GcObject {
     pub data: Object,
 }
 
+enum Object {
+    String(Rc<str>),
+    Vec(Vec<Value>),
+    Dict(HashMap<Value, Value>),
+}
+
 impl GcObject {
     pub fn create_dict() -> Self {
         GcObject {
@@ -144,9 +150,4 @@ impl GcObject {
             data: Object::String(s),
         }
     }
-}
-enum Object {
-    String(Rc<str>),
-    Vec(Vec<Value>),
-    Dict(HashMap<Value, Value>),
 }

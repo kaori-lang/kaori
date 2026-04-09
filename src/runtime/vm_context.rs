@@ -1,4 +1,6 @@
-use crate::bytecode::{function::Function, instruction::Instruction, value::Value};
+use crate::bytecode::instruction::Instruction;
+
+use super::{function::Function, value::Value};
 
 pub struct FunctionFrame {
     pub registers_count: u8,

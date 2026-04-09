@@ -11,5 +11,6 @@ pub mod instruction;
 pub mod jump_threading;
 pub mod operand;
 
+pub use constant_pool::Constant;
 pub use function::Function;
 pub use instruction::Instruction;
