@@ -2,15 +2,15 @@ use std::time::Instant;
 
 use crate::{
     ast::{self, parser::Parser},
-    bytecode::{bytecode::Bytecode, emit_bytecode::emit_bytecode},
+    bytecode::emit_bytecode::emit_bytecode,
     cfg::{
-        self, build_functions_graph::build_functions_graph,
+        self, Function, build_functions_graph::build_functions_graph,
         jump_threading::run_jump_threading_optimization,
     },
     error::kaori_error::KaoriError,
     hir::{decl::Decl, resolver::Resolver},
     lexer::{lexer::Lexer, token_stream::TokenStream},
-    vm::virtual_machine::run_vm,
+    vm::{gc::Gc, virtual_machine::run_vm},
 };
 
 fn run_lexical_analysis(source: &'_ str) -> Result<TokenStream<'_>, KaoriError> {
@@ -44,7 +44,7 @@ fn run_cfg_analysis(functions: &mut [cfg::function::Function]) -> Result<(), Kao
     Ok(())
 }
 
-pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
+pub fn compile_source_code(source: &str) -> Result<Vec<Function>, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
 
@@ -57,19 +57,19 @@ pub fn compile_source_code(source: &str) -> Result<Bytecode, KaoriError> {
            println!("{}", function);
        }
     */
-    let bytecode = emit_bytecode(functions);
 
-    //println!("{bytecode}");
-
-    Ok(bytecode)
+    Ok(functions)
 }
 
 pub fn run_program(source: &str) -> Result<(), KaoriError> {
-    let bytecode = compile_source_code(source)?;
+    let functions = compile_source_code(source)?;
+    let mut gc = Gc::default();
+    let bytecode = emit_bytecode(functions, &mut gc);
 
+    //println!("{}", bytecode);
     let start = Instant::now();
 
-    run_vm(bytecode.functions, bytecode.heap);
+    run_vm(bytecode.functions, gc);
 
     let elapsed = start.elapsed();
 

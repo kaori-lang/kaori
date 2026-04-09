@@ -8,19 +8,17 @@ use crate::{
         graph_traversal::reversed_postorder,
         operand::Operand,
     },
-    vm::heap::Heap,
+    vm::gc::Gc,
 };
 
 use super::{bytecode::Bytecode, function::Function, instruction::Instruction, value::Value};
 
-pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Bytecode {
+pub fn emit_bytecode(functions: Vec<cfg::Function>, gc: &mut Gc) -> Bytecode {
     let mut fn_id_to_fn_index = HashMap::new();
 
     for (index, function) in functions.iter().enumerate() {
         fn_id_to_fn_index.insert(function.id, index);
     }
-
-    let mut heap = Heap::default();
 
     let mut functions = functions
         .iter()
@@ -41,7 +39,7 @@ pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Bytecode {
 
                         Value::function(*function_index)
                     }
-                    Constant::String(value) => heap.allocate_string(value.to_owned()),
+                    Constant::String(value) => gc.allocate_string(value),
                 })
                 .collect();
 
@@ -55,7 +53,7 @@ pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Bytecode {
         main.instructions.push(Instruction::Halt);
     }
 
-    Bytecode::new(functions, heap)
+    Bytecode::new(functions)
 }
 
 struct FunctionContext<'a> {

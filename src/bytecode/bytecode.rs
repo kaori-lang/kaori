@@ -1,16 +1,13 @@
-use crate::vm::heap::Heap;
-
 use super::function::Function;
 
 use std::fmt;
 pub struct Bytecode {
     pub functions: Vec<Function>,
-    pub heap: Heap,
 }
 
 impl Bytecode {
-    pub fn new(functions: Vec<Function>, heap: Heap) -> Self {
-        Self { functions, heap }
+    pub fn new(functions: Vec<Function>) -> Self {
+        Self { functions }
     }
 }
 

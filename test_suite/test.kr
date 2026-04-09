@@ -14,17 +14,15 @@ fun greet(self) {
 
 
 fun main()  {
-   
+    for i := 0; i < 10; i += 1 {
+        print(i);
+    }
 
     struct_literal_example := {a: 5, 5: 7};
 
     cat := Cat("meow", 5, "black");
 
-    
-    a := 5;
-    a **= 2;
-
-    print(a);
+    print(cat);
 }
 
 

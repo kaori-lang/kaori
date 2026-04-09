@@ -2,11 +2,11 @@ use std::fmt;
 
 use crate::bytecode::value::{Value, ValueKind};
 
-use super::heap::Heap;
+use super::gc::Gc;
 
 pub struct DebugValue<'a> {
     pub value: Value,
-    pub heap: &'a Heap,
+    pub gc: &'a Gc,
 }
 
 impl<'a> fmt::Debug for DebugValue<'a> {
@@ -22,12 +22,12 @@ impl<'a> fmt::Debug for DebugValue<'a> {
                 write!(f, "Function({})", self.value.as_function())
             }
             ValueKind::String => {
-                let s = self.heap.get_string(self.value);
+                let s = self.gc.get_string(self.value);
 
                 write!(f, "{}", s)
             }
             ValueKind::Dict => {
-                let dict = self.heap.get_dict(self.value);
+                let dict = self.gc.get_dict(self.value);
 
                 write!(f, "{{")?;
 
@@ -43,11 +43,11 @@ impl<'a> fmt::Debug for DebugValue<'a> {
                         "{:?}: {:?}",
                         DebugValue {
                             value: *key,
-                            heap: self.heap
+                            gc: self.gc
                         },
                         DebugValue {
                             value: *value,
-                            heap: self.heap
+                            gc: self.gc
                         },
                     )?;
                 }
