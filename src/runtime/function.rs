@@ -11,6 +11,17 @@ pub struct Function {
     pub constant_pool: Vec<Value>,
 }
 
+use std::fmt::{self, Display, Formatter};
+
+impl Display for Function {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        for (ip, instr) in self.instructions.iter().enumerate() {
+            writeln!(f, "{:04}  {}", ip, instr)?;
+        }
+        Ok(())
+    }
+}
+
 pub fn from_compiled(functions: Vec<bytecode::Function>, gc: &mut Gc) -> Vec<Function> {
     functions
         .into_iter()

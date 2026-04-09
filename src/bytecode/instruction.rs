@@ -28,7 +28,6 @@ pub enum Instruction {
     JumpIfTrue { src: i16, offset: i16 },
     JumpIfFalse { src: i16, offset: i16 },
     Print { src: i16 },
-    Halt,
 }
 
 impl Instruction {
@@ -212,10 +211,6 @@ impl fmt::Display for Instruction {
 
             Instruction::Print { src } => {
                 write!(f, "PRINT {}", fmt_operand(*src))
-            }
-
-            Instruction::Halt => {
-                write!(f, "HALT")
             }
         }
     }

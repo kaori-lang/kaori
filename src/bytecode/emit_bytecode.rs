@@ -45,10 +45,6 @@ pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Vec<Function> {
         })
         .collect::<Vec<Function>>();
 
-    if let Some(main) = functions.first_mut() {
-        main.instructions.push(Instruction::Halt);
-    }
-
     functions
 }
 

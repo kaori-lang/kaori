@@ -2,14 +2,21 @@ use std::hint::unreachable_unchecked;
 
 use crate::{
     bytecode::instruction::Instruction,
-    runtime::{debug_value::DebugValue, value::Value, vm_context::FunctionFrame},
+    runtime::{debug_value::DebugValue, value::Value},
 };
 
-use super::{function::Function, gc::Gc, vm_context::VMContext};
+use super::{function::Function, gc::Gc};
 
-type InstructionHandler = fn(&mut VMContext, ip: *const Instruction, gc: &mut Gc);
+type InstructionHandler = fn(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+);
 
-const OPCODE_HANDLERS: [InstructionHandler; 26] = [
+const OPCODE_HANDLERS: [InstructionHandler; 25] = [
     opcode_add,
     opcode_subtract,
     opcode_multiply,
@@ -35,476 +42,694 @@ const OPCODE_HANDLERS: [InstructionHandler; 26] = [
     opcode_jump_if_true,
     opcode_jump_if_false,
     opcode_print,
-    opcode_halt,
 ];
+
+pub struct FunctionFrame {
+    pub registers_count: u8,
+    pub return_address: *const Instruction,
+    pub return_register: u16,
+    pub registers: *mut Value,
+    pub constants: *const Value,
+}
 
 pub fn run_vm(functions: Vec<Function>, mut gc: Gc) {
     let mut registers = vec![Value::default(); 1024];
     let Function {
-        instructions,
+        ref instructions,
         registers_count,
-        constant_pool,
-    } = &functions[0];
+        ref constant_pool,
+    } = functions[0];
 
-    let registers_ptr = registers.as_mut_ptr();
-    let constant_pool_ptr = (*constant_pool).as_ptr();
+    let registers = registers.as_mut_ptr();
+    let constants = (*constant_pool).as_ptr();
 
     let return_address = unsafe { instructions.last().unwrap_unchecked() };
 
-    let main_frame = FunctionFrame::new(
-        *registers_count,
-        registers_ptr,
-        constant_pool_ptr,
+    let main_frame = FunctionFrame {
+        registers_count,
         return_address,
-        0,
-    );
-
-    let mut ctx = VMContext::new(
-        &functions,
+        return_register: 0,
         registers,
-        registers_ptr,
-        constant_pool_ptr,
-        main_frame,
-    );
+        constants,
+    };
+
+    let mut stack = vec![main_frame];
 
     let index = instructions[0].discriminant();
     let entry = instructions.as_ptr();
 
-    OPCODE_HANDLERS[index](&mut ctx, entry, &mut gc)
+    OPCODE_HANDLERS[index](&functions, &mut stack, entry, &mut gc, registers, constants)
 }
 
 macro_rules! dispatch {
-    ($ctx:expr, $ip: expr, $gc: expr) => {{
-        let _: &mut VMContext = $ctx;
-        let _: *const Instruction = $ip;
-
+    ($functions:expr, $stack:expr, $ip:expr, $gc:expr, $registers:expr, $constants:expr) => {{
+        let functions: &[Function] = $functions;
+        let stack: &mut Vec<FunctionFrame> = $stack;
         let ip: *const Instruction = $ip.add(1);
+        let gc: &mut Gc = $gc;
+        let registers: *mut Value = $registers;
+        let constants: *const Value = $constants;
         let index = (*ip).discriminant();
-
-        become OPCODE_HANDLERS[index]($ctx, ip, $gc);
+        become OPCODE_HANDLERS[index](functions, stack, ip, gc, registers, constants);
     }};
 }
 
 macro_rules! dispatch_to {
-    ($ctx:expr, $ip:expr, $gc:expr, $offset: expr) => {{
-        let _: &mut VMContext = $ctx;
-        let _: *const Instruction = $ip;
-        let _: i16 = $offset;
-
-        let offset = $offset as i16;
-
+    ($functions:expr, $stack:expr, $ip:expr, $gc:expr, $registers:expr, $constants:expr, $offset:expr) => {{
+        let functions: &[Function] = $functions;
+        let stack: &mut Vec<FunctionFrame> = $stack;
+        let offset: i16 = $offset as i16;
         let ip: *const Instruction = $ip.offset(offset as isize);
+        let gc: &mut Gc = $gc;
+        let registers: *mut Value = $registers;
+        let constants: *const Value = $constants;
         let index = (*ip).discriminant();
-
-        become OPCODE_HANDLERS[index]($ctx, ip, $gc);
+        become OPCODE_HANDLERS[index](functions, stack, ip, gc, registers, constants);
     }};
 }
 
+#[inline(always)]
+fn get_value(index: i16, registers: *mut Value, constants: *const Value) -> Value {
+    unsafe {
+        if index < 0 {
+            *constants.add(-(index + 1) as usize)
+        } else {
+            *registers.add(index as usize)
+        }
+    }
+}
+
+#[inline(always)]
+fn set_value(index: u16, value: Value, registers: *mut Value) {
+    unsafe {
+        *registers.add(index as usize) = value;
+    }
+}
+
 #[inline(never)]
-fn opcode_move(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_move(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Move { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
-        let value = ctx.get_value(src);
-        ctx.set_value(dest, value);
+        let value = get_value(src, registers, constants);
+        set_value(dest, value, registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_add(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_add(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Add { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::number(lhs + rhs));
+        set_value(dest, Value::number(lhs + rhs), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_subtract(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_subtract(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Subtract { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::number(lhs - rhs));
+        set_value(dest, Value::number(lhs - rhs), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_multiply(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_multiply(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Multiply { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::number(lhs * rhs));
+        set_value(dest, Value::number(lhs * rhs), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_divide(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_divide(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Divide { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::number(lhs / rhs));
+        set_value(dest, Value::number(lhs / rhs), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_modulo(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_modulo(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Modulo { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::number(lhs % rhs));
+        set_value(dest, Value::number(lhs % rhs), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_power(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_power(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Power { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::number(lhs.powf(rhs)));
+        set_value(dest, Value::number(lhs.powf(rhs)), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_equal(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_equal(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Equal { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::boolean(lhs == rhs));
+        set_value(dest, Value::boolean(lhs == rhs), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_not_equal(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_not_equal(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::NotEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::boolean(lhs != rhs));
+        set_value(dest, Value::boolean(lhs != rhs), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_greater(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_greater(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Greater { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::boolean(lhs > rhs));
+        set_value(dest, Value::boolean(lhs > rhs), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_greater_equal(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_greater_equal(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::GreaterEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::boolean(lhs >= rhs));
+        set_value(dest, Value::boolean(lhs >= rhs), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_less(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_less(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Less { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::boolean(lhs < rhs));
+        set_value(dest, Value::boolean(lhs < rhs), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_less_equal(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_less_equal(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::LessEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = ctx.get_value(src1).expect_number();
-        let rhs = ctx.get_value(src2).expect_number();
+        let lhs = get_value(src1, registers, constants).expect_number();
+        let rhs = get_value(src2, registers, constants).expect_number();
 
-        ctx.set_value(dest, Value::boolean(lhs <= rhs));
+        set_value(dest, Value::boolean(lhs <= rhs), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_negate(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_negate(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Negate { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
-        let value = ctx.get_value(src).expect_number();
-        ctx.set_value(dest, Value::number(-value));
+        let value = get_value(src, registers, constants).expect_number();
+        set_value(dest, Value::number(-value), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_not(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_not(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Not { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
-        let value = ctx.get_value(src).expect_boolean();
-        ctx.set_value(dest, Value::boolean(!value));
+        let value = get_value(src, registers, constants).expect_boolean();
+        set_value(dest, Value::boolean(!value), registers);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_call(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_call(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Call { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
         let return_address = ip.add(1);
-
-        let function_index = ctx.get_value(src).expect_function();
+        let function_index = get_value(src, registers, constants).expect_function();
 
         let Function {
-            instructions,
+            ref instructions,
             registers_count,
-            constant_pool,
-        } = &ctx.functions[function_index];
-        let constants_ptr = (*constant_pool).as_ptr();
+            ref constant_pool,
+        } = functions[function_index];
 
-        ctx.push_frame(dest, return_address, *registers_count, constants_ptr);
+        let current_registers_count = stack.last().unwrap_unchecked().registers_count;
+        let registers = registers.add(current_registers_count as usize);
+        let constants = (*constant_pool).as_ptr();
+
+        let function_frame = FunctionFrame {
+            registers_count,
+            return_address,
+            return_register: dest,
+            registers,
+            constants,
+        };
+
+        stack.push(function_frame);
 
         let index = instructions[0].discriminant();
         let ip = instructions.as_ptr();
 
-        become OPCODE_HANDLERS[index](ctx, ip, gc)
+        become OPCODE_HANDLERS[index](functions, stack, ip, gc, registers, constants)
     }
 }
 
 #[inline(never)]
-fn opcode_return(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_return(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Return { src } = *ip else {
             unreachable_unchecked()
         };
 
-        let value = ctx.get_value(src);
+        let value = get_value(src, registers, constants);
 
         let FunctionFrame {
             return_address: ip,
             return_register: dest,
             ..
-        } = ctx.pop_frame();
+        } = stack.pop().unwrap_unchecked();
 
-        ctx.set_value(dest, value);
+        if let Some(FunctionFrame {
+            registers,
+            constants,
+            ..
+        }) = stack.last()
+        {
+            let registers: *mut Value = *registers;
+            let constants: *const Value = *constants;
 
-        let index = (*ip).discriminant();
+            set_value(dest, value, registers);
 
-        become OPCODE_HANDLERS[index](ctx, ip, gc)
+            let index = (*ip).discriminant();
+            become OPCODE_HANDLERS[index](functions, stack, ip, gc, registers, constants)
+        }
     }
 }
 
 #[inline(never)]
-fn opcode_return_void(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_return_void(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    _registers: *mut Value,
+    _constants: *const Value,
+) {
     unsafe {
+        let Instruction::ReturnVoid = *ip else {
+            unreachable_unchecked()
+        };
+
         let FunctionFrame {
             return_address: ip, ..
-        } = ctx.pop_frame();
+        } = stack.pop().unwrap_unchecked();
 
-        let index = (*ip).discriminant();
+        if let Some(FunctionFrame {
+            registers,
+            constants,
+            ..
+        }) = stack.last()
+        {
+            let registers: *mut Value = *registers;
+            let constants: *const Value = *constants;
 
-        become OPCODE_HANDLERS[index](ctx, ip, gc)
+            let index = (*ip).discriminant();
+            become OPCODE_HANDLERS[index](functions, stack, ip, gc, registers, constants)
+        }
     }
 }
 
 #[inline(never)]
-fn opcode_jump(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_jump(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Jump { offset } = *ip else {
             unreachable_unchecked()
         };
 
-        dispatch_to!(ctx, ip, gc, offset);
+        dispatch_to!(functions, stack, ip, gc, registers, constants, offset);
     }
 }
 
 #[inline(never)]
-fn opcode_jump_if_true(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_jump_if_true(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::JumpIfTrue { src, offset } = *ip else {
             unreachable_unchecked()
         };
 
-        match ctx.get_value(src).expect_boolean() {
-            true => dispatch_to!(ctx, ip, gc, offset),
-            false => dispatch!(ctx, ip, gc),
+        match get_value(src, registers, constants).expect_boolean() {
+            true => dispatch_to!(functions, stack, ip, gc, registers, constants, offset),
+            false => dispatch!(functions, stack, ip, gc, registers, constants),
         }
     }
 }
 
 #[inline(never)]
-fn opcode_jump_if_false(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_jump_if_false(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::JumpIfFalse { src, offset } = *ip else {
             unreachable_unchecked()
         };
 
-        match ctx.get_value(src).expect_boolean() {
-            true => dispatch!(ctx, ip, gc),
-            false => dispatch_to!(ctx, ip, gc, offset),
+        match get_value(src, registers, constants).expect_boolean() {
+            true => dispatch!(functions, stack, ip, gc, registers, constants),
+            false => dispatch_to!(functions, stack, ip, gc, registers, constants, offset),
         }
     }
 }
 
 #[inline(never)]
-fn opcode_print(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_print(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::Print { src } = *ip else {
             unreachable_unchecked()
         };
 
-        let value = ctx.get_value(src);
+        let value = get_value(src, registers, constants);
         let debug_value = DebugValue { value, gc };
 
         println!("{:?}", debug_value);
 
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_create_dict(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_create_dict(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::CreateDict { dest } = *ip else {
             unreachable_unchecked()
         };
 
         let value = gc.allocate_dict();
+        set_value(dest, value, registers);
 
-        ctx.set_value(dest, value);
-
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_set_field(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_set_field(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::SetField { object, key, value } = *ip else {
             unreachable_unchecked()
         };
 
-        let key = ctx.get_value(key);
-        let value = ctx.get_value(value);
+        let key = get_value(key, registers, constants);
+        let value = get_value(value, registers, constants);
+        let object = get_value(object as i16, registers, constants);
 
-        let dict_ref = ctx.get_value(object as i16);
-        let dict = gc.get_mut_dict(dict_ref);
+        gc.get_mut_dict(object).insert(key, value);
 
-        dict.insert(key, value);
-
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
-fn opcode_get_field(ctx: &mut VMContext, ip: *const Instruction, gc: &mut Gc) {
+fn opcode_get_field(
+    functions: &[Function],
+    stack: &mut Vec<FunctionFrame>,
+    ip: *const Instruction,
+    gc: &mut Gc,
+    registers: *mut Value,
+    constants: *const Value,
+) {
     unsafe {
         let Instruction::GetField { dest, object, key } = *ip else {
             unreachable_unchecked()
         };
 
-        let object = ctx.get_value(object);
-        let key = ctx.get_value(key);
+        let object = get_value(object, registers, constants);
+        let key = get_value(key, registers, constants);
 
-        let dict = gc.get_dict(object);
+        let value = gc.get_dict(object).get(&key).unwrap();
 
-        let value = dict.get(&key).unwrap();
+        set_value(dest, *value, registers);
 
-        ctx.set_value(dest, *value);
-
-        dispatch!(ctx, ip, gc);
+        dispatch!(functions, stack, ip, gc, registers, constants);
     }
 }
-
-#[inline(never)]
-fn opcode_halt(_ctx: &mut VMContext, _ip: *const Instruction, gc: &mut Gc) {}

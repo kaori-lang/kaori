@@ -63,15 +63,16 @@ pub fn compile_source_code(source: &str) -> Result<Vec<Function>, KaoriError> {
 
 pub fn run_program(source: &str) -> Result<(), KaoriError> {
     let functions = compile_source_code(source)?;
-    let mut gc = Gc::default();
+
     let bytecode = emit_bytecode(functions);
 
-    /*  let functions = bytecode.iter().map(|function| {
-        Function
-    }); */
-
+    let mut gc = Gc::default();
     let functions = from_compiled(bytecode, &mut gc);
-    //println!("{}", bytecode);
+
+    for function in functions.iter() {
+        println!("{}", function);
+    }
+
     let start = Instant::now();
 
     run_vm(functions, gc);
