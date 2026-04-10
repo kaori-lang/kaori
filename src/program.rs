@@ -69,9 +69,9 @@ pub fn run_program(source: &str) -> Result<(), KaoriError> {
     let mut gc = Gc::default();
     let functions = from_compiled(bytecode, &mut gc);
 
-    for function in functions.iter() {
+    /* for function in functions.iter() {
         println!("{}", function);
-    }
+    } */
 
     let start = Instant::now();
 

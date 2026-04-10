@@ -100,8 +100,9 @@ impl<'a> FunctionContext<'a> {
 
     fn create_bb(&mut self) -> usize {
         let index = self.basic_blocks.len();
-        let basic_block = BasicBlock::new(index);
+        let basic_block = BasicBlock::default();
         self.basic_blocks.push(basic_block);
+
         index
     }
 

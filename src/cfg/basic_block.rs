@@ -2,21 +2,10 @@ use super::{instruction::Instruction, operand::Operand};
 use core::fmt;
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct BasicBlock {
-    pub index: usize,
     pub instructions: Vec<Instruction>,
     pub terminator: Option<Terminator>,
-}
-
-impl BasicBlock {
-    pub fn new(index: usize) -> Self {
-        Self {
-            index,
-            instructions: Vec::new(),
-            terminator: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -56,7 +45,7 @@ impl Display for Terminator {
 
 impl Display for BasicBlock {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "BB{}:", self.index)?;
+        writeln!(f, "BB:")?;
         for instruction in &self.instructions {
             writeln!(f, "  {}", instruction)?;
         }

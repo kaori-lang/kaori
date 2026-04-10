@@ -7,16 +7,16 @@ use crate::{
 
 use super::{function::Function, gc::Gc};
 
-type InstructionHandler = fn(
+type Handler = fn(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
     constants: *const Value,
 );
 
-const OPCODE_HANDLERS: [InstructionHandler; 25] = [
+const OPCODE_HANDLERS: [Handler; 25] = [
     opcode_add,
     opcode_subtract,
     opcode_multiply,
@@ -44,7 +44,7 @@ const OPCODE_HANDLERS: [InstructionHandler; 25] = [
     opcode_print,
 ];
 
-pub struct FunctionFrame {
+pub struct StackFrame {
     pub registers_count: u8,
     pub return_address: *const Instruction,
     pub return_register: u16,
@@ -65,7 +65,7 @@ pub fn run_vm(functions: Vec<Function>, mut gc: Gc) {
 
     let return_address = unsafe { instructions.last().unwrap_unchecked() };
 
-    let main_frame = FunctionFrame {
+    let main_frame = StackFrame {
         registers_count,
         return_address,
         return_register: 0,
@@ -81,10 +81,10 @@ pub fn run_vm(functions: Vec<Function>, mut gc: Gc) {
     OPCODE_HANDLERS[index](&functions, &mut stack, entry, &mut gc, registers, constants)
 }
 
-macro_rules! dispatch {
+macro_rules! dispatch_next {
     ($functions:expr, $stack:expr, $ip:expr, $gc:expr, $registers:expr, $constants:expr) => {{
         let functions: &[Function] = $functions;
-        let stack: &mut Vec<FunctionFrame> = $stack;
+        let stack: &mut Vec<StackFrame> = $stack;
         let ip: *const Instruction = $ip.add(1);
         let gc: &mut Gc = $gc;
         let registers: *mut Value = $registers;
@@ -94,12 +94,24 @@ macro_rules! dispatch {
     }};
 }
 
-macro_rules! dispatch_to {
+macro_rules! dispatch_offset {
     ($functions:expr, $stack:expr, $ip:expr, $gc:expr, $registers:expr, $constants:expr, $offset:expr) => {{
         let functions: &[Function] = $functions;
-        let stack: &mut Vec<FunctionFrame> = $stack;
-        let offset: i16 = $offset as i16;
-        let ip: *const Instruction = $ip.offset(offset as isize);
+        let stack: &mut Vec<StackFrame> = $stack;
+        let ip: *const Instruction = $ip.offset($offset as i16 as isize);
+        let gc: &mut Gc = $gc;
+        let registers: *mut Value = $registers;
+        let constants: *const Value = $constants;
+        let index = (*ip).discriminant();
+        become OPCODE_HANDLERS[index](functions, stack, ip, gc, registers, constants);
+    }};
+}
+
+macro_rules! dispatch_to {
+    ($functions:expr, $stack:expr, $ip:expr, $gc:expr, $registers:expr, $constants:expr) => {{
+        let functions: &[Function] = $functions;
+        let stack: &mut Vec<StackFrame> = $stack;
+        let ip: *const Instruction = $ip;
         let gc: &mut Gc = $gc;
         let registers: *mut Value = $registers;
         let constants: *const Value = $constants;
@@ -129,7 +141,7 @@ fn set_value(index: u16, value: Value, registers: *mut Value) {
 #[inline(never)]
 fn opcode_move(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -143,14 +155,14 @@ fn opcode_move(
         let value = get_value(src, registers, constants);
         set_value(dest, value, registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_add(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -166,14 +178,14 @@ fn opcode_add(
 
         set_value(dest, Value::number(lhs + rhs), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_subtract(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -189,14 +201,14 @@ fn opcode_subtract(
 
         set_value(dest, Value::number(lhs - rhs), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_multiply(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -212,14 +224,14 @@ fn opcode_multiply(
 
         set_value(dest, Value::number(lhs * rhs), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_divide(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -235,14 +247,14 @@ fn opcode_divide(
 
         set_value(dest, Value::number(lhs / rhs), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_modulo(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -258,14 +270,14 @@ fn opcode_modulo(
 
         set_value(dest, Value::number(lhs % rhs), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_power(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -281,14 +293,14 @@ fn opcode_power(
 
         set_value(dest, Value::number(lhs.powf(rhs)), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_equal(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -304,14 +316,14 @@ fn opcode_equal(
 
         set_value(dest, Value::boolean(lhs == rhs), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_not_equal(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -327,14 +339,14 @@ fn opcode_not_equal(
 
         set_value(dest, Value::boolean(lhs != rhs), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_greater(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -350,14 +362,14 @@ fn opcode_greater(
 
         set_value(dest, Value::boolean(lhs > rhs), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_greater_equal(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -373,14 +385,14 @@ fn opcode_greater_equal(
 
         set_value(dest, Value::boolean(lhs >= rhs), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_less(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -396,14 +408,14 @@ fn opcode_less(
 
         set_value(dest, Value::boolean(lhs < rhs), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_less_equal(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -419,14 +431,14 @@ fn opcode_less_equal(
 
         set_value(dest, Value::boolean(lhs <= rhs), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_negate(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -440,14 +452,14 @@ fn opcode_negate(
         let value = get_value(src, registers, constants).expect_number();
         set_value(dest, Value::number(-value), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_not(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -461,14 +473,14 @@ fn opcode_not(
         let value = get_value(src, registers, constants).expect_boolean();
         set_value(dest, Value::boolean(!value), registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_call(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -492,7 +504,7 @@ fn opcode_call(
         let registers = registers.add(current_registers_count as usize);
         let constants = (*constant_pool).as_ptr();
 
-        let function_frame = FunctionFrame {
+        let function_frame = StackFrame {
             registers_count,
             return_address,
             return_register: dest,
@@ -502,17 +514,16 @@ fn opcode_call(
 
         stack.push(function_frame);
 
-        let index = instructions[0].discriminant();
         let ip = instructions.as_ptr();
 
-        become OPCODE_HANDLERS[index](functions, stack, ip, gc, registers, constants)
+        dispatch_to!(functions, stack, ip, gc, registers, constants)
     }
 }
 
 #[inline(never)]
 fn opcode_return(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -525,13 +536,13 @@ fn opcode_return(
 
         let value = get_value(src, registers, constants);
 
-        let FunctionFrame {
+        let StackFrame {
             return_address: ip,
             return_register: dest,
             ..
         } = stack.pop().unwrap_unchecked();
 
-        if let Some(FunctionFrame {
+        if let Some(StackFrame {
             registers,
             constants,
             ..
@@ -542,8 +553,7 @@ fn opcode_return(
 
             set_value(dest, value, registers);
 
-            let index = (*ip).discriminant();
-            become OPCODE_HANDLERS[index](functions, stack, ip, gc, registers, constants)
+            dispatch_to!(functions, stack, ip, gc, registers, constants)
         }
     }
 }
@@ -551,7 +561,7 @@ fn opcode_return(
 #[inline(never)]
 fn opcode_return_void(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     _registers: *mut Value,
@@ -562,11 +572,11 @@ fn opcode_return_void(
             unreachable_unchecked()
         };
 
-        let FunctionFrame {
+        let StackFrame {
             return_address: ip, ..
         } = stack.pop().unwrap_unchecked();
 
-        if let Some(FunctionFrame {
+        if let Some(StackFrame {
             registers,
             constants,
             ..
@@ -575,8 +585,7 @@ fn opcode_return_void(
             let registers: *mut Value = *registers;
             let constants: *const Value = *constants;
 
-            let index = (*ip).discriminant();
-            become OPCODE_HANDLERS[index](functions, stack, ip, gc, registers, constants)
+            dispatch_to!(functions, stack, ip, gc, registers, constants)
         }
     }
 }
@@ -584,7 +593,7 @@ fn opcode_return_void(
 #[inline(never)]
 fn opcode_jump(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -595,14 +604,14 @@ fn opcode_jump(
             unreachable_unchecked()
         };
 
-        dispatch_to!(functions, stack, ip, gc, registers, constants, offset);
+        dispatch_offset!(functions, stack, ip, gc, registers, constants, offset);
     }
 }
 
 #[inline(never)]
 fn opcode_jump_if_true(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -614,8 +623,8 @@ fn opcode_jump_if_true(
         };
 
         match get_value(src, registers, constants).expect_boolean() {
-            true => dispatch_to!(functions, stack, ip, gc, registers, constants, offset),
-            false => dispatch!(functions, stack, ip, gc, registers, constants),
+            true => dispatch_offset!(functions, stack, ip, gc, registers, constants, offset),
+            false => dispatch_next!(functions, stack, ip, gc, registers, constants),
         }
     }
 }
@@ -623,7 +632,7 @@ fn opcode_jump_if_true(
 #[inline(never)]
 fn opcode_jump_if_false(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -635,8 +644,8 @@ fn opcode_jump_if_false(
         };
 
         match get_value(src, registers, constants).expect_boolean() {
-            true => dispatch!(functions, stack, ip, gc, registers, constants),
-            false => dispatch_to!(functions, stack, ip, gc, registers, constants, offset),
+            true => dispatch_next!(functions, stack, ip, gc, registers, constants),
+            false => dispatch_offset!(functions, stack, ip, gc, registers, constants, offset),
         }
     }
 }
@@ -644,7 +653,7 @@ fn opcode_jump_if_false(
 #[inline(never)]
 fn opcode_print(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -660,14 +669,14 @@ fn opcode_print(
 
         println!("{:?}", debug_value);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_create_dict(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -681,14 +690,14 @@ fn opcode_create_dict(
         let value = gc.allocate_dict();
         set_value(dest, value, registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_set_field(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -705,14 +714,14 @@ fn opcode_set_field(
 
         gc.get_mut_dict(object).insert(key, value);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
 
 #[inline(never)]
 fn opcode_get_field(
     functions: &[Function],
-    stack: &mut Vec<FunctionFrame>,
+    stack: &mut Vec<StackFrame>,
     ip: *const Instruction,
     gc: &mut Gc,
     registers: *mut Value,
@@ -730,6 +739,6 @@ fn opcode_get_field(
 
         set_value(dest, *value, registers);
 
-        dispatch!(functions, stack, ip, gc, registers, constants);
+        dispatch_next!(functions, stack, ip, gc, registers, constants);
     }
 }
