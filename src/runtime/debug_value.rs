@@ -20,7 +20,7 @@ impl<'a> fmt::Debug for DebugValue<'a> {
                 write!(f, "{}", self.value.as_boolean())
             }
             ValueKind::Function => {
-                write!(f, "Function({})", self.value.as_function())
+                write!(f, "Function()")
             }
             ValueKind::String => {
                 let s = self.gc.get_string(self.value);

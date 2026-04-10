@@ -23,30 +23,35 @@ impl Display for Function {
 }
 
 pub fn from_compiled(functions: Vec<bytecode::Function>, gc: &mut Gc) -> Vec<Function> {
-    functions
-        .into_iter()
-        .map(|function| {
-            let bytecode::Function {
-                instructions,
-                constant_pool,
-                registers_count,
-            } = function;
+    let mut runtime_functions: Vec<Function> = Vec::with_capacity(functions.len());
 
-            let constant_pool = constant_pool
-                .into_iter()
-                .map(|constant| match constant {
-                    bytecode::Constant::Number(value) => Value::number(value),
-                    bytecode::Constant::Boolean(value) => Value::boolean(value),
-                    bytecode::Constant::String(value) => gc.allocate_string(&value),
-                    bytecode::Constant::Function(index) => Value::function(index),
-                })
-                .collect();
+    for function in functions {
+        let bytecode::Function {
+            instructions,
+            constant_pool,
+            registers_count,
+        } = function;
 
-            Function {
-                instructions,
-                registers_count,
-                constant_pool,
-            }
-        })
-        .collect()
+        let constant_pool = constant_pool
+            .into_iter()
+            .map(|constant| match constant {
+                bytecode::Constant::Number(value) => Value::number(value),
+                bytecode::Constant::Boolean(value) => Value::boolean(value),
+                bytecode::Constant::String(value) => gc.allocate_string(&value),
+                bytecode::Constant::Function(index) => {
+                    let ptr = unsafe { runtime_functions.as_ptr().add(index) };
+
+                    Value::function(ptr)
+                }
+            })
+            .collect();
+
+        runtime_functions.push(Function {
+            instructions,
+            registers_count,
+            constant_pool,
+        });
+    }
+
+    runtime_functions
 }

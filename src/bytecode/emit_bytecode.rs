@@ -16,7 +16,7 @@ pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Vec<Function> {
         fn_id_to_fn_index.insert(function.id, index);
     }
 
-    let mut functions = functions
+    functions
         .iter()
         .map(|function| {
             let mut context =
@@ -43,9 +43,7 @@ pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Vec<Function> {
 
             Function::new(instructions, registers_count, constant_pool)
         })
-        .collect::<Vec<Function>>();
-
-    functions
+        .collect::<Vec<Function>>()
 }
 
 struct FunctionContext<'a> {

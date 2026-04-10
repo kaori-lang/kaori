@@ -1,4 +1,7 @@
+use super::function::Function;
+
 const TAG_MASK: u64 = 0b111;
+
 const TAG_NUMBER: u64 = 0b000;
 const TAG_BOOLEAN: u64 = 0b001;
 const TAG_FUNCTION: u64 = 0b010;
@@ -23,19 +26,18 @@ impl Value {
     #[inline(always)]
     pub fn number(value: f64) -> Self {
         let bits = value.to_bits();
-
         let shifted = bits >> 3;
-
         Self((shifted << 3) | TAG_NUMBER)
     }
+
     #[inline(always)]
     pub fn boolean(value: bool) -> Self {
-        Self((value as u64) << 3 | TAG_BOOLEAN)
+        Self(((value as u64) << 3) | TAG_BOOLEAN)
     }
 
     #[inline(always)]
-    pub fn function(index: usize) -> Self {
-        Self((index as u64) << 3 | TAG_FUNCTION)
+    pub fn function(ptr: *const Function) -> Self {
+        Self((ptr as u64) | TAG_FUNCTION)
     }
 
     #[inline(always)]
@@ -70,22 +72,27 @@ impl Value {
     pub fn is_number(self) -> bool {
         self.0 & TAG_MASK == TAG_NUMBER
     }
+
     #[inline(always)]
     pub fn is_boolean(self) -> bool {
         self.0 & TAG_MASK == TAG_BOOLEAN
     }
+
     #[inline(always)]
     pub fn is_function(self) -> bool {
         self.0 & TAG_MASK == TAG_FUNCTION
     }
+
     #[inline(always)]
     pub fn is_string(self) -> bool {
         self.0 & TAG_MASK == TAG_STRING
     }
+
     #[inline(always)]
     pub fn is_dict(self) -> bool {
         self.0 & TAG_MASK == TAG_DICT
     }
+
     #[inline(always)]
     pub fn is_vec(self) -> bool {
         self.0 & TAG_MASK == TAG_VEC
@@ -104,7 +111,7 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn expect_function(self) -> usize {
+    pub fn expect_function(self) -> *const Function {
         assert!(
             self.is_function(),
             "expected Function, got {:?}",
@@ -134,7 +141,6 @@ impl Value {
     #[inline(always)]
     pub fn as_number(self) -> f64 {
         let bits = self.0 >> 3;
-
         f64::from_bits(bits << 3)
     }
 
@@ -144,8 +150,8 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn as_function(self) -> usize {
-        (self.0 >> 3) as usize
+    pub fn as_function(self) -> *const Function {
+        (self.0 & !TAG_MASK) as *const Function
     }
 
     #[inline(always)]
