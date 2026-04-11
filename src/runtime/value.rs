@@ -1,5 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
+use ahash::AHashMap;
+
 use super::{function::Function, gc::GcObject};
 
 const TAG_MASK: u64 = 0b111;
@@ -27,8 +29,6 @@ pub enum ValueKind {
 pub struct Value(u64);
 
 impl Value {
-    // ── constructors ──────────────────────────────────────────────────────────
-
     #[inline(always)]
     pub fn nil() -> Self {
         Self(TAG_NIL)
@@ -70,8 +70,6 @@ impl Value {
         Self((ptr as u64) | TAG_VEC)
     }
 
-    // ── kind ──────────────────────────────────────────────────────────────────
-
     #[inline(always)]
     pub fn kind(self) -> ValueKind {
         match self.0 & TAG_MASK {
@@ -85,8 +83,6 @@ impl Value {
             _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
-
-    // ── is_ checks ────────────────────────────────────────────────────────────
 
     #[inline(always)]
     pub fn is_nil(self) -> bool {
@@ -123,8 +119,6 @@ impl Value {
         self.0 & TAG_MASK == TAG_VEC
     }
 
-    // ── expect_ (checked) ────────────────────────────────────────────────────
-
     #[inline(always)]
     pub fn expect_number(self) -> f64 {
         assert!(self.is_number(), "expected Number, got {:?}", self.kind());
@@ -154,7 +148,7 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn expect_dict(self) -> *mut HashMap<Value, Value> {
+    pub fn expect_dict(self) -> *mut AHashMap<Value, Value> {
         assert!(self.is_dict(), "expected Dict, got {:?}", self.kind());
         self.as_dict()
     }
@@ -188,23 +182,17 @@ impl Value {
 
     #[inline(always)]
     pub fn as_string(self) -> *const Rc<str> {
-        debug_assert!(self.is_string());
-
-        let object = self.as_gc_object();
-
-        unsafe { (*object).data as *mut Rc<str> }
-    }
-
-    #[inline(always)]
-    pub fn as_dict(self) -> *mut HashMap<Value, Value> {
-        debug_assert!(self.is_dict());
-        unsafe { (*self.as_gc_object()).data as *mut HashMap<Value, Value> }
+        unsafe { (*self.as_gc_object()).as_string() }
     }
 
     #[inline(always)]
     pub fn as_vec(self) -> *mut Vec<Value> {
-        debug_assert!(self.is_vec());
-        unsafe { (*self.as_gc_object()).data as *mut Vec<Value> }
+        unsafe { (*self.as_gc_object()).as_vec() }
+    }
+
+    #[inline(always)]
+    pub fn as_dict(self) -> *mut AHashMap<Value, Value> {
+        unsafe { (*self.as_gc_object()).as_dict() }
     }
 }
 

@@ -1,57 +1,69 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{hint::unreachable_unchecked, rc::Rc};
 
 use super::value::Value;
+use ahash::AHashMap;
 
-pub struct GcObject {
-    tag: ObjectKind,
-    pub data: *mut u8,
+struct GcNode {
+    object: GcObject,
+    next: Option<Box<GcNode>>,
 }
 
-enum ObjectKind {
-    String,
-    Vec,
-    Dict,
+pub enum GcObject {
+    String(Rc<str>),
+    Vec(Vec<Value>),
+    Dict(AHashMap<Value, Value>),
 }
 
 impl GcObject {
     pub fn new_string(s: Rc<str>) -> Self {
-        Self {
-            tag: ObjectKind::String,
-            data: Box::into_raw(Box::new(s)) as *mut u8,
-        }
+        Self::String(s)
     }
 
     pub fn new_vec() -> Self {
-        Self {
-            tag: ObjectKind::Vec,
-            data: Box::into_raw(Box::new(Vec::<Value>::new())) as *mut u8,
-        }
+        Self::Vec(Vec::new())
     }
 
     pub fn new_dict() -> Self {
-        Self {
-            tag: ObjectKind::Dict,
-            data: Box::into_raw(Box::new(HashMap::<Value, Value>::new())) as *mut u8,
-        }
+        Self::Dict(AHashMap::new())
+    }
+
+    #[inline(always)]
+    pub fn as_string(&self) -> &Rc<str> {
+        let Self::String(s) = self else {
+            unsafe { unreachable_unchecked() }
+        };
+        s
+    }
+
+    #[inline(always)]
+    pub fn as_vec(&mut self) -> &mut Vec<Value> {
+        let Self::Vec(v) = self else {
+            unsafe { unreachable_unchecked() }
+        };
+        v
+    }
+
+    #[inline(always)]
+    pub fn as_dict(&mut self) -> &mut AHashMap<Value, Value> {
+        let Self::Dict(d) = self else {
+            unsafe { unreachable_unchecked() }
+        };
+        d
     }
 }
 
-impl Drop for GcObject {
-    fn drop(&mut self) {
-        unsafe {
-            match self.tag {
-                ObjectKind::String => drop(Box::from_raw(self.data as *mut Rc<str>)),
-                ObjectKind::Vec => drop(Box::from_raw(self.data as *mut Vec<Value>)),
-                ObjectKind::Dict => drop(Box::from_raw(self.data as *mut HashMap<Value, Value>)),
-            }
-        }
-    }
-}
-
-#[derive(Default)]
 pub struct Gc {
-    objects: Vec<Box<GcObject>>,
-    strings_interned: HashMap<Rc<str>, *mut GcObject>,
+    head: Option<Box<GcNode>>,
+    strings_interned: AHashMap<Rc<str>, *mut GcObject>,
+}
+
+impl Default for Gc {
+    fn default() -> Self {
+        Self {
+            head: None,
+            strings_interned: AHashMap::new(),
+        }
+    }
 }
 
 impl Gc {
@@ -76,9 +88,12 @@ impl Gc {
     }
 
     fn alloc(&mut self, object: GcObject) -> *mut GcObject {
-        let mut boxed = Box::new(object);
-        let ptr: *mut GcObject = &mut *boxed;
-        self.objects.push(boxed);
+        let mut node = Box::new(GcNode {
+            object,
+            next: self.head.take(),
+        });
+        let ptr: *mut GcObject = &mut node.object;
+        self.head = Some(node);
         ptr
     }
 }

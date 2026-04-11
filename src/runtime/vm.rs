@@ -600,9 +600,13 @@ fn opcode_get_field(
 
         let object = get_value(object, registers, constants);
         let key = get_value(key, registers, constants);
-        let value = (*object.as_dict()).get(&key).unwrap();
 
-        set_value(dest, *value, registers);
+        let value = match (*object.as_dict()).get(&key) {
+            Some(value) => *value,
+            None => Value::nil(),
+        };
+
+        set_value(dest, value, registers);
 
         dispatch_next!(ip, vm, registers, constants)
     }
