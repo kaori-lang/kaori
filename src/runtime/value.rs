@@ -1,4 +1,6 @@
-use super::function::Function;
+use std::{collections::HashMap, rc::Rc};
+
+use super::{function::Function, gc::GcObject};
 
 const TAG_MASK: u64 = 0b111;
 
@@ -25,6 +27,8 @@ pub enum ValueKind {
 pub struct Value(u64);
 
 impl Value {
+    // ── constructors ──────────────────────────────────────────────────────────
+
     #[inline(always)]
     pub fn nil() -> Self {
         Self(TAG_NIL)
@@ -44,23 +48,29 @@ impl Value {
 
     #[inline(always)]
     pub fn function(ptr: *const Function) -> Self {
+        debug_assert!((ptr as u64) & TAG_MASK == 0);
         Self((ptr as u64) | TAG_FUNCTION)
     }
 
     #[inline(always)]
-    pub fn string(index: usize) -> Self {
-        Self((index as u64) << 3 | TAG_STRING)
+    pub fn string(ptr: *mut GcObject) -> Self {
+        debug_assert!((ptr as u64) & TAG_MASK == 0, "GcObject pointer not aligned");
+        Self((ptr as u64) | TAG_STRING)
     }
 
     #[inline(always)]
-    pub fn dict(index: usize) -> Self {
-        Self((index as u64) << 3 | TAG_DICT)
+    pub fn dict(ptr: *mut GcObject) -> Self {
+        debug_assert!((ptr as u64) & TAG_MASK == 0, "GcObject pointer not aligned");
+        Self((ptr as u64) | TAG_DICT)
     }
 
     #[inline(always)]
-    pub fn vec(index: usize) -> Self {
-        Self((index as u64) << 3 | TAG_VEC)
+    pub fn vec(ptr: *mut GcObject) -> Self {
+        debug_assert!((ptr as u64) & TAG_MASK == 0, "GcObject pointer not aligned");
+        Self((ptr as u64) | TAG_VEC)
     }
+
+    // ── kind ──────────────────────────────────────────────────────────────────
 
     #[inline(always)]
     pub fn kind(self) -> ValueKind {
@@ -75,6 +85,8 @@ impl Value {
             _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
+
+    // ── is_ checks ────────────────────────────────────────────────────────────
 
     #[inline(always)]
     pub fn is_nil(self) -> bool {
@@ -111,6 +123,8 @@ impl Value {
         self.0 & TAG_MASK == TAG_VEC
     }
 
+    // ── expect_ (checked) ────────────────────────────────────────────────────
+
     #[inline(always)]
     pub fn expect_number(self) -> f64 {
         assert!(self.is_number(), "expected Number, got {:?}", self.kind());
@@ -134,19 +148,19 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn expect_string(self) -> usize {
+    pub fn expect_string(self) -> *const Rc<str> {
         assert!(self.is_string(), "expected String, got {:?}", self.kind());
         self.as_string()
     }
 
     #[inline(always)]
-    pub fn expect_dict(self) -> usize {
+    pub fn expect_dict(self) -> *mut HashMap<Value, Value> {
         assert!(self.is_dict(), "expected Dict, got {:?}", self.kind());
         self.as_dict()
     }
 
     #[inline(always)]
-    pub fn expect_vec(self) -> usize {
+    pub fn expect_vec(self) -> *mut Vec<Value> {
         assert!(self.is_vec(), "expected Vec, got {:?}", self.kind());
         self.as_vec()
     }
@@ -168,17 +182,48 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn as_string(self) -> usize {
-        (self.0 >> 3) as usize
+    pub fn as_gc_object(self) -> *mut GcObject {
+        (self.0 & !TAG_MASK) as *mut GcObject
     }
 
     #[inline(always)]
-    pub fn as_dict(self) -> usize {
-        (self.0 >> 3) as usize
+    pub fn as_string(self) -> *const Rc<str> {
+        debug_assert!(self.is_string());
+
+        let object = self.as_gc_object();
+
+        unsafe { (*object).data as *mut Rc<str> }
     }
 
     #[inline(always)]
-    pub fn as_vec(self) -> usize {
-        (self.0 >> 3) as usize
+    pub fn as_dict(self) -> *mut HashMap<Value, Value> {
+        debug_assert!(self.is_dict());
+        unsafe { (*self.as_gc_object()).data as *mut HashMap<Value, Value> }
+    }
+
+    #[inline(always)]
+    pub fn as_vec(self) -> *mut Vec<Value> {
+        debug_assert!(self.is_vec());
+        unsafe { (*self.as_gc_object()).data as *mut Vec<Value> }
+    }
+}
+
+impl std::fmt::Debug for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.kind() {
+            ValueKind::Nil => write!(f, "nil"),
+            ValueKind::Number => write!(f, "{}", self.as_number()),
+            ValueKind::Boolean => write!(f, "{}", self.as_boolean()),
+            ValueKind::Function => write!(f, "<function {:p}>", self.as_function()),
+            ValueKind::String => unsafe { write!(f, "{:?}", &*self.as_string()) },
+            ValueKind::Vec => unsafe {
+                let vec = &*self.as_vec();
+                f.debug_list().entries(vec.iter()).finish()
+            },
+            ValueKind::Dict => unsafe {
+                let map = &*self.as_dict();
+                f.debug_map().entries(map.iter()).finish()
+            },
+        }
     }
 }

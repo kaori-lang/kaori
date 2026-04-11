@@ -1,9 +1,6 @@
 use std::hint::unreachable_unchecked;
 
-use crate::{
-    bytecode::instruction::Instruction,
-    runtime::{debug_value::DebugValue, value::Value},
-};
+use crate::{bytecode::instruction::Instruction, runtime::value::Value};
 
 use super::{function::Function, gc::Gc};
 
@@ -541,11 +538,8 @@ fn opcode_print(
         };
 
         let value = get_value(src, registers, constants);
-        let debug_value = DebugValue {
-            value,
-            gc: &mut vm.gc,
-        };
-        println!("{:?}", debug_value);
+
+        println!("{:?}", value);
 
         dispatch_next!(ip, vm, registers, constants)
     }
@@ -586,7 +580,7 @@ fn opcode_set_field(
         let value = get_value(value, registers, constants);
         let object = get_value(object as i16, registers, constants);
 
-        vm.gc.get_mut_dict(object).insert(key, value);
+        (*object.as_dict()).insert(key, value);
 
         dispatch_next!(ip, vm, registers, constants)
     }
@@ -606,7 +600,7 @@ fn opcode_get_field(
 
         let object = get_value(object, registers, constants);
         let key = get_value(key, registers, constants);
-        let value = vm.gc.get_dict(object).get(&key).unwrap();
+        let value = (*object.as_dict()).get(&key).unwrap();
 
         set_value(dest, *value, registers);
 
