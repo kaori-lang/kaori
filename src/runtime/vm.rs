@@ -66,7 +66,7 @@ pub struct Vm {
 impl Vm {
     pub fn new(gc: Gc) -> Self {
         Self {
-            registers: vec![Value::default(); 4096],
+            registers: vec![Value::nil(); 4096],
             frames: Vec::new(),
             gc,
         }

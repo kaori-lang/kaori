@@ -24,13 +24,6 @@ pub enum ValueKind {
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Value(u64);
 
-impl Default for Value {
-    #[inline(always)]
-    fn default() -> Self {
-        Self::nil()
-    }
-}
-
 impl Value {
     #[inline(always)]
     pub fn nil() -> Self {
