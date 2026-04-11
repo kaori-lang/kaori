@@ -8,7 +8,7 @@ use super::gc::Gc;
 pub struct Function {
     pub instructions: Vec<Instruction>,
     pub registers_count: u8,
-    pub constant_pool: Vec<Value>,
+    pub constants: Vec<Value>,
 }
 
 use std::fmt::{self, Display, Formatter};
@@ -28,11 +28,11 @@ pub fn from_compiled(functions: Vec<bytecode::Function>, gc: &mut Gc) -> Vec<Fun
     for function in functions {
         let bytecode::Function {
             instructions,
-            constant_pool,
+            constants,
             registers_count,
         } = function;
 
-        let constant_pool = constant_pool
+        let constants = constants
             .into_iter()
             .map(|constant| match constant {
                 bytecode::Constant::Number(value) => Value::number(value),
@@ -49,7 +49,7 @@ pub fn from_compiled(functions: Vec<bytecode::Function>, gc: &mut Gc) -> Vec<Fun
         runtime_functions.push(Function {
             instructions,
             registers_count,
-            constant_pool,
+            constants,
         });
     }
 

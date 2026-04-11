@@ -10,7 +10,7 @@ use crate::{
     error::kaori_error::KaoriError,
     hir::{decl::Decl, resolver::Resolver},
     lexer::{lexer::Lexer, token_stream::TokenStream},
-    runtime::{function::from_compiled, gc::Gc, vm::run_vm},
+    runtime::{function::from_compiled, gc::Gc, vm::Vm},
 };
 
 fn run_lexical_analysis(source: &'_ str) -> Result<TokenStream<'_>, KaoriError> {
@@ -69,13 +69,15 @@ pub fn run_program(source: &str) -> Result<(), KaoriError> {
     let mut gc = Gc::default();
     let functions = from_compiled(bytecode, &mut gc);
 
-    /* for function in functions.iter() {
-        println!("{}", function);
-    } */
-
+    /*   for function in functions.iter() {
+           println!("{}", function);
+       }
+    */
     let start = Instant::now();
 
-    run_vm(functions, gc);
+    let mut vm = Vm::new(gc);
+    let entry = &functions[0];
+    vm.run(entry);
 
     let elapsed = start.elapsed();
 

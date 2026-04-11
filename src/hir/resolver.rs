@@ -270,7 +270,7 @@ impl Resolver {
                 let right = self.resolve_expression(right)?;
                 let left = self.resolve_expression(left)?;
 
-                let ExprKind::Variable(_) = &left.kind else {
+                let (ExprKind::Variable(_) | ExprKind::MemberAccess { .. }) = &left.kind else {
                     return Err(kaori_error!(
                         left.span,
                         "expected a valid left hand side to assign values to"

@@ -1,12 +1,15 @@
 import dis
 
 
+class Cat:
+    def __init__(self, age):
+        self.age = age
 
-def example():
-    {"a": 2}
+def foo():
+    d = Cat(1)
 
+    return d.age
 
-dis.dis(example)
+a = Cat(2)
 
-
-print(2 ** 3 + 4)
+foo() = 5
