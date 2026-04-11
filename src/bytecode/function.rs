@@ -25,4 +25,5 @@ pub enum Constant {
     Number(f64),
     Boolean(bool),
     Function(usize),
+    Nil,
 }

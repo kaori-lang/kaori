@@ -17,7 +17,7 @@ pub enum Terminator {
     },
     Goto(usize),
     Return {
-        src: Option<Operand>,
+        src: Operand,
     },
 }
 
@@ -33,11 +33,7 @@ impl Display for Terminator {
             }
             Terminator::Goto(target) => write!(f, "goto BB{}", target),
             Terminator::Return { src } => {
-                if let Some(operand) = src {
-                    write!(f, "return {}", operand)
-                } else {
-                    write!(f, "return")
-                }
+                write!(f, "return {}", src)
             }
         }
     }

@@ -30,7 +30,7 @@ macro_rules! dispatch_offset {
     }};
 }
 
-const OPCODE_HANDLERS: [Handler; 25] = [
+const OPCODE_HANDLERS: [Handler; 24] = [
     opcode_add,
     opcode_subtract,
     opcode_multiply,
@@ -51,7 +51,6 @@ const OPCODE_HANDLERS: [Handler; 25] = [
     opcode_get_field,
     opcode_call,
     opcode_return,
-    opcode_return_void,
     opcode_jump,
     opcode_jump_if_true,
     opcode_jump_if_false,
@@ -67,7 +66,7 @@ pub struct Vm {
 impl Vm {
     pub fn new(gc: Gc) -> Self {
         Self {
-            registers: vec![Value::default(); 1024],
+            registers: vec![Value::default(); 4096],
             frames: Vec::new(),
             gc,
         }
@@ -472,22 +471,6 @@ fn opcode_return(
         };
 
         get_value(src, registers, constants)
-    }
-}
-
-#[inline(never)]
-fn opcode_return_void(
-    ip: *const Instruction,
-    _vm: &mut Vm,
-    _registers: *mut Value,
-    _constants: *const Value,
-) -> Value {
-    unsafe {
-        let Instruction::ReturnVoid = *ip else {
-            unreachable_unchecked()
-        };
-
-        Value::default()
     }
 }
 

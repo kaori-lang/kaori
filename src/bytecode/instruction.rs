@@ -23,7 +23,6 @@ pub enum Instruction {
     GetField { dest: u16, object: i16, key: i16 },
     Call { dest: u16, src: i16 },
     Return { src: i16 },
-    ReturnVoid,
     Jump { offset: i16 },
     JumpIfTrue { src: i16, offset: i16 },
     JumpIfFalse { src: i16, offset: i16 },
@@ -194,9 +193,6 @@ impl fmt::Display for Instruction {
 
             Instruction::Return { src } => {
                 write!(f, "RET {}", fmt_operand(*src))
-            }
-            Instruction::ReturnVoid => {
-                write!(f, "RET")
             }
 
             Instruction::Jump { offset } => {

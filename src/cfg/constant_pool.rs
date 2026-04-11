@@ -40,6 +40,10 @@ impl ConstantPool {
     pub fn push_boolean(&mut self, value: bool) -> Operand {
         self.push_constant(Constant::Boolean(value))
     }
+
+    pub fn push_nil(&mut self) -> Operand {
+        self.push_constant(Constant::Nil)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,4 +52,5 @@ pub enum Constant {
     Number(OrderedFloat<f64>),
     Boolean(bool),
     Function(FunctionId),
+    Nil,
 }

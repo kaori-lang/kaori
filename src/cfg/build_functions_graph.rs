@@ -119,7 +119,8 @@ impl<'a> FunctionContext<'a> {
                     self.visit_statement(statement)?;
                 }
 
-                self.set_terminator(Terminator::Return { src: None });
+                let src = self.constant_pool.push_nil();
+                self.set_terminator(Terminator::Return { src });
             }
         };
 
@@ -219,12 +220,13 @@ impl<'a> FunctionContext<'a> {
                 self.set_terminator(Terminator::Goto(label.increment_bb_index));
             }
             StmtKind::Return(expr) => {
-                if let Some(expr) = expr {
-                    let src = self.visit_expression(expr);
-                    self.set_terminator(Terminator::Return { src: Some(src) });
+                let src = if let Some(expr) = expr {
+                    self.visit_expression(expr)
                 } else {
-                    self.set_terminator(Terminator::Return { src: None });
-                }
+                    self.constant_pool.push_nil()
+                };
+
+                self.set_terminator(Terminator::Return { src });
             }
         };
 

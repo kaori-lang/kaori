@@ -8,6 +8,7 @@ const TAG_FUNCTION: u64 = 0b010;
 const TAG_STRING: u64 = 0b011;
 const TAG_DICT: u64 = 0b100;
 const TAG_VEC: u64 = 0b101;
+const TAG_NIL: u64 = 0b110;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValueKind {
@@ -17,12 +18,25 @@ pub enum ValueKind {
     String,
     Dict,
     Vec,
+    Nil,
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Value(u64);
 
+impl Default for Value {
+    #[inline(always)]
+    fn default() -> Self {
+        Self::nil()
+    }
+}
+
 impl Value {
+    #[inline(always)]
+    pub fn nil() -> Self {
+        Self(TAG_NIL)
+    }
+
     #[inline(always)]
     pub fn number(value: f64) -> Self {
         let bits = value.to_bits();
@@ -64,8 +78,14 @@ impl Value {
             TAG_STRING => ValueKind::String,
             TAG_DICT => ValueKind::Dict,
             TAG_VEC => ValueKind::Vec,
+            TAG_NIL => ValueKind::Nil,
             _ => unsafe { std::hint::unreachable_unchecked() },
         }
+    }
+
+    #[inline(always)]
+    pub fn is_nil(self) -> bool {
+        self.0 & TAG_MASK == TAG_NIL
     }
 
     #[inline(always)]

@@ -13,6 +13,9 @@ pub struct DebugValue<'a> {
 impl<'a> fmt::Debug for DebugValue<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.value.kind() {
+            ValueKind::Nil => {
+                write!(f, "nil")
+            }
             ValueKind::Number => {
                 write!(f, "{}", self.value.as_number())
             }

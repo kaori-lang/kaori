@@ -36,6 +36,7 @@ pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Vec<Function> {
                         Constant::Function(*function_index)
                     }
                     cfg::Constant::String(value) => Constant::String(value.to_owned()),
+                    cfg::Constant::Nil => Constant::Nil,
                 })
                 .collect();
 
@@ -128,11 +129,7 @@ impl<'a> FunctionContext<'a> {
                 }
             }
             Terminator::Return { src } => {
-                if let Some(src) = src {
-                    instructions.push(Instruction::Return { src: src.to_i16() });
-                } else {
-                    instructions.push(Instruction::ReturnVoid);
-                }
+                instructions.push(Instruction::Return { src: src.to_i16() });
             }
         };
     }
