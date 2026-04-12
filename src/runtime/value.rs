@@ -28,9 +28,15 @@ pub enum ValueKind {
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Value(u64);
 
+impl Default for Value {
+    fn default() -> Self {
+        Value::nil()
+    }
+}
+
 impl Value {
     #[inline(always)]
-    pub fn nil() -> Self {
+    fn nil() -> Self {
         Self(TAG_NIL)
     }
 
@@ -142,7 +148,7 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn expect_string(self) -> *const Rc<str> {
+    pub fn expect_string(self) -> *const str {
         assert!(self.is_string(), "expected String, got {:?}", self.kind());
         self.as_string()
     }
@@ -181,7 +187,7 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn as_string(self) -> *const Rc<str> {
+    pub fn as_string(self) -> *const str {
         unsafe { (*self.as_gc_object()).as_string() }
     }
 

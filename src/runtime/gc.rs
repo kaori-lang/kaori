@@ -1,4 +1,4 @@
-use std::{hint::unreachable_unchecked, rc::Rc};
+use std::hint::unreachable_unchecked;
 
 use super::value::Value;
 use ahash::AHashMap;
@@ -9,61 +9,56 @@ struct GcNode {
 }
 
 pub enum GcObject {
-    String(Rc<str>),
-    Vec(Vec<Value>),
-    Dict(AHashMap<Value, Value>),
+    String(Box<str>),
+    Vec(Box<Vec<Value>>),
+    Dict(Box<AHashMap<Value, Value>>),
 }
 
 impl GcObject {
-    pub fn new_string(s: Rc<str>) -> Self {
-        Self::String(s)
+    pub fn new_string(value: &str) -> Self {
+        Self::String(Box::from(value))
     }
 
     pub fn new_vec() -> Self {
-        Self::Vec(Vec::new())
+        Self::Vec(Box::default())
     }
 
     pub fn new_dict() -> Self {
-        Self::Dict(AHashMap::new())
+        Self::Dict(Box::default())
     }
 
     #[inline(always)]
-    pub fn as_string(&self) -> &Rc<str> {
-        let Self::String(s) = self else {
+    pub fn as_string(&self) -> &str {
+        let Self::String(value) = self else {
             unsafe { unreachable_unchecked() }
         };
-        s
+
+        value
     }
 
     #[inline(always)]
     pub fn as_vec(&mut self) -> &mut Vec<Value> {
-        let Self::Vec(v) = self else {
+        let Self::Vec(value) = self else {
             unsafe { unreachable_unchecked() }
         };
-        v
+
+        value
     }
 
     #[inline(always)]
     pub fn as_dict(&mut self) -> &mut AHashMap<Value, Value> {
-        let Self::Dict(d) = self else {
+        let Self::Dict(value) = self else {
             unsafe { unreachable_unchecked() }
         };
-        d
+
+        value
     }
 }
 
+#[derive(Default)]
 pub struct Gc {
     head: Option<Box<GcNode>>,
-    strings_interned: AHashMap<Rc<str>, *mut GcObject>,
-}
-
-impl Default for Gc {
-    fn default() -> Self {
-        Self {
-            head: None,
-            strings_interned: AHashMap::new(),
-        }
-    }
+    strings_interned: AHashMap<String, *mut GcObject>,
 }
 
 impl Gc {
@@ -80,9 +75,8 @@ impl Gc {
             return Value::string(ptr);
         }
 
-        let rc: Rc<str> = Rc::from(s);
-        let ptr = self.alloc(GcObject::new_string(rc.clone()));
-        self.strings_interned.insert(rc, ptr);
+        let ptr = self.alloc(GcObject::new_string(s));
+        self.strings_interned.insert(s.to_owned(), ptr);
 
         Value::string(ptr)
     }

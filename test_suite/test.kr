@@ -16,5 +16,4 @@ fun main() {
         sum += cat.age;
     }
 
-    print(cat.height);
 }

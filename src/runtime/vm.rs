@@ -63,7 +63,7 @@ pub struct Vm {
 impl Vm {
     pub fn new(gc: Gc) -> Self {
         Self {
-            registers: vec![Value::nil(); 4096],
+            registers: vec![Value::default(); 4096],
             frames: Vec::new(),
             gc,
         }
@@ -447,8 +447,6 @@ fn opcode_call(
             OPCODE_HANDLERS[index](ip, vm, registers, constants)
         };
 
-        vm.pop_frame();
-
         set_value(dest, return_value, registers);
 
         dispatch_next!(ip, vm, registers, constants)
@@ -458,7 +456,7 @@ fn opcode_call(
 #[inline(never)]
 fn opcode_return(
     ip: *const Instruction,
-    _vm: &mut Vm,
+    vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
 ) -> Value {
@@ -467,7 +465,11 @@ fn opcode_return(
             unreachable_unchecked()
         };
 
-        get_value(src, registers, constants)
+        let value = get_value(src, registers, constants);
+
+        vm.pop_frame();
+
+        value
     }
 }
 
@@ -601,10 +603,7 @@ fn opcode_get_field(
         let object = get_value(object, registers, constants);
         let key = get_value(key, registers, constants);
 
-        let value = match (*object.as_dict()).get(&key) {
-            Some(value) => *value,
-            None => Value::nil(),
-        };
+        let value = (*object.as_dict()).get(&key).copied().unwrap_or_default();
 
         set_value(dest, value, registers);
 
