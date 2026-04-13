@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
         while !self.token_stream.at_end() {
             let token_kind = self.token_stream.token_kind();
 
-            let TokenKind::And = token_kind else {
+            let TokenKind::Or = token_kind else {
                 break;
             };
 

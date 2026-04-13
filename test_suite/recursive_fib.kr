@@ -8,7 +8,7 @@ fun fib(n) {
 
 fun main()  {
 
-    fib(30);
+    print(true or false);
 }
 
 

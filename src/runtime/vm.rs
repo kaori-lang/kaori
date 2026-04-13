@@ -1,4 +1,3 @@
-use core::clone::Clone;
 use std::hint::unreachable_unchecked;
 
 use super::{function::Function, gc::Gc};
@@ -13,15 +12,10 @@ type Handler = fn(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value;
+) -> Result<Value, Box<KaoriError>>;
 
 macro_rules! dispatch_next {
     ($ip:expr, $vm:expr, $registers:expr, $constants:expr) => {{
-        if $vm.error.is_some() {
-            core::hint::cold_path();
-            return Value::default();
-        }
-
         let ip: *const Instruction = $ip.add(1);
         let index = (*ip).discriminant();
         become OPCODE_HANDLERS[index](ip, $vm, $registers, $constants);
@@ -37,11 +31,9 @@ macro_rules! dispatch_offset {
 }
 
 macro_rules! type_error {
-    ($vm:expr, $($arg:tt)*) => {{
+    ($($arg:tt)*) => {{
         core::hint::cold_path();
-        $vm.error = Some(kaori_error!(Span::default(), $($arg)*));
-
-        return Value::default();
+        return Err(Box::new(kaori_error!(Span::default(), $($arg)*)));
     }};
 }
 
@@ -76,7 +68,6 @@ pub struct Vm {
     pub registers: Vec<Value>,
     pub frames: Vec<(*mut Value, usize)>,
     pub gc: Gc,
-    pub error: Option<KaoriError>,
 }
 
 impl Vm {
@@ -85,7 +76,6 @@ impl Vm {
             registers: vec![Value::default(); 4096],
             frames: Vec::new(),
             gc,
-            error: None,
         }
     }
 
@@ -101,14 +91,9 @@ impl Vm {
         let ip = instructions.as_ptr();
         let index = unsafe { (*ip).discriminant() };
 
-        OPCODE_HANDLERS[index](ip, self, registers, constants);
-
-        self.pop_frame();
-
-        if let Some(error) = &self.error {
-            Err(error.clone())
-        } else {
-            Ok(())
+        match OPCODE_HANDLERS[index](ip, self, registers, constants) {
+            Ok(_) => Ok(()),
+            Err(error) => Err(*error),
         }
     }
 
@@ -155,7 +140,7 @@ fn opcode_move(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Move { dest, src } = *ip else {
             unreachable_unchecked()
@@ -173,7 +158,7 @@ fn opcode_add(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Add { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -191,7 +176,6 @@ fn opcode_add(
             dispatch_next!(ip, vm, registers, constants)
         } else {
             type_error!(
-                vm,
                 "cannot add {:?} and {:?}, both operands must be numbers",
                 lhs,
                 rhs
@@ -206,7 +190,7 @@ fn opcode_subtract(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Subtract { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -224,7 +208,6 @@ fn opcode_subtract(
             dispatch_next!(ip, vm, registers, constants)
         } else {
             type_error!(
-                vm,
                 "cannot subtract {:?} from {:?}, both operands must be numbers",
                 rhs,
                 lhs
@@ -239,7 +222,7 @@ fn opcode_multiply(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Multiply { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -257,7 +240,6 @@ fn opcode_multiply(
             dispatch_next!(ip, vm, registers, constants)
         } else {
             type_error!(
-                vm,
                 "cannot multiply {:?} and {:?}, both operands must be numbers",
                 lhs,
                 rhs
@@ -272,7 +254,7 @@ fn opcode_divide(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Divide { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -290,7 +272,6 @@ fn opcode_divide(
             dispatch_next!(ip, vm, registers, constants)
         } else {
             type_error!(
-                vm,
                 "cannot divide {:?} by {:?}, both operands must be numbers",
                 lhs,
                 rhs
@@ -305,7 +286,7 @@ fn opcode_modulo(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Modulo { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -322,9 +303,7 @@ fn opcode_modulo(
             );
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            let r = kaori_error!(Span::default(), "hello");
             type_error!(
-                vm,
                 "cannot compute {:?} modulo {:?}, both operands must be numbers",
                 lhs,
                 rhs
@@ -339,7 +318,7 @@ fn opcode_power(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Power { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -357,7 +336,6 @@ fn opcode_power(
             dispatch_next!(ip, vm, registers, constants)
         } else {
             type_error!(
-                vm,
                 "cannot raise {:?} to the power of {:?}, both operands must be numbers",
                 lhs,
                 rhs
@@ -372,7 +350,7 @@ fn opcode_equal(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Equal { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -390,7 +368,6 @@ fn opcode_equal(
             dispatch_next!(ip, vm, registers, constants)
         } else {
             type_error!(
-                vm,
                 "cannot compare {:?} and {:?} with ==, both operands must be numbers",
                 lhs,
                 rhs
@@ -405,7 +382,7 @@ fn opcode_not_equal(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::NotEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -423,7 +400,6 @@ fn opcode_not_equal(
             dispatch_next!(ip, vm, registers, constants)
         } else {
             type_error!(
-                vm,
                 "cannot compare {:?} and {:?} with !=, both operands must be numbers",
                 lhs,
                 rhs
@@ -438,7 +414,7 @@ fn opcode_greater(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Greater { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -456,7 +432,6 @@ fn opcode_greater(
             dispatch_next!(ip, vm, registers, constants)
         } else {
             type_error!(
-                vm,
                 "cannot compare {:?} and {:?} with >, both operands must be numbers",
                 lhs,
                 rhs
@@ -471,7 +446,7 @@ fn opcode_greater_equal(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::GreaterEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -489,7 +464,6 @@ fn opcode_greater_equal(
             dispatch_next!(ip, vm, registers, constants)
         } else {
             type_error!(
-                vm,
                 "cannot compare {:?} and {:?} with >=, both operands must be numbers",
                 lhs,
                 rhs
@@ -504,7 +478,7 @@ fn opcode_less(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Less { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -522,7 +496,6 @@ fn opcode_less(
             dispatch_next!(ip, vm, registers, constants)
         } else {
             type_error!(
-                vm,
                 "cannot compare {:?} and {:?} with <, both operands must be numbers",
                 lhs,
                 rhs
@@ -537,7 +510,7 @@ fn opcode_less_equal(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::LessEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -555,7 +528,6 @@ fn opcode_less_equal(
             dispatch_next!(ip, vm, registers, constants)
         } else {
             type_error!(
-                vm,
                 "cannot compare {:?} and {:?} with <=, both operands must be numbers",
                 lhs,
                 rhs
@@ -570,7 +542,7 @@ fn opcode_negate(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Negate { dest, src } = *ip else {
             unreachable_unchecked()
@@ -582,7 +554,7 @@ fn opcode_negate(
             set_value(dest, Value::number(-value.as_number()), registers);
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!(vm, "cannot negate {:?}, operand must be a number", value)
+            type_error!("cannot negate {:?}, operand must be a number", value)
         }
     }
 }
@@ -593,7 +565,7 @@ fn opcode_not(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Not { dest, src } = *ip else {
             unreachable_unchecked()
@@ -605,11 +577,7 @@ fn opcode_not(
             set_value(dest, Value::boolean(!value.as_boolean()), registers);
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!(
-                vm,
-                "cannot apply ! to {:?}, operand must be a boolean",
-                value
-            )
+            type_error!("cannot apply ! to {:?}, operand must be a boolean", value)
         }
     }
 }
@@ -620,7 +588,7 @@ fn opcode_call(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Call { dest, src } = *ip else {
             unreachable_unchecked()
@@ -641,14 +609,14 @@ fn opcode_call(
                 let ip = instructions.as_ptr();
                 let index = (*ip).discriminant();
 
-                OPCODE_HANDLERS[index](ip, vm, registers, constants)
+                OPCODE_HANDLERS[index](ip, vm, registers, constants)?
             };
 
             set_value(dest, return_value, registers);
 
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!(vm, "cannot call {:?}, value is not a function", callee)
+            type_error!("cannot call {:?}, value is not a function", callee)
         }
     }
 }
@@ -659,7 +627,7 @@ fn opcode_return(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Return { src } = *ip else {
             unreachable_unchecked()
@@ -668,7 +636,7 @@ fn opcode_return(
         let value = get_value(src, registers, constants);
         vm.pop_frame();
 
-        value
+        Ok(value)
     }
 }
 
@@ -678,7 +646,7 @@ fn opcode_jump(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Jump { offset } = *ip else {
             unreachable_unchecked()
@@ -694,7 +662,7 @@ fn opcode_jump_if_true(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::JumpIfTrue { src, offset } = *ip else {
             unreachable_unchecked()
@@ -710,7 +678,6 @@ fn opcode_jump_if_true(
             }
         } else {
             type_error!(
-                vm,
                 "cannot use {:?} as a condition, value must be a boolean",
                 value
             )
@@ -724,7 +691,7 @@ fn opcode_jump_if_false(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::JumpIfFalse { src, offset } = *ip else {
             unreachable_unchecked()
@@ -740,7 +707,6 @@ fn opcode_jump_if_false(
             }
         } else {
             type_error!(
-                vm,
                 "cannot use {:?} as a condition, value must be a boolean",
                 value
             )
@@ -754,7 +720,7 @@ fn opcode_print(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Print { src } = *ip else {
             unreachable_unchecked()
@@ -772,7 +738,7 @@ fn opcode_create_dict(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::CreateDict { dest } = *ip else {
             unreachable_unchecked()
@@ -790,7 +756,7 @@ fn opcode_set_field(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::SetField { object, key, value } = *ip else {
             unreachable_unchecked()
@@ -804,7 +770,7 @@ fn opcode_set_field(
             object.as_dict().insert(key, value);
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!(vm, "cannot set field on {:?}, value is not a dict", object)
+            type_error!("cannot set field on {:?}, value is not a dict", object)
         }
     }
 }
@@ -815,7 +781,7 @@ fn opcode_get_field(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::GetField { dest, object, key } = *ip else {
             unreachable_unchecked()
@@ -829,11 +795,7 @@ fn opcode_get_field(
             set_value(dest, value, registers);
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!(
-                vm,
-                "cannot get field from {:?}, value is not a dict",
-                object
-            )
+            type_error!("cannot get field from {:?}, value is not a dict", object)
         }
     }
 }
