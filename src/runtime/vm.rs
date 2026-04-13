@@ -32,7 +32,7 @@ macro_rules! dispatch_offset {
 
 macro_rules! type_error {
     ($($arg:tt)*) => {{
-        core::hint::cold_path();
+        //core::hint::cold_path();
         return Err(Box::new(kaori_error!(Span::default(), $($arg)*)));
     }};
 }
@@ -79,7 +79,7 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self, entry: &Function) -> Result<(), KaoriError> {
+    pub fn run(&mut self, entry: &Function) -> Result<Value, KaoriError> {
         let Function {
             instructions,
             registers_count,
@@ -91,10 +91,7 @@ impl Vm {
         let ip = instructions.as_ptr();
         let index = unsafe { (*ip).discriminant() };
 
-        match OPCODE_HANDLERS[index](ip, self, registers, constants) {
-            Ok(_) => Ok(()),
-            Err(error) => Err(*error),
-        }
+        OPCODE_HANDLERS[index](ip, self, registers, constants).map_err(|e| *e)
     }
 
     pub fn push_frame(&mut self, size: usize) -> *mut Value {
@@ -609,8 +606,8 @@ fn opcode_call(
                 let ip = instructions.as_ptr();
                 let index = (*ip).discriminant();
 
-                OPCODE_HANDLERS[index](ip, vm, registers, constants)?
-            };
+                OPCODE_HANDLERS[index](ip, vm, registers, constants)
+            }?;
 
             set_value(dest, return_value, registers);
 

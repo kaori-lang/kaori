@@ -39,12 +39,12 @@ impl Resolver {
         self.local_scope = false;
     }
 
-    pub fn generate_id(&mut self, id: ast::node_id::NodeId) -> NodeId {
-        let _id = NodeId::default();
+    pub fn generate_id(&mut self, ast_id: ast::NodeId) -> NodeId {
+        let hir_id = NodeId::default();
 
-        self.ast_to_hir.insert(id, _id);
+        self.ast_to_hir.insert(ast_id, hir_id);
 
-        _id
+        hir_id
     }
 
     fn resolve_main_function(&mut self, declarations: &mut [ast::Decl]) -> Result<(), KaoriError> {
@@ -96,7 +96,7 @@ impl Resolver {
     }
 
     fn resolve_declaration(&mut self, declaration: &ast::Decl) -> Result<Decl, KaoriError> {
-        let _decl = match &declaration.kind {
+        Ok(match &declaration.kind {
             ast::DeclKind::Function {
                 parameters, body, ..
             } => {
@@ -118,13 +118,11 @@ impl Resolver {
 
                 Decl::function(*id, parameters, body, declaration.span)
             }
-        };
-
-        Ok(_decl)
+        })
     }
 
     fn resolve_statement(&mut self, statement: &ast::Stmt) -> Result<Stmt, KaoriError> {
-        let _stmt = match &statement.kind {
+        Ok(match &statement.kind {
             ast::StmtKind::Expression(expression) => {
                 let expr = self.resolve_expression(expression)?;
 
@@ -220,13 +218,11 @@ impl Resolver {
 
                 Stmt::return_(expr, statement.span)
             }
-        };
-
-        Ok(_stmt)
+        })
     }
 
     fn resolve_expression(&mut self, expression: &ast::Expr) -> Result<Expr, KaoriError> {
-        let _expr = match &expression.kind {
+        Ok(match &expression.kind {
             ast::ExprKind::Parameter(name) => {
                 if self.symbol_table.search_current_scope(name).is_some() {
                     return Err(kaori_error!(
@@ -378,8 +374,6 @@ impl Resolver {
                     SymbolKind::Variable => Expr::variable(symbol.id, expression.span),
                 }
             }
-        };
-
-        Ok(_expr)
+        })
     }
 }

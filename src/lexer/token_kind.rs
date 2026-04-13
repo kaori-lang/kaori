@@ -7,7 +7,7 @@ pub enum TokenKind {
     Multiply,
     Divide,
     Modulo,
-    Power, // NEW
+    Power,
 
     Assign,
     DeclareAssign,
@@ -16,7 +16,7 @@ pub enum TokenKind {
     MultiplyAssign,
     DivideAssign,
     ModuloAssign,
-    PowerAssign, // NEW
+    PowerAssign,
 
     NotEqual,
     Equal,
