@@ -4,7 +4,7 @@ use crate::cfg::{
     self,
     basic_block::{BasicBlock, Terminator},
     graph_traversal::reversed_postorder,
-    operand::Operand,
+    register::Register,
 };
 
 use super::{Constant, function::Function, instruction::Instruction};
@@ -107,7 +107,7 @@ impl<'a> FunctionContext<'a> {
                     let index = instructions.len();
                     pending_backpatch.push((index, r#true));
                     instructions.push(Instruction::JumpIfTrue {
-                        src: src.to_i16(),
+                        src: src.to_u8(),
                         offset: 0,
                     });
                 }
@@ -116,7 +116,7 @@ impl<'a> FunctionContext<'a> {
                     let index = instructions.len();
                     pending_backpatch.push((index, r#false));
                     instructions.push(Instruction::JumpIfFalse {
-                        src: src.to_i16(),
+                        src: src.to_u8(),
                         offset: 0,
                     });
                 }
@@ -129,7 +129,7 @@ impl<'a> FunctionContext<'a> {
                 }
             }
             Terminator::Return { src } => {
-                instructions.push(Instruction::Return { src: src.to_i16() });
+                instructions.push(Instruction::Return { src: src.to_u8() });
             }
         };
     }
@@ -141,108 +141,107 @@ impl<'a> FunctionContext<'a> {
     ) {
         let instruction = match instruction {
             cfg::Instruction::Add { dest, src1, src2 } => Instruction::Add {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::Subtract { dest, src1, src2 } => Instruction::Subtract {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::Multiply { dest, src1, src2 } => Instruction::Multiply {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::Divide { dest, src1, src2 } => Instruction::Divide {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::Modulo { dest, src1, src2 } => Instruction::Modulo {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::Power { dest, src1, src2 } => Instruction::Power {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::Equal { dest, src1, src2 } => Instruction::Equal {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::NotEqual { dest, src1, src2 } => Instruction::NotEqual {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::Greater { dest, src1, src2 } => Instruction::Greater {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::GreaterEqual { dest, src1, src2 } => Instruction::GreaterEqual {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::Less { dest, src1, src2 } => Instruction::Less {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::LessEqual { dest, src1, src2 } => Instruction::LessEqual {
-                dest: dest.to_u16(),
-                src1: src1.to_i16(),
-                src2: src2.to_i16(),
+                dest: dest.to_u8(),
+                src1: src1.to_u8(),
+                src2: src2.to_u8(),
             },
             cfg::Instruction::Negate { dest, src } => Instruction::Negate {
-                dest: dest.to_u16(),
-                src: src.to_i16(),
+                dest: dest.to_u8(),
+                src: src.to_u8(),
             },
 
             cfg::Instruction::Not { dest, src } => Instruction::Not {
-                dest: dest.to_u16(),
-                src: src.to_i16(),
+                dest: dest.to_u8(),
+                src: src.to_u8(),
             },
             cfg::Instruction::Move { dest, src } => Instruction::Move {
-                dest: dest.to_u16(),
-                src: src.to_i16(),
+                dest: dest.to_u8(),
+                src: src.to_u8(),
             },
 
+            cfg::Instruction::LoadConst { dest, src } => Instruction::LoadConst {
+                dest: dest.to_u8(),
+                src: src.to_u8(),
+            },
             cfg::Instruction::MoveArg { dest, src } => {
-                let dest = match dest {
-                    Operand::Variable(value) => Operand::Variable(self.registers_count + value),
-                    _ => *dest,
-                };
+                let dest = Register(self.registers_count + dest.0);
 
                 Instruction::Move {
-                    dest: dest.to_u16(),
-                    src: src.to_i16(),
+                    dest: dest.to_u8(),
+                    src: src.to_u8(),
                 }
             }
             cfg::Instruction::SetField { object, key, value } => Instruction::SetField {
-                object: object.to_u16(),
-                key: key.to_i16(),
-                value: value.to_i16(),
+                object: object.to_u8(),
+                key: key.to_u8(),
+                value: value.to_u8(),
             },
             cfg::Instruction::GetField { dest, object, key } => Instruction::GetField {
-                dest: dest.to_u16(),
-                object: object.to_i16(),
-                key: key.to_i16(),
+                dest: dest.to_u8(),
+                object: object.to_u8(),
+                key: key.to_u8(),
             },
-            cfg::Instruction::CreateDict { dest } => Instruction::CreateDict {
-                dest: dest.to_u16(),
-            },
+            cfg::Instruction::CreateDict { dest } => Instruction::CreateDict { dest: dest.to_u8() },
             cfg::Instruction::Call { dest, func } => Instruction::Call {
-                dest: dest.to_u16(),
-                src: func.to_i16(),
+                dest: dest.to_u8(),
+                src: func.to_u8(),
             },
-            cfg::Instruction::Print { src } => Instruction::Print { src: src.to_i16() },
+            cfg::Instruction::Print { src } => Instruction::Print { src: src.to_u8() },
         };
 
         instructions.push(instruction);

@@ -37,33 +37,33 @@ macro_rules! type_error {
     }};
 }
 
-const OPCODE_HANDLERS: [Handler; 24] = [
-    opcode_add,
-    opcode_subtract,
-    opcode_multiply,
-    opcode_divide,
-    opcode_modulo,
-    opcode_power,
-    opcode_equal,
-    opcode_not_equal,
-    opcode_greater,
-    opcode_greater_equal,
-    opcode_less,
-    opcode_less_equal,
-    opcode_negate,
-    opcode_not,
-    opcode_move,
-    opcode_create_dict,
-    opcode_set_field,
-    opcode_get_field,
-    opcode_call,
-    opcode_return,
-    opcode_jump,
-    opcode_jump_if_true,
-    opcode_jump_if_false,
-    opcode_print,
+const OPCODE_HANDLERS: [Handler; 25] = [
+    opcode_add,           // 0
+    opcode_subtract,      // 1
+    opcode_multiply,      // 2
+    opcode_divide,        // 3
+    opcode_modulo,        // 4
+    opcode_power,         // 5
+    opcode_equal,         // 6
+    opcode_not_equal,     // 7
+    opcode_greater,       // 8
+    opcode_greater_equal, // 9
+    opcode_less,          // 10
+    opcode_less_equal,    // 11
+    opcode_negate,        // 12
+    opcode_not,           // 13
+    opcode_move,          // 14
+    opcode_load_const,    // 15
+    opcode_create_dict,   // 16
+    opcode_set_field,     // 17
+    opcode_get_field,     // 18
+    opcode_call,          // 19
+    opcode_return,        // 20
+    opcode_jump,          // 21
+    opcode_jump_if_true,  // 22
+    opcode_jump_if_false, // 23
+    opcode_print,         // 24
 ];
-
 pub struct Vm {
     pub registers: Vec<Value>,
     pub frames: Vec<(*mut Value, usize)>,
@@ -114,18 +114,12 @@ impl Vm {
 }
 
 #[inline(always)]
-fn get_value(index: i16, registers: *mut Value, constants: *const Value) -> Value {
-    unsafe {
-        if index < 0 {
-            *constants.add(-(index + 1) as usize)
-        } else {
-            *registers.add(index as usize)
-        }
-    }
+fn get_value(index: u8, registers: *mut Value) -> Value {
+    unsafe { *registers.add(index as usize) }
 }
 
 #[inline(always)]
-fn set_value(index: u16, value: Value, registers: *mut Value) {
+fn set_value(index: u8, value: Value, registers: *mut Value) {
     unsafe {
         *registers.add(index as usize) = value;
     }
@@ -143,7 +137,27 @@ fn opcode_move(
             unreachable_unchecked()
         };
 
-        set_value(dest, get_value(src, registers, constants), registers);
+        set_value(dest, get_value(src, registers), registers);
+
+        dispatch_next!(ip, vm, registers, constants)
+    }
+}
+
+#[inline(never)]
+fn opcode_load_const(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let Instruction::LoadConst { dest, src } = *ip else {
+            unreachable_unchecked()
+        };
+
+        let value = *constants.add(src as usize);
+
+        set_value(dest, value, registers);
 
         dispatch_next!(ip, vm, registers, constants)
     }
@@ -161,8 +175,8 @@ fn opcode_add(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -193,8 +207,8 @@ fn opcode_subtract(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -225,8 +239,8 @@ fn opcode_multiply(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -257,8 +271,8 @@ fn opcode_divide(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -289,8 +303,8 @@ fn opcode_modulo(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -321,8 +335,8 @@ fn opcode_power(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -353,8 +367,8 @@ fn opcode_equal(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -385,8 +399,8 @@ fn opcode_not_equal(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -417,8 +431,8 @@ fn opcode_greater(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -449,8 +463,8 @@ fn opcode_greater_equal(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -481,8 +495,8 @@ fn opcode_less(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -513,8 +527,8 @@ fn opcode_less_equal(
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants);
-        let rhs = get_value(src2, registers, constants);
+        let lhs = get_value(src1, registers);
+        let rhs = get_value(src2, registers);
 
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
@@ -545,7 +559,7 @@ fn opcode_negate(
             unreachable_unchecked()
         };
 
-        let value = get_value(src, registers, constants);
+        let value = get_value(src, registers);
 
         if value.tag() == TYPE_NUMBER {
             set_value(dest, Value::number(-value.as_number()), registers);
@@ -568,7 +582,7 @@ fn opcode_not(
             unreachable_unchecked()
         };
 
-        let value = get_value(src, registers, constants);
+        let value = get_value(src, registers);
 
         if value.tag() == TYPE_BOOLEAN {
             set_value(dest, Value::boolean(!value.as_boolean()), registers);
@@ -591,7 +605,7 @@ fn opcode_call(
             unreachable_unchecked()
         };
 
-        let callee = get_value(src, registers, constants);
+        let callee = get_value(src, registers);
 
         if callee.tag() == TYPE_FUNCTION {
             let return_value = {
@@ -630,7 +644,7 @@ fn opcode_return(
             unreachable_unchecked()
         };
 
-        let value = get_value(src, registers, constants);
+        let value = get_value(src, registers);
         vm.pop_frame();
 
         Ok(value)
@@ -665,7 +679,7 @@ fn opcode_jump_if_true(
             unreachable_unchecked()
         };
 
-        let value = get_value(src, registers, constants);
+        let value = get_value(src, registers);
 
         if value.tag() == TYPE_BOOLEAN {
             if value.as_boolean() {
@@ -694,7 +708,7 @@ fn opcode_jump_if_false(
             unreachable_unchecked()
         };
 
-        let value = get_value(src, registers, constants);
+        let value = get_value(src, registers);
 
         if value.tag() == TYPE_BOOLEAN {
             if value.as_boolean() {
@@ -723,7 +737,7 @@ fn opcode_print(
             unreachable_unchecked()
         };
 
-        println!("{:?}", get_value(src, registers, constants));
+        println!("{:?}", get_value(src, registers));
 
         dispatch_next!(ip, vm, registers, constants)
     }
@@ -759,9 +773,9 @@ fn opcode_set_field(
             unreachable_unchecked()
         };
 
-        let key = get_value(key, registers, constants);
-        let value = get_value(value, registers, constants);
-        let object = get_value(object as i16, registers, constants);
+        let key = get_value(key, registers);
+        let value = get_value(value, registers);
+        let object = get_value(object, registers);
 
         if object.tag() == TYPE_DICT {
             object.as_dict().insert(key, value);
@@ -784,8 +798,8 @@ fn opcode_get_field(
             unreachable_unchecked()
         };
 
-        let object = get_value(object, registers, constants);
-        let key = get_value(key, registers, constants);
+        let object = get_value(object, registers);
+        let key = get_value(key, registers);
 
         if object.tag() == TYPE_DICT {
             let value = object.as_dict().get(&key).copied().unwrap_or_default();

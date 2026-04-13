@@ -1,4 +1,4 @@
-use super::{instruction::Instruction, operand::Operand};
+use super::{instruction::Instruction, register::Register};
 use core::fmt;
 use std::fmt::{Display, Formatter};
 
@@ -11,13 +11,13 @@ pub struct BasicBlock {
 #[derive(Debug, Clone, Copy)]
 pub enum Terminator {
     Branch {
-        src: Operand,
+        src: Register,
         r#true: usize,
         r#false: usize,
     },
     Goto(usize),
     Return {
-        src: Operand,
+        src: Register,
     },
 }
 

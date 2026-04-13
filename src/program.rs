@@ -52,11 +52,10 @@ pub fn compile_source_code(source: &str) -> Result<Vec<Function>, KaoriError> {
     let mut functions = build_functions_graph(&declarations)?;
 
     run_cfg_analysis(&mut functions)?;
-
-    /*  for function in functions.iter() {
-           println!("{}", function);
-       }
-    */
+    /*
+    for function in functions.iter() {
+        println!("{}", function);
+    } */
 
     Ok(functions)
 }
@@ -69,9 +68,9 @@ pub fn run_program(source: &str) -> Result<(), KaoriError> {
     let mut gc = Gc::default();
     let functions = from_compiled(bytecode, &mut gc);
 
-    /*   for function in functions.iter() {
+    for function in functions.iter() {
         println!("{}", function);
-    } */
+    }
 
     let start = Instant::now();
 

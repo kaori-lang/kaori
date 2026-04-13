@@ -9,7 +9,7 @@ pub mod graph_traversal;
 pub mod instruction;
 
 pub mod jump_threading;
-pub mod operand;
+pub mod register;
 
 pub use constant_pool::Constant;
 pub use function::Function;

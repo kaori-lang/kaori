@@ -18,6 +18,7 @@ impl Display for Function {
         for (ip, instr) in self.instructions.iter().enumerate() {
             writeln!(f, "{:04}  {}", ip, instr)?;
         }
+        writeln!(f)?;
         Ok(())
     }
 }

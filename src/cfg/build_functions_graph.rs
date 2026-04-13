@@ -17,7 +17,7 @@ use super::{
     constant_pool::ConstantPool,
     function::{Function, FunctionId},
     instruction::Instruction,
-    operand::Operand,
+    register::Register,
 };
 
 pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, KaoriError> {
@@ -46,7 +46,7 @@ pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, Kao
                     id,
                     ctx.basic_blocks,
                     ctx.constant_pool.constants,
-                    ctx.variables.len(),
+                    ctx.next_register,
                 );
 
                 functions.push(function);
@@ -59,7 +59,8 @@ pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, Kao
 
 pub struct FunctionContext<'a> {
     index: usize,
-    variables: HashMap<NodeId, Operand>,
+    next_register: usize,
+    registers: HashMap<NodeId, Register>,
     constant_pool: ConstantPool,
     basic_blocks: Vec<BasicBlock>,
     active_loops: ActiveLoops,
@@ -70,7 +71,8 @@ impl<'a> FunctionContext<'a> {
     pub fn new(node_to_function: &'a HashMap<NodeId, FunctionId>) -> Self {
         Self {
             index: 0,
-            variables: HashMap::new(),
+            registers: HashMap::new(),
+            next_register: 0,
             constant_pool: ConstantPool::default(),
             basic_blocks: Vec::new(),
             active_loops: ActiveLoops::default(),
@@ -78,10 +80,12 @@ impl<'a> FunctionContext<'a> {
         }
     }
 
-    pub fn create_variable(&mut self, id: NodeId) -> Operand {
-        let variable = Operand::Variable(self.variables.len());
-        self.variables.insert(id, variable);
-        variable
+    pub fn allocate_register(&mut self) -> Register {
+        let register = Register(self.next_register);
+
+        self.next_register += 1;
+
+        register
     }
 
     fn emit_instruction(&mut self, instruction: Instruction) {
@@ -120,7 +124,11 @@ impl<'a> FunctionContext<'a> {
                 }
 
                 let src = self.constant_pool.push_nil();
-                self.set_terminator(Terminator::Return { src });
+                let dest = self.allocate_register();
+
+                self.emit_instruction(Instruction::LoadConst { dest, src });
+
+                self.set_terminator(Terminator::Return { src: dest });
             }
         };
 
@@ -223,7 +231,13 @@ impl<'a> FunctionContext<'a> {
                 let src = if let Some(expr) = expr {
                     self.visit_expression(expr)
                 } else {
-                    self.constant_pool.push_nil()
+                    let src = self.constant_pool.push_nil();
+
+                    let dest = self.allocate_register();
+                    let instruction = Instruction::LoadConst { dest, src };
+
+                    self.emit_instruction(instruction);
+                    dest
                 };
 
                 self.set_terminator(Terminator::Return { src });
@@ -233,12 +247,19 @@ impl<'a> FunctionContext<'a> {
         Ok(())
     }
 
-    fn visit_expression(&mut self, expression: &Expr) -> Operand {
+    fn visit_expression(&mut self, expression: &Expr) -> Register {
         match &expression.kind {
-            ExprKind::Parameter(id) => self.create_variable(*id),
-            ExprKind::DeclareAssign { right } => {
+            ExprKind::Parameter(id) => {
+                let register = self.allocate_register();
+                self.registers.insert(*id, register);
+
+                register
+            }
+            ExprKind::DeclareAssign { id, right } => {
                 let src = self.visit_expression(right);
-                let dest = self.create_variable(expression.id);
+                let dest = self.allocate_register();
+                self.registers.insert(*id, dest);
+
                 let instruction = Instruction::Move { dest, src };
 
                 self.emit_instruction(instruction);
@@ -254,7 +275,7 @@ impl<'a> FunctionContext<'a> {
                 dest
             }
             ExprKind::LogicalAnd { left, right } => {
-                let dest = self.create_variable(expression.id);
+                let dest = self.allocate_register();
 
                 let src1 = self.visit_expression(left);
                 self.emit_instruction(Instruction::Move { dest, src: src1 });
@@ -279,7 +300,7 @@ impl<'a> FunctionContext<'a> {
                 dest
             }
             ExprKind::LogicalOr { left, right } => {
-                let dest = self.create_variable(expression.id);
+                let dest = self.allocate_register();
 
                 let src1 = self.visit_expression(left);
                 self.emit_instruction(Instruction::Move { dest, src: src1 });
@@ -305,7 +326,7 @@ impl<'a> FunctionContext<'a> {
             }
             ExprKind::LogicalNot { expr } => {
                 let src = self.visit_expression(expr);
-                let dest = self.create_variable(expression.id);
+                let dest = self.allocate_register();
                 let instruction = Instruction::Not { dest, src };
 
                 self.emit_instruction(instruction);
@@ -319,7 +340,7 @@ impl<'a> FunctionContext<'a> {
             } => {
                 let src1 = self.visit_expression(left);
                 let src2 = self.visit_expression(right);
-                let dest = self.create_variable(expression.id);
+                let dest = self.allocate_register();
 
                 let instruction = match operator.kind {
                     BinaryOpKind::Add => Instruction::Add { dest, src1, src2 },
@@ -342,7 +363,7 @@ impl<'a> FunctionContext<'a> {
             }
             ExprKind::Unary { right, operator } => {
                 let src = self.visit_expression(right);
-                let dest = self.create_variable(expression.id);
+                let dest = self.allocate_register();
 
                 let instruction = match operator.kind {
                     UnaryOpKind::Negate => Instruction::Negate { dest, src },
@@ -353,17 +374,17 @@ impl<'a> FunctionContext<'a> {
                 dest
             }
             ExprKind::FunctionCall { callee, arguments } => {
-                let dest = self.create_variable(expression.id);
+                let dest = self.allocate_register();
 
                 let arguments_src = arguments
                     .iter()
                     .map(|argument| self.visit_expression(argument))
-                    .collect::<Vec<Operand>>();
+                    .collect::<Vec<Register>>();
 
                 let src = self.visit_expression(callee);
 
                 for (index, src) in arguments_src.iter().copied().enumerate() {
-                    let dest = Operand::Variable(index);
+                    let dest = Register(index);
                     let instruction = Instruction::MoveArg { dest, src };
 
                     self.emit_instruction(instruction);
@@ -376,7 +397,7 @@ impl<'a> FunctionContext<'a> {
                 dest
             }
             ExprKind::MemberAccess { object, property } => {
-                let dest = self.create_variable(expression.id);
+                let dest = self.allocate_register();
 
                 let object = self.visit_expression(object);
                 let key = self.visit_expression(property);
@@ -387,7 +408,7 @@ impl<'a> FunctionContext<'a> {
                 dest
             }
             ExprKind::Variable(id) => *self
-                .variables
+                .registers
                 .get(id)
                 .expect("Variable not found for NodeId"),
 
@@ -397,13 +418,38 @@ impl<'a> FunctionContext<'a> {
                     .get(id)
                     .expect("FunctionRef points to a missing variable node");
 
-                self.constant_pool.push_function(value)
+                let src = self.constant_pool.push_function(value);
+                let dest = self.allocate_register();
+
+                self.emit_instruction(Instruction::LoadConst { dest, src });
+                dest
             }
-            ExprKind::String(value) => self.constant_pool.push_string(value.to_owned()),
-            ExprKind::Boolean(value) => self.constant_pool.push_boolean(*value),
-            ExprKind::Number(value) => self.constant_pool.push_number(*value),
+
+            ExprKind::String(value) => {
+                let src = self.constant_pool.push_string(value.to_owned());
+                let dest = self.allocate_register();
+
+                self.emit_instruction(Instruction::LoadConst { dest, src });
+                dest
+            }
+
+            ExprKind::Boolean(value) => {
+                let src = self.constant_pool.push_boolean(*value);
+                let dest = self.allocate_register();
+
+                self.emit_instruction(Instruction::LoadConst { dest, src });
+                dest
+            }
+
+            ExprKind::Number(value) => {
+                let src = self.constant_pool.push_number(*value);
+                let dest = self.allocate_register();
+
+                self.emit_instruction(Instruction::LoadConst { dest, src });
+                dest
+            }
             ExprKind::DictLiteral { fields } => {
-                let dest = self.create_variable(expression.id);
+                let dest = self.allocate_register();
                 let instruction = Instruction::CreateDict { dest };
 
                 self.emit_instruction(instruction);

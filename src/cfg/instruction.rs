@@ -1,106 +1,110 @@
 use core::fmt;
 use std::fmt::{Display, Formatter};
 
-use super::operand::Operand;
+use super::{constant_pool::ConstantIndex, register::Register};
 
 #[derive(Debug, Clone)]
 pub enum Instruction {
     Add {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
     Subtract {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
     Multiply {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
     Divide {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
     Modulo {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
     Power {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
     Equal {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
     NotEqual {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
     Greater {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
     GreaterEqual {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
     Less {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
     LessEqual {
-        dest: Operand,
-        src1: Operand,
-        src2: Operand,
+        dest: Register,
+        src1: Register,
+        src2: Register,
     },
 
     Negate {
-        dest: Operand,
-        src: Operand,
+        dest: Register,
+        src: Register,
     },
     Not {
-        dest: Operand,
-        src: Operand,
+        dest: Register,
+        src: Register,
     },
     Move {
-        dest: Operand,
-        src: Operand,
+        dest: Register,
+        src: Register,
+    },
+    LoadConst {
+        dest: Register,
+        src: ConstantIndex,
     },
     MoveArg {
-        dest: Operand,
-        src: Operand,
+        dest: Register,
+        src: Register,
     },
     CreateDict {
-        dest: Operand,
+        dest: Register,
     },
     SetField {
-        object: Operand,
-        key: Operand,
-        value: Operand,
+        object: Register,
+        key: Register,
+        value: Register,
     },
     GetField {
-        dest: Operand,
-        object: Operand,
-        key: Operand,
+        dest: Register,
+        object: Register,
+        key: Register,
     },
     Call {
-        dest: Operand,
-        func: Operand,
+        dest: Register,
+        func: Register,
     },
     Print {
-        src: Operand,
+        src: Register,
     },
 }
 
@@ -109,77 +113,35 @@ impl Display for Instruction {
         use Instruction::*;
 
         match self {
-            Add { dest, src1, src2 } => {
-                write!(f, "ADD {} {} {}", dest, src1, src2)
-            }
-            Subtract { dest, src1, src2 } => {
-                write!(f, "SUB {} {} {}", dest, src1, src2)
-            }
-            Multiply { dest, src1, src2 } => {
-                write!(f, "MUL {} {} {}", dest, src1, src2)
-            }
-            Divide { dest, src1, src2 } => {
-                write!(f, "DIV {} {} {}", dest, src1, src2)
-            }
-            Modulo { dest, src1, src2 } => {
-                write!(f, "MOD {} {} {}", dest, src1, src2)
-            }
-            Power { dest, src1, src2 } => {
-                write!(f, "POW {} {} {}", dest, src1, src2)
-            }
-            Equal { dest, src1, src2 } => {
-                write!(f, "EQ {} {} {}", dest, src1, src2)
-            }
-            NotEqual { dest, src1, src2 } => {
-                write!(f, "NEQ {} {} {}", dest, src1, src2)
-            }
-            Greater { dest, src1, src2 } => {
-                write!(f, "GT {} {} {}", dest, src1, src2)
-            }
-            GreaterEqual { dest, src1, src2 } => {
-                write!(f, "GTE {} {} {}", dest, src1, src2)
-            }
-            Less { dest, src1, src2 } => {
-                write!(f, "LT {} {} {}", dest, src1, src2)
-            }
-            LessEqual { dest, src1, src2 } => {
-                write!(f, "LTE {} {} {}", dest, src1, src2)
-            }
+            Add { dest, src1, src2 } => write!(f, "ADD {} {} {}", dest, src1, src2),
+            Subtract { dest, src1, src2 } => write!(f, "SUB {} {} {}", dest, src1, src2),
+            Multiply { dest, src1, src2 } => write!(f, "MUL {} {} {}", dest, src1, src2),
+            Divide { dest, src1, src2 } => write!(f, "DIV {} {} {}", dest, src1, src2),
+            Modulo { dest, src1, src2 } => write!(f, "MOD {} {} {}", dest, src1, src2),
+            Power { dest, src1, src2 } => write!(f, "POW {} {} {}", dest, src1, src2),
+            Equal { dest, src1, src2 } => write!(f, "EQ {} {} {}", dest, src1, src2),
+            NotEqual { dest, src1, src2 } => write!(f, "NEQ {} {} {}", dest, src1, src2),
+            Greater { dest, src1, src2 } => write!(f, "GT {} {} {}", dest, src1, src2),
+            GreaterEqual { dest, src1, src2 } => write!(f, "GTE {} {} {}", dest, src1, src2),
+            Less { dest, src1, src2 } => write!(f, "LT {} {} {}", dest, src1, src2),
+            LessEqual { dest, src1, src2 } => write!(f, "LTE {} {} {}", dest, src1, src2),
 
-            Negate { dest, src } => {
-                write!(f, "NEG {} {}", dest, src)
-            }
-            Not { dest, src } => {
-                write!(f, "NOT {} {}", dest, src)
-            }
+            Negate { dest, src } => write!(f, "NEG {} {}", dest, src),
+            Not { dest, src } => write!(f, "NOT {} {}", dest, src),
+            Move { dest, src } => write!(f, "MOV {} {}", dest, src),
 
-            Move { dest, src } => {
-                write!(f, "MOV {} {}", dest, src)
-            }
+            LoadConst { dest, src } => write!(f, "LOADK {} {}", dest, src),
 
-            MoveArg { dest, src } => {
-                write!(f, "MOV_ARG {} {}", dest, src)
-            }
-
-            CreateDict { dest } => {
-                write!(f, "NEWDICT {}", dest)
-            }
-
+            MoveArg { dest, src } => write!(f, "MOV_ARG {} {}", dest, src),
+            CreateDict { dest } => write!(f, "NEWDICT {}", dest),
             SetField { object, key, value } => {
                 write!(f, "SETFIELD {} {} {}", object, key, value)
             }
-
             GetField { dest, object, key } => {
                 write!(f, "GETFIELD {} {} {}", dest, object, key)
             }
-
-            Call { dest, func } => {
-                write!(f, "CALL {} {}", dest, func)
-            }
-
-            Print { src } => {
-                write!(f, "PRINT {}", src)
-            }
+            Call { dest, func } => write!(f, "CALL {} {}", dest, func),
+            Print { src } => write!(f, "PRINT {}", src),
         }
     }
 }
