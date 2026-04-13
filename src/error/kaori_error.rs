@@ -12,6 +12,7 @@ macro_rules! kaori_error {
     };
 }
 
+#[derive(Clone)]
 pub struct KaoriError {
     pub span: Span,
     pub message: String,
