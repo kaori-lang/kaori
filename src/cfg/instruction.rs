@@ -104,172 +104,81 @@ pub enum Instruction {
     },
 }
 
-fn fmt_operand(op: &Operand) -> String {
-    match op {
-        Operand::Variable(i) => format!("r{}", i),
-        Operand::Constant(i) => format!("k{}", i),
-    }
-}
-
 impl Display for Instruction {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         use Instruction::*;
 
         match self {
             Add { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "ADD {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "ADD {} {} {}", dest, src1, src2)
             }
             Subtract { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "SUB {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "SUB {} {} {}", dest, src1, src2)
             }
             Multiply { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "MUL {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "MUL {} {} {}", dest, src1, src2)
             }
             Divide { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "DIV {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "DIV {} {} {}", dest, src1, src2)
             }
             Modulo { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "MOD {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "MOD {} {} {}", dest, src1, src2)
             }
             Power { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "POW {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "POW {} {} {}", dest, src1, src2)
             }
             Equal { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "EQ {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "EQ {} {} {}", dest, src1, src2)
             }
             NotEqual { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "NEQ {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "NEQ {} {} {}", dest, src1, src2)
             }
             Greater { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "GT {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "GT {} {} {}", dest, src1, src2)
             }
             GreaterEqual { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "GTE {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "GTE {} {} {}", dest, src1, src2)
             }
             Less { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "LT {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "LT {} {} {}", dest, src1, src2)
             }
             LessEqual { dest, src1, src2 } => {
-                write!(
-                    f,
-                    "LTE {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(src1),
-                    fmt_operand(src2)
-                )
+                write!(f, "LTE {} {} {}", dest, src1, src2)
             }
 
             Negate { dest, src } => {
-                write!(f, "NEG {} {}", fmt_operand(dest), fmt_operand(src))
+                write!(f, "NEG {} {}", dest, src)
             }
             Not { dest, src } => {
-                write!(f, "NOT {} {}", fmt_operand(dest), fmt_operand(src))
+                write!(f, "NOT {} {}", dest, src)
             }
 
             Move { dest, src } => {
-                write!(f, "MOV {} {}", fmt_operand(dest), fmt_operand(src))
+                write!(f, "MOV {} {}", dest, src)
             }
 
             MoveArg { dest, src } => {
-                write!(f, "MOV_ARG {} {}", fmt_operand(dest), fmt_operand(src))
+                write!(f, "MOV_ARG {} {}", dest, src)
             }
 
             CreateDict { dest } => {
-                write!(f, "NEWDICT {}", fmt_operand(dest))
+                write!(f, "NEWDICT {}", dest)
             }
 
             SetField { object, key, value } => {
-                write!(
-                    f,
-                    "SETFIELD {} {} {}",
-                    fmt_operand(object),
-                    fmt_operand(key),
-                    fmt_operand(value)
-                )
+                write!(f, "SETFIELD {} {} {}", object, key, value)
             }
 
             GetField { dest, object, key } => {
-                write!(
-                    f,
-                    "GETFIELD {} {} {}",
-                    fmt_operand(dest),
-                    fmt_operand(object),
-                    fmt_operand(key)
-                )
+                write!(f, "GETFIELD {} {} {}", dest, object, key)
             }
 
             Call { dest, func } => {
-                write!(f, "CALL {} {}", fmt_operand(dest), fmt_operand(func))
+                write!(f, "CALL {} {}", dest, func)
             }
 
             Print { src } => {
-                write!(f, "PRINT {}", fmt_operand(src))
+                write!(f, "PRINT {}", src)
             }
         }
     }

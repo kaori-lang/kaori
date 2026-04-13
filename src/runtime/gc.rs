@@ -1,93 +1,86 @@
-use std::hint::unreachable_unchecked;
-
 use super::value::Value;
 use ahash::AHashMap;
+use std::alloc::{Layout, alloc, dealloc};
+use std::ptr;
 
-struct GcNode {
-    object: GcObject,
-    next: Option<Box<GcNode>>,
+#[repr(C)]
+pub struct GcObject<T> {
+    marked: bool,
+    drop_and_dealloc: unsafe fn(*mut GcObject<()>),
+    object: T,
 }
 
-pub enum GcObject {
-    String(Box<str>),
-    Vec(Box<Vec<Value>>),
-    Dict(Box<AHashMap<Value, Value>>),
+#[repr(C)]
+struct GcHeader {
+    marked: bool,
+    drop_and_dealloc: unsafe fn(*mut GcObject<()>),
 }
 
-impl GcObject {
-    pub fn new_string(value: &str) -> Self {
-        Self::String(Box::from(value))
+impl<T> GcObject<T> {
+    pub fn get(&self) -> &T {
+        &self.object
     }
 
-    pub fn new_vec() -> Self {
-        Self::Vec(Box::default())
+    pub fn get_mut(&mut self) -> &mut T {
+        &mut self.object
     }
 
-    pub fn new_dict() -> Self {
-        Self::Dict(Box::default())
-    }
-
-    #[inline(always)]
-    pub fn as_string(&self) -> &str {
-        let Self::String(value) = self else {
-            unsafe { unreachable_unchecked() }
-        };
-
-        value
-    }
-
-    #[inline(always)]
-    pub fn as_vec(&mut self) -> &mut Vec<Value> {
-        let Self::Vec(value) = self else {
-            unsafe { unreachable_unchecked() }
-        };
-
-        value
-    }
-
-    #[inline(always)]
-    pub fn as_dict(&mut self) -> &mut AHashMap<Value, Value> {
-        let Self::Dict(value) = self else {
-            unsafe { unreachable_unchecked() }
-        };
-
-        value
+    unsafe fn drop_and_dealloc(ptr: *mut GcObject<()>) {
+        unsafe {
+            let typed = ptr as *mut GcObject<T>;
+            ptr::drop_in_place(&mut (*typed).object);
+            dealloc(ptr as *mut u8, Layout::new::<GcObject<T>>());
+        }
     }
 }
 
 #[derive(Default)]
 pub struct Gc {
-    head: Option<Box<GcNode>>,
-    strings_interned: AHashMap<String, *mut GcObject>,
+    heap: Vec<*mut GcObject<()>>,
+    strings_interned: AHashMap<String, *mut GcObject<String>>,
 }
 
 impl Gc {
     pub fn allocate_dict(&mut self) -> Value {
-        Value::dict(self.alloc(GcObject::new_dict()))
+        Value::dict(self.alloc(AHashMap::default()))
     }
 
     pub fn allocate_vec(&mut self) -> Value {
-        Value::vec(self.alloc(GcObject::new_vec()))
+        Value::vec(self.alloc(Vec::default()))
     }
 
     pub fn allocate_string(&mut self, s: &str) -> Value {
         if let Some(&ptr) = self.strings_interned.get(s) {
             return Value::string(ptr);
         }
-
-        let ptr = self.alloc(GcObject::new_string(s));
+        let ptr = self.alloc(s.to_owned());
         self.strings_interned.insert(s.to_owned(), ptr);
-
         Value::string(ptr)
     }
 
-    fn alloc(&mut self, object: GcObject) -> *mut GcObject {
-        let mut node = Box::new(GcNode {
-            object,
-            next: self.head.take(),
-        });
-        let ptr: *mut GcObject = &mut node.object;
-        self.head = Some(node);
-        ptr
+    fn alloc<T>(&mut self, object: T) -> *mut GcObject<T> {
+        unsafe {
+            let layout = Layout::new::<GcObject<T>>();
+            let raw = alloc(layout) as *mut GcObject<T>;
+            assert!(!raw.is_null(), "allocation failed");
+            raw.write(GcObject {
+                marked: false,
+                drop_and_dealloc: GcObject::<T>::drop_and_dealloc,
+                object,
+            });
+            self.heap.push(raw as *mut GcObject<()>);
+            raw
+        }
+    }
+}
+
+impl Drop for Gc {
+    fn drop(&mut self) {
+        unsafe {
+            for &ptr in &self.heap {
+                let header = &*(ptr as *mut GcHeader);
+                (header.drop_and_dealloc)(ptr);
+            }
+        }
     }
 }

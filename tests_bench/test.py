@@ -12,4 +12,4 @@ def foo():
 
 a = Cat(2)
 
-foo() = 5
+print(a.b)

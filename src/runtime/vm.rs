@@ -1,15 +1,18 @@
 use std::hint::unreachable_unchecked;
 
-use crate::{bytecode::instruction::Instruction, runtime::value::Value};
-
 use super::{function::Function, gc::Gc};
+use crate::error::kaori_error::KaoriError;
+use crate::kaori_error;
+use crate::lexer::span::Span;
+use crate::runtime::value::{TYPE_BOOLEAN, TYPE_DICT, TYPE_FUNCTION, TYPE_NUMBER};
+use crate::{bytecode::instruction::Instruction, runtime::value::Value};
 
 type Handler = fn(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value;
+) -> Result<Value, KaoriError>;
 
 macro_rules! dispatch_next {
     ($ip:expr, $vm:expr, $registers:expr, $constants:expr) => {{
@@ -24,6 +27,13 @@ macro_rules! dispatch_offset {
         let ip: *const Instruction = $ip.offset($offset as i16 as isize);
         let index = (*ip).discriminant();
         become OPCODE_HANDLERS[index](ip, $vm, $registers, $constants);
+    }};
+}
+
+macro_rules! type_error {
+    ($($arg:tt)*) => {{
+        core::hint::cold_path();
+        Err(kaori_error!(Span::default(), $($arg)*))
     }};
 }
 
@@ -69,24 +79,25 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self, entry: &Function) {
+    pub fn run(&mut self, entry: &Function) -> Result<(), KaoriError> {
         let Function {
             instructions,
             registers_count,
             constants,
         } = entry;
 
-        let registers = self.push_frame(*registers_count as usize);
+        let registers = self.push_frame(*registers_count as usize)?;
         let constants = constants.as_ptr();
         let ip = instructions.as_ptr();
         let index = unsafe { (*ip).discriminant() };
 
-        OPCODE_HANDLERS[index](ip, self, registers, constants);
+        OPCODE_HANDLERS[index](ip, self, registers, constants)?;
 
         self.pop_frame();
+        Ok(())
     }
 
-    pub fn push_frame(&mut self, size: usize) -> *mut Value {
+    pub fn push_frame(&mut self, size: usize) -> Result<*mut Value, KaoriError> {
         let offset = self
             .frames
             .last()
@@ -97,7 +108,7 @@ impl Vm {
 
         let ptr = unsafe { self.registers.as_mut_ptr().add(offset) };
         self.frames.push((ptr, size));
-        ptr
+        Ok(ptr)
     }
 
     pub fn pop_frame(&mut self) {
@@ -129,7 +140,7 @@ fn opcode_move(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Move { dest, src } = *ip else {
             unreachable_unchecked()
@@ -147,17 +158,29 @@ fn opcode_add(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Add { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::number(lhs + rhs), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::number(lhs.as_number() + rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot add {:?} and {:?}, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
     }
 }
 
@@ -167,17 +190,29 @@ fn opcode_subtract(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Subtract { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::number(lhs - rhs), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::number(lhs.as_number() - rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot subtract {:?} from {:?}, both operands must be numbers",
+                rhs,
+                lhs
+            )
+        }
     }
 }
 
@@ -187,17 +222,29 @@ fn opcode_multiply(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Multiply { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::number(lhs * rhs), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::number(lhs.as_number() * rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot multiply {:?} and {:?}, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
     }
 }
 
@@ -207,17 +254,29 @@ fn opcode_divide(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Divide { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::number(lhs / rhs), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::number(lhs.as_number() / rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot divide {:?} by {:?}, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
     }
 }
 
@@ -227,17 +286,29 @@ fn opcode_modulo(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Modulo { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::number(lhs % rhs), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::number(lhs.as_number() % rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compute {:?} modulo {:?}, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
     }
 }
 
@@ -247,17 +318,29 @@ fn opcode_power(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Power { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::number(lhs.powf(rhs)), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::number(lhs.as_number().powf(rhs.as_number())),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot raise {:?} to the power of {:?}, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
     }
 }
 
@@ -267,17 +350,29 @@ fn opcode_equal(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Equal { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::boolean(lhs == rhs), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() == rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with ==, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
     }
 }
 
@@ -287,17 +382,29 @@ fn opcode_not_equal(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::NotEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::boolean(lhs != rhs), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() != rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with !=, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
     }
 }
 
@@ -307,17 +414,29 @@ fn opcode_greater(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Greater { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::boolean(lhs > rhs), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() > rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with >, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
     }
 }
 
@@ -327,17 +446,29 @@ fn opcode_greater_equal(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::GreaterEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::boolean(lhs >= rhs), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() >= rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with >=, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
     }
 }
 
@@ -347,17 +478,29 @@ fn opcode_less(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Less { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::boolean(lhs < rhs), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() < rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with <, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
     }
 }
 
@@ -367,17 +510,29 @@ fn opcode_less_equal(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::LessEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
 
-        let lhs = get_value(src1, registers, constants).expect_number();
-        let rhs = get_value(src2, registers, constants).expect_number();
-        set_value(dest, Value::boolean(lhs <= rhs), registers);
+        let lhs = get_value(src1, registers, constants);
+        let rhs = get_value(src2, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() <= rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with <=, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
     }
 }
 
@@ -387,16 +542,20 @@ fn opcode_negate(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Negate { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
-        let value = get_value(src, registers, constants).expect_number();
-        set_value(dest, Value::number(-value), registers);
+        let value = get_value(src, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if value.tag() == TYPE_NUMBER {
+            set_value(dest, Value::number(-value.as_number()), registers);
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!("cannot negate {:?}, operand must be a number", value)
+        }
     }
 }
 
@@ -406,16 +565,20 @@ fn opcode_not(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Not { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
-        let value = get_value(src, registers, constants).expect_boolean();
-        set_value(dest, Value::boolean(!value), registers);
+        let value = get_value(src, registers, constants);
 
-        dispatch_next!(ip, vm, registers, constants)
+        if value.tag() == TYPE_BOOLEAN {
+            set_value(dest, Value::boolean(!value.as_boolean()), registers);
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!("cannot apply ! to {:?}, operand must be a boolean", value)
+        }
     }
 }
 
@@ -425,31 +588,36 @@ fn opcode_call(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Call { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
-        let return_value = {
-            let Function {
-                ref instructions,
-                registers_count,
-                ref constants,
-            } = *get_value(src, registers, constants).expect_function();
+        let callee = get_value(src, registers, constants);
 
-            let registers = vm.push_frame(registers_count as usize);
-            let constants = constants.as_ptr();
-            let ip = instructions.as_ptr();
+        if callee.tag() == TYPE_FUNCTION {
+            let return_value = {
+                let Function {
+                    ref instructions,
+                    registers_count,
+                    ref constants,
+                } = *callee.as_function();
 
-            let index = (*ip).discriminant();
+                let callee_registers = vm.push_frame(registers_count as usize)?;
+                let callee_constants = constants.as_ptr();
+                let callee_ip = instructions.as_ptr();
+                let index = (*callee_ip).discriminant();
 
-            OPCODE_HANDLERS[index](ip, vm, registers, constants)
-        };
+                OPCODE_HANDLERS[index](callee_ip, vm, callee_registers, callee_constants)?
+            };
 
-        set_value(dest, return_value, registers);
+            set_value(dest, return_value, registers);
 
-        dispatch_next!(ip, vm, registers, constants)
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!("cannot call {:?}, value is not a function", callee)
+        }
     }
 }
 
@@ -459,17 +627,16 @@ fn opcode_return(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Return { src } = *ip else {
             unreachable_unchecked()
         };
 
         let value = get_value(src, registers, constants);
-
         vm.pop_frame();
 
-        value
+        Ok(value)
     }
 }
 
@@ -479,7 +646,7 @@ fn opcode_jump(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Jump { offset } = *ip else {
             unreachable_unchecked()
@@ -495,15 +662,25 @@ fn opcode_jump_if_true(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::JumpIfTrue { src, offset } = *ip else {
             unreachable_unchecked()
         };
 
-        match get_value(src, registers, constants).expect_boolean() {
-            true => dispatch_offset!(ip, vm, registers, constants, offset),
-            false => dispatch_next!(ip, vm, registers, constants),
+        let value = get_value(src, registers, constants);
+
+        if value.tag() == TYPE_BOOLEAN {
+            if value.as_boolean() {
+                dispatch_offset!(ip, vm, registers, constants, offset)
+            } else {
+                dispatch_next!(ip, vm, registers, constants)
+            }
+        } else {
+            type_error!(
+                "cannot use {:?} as a condition, value must be a boolean",
+                value
+            )
         }
     }
 }
@@ -514,15 +691,25 @@ fn opcode_jump_if_false(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::JumpIfFalse { src, offset } = *ip else {
             unreachable_unchecked()
         };
 
-        match get_value(src, registers, constants).expect_boolean() {
-            true => dispatch_next!(ip, vm, registers, constants),
-            false => dispatch_offset!(ip, vm, registers, constants, offset),
+        let value = get_value(src, registers, constants);
+
+        if value.tag() == TYPE_BOOLEAN {
+            if value.as_boolean() {
+                dispatch_next!(ip, vm, registers, constants)
+            } else {
+                dispatch_offset!(ip, vm, registers, constants, offset)
+            }
+        } else {
+            type_error!(
+                "cannot use {:?} as a condition, value must be a boolean",
+                value
+            )
         }
     }
 }
@@ -533,15 +720,13 @@ fn opcode_print(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::Print { src } = *ip else {
             unreachable_unchecked()
         };
 
-        let value = get_value(src, registers, constants);
-
-        println!("{:?}", value);
+        println!("{:?}", get_value(src, registers, constants));
 
         dispatch_next!(ip, vm, registers, constants)
     }
@@ -553,14 +738,13 @@ fn opcode_create_dict(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::CreateDict { dest } = *ip else {
             unreachable_unchecked()
         };
 
-        let value = vm.gc.allocate_dict();
-        set_value(dest, value, registers);
+        set_value(dest, vm.gc.allocate_dict(), registers);
 
         dispatch_next!(ip, vm, registers, constants)
     }
@@ -572,7 +756,7 @@ fn opcode_set_field(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::SetField { object, key, value } = *ip else {
             unreachable_unchecked()
@@ -582,9 +766,12 @@ fn opcode_set_field(
         let value = get_value(value, registers, constants);
         let object = get_value(object as i16, registers, constants);
 
-        (*object.as_dict()).insert(key, value);
-
-        dispatch_next!(ip, vm, registers, constants)
+        if object.tag() == TYPE_DICT {
+            object.as_dict().insert(key, value);
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!("cannot set field on {:?}, value is not a dict", object)
+        }
     }
 }
 
@@ -594,7 +781,7 @@ fn opcode_get_field(
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
-) -> Value {
+) -> Result<Value, KaoriError> {
     unsafe {
         let Instruction::GetField { dest, object, key } = *ip else {
             unreachable_unchecked()
@@ -603,10 +790,12 @@ fn opcode_get_field(
         let object = get_value(object, registers, constants);
         let key = get_value(key, registers, constants);
 
-        let value = (*object.as_dict()).get(&key).copied().unwrap_or_default();
-
-        set_value(dest, value, registers);
-
-        dispatch_next!(ip, vm, registers, constants)
+        if object.tag() == TYPE_DICT {
+            let value = object.as_dict().get(&key).copied().unwrap_or_default();
+            set_value(dest, value, registers);
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!("cannot get field from {:?}, value is not a dict", object)
+        }
     }
 }

@@ -70,14 +70,14 @@ pub fn run_program(source: &str) -> Result<(), KaoriError> {
     let functions = from_compiled(bytecode, &mut gc);
 
     /*   for function in functions.iter() {
-           println!("{}", function);
-       }
-    */
+        println!("{}", function);
+    } */
+
     let start = Instant::now();
 
     let mut vm = Vm::new(gc);
     let entry = &functions[0];
-    vm.run(entry);
+    vm.run(entry)?;
 
     let elapsed = start.elapsed();
 
