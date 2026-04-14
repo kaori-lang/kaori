@@ -17,7 +17,6 @@ use super::{
     constant_pool::ConstantPool,
     function::{Function, FunctionId},
     instruction::Instruction,
-    register::Register,
 };
 
 pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, KaoriError> {
@@ -370,18 +369,17 @@ impl<'a> FunctionContext<'a> {
                 let arguments_src = arguments
                     .iter()
                     .map(|argument| self.visit_expression(argument))
-                    .collect::<Vec<Register>>();
+                    .collect::<Vec<u8>>();
 
                 let src = self.visit_expression(callee);
 
-                for (index, src) in arguments_src.iter().copied().enumerate() {
-                    let dest = Register(index);
+                for (dest, src) in arguments_src.iter().copied().enumerate() {
                     let instruction = Instruction::MoveArg { dest, src };
 
                     self.emit_instruction(instruction);
                 }
 
-                let instruction = Instruction::Call { dest, func: src };
+                let instruction = Instruction::Call { dest, src };
 
                 self.emit_instruction(instruction);
 

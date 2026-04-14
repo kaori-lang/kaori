@@ -5,3 +5,4 @@ pub mod instruction;
 pub use function::Function;
 
 pub use function::Constant;
+pub mod emit;
