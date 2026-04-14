@@ -256,13 +256,8 @@ impl<'a> FunctionContext<'a> {
                 register
             }
             ExprKind::DeclareAssign { id, right } => {
-                let src = self.visit_expression(right);
-                let dest = self.allocate_register();
+                let dest = self.visit_expression(right);
                 self.registers.insert(*id, dest);
-
-                let instruction = Instruction::Move { dest, src };
-
-                self.emit_instruction(instruction);
 
                 dest
             }
@@ -275,52 +270,44 @@ impl<'a> FunctionContext<'a> {
                 dest
             }
             ExprKind::LogicalAnd { left, right } => {
-                let dest = self.allocate_register();
+                let dest = self.visit_expression(left);
 
-                let src1 = self.visit_expression(left);
-                self.emit_instruction(Instruction::Move { dest, src: src1 });
-
-                let src2_bb = self.create_bb();
-                let terminator = self.create_bb();
+                let true_bb = self.create_bb();
+                let false_bb = self.create_bb();
 
                 self.set_terminator(Terminator::Branch {
                     src: dest,
-                    r#true: src2_bb,
-                    r#false: terminator,
+                    r#true: true_bb,
+                    r#false: false_bb,
                 });
 
-                self.index = src2_bb;
+                self.index = true_bb;
+                let src = self.visit_expression(right);
+                self.emit_instruction(Instruction::Move { dest, src });
+                self.set_terminator(Terminator::Goto(false_bb));
 
-                let src2 = self.visit_expression(right);
-                self.emit_instruction(Instruction::Move { dest, src: src2 });
-
-                self.set_terminator(Terminator::Goto(terminator));
-                self.index = terminator;
+                self.index = false_bb;
 
                 dest
             }
             ExprKind::LogicalOr { left, right } => {
-                let dest = self.allocate_register();
+                let dest = self.visit_expression(left);
 
-                let src1 = self.visit_expression(left);
-                self.emit_instruction(Instruction::Move { dest, src: src1 });
-
-                let src2_bb = self.create_bb();
-                let terminator = self.create_bb();
+                let true_bb = self.create_bb();
+                let false_bb = self.create_bb();
 
                 self.set_terminator(Terminator::Branch {
                     src: dest,
-                    r#true: terminator,
-                    r#false: src2_bb,
+                    r#true: true_bb,
+                    r#false: false_bb,
                 });
 
-                self.index = src2_bb;
+                self.index = false_bb;
+                let src = self.visit_expression(right);
+                self.emit_instruction(Instruction::Move { dest, src });
+                self.set_terminator(Terminator::Goto(true_bb));
 
-                let src2 = self.visit_expression(right);
-                self.emit_instruction(Instruction::Move { dest, src: src2 });
-
-                self.set_terminator(Terminator::Goto(terminator));
-                self.index = terminator;
+                self.index = true_bb;
 
                 dest
             }

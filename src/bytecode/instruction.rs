@@ -87,7 +87,6 @@ impl fmt::Display for Instruction {
             Instruction::LoadConst { dest, src } => {
                 write!(f, "LOADK r{} k{}", dest, src)
             }
-
             Instruction::CreateDict { dest } => {
                 write!(f, "CREATE_DICT r{}", dest)
             }
@@ -100,11 +99,9 @@ impl fmt::Display for Instruction {
             Instruction::Call { dest, src } => {
                 write!(f, "CALL r{} r{}", dest, src)
             }
-
             Instruction::Return { src } => {
                 write!(f, "RET r{}", src)
             }
-
             Instruction::Jump { offset } => {
                 write!(f, "JMP {}", offset)
             }
@@ -114,7 +111,6 @@ impl fmt::Display for Instruction {
             Instruction::JumpIfFalse { src, offset } => {
                 write!(f, "JMP_IF_FALSE r{} {}", src, offset)
             }
-
             Instruction::Print { src } => {
                 write!(f, "PRINT r{}", src)
             }

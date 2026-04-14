@@ -6,7 +6,7 @@ local function fib(n)
 end
 
 local start = os.clock()
-fib(35)
+fib(30)
 
 local elapsed = (os.clock() - start) * 1000
 print(elapsed)

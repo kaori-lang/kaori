@@ -24,8 +24,8 @@ pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Vec<Function> {
 
             let instructions = context.emit_instructions();
 
-            let constant_pool = function
-                .constant_pool
+            let constants = function
+                .constants
                 .iter()
                 .map(|constant| match constant {
                     cfg::Constant::Boolean(value) => Constant::Boolean(*value),
@@ -42,7 +42,7 @@ pub fn emit_bytecode(functions: Vec<cfg::Function>) -> Vec<Function> {
 
             let registers_count = function.registers_count as u8;
 
-            Function::new(instructions, registers_count, constant_pool)
+            Function::new(instructions, registers_count, constants)
         })
         .collect::<Vec<Function>>()
 }
