@@ -11,23 +11,20 @@ use crate::{
     },
 };
 
-use super::{
-    active_loops::ActiveLoops,
-    basic_block::{BasicBlock, Terminator},
-    constant_pool::ConstantPool,
-    function::{Function, FunctionId},
-    instruction::Instruction,
-};
+use super::{constants::Constants, function::Function, instruction::Instruction};
 
 pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, KaoriError> {
     let mut node_to_function = HashMap::new();
 
+    let counter: usize = 0;
     for declaration in declarations {
         match &declaration.kind {
             DeclKind::Function { .. } => {
-                node_to_function.insert(declaration.id, FunctionId::default());
+                node_to_function.insert(declaration.id, counter);
             }
         }
+
+        counter += 1;
     }
 
     let mut functions = Vec::new();
@@ -44,7 +41,7 @@ pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, Kao
                 let function = Function::new(
                     id,
                     ctx.basic_blocks,
-                    ctx.constant_pool.constants,
+                    ctx.constants.constants,
                     ctx.next_register,
                 );
 
@@ -57,30 +54,28 @@ pub fn build_functions_graph(declarations: &[Decl]) -> Result<Vec<Function>, Kao
 }
 
 pub struct FunctionContext<'a> {
-    index: usize,
-    next_register: usize,
-    registers: HashMap<NodeId, Register>,
-    constant_pool: ConstantPool,
-    basic_blocks: Vec<BasicBlock>,
+    next_register: u8,
+    registers: HashMap<NodeId, u8>,
+    constants: Constants,
+    instructions: Vec<Instruction>,
     active_loops: ActiveLoops,
-    node_to_function: &'a HashMap<NodeId, FunctionId>,
+    node_to_function: &'a HashMap<NodeId, usize>,
 }
 
 impl<'a> FunctionContext<'a> {
-    pub fn new(node_to_function: &'a HashMap<NodeId, FunctionId>) -> Self {
+    pub fn new(node_to_function: &'a HashMap<NodeId, usize>) -> Self {
         Self {
-            index: 0,
             registers: HashMap::new(),
             next_register: 0,
-            constant_pool: ConstantPool::default(),
-            basic_blocks: Vec::new(),
+            constants: Constants::default(),
+            instructions: Vec::new(),
             active_loops: ActiveLoops::default(),
             node_to_function,
         }
     }
 
-    pub fn allocate_register(&mut self) -> Register {
-        let register = Register(self.next_register);
+    pub fn allocate_register(&mut self) -> u8 {
+        let register = self.next_register;
 
         self.next_register += 1;
 
@@ -88,32 +83,12 @@ impl<'a> FunctionContext<'a> {
     }
 
     fn emit_instruction(&mut self, instruction: Instruction) {
-        let basic_block = &mut self.basic_blocks[self.index];
-        if basic_block.terminator.is_none() {
-            basic_block.instructions.push(instruction);
-        };
-    }
-
-    fn set_terminator(&mut self, terminator: Terminator) {
-        let basic_block = &mut self.basic_blocks[self.index];
-        if basic_block.terminator.is_none() {
-            basic_block.terminator = Some(terminator);
-        }
-    }
-
-    fn create_bb(&mut self) -> usize {
-        let index = self.basic_blocks.len();
-        let basic_block = BasicBlock::default();
-        self.basic_blocks.push(basic_block);
-
-        index
+        self.instructions.push(instruction);
     }
 
     fn visit_declaration(&mut self, declaration: &Decl) -> Result<(), KaoriError> {
         match &declaration.kind {
             DeclKind::Function { body, parameters } => {
-                let _entry_bb = self.create_bb();
-
                 for parameter in parameters {
                     self.visit_expression(parameter);
                 }
@@ -122,12 +97,12 @@ impl<'a> FunctionContext<'a> {
                     self.visit_statement(statement)?;
                 }
 
-                let src = self.constant_pool.push_nil();
+                let src = self.constants.push_nil();
                 let dest = self.allocate_register();
 
                 self.emit_instruction(Instruction::LoadConst { dest, src });
 
-                self.set_terminator(Terminator::Return { src: dest });
+                self.emit_instruction(Instruction::Return { src: dest });
             }
         };
 
@@ -155,82 +130,20 @@ impl<'a> FunctionContext<'a> {
                 else_branch,
             } => {
                 let src = self.visit_expression(condition);
-
-                let then_bb = self.create_bb();
-                let else_bb = self.create_bb();
-                let terminator_block = self.create_bb();
-
-                self.set_terminator(Terminator::Branch {
-                    src,
-                    r#true: then_bb,
-                    r#false: else_bb,
-                });
-
-                self.index = then_bb;
-                self.visit_statement(then_branch)?;
-                self.set_terminator(Terminator::Goto(terminator_block));
-
-                self.index = else_bb;
-                if let Some(branch) = else_branch {
-                    self.visit_statement(branch)?;
-                }
-
-                self.set_terminator(Terminator::Goto(terminator_block));
-
-                self.index = terminator_block;
             }
             StmtKind::Loop {
                 init,
                 condition,
                 block,
                 increment,
-            } => {
-                if let Some(init) = init {
-                    self.visit_expression(init);
-                }
-
-                let condition_bb = self.create_bb();
-                let block_bb = self.create_bb();
-                let terminator_bb = self.create_bb();
-                let increment_bb = self.create_bb();
-
-                self.set_terminator(Terminator::Goto(condition_bb));
-
-                self.index = condition_bb;
-                let src = self.visit_expression(condition);
-                self.set_terminator(Terminator::Branch {
-                    src,
-                    r#true: block_bb,
-                    r#false: terminator_bb,
-                });
-
-                self.index = block_bb;
-                self.active_loops.push(increment_bb, terminator_bb);
-                self.visit_statement(block)?;
-                self.active_loops.pop();
-                self.set_terminator(Terminator::Goto(increment_bb));
-
-                self.index = increment_bb;
-                if let Some(increment) = increment {
-                    self.visit_statement(increment)?;
-                }
-                self.set_terminator(Terminator::Goto(condition_bb));
-
-                self.index = terminator_bb;
-            }
-            StmtKind::Break => {
-                let label = self.active_loops.top();
-                self.set_terminator(Terminator::Goto(label.terminator_bb_index));
-            }
-            StmtKind::Continue => {
-                let label = self.active_loops.top();
-                self.set_terminator(Terminator::Goto(label.increment_bb_index));
-            }
+            } => {}
+            StmtKind::Break => {}
+            StmtKind::Continue => {}
             StmtKind::Return(expr) => {
                 let src = if let Some(expr) = expr {
                     self.visit_expression(expr)
                 } else {
-                    let src = self.constant_pool.push_nil();
+                    let src = self.constants.push_nil();
 
                     let dest = self.allocate_register();
                     let instruction = Instruction::LoadConst { dest, src };
@@ -239,14 +152,14 @@ impl<'a> FunctionContext<'a> {
                     dest
                 };
 
-                self.set_terminator(Terminator::Return { src });
+                self.emit_instruction(Instruction::Return { src });
             }
         };
 
         Ok(())
     }
 
-    fn visit_expression(&mut self, expression: &Expr) -> Register {
+    fn visit_expression(&mut self, expression: &Expr) -> u8 {
         match &expression.kind {
             ExprKind::Parameter(id) => {
                 let register = self.allocate_register();
@@ -374,7 +287,10 @@ impl<'a> FunctionContext<'a> {
                 let src = self.visit_expression(callee);
 
                 for (dest, src) in arguments_src.iter().copied().enumerate() {
-                    let instruction = Instruction::MoveArg { dest, src };
+                    let instruction = Instruction::Move {
+                        dest: dest as u8,
+                        src,
+                    };
 
                     self.emit_instruction(instruction);
                 }
@@ -402,12 +318,12 @@ impl<'a> FunctionContext<'a> {
                 .expect("Variable not found for NodeId"),
 
             ExprKind::Function(id) => {
-                let value = *self
+                let index = *self
                     .node_to_function
                     .get(id)
                     .expect("FunctionRef points to a missing variable node");
 
-                let src = self.constant_pool.push_function(value);
+                let src = self.constants.push_function_index(index);
                 let dest = self.allocate_register();
 
                 self.emit_instruction(Instruction::LoadConst { dest, src });
@@ -415,7 +331,7 @@ impl<'a> FunctionContext<'a> {
             }
 
             ExprKind::String(value) => {
-                let src = self.constant_pool.push_string(value.to_owned());
+                let src = self.constants.push_string(value.to_owned());
                 let dest = self.allocate_register();
 
                 self.emit_instruction(Instruction::LoadConst { dest, src });
@@ -423,7 +339,7 @@ impl<'a> FunctionContext<'a> {
             }
 
             ExprKind::Boolean(value) => {
-                let src = self.constant_pool.push_boolean(*value);
+                let src = self.constants.push_boolean(*value);
                 let dest = self.allocate_register();
 
                 self.emit_instruction(Instruction::LoadConst { dest, src });
@@ -431,7 +347,7 @@ impl<'a> FunctionContext<'a> {
             }
 
             ExprKind::Number(value) => {
-                let src = self.constant_pool.push_number(*value);
+                let src = self.constants.push_number(*value);
                 let dest = self.allocate_register();
 
                 self.emit_instruction(Instruction::LoadConst { dest, src });
