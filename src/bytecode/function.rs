@@ -1,3 +1,5 @@
+use std::fmt::{self, Display, Formatter};
+
 use super::{constants::Constant, instruction::Instruction};
 
 pub struct Function {
@@ -17,5 +19,16 @@ impl Function {
             registers_count,
             constants,
         }
+    }
+}
+
+impl Display for Function {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "CONSTANTS: {:?}", self.constants)?;
+        for (ip, instr) in self.instructions.iter().enumerate() {
+            writeln!(f, "{:04}  {:?}", ip, instr)?;
+        }
+        writeln!(f)?;
+        Ok(())
     }
 }

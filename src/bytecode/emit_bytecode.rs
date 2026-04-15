@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-use super::{constants::Constants, function::Function, instruction::Instruction};
+use super::{constants::Constants, function::Function, instruction::Instruction, operand::Operand};
 
 pub fn emit_bytecode(declarations: &[Decl]) -> Result<Vec<Function>, KaoriError> {
     let mut node_to_function = HashMap::new();
@@ -38,7 +38,8 @@ pub fn emit_bytecode(declarations: &[Decl]) -> Result<Vec<Function>, KaoriError>
 
                 ctx.visit_declaration(declaration)?;
 
-                let function = Function::new(ctx.instructions, ctx.next_register, ctx.constants.0);
+                let function =
+                    Function::new(ctx.instructions, ctx.next_register as u8, ctx.constants.0);
 
                 functions.push(function);
             }
@@ -50,7 +51,7 @@ pub fn emit_bytecode(declarations: &[Decl]) -> Result<Vec<Function>, KaoriError>
 
 pub struct FunctionContext<'a> {
     next_register: u8,
-    registers: HashMap<NodeId, u8>,
+    registers: HashMap<NodeId, Operand>,
     constants: Constants,
     instructions: Vec<Instruction>,
     node_to_function: &'a HashMap<NodeId, usize>,
@@ -73,36 +74,133 @@ impl<'a> FunctionContext<'a> {
         }
     }
 
-    pub fn allocate_register(&mut self) -> u8 {
+    pub fn allocate_register(&mut self) -> Operand {
         let register = self.next_register;
         self.next_register += 1;
-        register
+        Operand::Register(register)
     }
 
     fn emit_instruction(&mut self, instruction: Instruction) -> usize {
         let index = self.instructions.len();
-
         self.instructions.push(instruction);
-
         index
     }
 
     fn patch_jump(&mut self, index: usize) {
         let offset = self.instructions.len() as i16 - index as i16;
-
+    
         match &mut self.instructions[index] {
-            Instruction::JumpIfFalse { offset: o, .. } => *o = offset,
-            Instruction::JumpIfTrue { offset: o, .. } => *o = offset,
             Instruction::Jump { offset: o } => *o = offset,
+            Instruction::JumpIfTrueR { offset: o, .. }
+            | Instruction::JumpIfTrueK { offset: o, .. }
+            | Instruction::JumpIfFalseR { offset: o, .. }
+            | Instruction::JumpIfFalseK { offset: o, .. } => {
+                *o = offset;
+            }
+    
             _ => panic!("tried to patch a non-jump instruction at index {index}"),
         }
     }
 
     fn patch_arguments(&mut self) {
         for index in self.pending_arguments.iter().copied() {
-            if let Instruction::Move { dest, src } = &mut self.instructions[index] {
-                *dest += self.next_register;
+            match &mut self.instructions[index] {
+                Instruction::MoveR { dest, .. }
+                | Instruction::MoveK { dest, .. } => {
+                    *dest += self.next_register as u8;
+                }
+    
+                _ => unreachable!("pending_arguments should only contain Move instructions"),
             }
+        }
+    }
+
+    fn mutate_dest(instr: &mut Instruction, register: u8) {
+      
+    
+        match instr {
+            // ===== Binary Ops =====
+            Instruction::AddRR { dest, .. }
+            | Instruction::AddRK { dest, .. }
+            | Instruction::AddKR { dest, .. }
+    
+            | Instruction::SubtractRR { dest, .. }
+            | Instruction::SubtractRK { dest, .. }
+            | Instruction::SubtractKR { dest, .. }
+    
+            | Instruction::MultiplyRR { dest, .. }
+            | Instruction::MultiplyRK { dest, .. }
+            | Instruction::MultiplyKR { dest, .. }
+    
+            | Instruction::DivideRR { dest, .. }
+            | Instruction::DivideRK { dest, .. }
+            | Instruction::DivideKR { dest, .. }
+    
+            | Instruction::ModuloRR { dest, .. }
+            | Instruction::ModuloRK { dest, .. }
+            | Instruction::ModuloKR { dest, .. }
+    
+            | Instruction::PowerRR { dest, .. }
+            | Instruction::PowerRK { dest, .. }
+            | Instruction::PowerKR { dest, .. }
+    
+            | Instruction::EqualRR { dest, .. }
+            | Instruction::EqualRK { dest, .. }
+            | Instruction::EqualKR { dest, .. }
+    
+            | Instruction::NotEqualRR { dest, .. }
+            | Instruction::NotEqualRK { dest, .. }
+            | Instruction::NotEqualKR { dest, .. }
+    
+            | Instruction::GreaterRR { dest, .. }
+            | Instruction::GreaterRK { dest, .. }
+            | Instruction::GreaterKR { dest, .. }
+    
+            | Instruction::GreaterEqualRR { dest, .. }
+            | Instruction::GreaterEqualRK { dest, .. }
+            | Instruction::GreaterEqualKR { dest, .. }
+    
+            // ===== Unary Ops =====
+            | Instruction::NotK { dest, .. }
+            | Instruction::NotR { dest, .. }
+            | Instruction::NegateK { dest, .. }
+            | Instruction::NegateR { dest, .. }
+    
+            // ===== Moves =====
+            | Instruction::MoveR { dest, .. }
+            | Instruction::MoveK { dest, .. }
+    
+            // ===== Objects =====
+            | Instruction::CreateDict { dest }
+    
+            | Instruction::GetFieldR { dest, .. }
+            | Instruction::GetFieldK { dest, .. }
+    
+            // ===== Calls =====
+            | Instruction::CallK { dest, .. }
+            | Instruction::CallR { dest, .. } => {
+                *dest = register;
+            }
+    
+            // ===== No dest =====
+            Instruction::SetFieldRR { .. }
+            | Instruction::SetFieldRK { .. }
+            | Instruction::SetFieldKR { .. }
+            | Instruction::SetFieldKK { .. }
+    
+            | Instruction::ReturnK { .. }
+            | Instruction::ReturnR { .. }
+    
+            | Instruction::Jump { .. }
+    
+            | Instruction::JumpIfTrueK { .. }
+            | Instruction::JumpIfTrueR { .. }
+    
+            | Instruction::JumpIfFalseK { .. }
+            | Instruction::JumpIfFalseR { .. }
+    
+            | Instruction::PrintK { .. }
+            | Instruction::PrintR { .. } => {}
         }
     }
 
@@ -118,10 +216,7 @@ impl<'a> FunctionContext<'a> {
                 }
 
                 let src = self.constants.push_nil();
-                let dest = self.allocate_register();
-
-                self.emit_instruction(Instruction::LoadConst { dest, src });
-                self.emit_instruction(Instruction::Return { src: dest });
+                self.emit_instruction(Instruction::ReturnK { src: src.unwrap_constant() });
 
                 self.patch_arguments();
             }
@@ -138,28 +233,40 @@ impl<'a> FunctionContext<'a> {
 
             StmtKind::Print(expression) => {
                 let src = self.visit_expression(expression);
-                self.emit_instruction(Instruction::Print { src });
+            
+                let instruction = match src {
+                    Operand::Register(src) => Instruction::PrintR { src },
+                    Operand::Constant(src) => Instruction::PrintK { src },
+                };
+            
+                self.emit_instruction(instruction);
             }
-
             StmtKind::Block(statements) => {
                 for stmt in statements {
                     self.visit_statement(stmt)?;
                 }
             }
+
             StmtKind::Branch {
                 condition,
                 then_branch,
                 else_branch,
             } => {
                 let src = self.visit_expression(condition);
-
-                let jump_to_else =
-                    self.emit_instruction(Instruction::JumpIfFalse { src, offset: 0 });
-
+            
+                let jump_to_else = match src {
+                    Operand::Register(src) => {
+                        self.emit_instruction(Instruction::JumpIfFalseR { src, offset: 0 })
+                    }
+                    Operand::Constant(src) => {
+                        self.emit_instruction(Instruction::JumpIfFalseK { src, offset: 0 })
+                    }
+                };
+            
                 self.visit_statement(then_branch)?;
-
+            
                 self.patch_jump(jump_to_else);
-
+            
                 if let Some(else_branch) = else_branch {
                     self.visit_statement(else_branch)?;
                 }
@@ -173,23 +280,29 @@ impl<'a> FunctionContext<'a> {
                 if let Some(init) = init {
                     self.visit_expression(init);
                 }
-
+            
                 let loop_start = self.instructions.len();
-
-                let src = self.visit_expression(condition);
-
-                let jump_to_end =
-                    self.emit_instruction(Instruction::JumpIfFalse { src, offset: 0 });
-
+            
+                let cond = self.visit_expression(condition);
+            
+                let jump_to_end = match cond {
+                    Operand::Register(src) => {
+                        self.emit_instruction(Instruction::JumpIfFalseR { src, offset: 0 })
+                    }
+                    Operand::Constant(src) => {
+                        self.emit_instruction(Instruction::JumpIfFalseK { src, offset: 0 })
+                    }
+                };
+            
                 self.visit_statement(block)?;
-
+            
                 if let Some(increment) = increment {
                     self.visit_statement(increment)?;
                 }
-
+            
                 let offset = loop_start as i16 - self.instructions.len() as i16;
                 self.emit_instruction(Instruction::Jump { offset });
-
+            
                 self.patch_jump(jump_to_end);
             }
 
@@ -205,51 +318,101 @@ impl<'a> FunctionContext<'a> {
                 let src = if let Some(expr) = expr {
                     self.visit_expression(expr)
                 } else {
-                    let src = self.constants.push_nil();
-                    let dest = self.allocate_register();
-                    self.emit_instruction(Instruction::LoadConst { dest, src });
-                    dest
+                    self.constants.push_nil()
                 };
-
-                self.emit_instruction(Instruction::Return { src });
+            
+                let instruction = match src {
+                    Operand::Register(src) => Instruction::ReturnR { src },
+                    Operand::Constant(src) => Instruction::ReturnK { src },
+                };
+            
+                self.emit_instruction(instruction);
             }
         };
 
         Ok(())
     }
 
-    fn visit_expression(&mut self, expression: &Expr) -> u8 {
+    fn visit_expression(&mut self, expression: &Expr) -> Operand {
         match &expression.kind {
             ExprKind::Parameter(id) => {
-                let register = self.allocate_register();
-                self.registers.insert(*id, register);
-                register
+                let reg = self.allocate_register();
+                self.registers.insert(*id, reg);
+                reg
             }
 
             ExprKind::DeclareAssign { id, right } => {
-                let dest = self.visit_expression(right);
-                self.registers.insert(*id, dest);
+                let instructions_size = self.instructions.len();
+            
+                let src = self.visit_expression(right);
+            
+                let dest = if self.instructions.len() == instructions_size {
+                    let dest = self.allocate_register().unwrap_register();
+            
+                    let instruction = match src {
+                        Operand::Constant(src) => Instruction::MoveK { dest, src },
+                        Operand::Register(src) => Instruction::MoveR { dest, src },
+                    };
+            
+                    self.emit_instruction(instruction);
 
+                    Operand::Register(dest)
+                } else {
+                    src
+                };
+            
+                self.registers.insert(*id, dest);
                 dest
             }
-
+            
             ExprKind::Assign { left, right } => {
-                let dest = self.visit_expression(left);
+                let dest = self.visit_expression(left).unwrap_register();
+            
+                let instructions_size = self.instructions.len();
                 let src = self.visit_expression(right);
-                self.emit_instruction(Instruction::Move { dest, src });
-                dest
+            
+                if self.instructions.len() == instructions_size {
+                    let instruction = match src {
+                        Operand::Constant(src) => Instruction::MoveK { dest, src },
+                        Operand::Register(src) => Instruction::MoveR { dest, src },
+                    };
+            
+                    self.emit_instruction(instruction);
+                } else {
+                    FunctionContext::mutate_dest(self.instructions.last_mut().unwrap(), dest);
+                }
+            
+                Operand::Register(dest)
             }
 
             ExprKind::LogicalAnd { left, right } => {
                 let dest = self.visit_expression(left);
 
-                let jump_to_end = self.emit_instruction(Instruction::JumpIfFalse {
-                    src: dest,
-                    offset: 0,
-                });
+                let jump_to_end = match dest {
+                    Operand::Register(src) => {
+                        self.emit_instruction(Instruction::JumpIfFalseR { src, offset: 0 })
+                    }
+                    Operand::Constant(src) => {
+                        self.emit_instruction(Instruction::JumpIfFalseK { src, offset: 0 })
+                    }
+                };
 
                 let src = self.visit_expression(right);
-                self.emit_instruction(Instruction::Move { dest, src });
+
+                match src {
+                    Operand::Register(src) => {
+                        self.emit_instruction(Instruction::MoveR {
+                            dest: dest.unwrap_register(),
+                            src,
+                        });
+                    }
+                    Operand::Constant(src) => {
+                        self.emit_instruction(Instruction::MoveK {
+                            dest: dest.unwrap_register(),
+                            src,
+                        });
+                    }
+                }
 
                 self.patch_jump(jump_to_end);
 
@@ -259,13 +422,31 @@ impl<'a> FunctionContext<'a> {
             ExprKind::LogicalOr { left, right } => {
                 let dest = self.visit_expression(left);
 
-                let jump_to_end = self.emit_instruction(Instruction::JumpIfTrue {
-                    src: dest,
-                    offset: 0,
-                });
+                let jump_to_end = match dest {
+                    Operand::Register(src) => {
+                        self.emit_instruction(Instruction::JumpIfTrueR { src, offset: 0 })
+                    }
+                    Operand::Constant(src) => {
+                        self.emit_instruction(Instruction::JumpIfTrueK { src, offset: 0 })
+                    }
+                };
 
                 let src = self.visit_expression(right);
-                self.emit_instruction(Instruction::Move { dest, src });
+
+                match src {
+                    Operand::Register(src) => {
+                        self.emit_instruction(Instruction::MoveR {
+                            dest: dest.unwrap_register(),
+                            src,
+                        });
+                    }
+                    Operand::Constant(src) => {
+                        self.emit_instruction(Instruction::MoveK {
+                            dest: dest.unwrap_register(),
+                            src,
+                        });
+                    }
+                }
 
                 self.patch_jump(jump_to_end);
 
@@ -275,10 +456,24 @@ impl<'a> FunctionContext<'a> {
             ExprKind::LogicalNot { expr } => {
                 let src = self.visit_expression(expr);
                 let dest = self.allocate_register();
-                self.emit_instruction(Instruction::Not { dest, src });
+
+                match src {
+                    Operand::Register(src) => {
+                        self.emit_instruction(Instruction::NotR {
+                            dest: dest.unwrap_register(),
+                            src,
+                        });
+                    }
+                    Operand::Constant(src) => {
+                        self.emit_instruction(Instruction::NotK {
+                            dest: dest.unwrap_register(),
+                            src,
+                        });
+                    }
+                }
+
                 dest
             }
-
             ExprKind::Binary {
                 operator,
                 left,
@@ -286,68 +481,174 @@ impl<'a> FunctionContext<'a> {
             } => {
                 let src1 = self.visit_expression(left);
                 let src2 = self.visit_expression(right);
-                let dest = self.allocate_register();
+                let dest = self.allocate_register().unwrap_register();
 
-                let instruction = match operator.kind {
-                    BinaryOpKind::Add => Instruction::Add { dest, src1, src2 },
-                    BinaryOpKind::Subtract => Instruction::Subtract { dest, src1, src2 },
-                    BinaryOpKind::Multiply => Instruction::Multiply { dest, src1, src2 },
-                    BinaryOpKind::Divide => Instruction::Divide { dest, src1, src2 },
-                    BinaryOpKind::Modulo => Instruction::Modulo { dest, src1, src2 },
-                    BinaryOpKind::Equal => Instruction::Equal { dest, src1, src2 },
-                    BinaryOpKind::NotEqual => Instruction::NotEqual { dest, src1, src2 },
-                    BinaryOpKind::Greater => Instruction::Greater { dest, src1, src2 },
-                    BinaryOpKind::GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
-                    BinaryOpKind::Less => Instruction::Less { dest, src1, src2 },
-                    BinaryOpKind::LessEqual => Instruction::LessEqual { dest, src1, src2 },
-                    BinaryOpKind::Power => Instruction::Power { dest, src1, src2 },
+                let instruction = match (src1, src2) {
+                    (Operand::Register(src1), Operand::Register(src2)) => match operator.kind {
+                        BinaryOpKind::Add => Instruction::AddRR { dest, src1, src2 },
+                        BinaryOpKind::Subtract => Instruction::SubtractRR { dest, src1, src2 },
+                        BinaryOpKind::Multiply => Instruction::MultiplyRR { dest, src1, src2 },
+                        BinaryOpKind::Divide => Instruction::DivideRR { dest, src1, src2 },
+                        BinaryOpKind::Modulo => Instruction::ModuloRR { dest, src1, src2 },
+                        BinaryOpKind::Power => Instruction::PowerRR { dest, src1, src2 },
+
+                        BinaryOpKind::Equal => Instruction::EqualRR { dest, src1, src2 },
+                        BinaryOpKind::NotEqual => Instruction::NotEqualRR { dest, src1, src2 },
+
+                        BinaryOpKind::Greater => Instruction::GreaterRR { dest, src1, src2 },
+                        BinaryOpKind::GreaterEqual => {
+                            Instruction::GreaterEqualRR { dest, src1, src2 }
+                        }
+                        BinaryOpKind::Less => Instruction::GreaterRR {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        BinaryOpKind::LessEqual => Instruction::GreaterEqualRR {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                    },
+                    (Operand::Register(src1), Operand::Constant(src2)) => match operator.kind {
+                        BinaryOpKind::Add => Instruction::AddRK { dest, src1, src2 },
+                        BinaryOpKind::Subtract => Instruction::SubtractRK { dest, src1, src2 },
+                        BinaryOpKind::Multiply => Instruction::MultiplyRK { dest, src1, src2 },
+                        BinaryOpKind::Divide => Instruction::DivideRK { dest, src1, src2 },
+                        BinaryOpKind::Modulo => Instruction::ModuloRK { dest, src1, src2 },
+                        BinaryOpKind::Power => Instruction::PowerRK { dest, src1, src2 },
+
+                        BinaryOpKind::Equal => Instruction::EqualRK { dest, src1, src2 },
+                        BinaryOpKind::NotEqual => Instruction::NotEqualRK { dest, src1, src2 },
+
+                        BinaryOpKind::Greater => Instruction::GreaterRK { dest, src1, src2 },
+                        BinaryOpKind::GreaterEqual => {
+                            Instruction::GreaterEqualRK { dest, src1, src2 }
+                        }
+                        BinaryOpKind::Less => Instruction::GreaterKR {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        BinaryOpKind::LessEqual => Instruction::GreaterEqualKR {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                    },
+                    (Operand::Constant(src1), Operand::Register(src2)) => match operator.kind {
+                        BinaryOpKind::Add => Instruction::AddKR { dest, src1, src2 },
+                        BinaryOpKind::Subtract => Instruction::SubtractKR { dest, src1, src2 },
+                        BinaryOpKind::Multiply => Instruction::MultiplyKR { dest, src1, src2 },
+                        BinaryOpKind::Divide => Instruction::DivideKR { dest, src1, src2 },
+                        BinaryOpKind::Modulo => Instruction::ModuloKR { dest, src1, src2 },
+                        BinaryOpKind::Power => Instruction::PowerKR { dest, src1, src2 },
+
+                        BinaryOpKind::Equal => Instruction::EqualKR { dest, src1, src2 },
+                        BinaryOpKind::NotEqual => Instruction::NotEqualKR { dest, src1, src2 },
+
+                        BinaryOpKind::Greater => Instruction::GreaterKR { dest, src1, src2 },
+                        BinaryOpKind::GreaterEqual => {
+                            Instruction::GreaterEqualKR { dest, src1, src2 }
+                        }
+                        BinaryOpKind::Less => Instruction::GreaterRK {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        BinaryOpKind::LessEqual => Instruction::GreaterEqualRK {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                    },
+
+                    (Operand::Constant(_), Operand::Constant(_)) => {
+                        unreachable!("you said no KK, but you could fold here")
+                    }
                 };
 
                 self.emit_instruction(instruction);
-                dest
-            }
 
+                Operand::Register(dest)
+            }
             ExprKind::Unary { right, operator } => {
                 let src = self.visit_expression(right);
-                let dest = self.allocate_register();
+                let dest = self.allocate_register().unwrap_register();
 
-                let instruction = match operator.kind {
-                    UnaryOpKind::Negate => Instruction::Negate { dest, src },
+                let instruction = match (operator.kind, src) {
+                    (UnaryOpKind::Negate, Operand::Register(src)) => {
+                        Instruction::NegateR { dest, src }
+                    }
+
+                    (UnaryOpKind::Negate, Operand::Constant(src)) => {
+                        Instruction::NegateK { dest, src }
+                    }
                 };
 
                 self.emit_instruction(instruction);
-                dest
+
+                Operand::Register(dest)
             }
 
             ExprKind::FunctionCall { callee, arguments } => {
-                let dest = self.allocate_register();
-
+                let dest = self.allocate_register().unwrap_register();
+            
                 let arguments_src = arguments
                     .iter()
-                    .map(|argument| self.visit_expression(argument))
-                    .collect::<Vec<u8>>();
-
-                let src = self.visit_expression(callee);
-
-                for (dest, src) in arguments_src.iter().copied().enumerate() {
-                    let argument = self.emit_instruction(Instruction::Move {
-                        dest: dest as u8,
-                        src,
-                    });
-
-                    self.pending_arguments.push(argument);
+                    .map(|arg| self.visit_expression(arg))
+                    .collect::<Vec<Operand>>();
+            
+                let callee_src = self.visit_expression(callee);
+            
+                // emit argument moves
+                for (index, src) in arguments_src.iter().copied().enumerate() {
+                    let instruction = match src {
+                        Operand::Register(src) => Instruction::MoveR {
+                            dest: index as u8,
+                            src,
+                        },
+                        Operand::Constant(src) => Instruction::MoveK {
+                            dest: index as u8,
+                            src,
+                        },
+                    };
+            
+                    let idx = self.emit_instruction(instruction);
+                    self.pending_arguments.push(idx);
                 }
-
-                self.emit_instruction(Instruction::Call { dest, src });
-                dest
+            
+                // emit call
+                let instruction = match callee_src {
+                    Operand::Register(src) => Instruction::CallR {
+                        dest,
+                        src,
+                    },
+                    Operand::Constant(src) => Instruction::CallK {
+                        dest,
+                        src,
+                    },
+                };
+            
+                self.emit_instruction(instruction);
+            
+                Operand::Register(dest)
             }
-
             ExprKind::MemberAccess { object, property } => {
-                let dest = self.allocate_register();
-                let object = self.visit_expression(object);
+                let dest = self.allocate_register().unwrap_register();
+
+                let object = self.visit_expression(object).unwrap_register();
                 let key = self.visit_expression(property);
-                self.emit_instruction(Instruction::GetField { dest, object, key });
-                dest
+
+                let instruction = match key {
+                    Operand::Register(key) => Instruction::GetFieldR { dest, object, key },
+
+                    Operand::Constant(key) => Instruction::GetFieldK { dest, object, key },
+                };
+
+                self.emit_instruction(instruction);
+
+                Operand::Register(dest)
             }
 
             ExprKind::Variable(id) => *self
@@ -360,47 +661,59 @@ impl<'a> FunctionContext<'a> {
                     .node_to_function
                     .get(id)
                     .expect("FunctionRef points to a missing variable node");
-
-                let src = self.constants.push_function_index(index);
-                let dest = self.allocate_register();
-
-                self.emit_instruction(Instruction::LoadConst { dest, src });
-                dest
+                self.constants.push_function_index(index)
             }
 
-            ExprKind::String(value) => {
-                let src = self.constants.push_string(value.to_owned());
-                let dest = self.allocate_register();
-                self.emit_instruction(Instruction::LoadConst { dest, src });
-                dest
-            }
-
-            ExprKind::Boolean(value) => {
-                let src = self.constants.push_boolean(*value);
-                let dest = self.allocate_register();
-                self.emit_instruction(Instruction::LoadConst { dest, src });
-                dest
-            }
-
-            ExprKind::Number(value) => {
-                let src = self.constants.push_number(*value);
-                let dest = self.allocate_register();
-                self.emit_instruction(Instruction::LoadConst { dest, src });
-                dest
-            }
+            ExprKind::String(value) => self.constants.push_string(value.to_owned()),
+            ExprKind::Boolean(value) => self.constants.push_boolean(*value),
+            ExprKind::Number(value) => self.constants.push_number(*value),
 
             ExprKind::DictLiteral { fields } => {
                 let dest = self.allocate_register();
-                self.emit_instruction(Instruction::CreateDict { dest });
 
-                for (key, value) in fields {
-                    let key = self.visit_expression(key);
-                    let value = self.visit_expression(value);
-                    self.emit_instruction(Instruction::SetField {
-                        object: dest,
-                        key,
-                        value,
-                    });
+                self.emit_instruction(Instruction::CreateDict {
+                    dest: dest.unwrap_register(),
+                });
+
+                for (key_expr, value_expr) in fields {
+                    let key = self.visit_expression(key_expr);
+                    let value = self.visit_expression(value_expr);
+
+                    let instruction = match (key, value) {
+                        (Operand::Register(key), Operand::Register(value)) => {
+                            Instruction::SetFieldRR {
+                                object: dest.unwrap_register(),
+                                key,
+                                value,
+                            }
+                        }
+
+                        (Operand::Register(key), Operand::Constant(value)) => {
+                            Instruction::SetFieldRK {
+                                object: dest.unwrap_register(),
+                                key,
+                                value,
+                            }
+                        }
+
+                        (Operand::Constant(key), Operand::Register(value)) => {
+                            Instruction::SetFieldKR {
+                                object: dest.unwrap_register(),
+                                key,
+                                value,
+                            }
+                        }
+
+                        (Operand::Constant(key), Operand::Constant(value)) => {
+                            Instruction::SetFieldKK {
+                                object: dest.unwrap_register(),
+                                key,
+                                value,
+                            }
+                        }
+                    };
+
+                    self.emit_instruction(instruction);
                 }
 
                 dest
