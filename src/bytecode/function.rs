@@ -1,4 +1,4 @@
-use super::instruction::Instruction;
+use super::{constants::Constant, instruction::Instruction};
 
 pub struct Function {
     pub instructions: Vec<Instruction>,
@@ -18,12 +18,4 @@ impl Function {
             constants,
         }
     }
-}
-
-pub enum Constant {
-    String(String),
-    Number(f64),
-    Boolean(bool),
-    Function(usize),
-    Nil,
 }

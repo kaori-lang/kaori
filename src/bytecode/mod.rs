@@ -4,6 +4,5 @@ pub mod instruction;
 
 pub use function::Function;
 
-pub use function::Constant;
+pub use constants::Constant;
 pub mod constants;
-pub mod emit;

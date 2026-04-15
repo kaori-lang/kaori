@@ -2,11 +2,7 @@ use std::time::Instant;
 
 use crate::{
     ast::{self, parser::Parser},
-    bytecode::emit_bytecode::emit_bytecode,
-    cfg::{
-        self, Function, build_functions_graph::build_functions_graph,
-        jump_threading::run_jump_threading_optimization,
-    },
+    bytecode::{self, emit_bytecode::emit_bytecode},
     error::kaori_error::KaoriError,
     hir::{decl::Decl, resolver::Resolver},
     lexer::{lexer::Lexer, token_stream::TokenStream},
@@ -38,28 +34,17 @@ fn run_semantic_analysis(ast: &mut [ast::Decl]) -> Result<Vec<Decl>, KaoriError>
     Ok(declarations)
 }
 
-fn run_cfg_analysis(functions: &mut [cfg::function::Function]) -> Result<(), KaoriError> {
-    run_jump_threading_optimization(functions);
-
-    Ok(())
-}
-
-pub fn compile_source_code(source: &str) -> Result<Vec<Function>, KaoriError> {
+pub fn compile_source_code(source: &str) -> Result<Vec<bytecode::Function>, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
     let mut ast = run_syntax_analysis(token_stream)?;
 
     let declarations = run_semantic_analysis(&mut ast)?;
-    let mut functions = build_functions_graph(&declarations)?;
 
-    run_cfg_analysis(&mut functions)?;
-
-    Ok(functions)
+    emit_bytecode(&declarations)
 }
 
 pub fn run_program(source: &str) -> Result<(), KaoriError> {
-    let functions = compile_source_code(source)?;
-
-    let bytecode = emit_bytecode(functions);
+    let bytecode = compile_source_code(source)?;
 
     let mut gc = Gc::default();
     let functions = from_compiled(bytecode, &mut gc);

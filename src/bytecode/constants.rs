@@ -1,7 +1,5 @@
-use ordered_float::OrderedFloat;
-
 #[derive(Default)]
-pub struct Constants(Vec<Constant>);
+pub struct Constants(pub Vec<Constant>);
 
 impl Constants {
     fn push_constant(&mut self, constant: Constant) -> u8 {
@@ -26,7 +24,7 @@ impl Constants {
     }
 
     pub fn push_number(&mut self, value: f64) -> u8 {
-        self.push_constant(Constant::Number(OrderedFloat(value)))
+        self.push_constant(Constant::Number(value))
     }
 
     pub fn push_boolean(&mut self, value: bool) -> u8 {
@@ -41,7 +39,7 @@ impl Constants {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Constant {
     String(String),
-    Number(OrderedFloat<f64>),
+    Number(f64),
     Boolean(bool),
     FunctionIndex(usize),
     Nil,

@@ -3,7 +3,6 @@
 
 pub mod ast;
 pub mod bytecode;
-pub mod cfg;
 pub mod error;
 pub mod hir;
 pub mod lexer;
