@@ -51,6 +51,7 @@ pub enum Instruction {
     ReturnK { src: u8 },
     ReturnR { src: u8 },
     Jump { offset: i16 },
+
     JumpIfTrueK { src: u8, offset: i16 },
     JumpIfTrueR { src: u8, offset: i16 },
     JumpIfFalseK { src: u8, offset: i16 },
@@ -58,6 +59,7 @@ pub enum Instruction {
     PrintK { src: u8 },
     PrintR { src: u8 },
 }
+
 impl Instruction {
     pub const fn discriminant(&self) -> usize {
         (unsafe { *(self as *const Self as *const u8) }) as usize

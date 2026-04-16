@@ -46,9 +46,9 @@ pub fn compile_source_code(source: &str) -> Result<Vec<bytecode::Function>, Kaor
 pub fn run_program(source: &str) -> Result<(), KaoriError> {
     let bytecode = compile_source_code(source)?;
 
-    for function in bytecode.iter() {
+    /*   for function in bytecode.iter() {
         println!("{}", function);
-    }
+    } */
 
     let mut gc = Gc::default();
     let functions = from_compiled(bytecode, &mut gc);

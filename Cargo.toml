@@ -11,5 +11,10 @@ uuid = { version = "1.22.0", features = ["v4"] }
 ahash = "0.8.12"
 
 [profile.release]
-debug = true
-
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = 0
+incremental = false

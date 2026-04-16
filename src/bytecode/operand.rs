@@ -17,7 +17,7 @@ impl Operand {
         if let Operand::Constant(value) = self {
             value
         } else {
-            unreachable!("Expected a register to be unwrapped")
+            unreachable!("Expected a constant to be unwrapped")
         }
     }
 }

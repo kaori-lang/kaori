@@ -1,6 +1,5 @@
-use std::fmt;
-
 use ahash::AHashMap;
+use std::fmt;
 
 use super::function::Function;
 use super::gc::GcObject;
@@ -37,8 +36,7 @@ impl Value {
 
     #[inline(always)]
     pub fn number(value: f64) -> Self {
-        let bits = value.to_bits();
-        Self((bits >> 3 << 3) | TYPE_NUMBER)
+        Self(value.to_bits())
     }
 
     #[inline(always)]
@@ -68,12 +66,12 @@ impl Value {
 
     #[inline(always)]
     pub fn as_number(self) -> f64 {
-        f64::from_bits(self.0 >> 3 << 3)
+        f64::from_bits(self.0)
     }
 
     #[inline(always)]
     pub fn as_boolean(self) -> bool {
-        (self.0 >> 3) != 0
+        ((self.0 >> 3) & 1) != 0
     }
 
     #[inline(always)]

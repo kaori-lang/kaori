@@ -118,6 +118,7 @@ impl Vm {
         let constants = constants.as_ptr();
         let ip = instructions.as_ptr();
         let index = unsafe { (*ip).discriminant() };
+
         OPCODE_HANDLERS[index](ip, self, registers, constants).map_err(|e| *e)
     }
 
@@ -1337,6 +1338,7 @@ fn opcode_call_r(
         let Instruction::CallR { dest, src } = *ip else {
             unreachable_unchecked()
         };
+
         let callee = get_register_value(src, registers);
 
         if callee.tag() == TYPE_FUNCTION {
@@ -1372,6 +1374,7 @@ fn opcode_call_k(
         let Instruction::CallK { dest, src } = *ip else {
             unreachable_unchecked()
         };
+
         let callee = get_constant_value(src, constants);
         if callee.tag() == TYPE_FUNCTION {
             let return_value = {
@@ -1399,7 +1402,7 @@ fn opcode_return_r(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
-    constants: *const Value,
+    _constants: *const Value,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::ReturnR { src } = *ip else {
@@ -1415,7 +1418,7 @@ fn opcode_return_r(
 fn opcode_return_k(
     ip: *const Instruction,
     vm: &mut Vm,
-    registers: *mut Value,
+    _registers: *mut Value,
     constants: *const Value,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
