@@ -1,5 +1,18 @@
-fun main() {
-    a := 1844744073709551616;
-    print(a ** 5);
+fun fib(n) {
+    if n < 2 {
+        return n;
+    } else {
+        return fib(n - 1) + fib(n - 2);
+    }   
 }
+
+
+
+
+fun main()  {
+
+    fib(30);
+}
+
+
 

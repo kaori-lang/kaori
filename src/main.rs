@@ -27,7 +27,6 @@ use kaori::program::run_program;
     eprintln!("Error: Could not read the file by the given path.");
     ExitCode::FAILURE
 } */
-
 fn main() {
     let source_to_run = "test_suite/test.kr";
 

@@ -18,3 +18,4 @@ panic = "abort"
 strip = "symbols"
 debug = 0
 incremental = false
+overflow-checks = false

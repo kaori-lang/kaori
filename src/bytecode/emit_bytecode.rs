@@ -79,6 +79,38 @@ impl<'a> FunctionContext<'a> {
         Operand::Register(register)
     }
 
+    fn block_returns(&self, statements: &[Stmt]) -> bool {
+        for statement in statements {
+            if self.statement_returns(statement) {
+                return true;
+            }
+        }
+
+        false
+    }
+    fn statement_returns(&self, statement: &Stmt) -> bool {
+        match &statement.kind {
+            StmtKind::Return(..) => true,
+            StmtKind::Block(statements) => self.block_returns(statements),
+            StmtKind::Branch {
+                then_branch,
+                else_branch,
+                ..
+            } => {
+                if let Some(else_branch) = else_branch {
+                    self.statement_returns(then_branch) && self.statement_returns(else_branch)
+                } else {
+                    false
+                }
+            }
+            StmtKind::Break
+            | StmtKind::Continue
+            | StmtKind::Print(..)
+            | StmtKind::Expression(..)
+            | StmtKind::Loop { .. } => false,
+        }
+    }
+
     fn emit_instruction(&mut self, instruction: Instruction) -> usize {
         let index = self.instructions.len();
         self.instructions.push(instruction);
@@ -160,7 +192,6 @@ impl<'a> FunctionContext<'a> {
                 | Instruction::JumpIfFalseR { .. }
                 | Instruction::PrintK { .. }
                 | Instruction::PrintR { .. } => {}
-                _ => {}
             }
         }
     }
@@ -223,7 +254,6 @@ impl<'a> FunctionContext<'a> {
             | Instruction::JumpIfFalseR { .. }
             | Instruction::PrintK { .. }
             | Instruction::PrintR { .. } => {}
-            _ => {}
         }
     }
 
@@ -262,10 +292,12 @@ impl<'a> FunctionContext<'a> {
                     self.visit_statement(statement)?;
                 }
 
-                let src = self.constants.push_nil();
-                self.emit_instruction(Instruction::ReturnK {
-                    src: src.unwrap_constant(),
-                });
+                if !self.block_returns(body) {
+                    let src = self.constants.push_nil();
+                    self.emit_instruction(Instruction::ReturnK {
+                        src: src.unwrap_constant(),
+                    });
+                }
 
                 self.patch_arguments();
             }
@@ -558,10 +590,8 @@ impl<'a> FunctionContext<'a> {
                         BinaryOpKind::Divide => Instruction::DivideKR { dest, src1, src2 },
                         BinaryOpKind::Modulo => Instruction::ModuloKR { dest, src1, src2 },
                         BinaryOpKind::Power => Instruction::PowerKR { dest, src1, src2 },
-
                         BinaryOpKind::Equal => Instruction::EqualKR { dest, src1, src2 },
                         BinaryOpKind::NotEqual => Instruction::NotEqualKR { dest, src1, src2 },
-
                         BinaryOpKind::Greater => Instruction::GreaterKR { dest, src1, src2 },
                         BinaryOpKind::GreaterEqual => {
                             Instruction::GreaterEqualKR { dest, src1, src2 }
@@ -654,13 +684,12 @@ impl<'a> FunctionContext<'a> {
                     .node_to_function
                     .get(id)
                     .expect("FunctionRef points to a missing variable node");
+
                 self.constants.push_function_index(index)
             }
-
             ExprKind::String(value) => self.constants.push_string(value.to_owned()),
             ExprKind::Boolean(value) => self.constants.push_boolean(*value),
             ExprKind::Number(value) => self.constants.push_number(*value),
-
             ExprKind::DictLiteral { fields } => {
                 let dest = self.allocate_register();
 
@@ -668,9 +697,9 @@ impl<'a> FunctionContext<'a> {
                     dest: dest.unwrap_register(),
                 });
 
-                for (key_expr, value_expr) in fields {
-                    let key = self.visit_expression(key_expr);
-                    let value = self.visit_expression(value_expr);
+                for (key, expr) in fields {
+                    let key = self.visit_expression(key);
+                    let value = self.visit_expression(expr);
 
                     let instruction = match (key, value) {
                         (Operand::Register(key), Operand::Register(value)) => {
