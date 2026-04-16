@@ -1,5 +1,5 @@
 fun main() {
-    iterations := 100;
+    iterations := 1000000;
     max_fib := 30;
 
     for i := 0; i < iterations; i += 1 {
@@ -13,7 +13,6 @@ fun main() {
 
         }
 
-        print(b);
     }
 }
 

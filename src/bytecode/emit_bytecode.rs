@@ -104,11 +104,63 @@ impl<'a> FunctionContext<'a> {
     fn patch_arguments(&mut self) {
         for index in self.pending_arguments.iter().copied() {
             match &mut self.instructions[index] {
-                Instruction::MoveR { dest, .. } | Instruction::MoveK { dest, .. } => {
+                Instruction::AddRR { dest, .. }
+                | Instruction::AddRK { dest, .. }
+                | Instruction::AddKR { dest, .. }
+                | Instruction::SubtractRR { dest, .. }
+                | Instruction::SubtractRK { dest, .. }
+                | Instruction::SubtractKR { dest, .. }
+                | Instruction::MultiplyRR { dest, .. }
+                | Instruction::MultiplyRK { dest, .. }
+                | Instruction::MultiplyKR { dest, .. }
+                | Instruction::DivideRR { dest, .. }
+                | Instruction::DivideRK { dest, .. }
+                | Instruction::DivideKR { dest, .. }
+                | Instruction::ModuloRR { dest, .. }
+                | Instruction::ModuloRK { dest, .. }
+                | Instruction::ModuloKR { dest, .. }
+                | Instruction::PowerRR { dest, .. }
+                | Instruction::PowerRK { dest, .. }
+                | Instruction::PowerKR { dest, .. }
+                | Instruction::EqualRR { dest, .. }
+                | Instruction::EqualRK { dest, .. }
+                | Instruction::EqualKR { dest, .. }
+                | Instruction::NotEqualRR { dest, .. }
+                | Instruction::NotEqualRK { dest, .. }
+                | Instruction::NotEqualKR { dest, .. }
+                | Instruction::GreaterRR { dest, .. }
+                | Instruction::GreaterRK { dest, .. }
+                | Instruction::GreaterKR { dest, .. }
+                | Instruction::GreaterEqualRR { dest, .. }
+                | Instruction::GreaterEqualRK { dest, .. }
+                | Instruction::GreaterEqualKR { dest, .. }
+                | Instruction::NotK { dest, .. }
+                | Instruction::NotR { dest, .. }
+                | Instruction::NegateK { dest, .. }
+                | Instruction::NegateR { dest, .. }
+                | Instruction::MoveR { dest, .. }
+                | Instruction::MoveK { dest, .. }
+                | Instruction::CreateDict { dest }
+                | Instruction::GetFieldR { dest, .. }
+                | Instruction::GetFieldK { dest, .. }
+                | Instruction::CallK { dest, .. }
+                | Instruction::CallR { dest, .. } => {
                     *dest += self.next_register;
                 }
-
-                _ => unreachable!("pending_arguments should only contain Move instructions"),
+                Instruction::SetFieldRR { .. }
+                | Instruction::SetFieldRK { .. }
+                | Instruction::SetFieldKR { .. }
+                | Instruction::SetFieldKK { .. }
+                | Instruction::ReturnK { .. }
+                | Instruction::ReturnR { .. }
+                | Instruction::Jump { .. }
+                | Instruction::JumpIfTrueK { .. }
+                | Instruction::JumpIfTrueR { .. }
+                | Instruction::JumpIfFalseK { .. }
+                | Instruction::JumpIfFalseR { .. }
+                | Instruction::PrintK { .. }
+                | Instruction::PrintR { .. } => {}
+                _ => {}
             }
         }
     }
@@ -171,6 +223,7 @@ impl<'a> FunctionContext<'a> {
             | Instruction::JumpIfFalseR { .. }
             | Instruction::PrintK { .. }
             | Instruction::PrintR { .. } => {}
+            _ => {}
         }
     }
 
@@ -566,27 +619,36 @@ impl<'a> FunctionContext<'a> {
             ExprKind::FunctionCall { callee, arguments } => {
                 let dest = self.allocate_register().unwrap_register();
 
-                let arguments_src = arguments
-                    .iter()
-                    .map(|arg| self.visit_expression(arg))
-                    .collect::<Vec<Operand>>();
-
                 let callee_src = self.visit_expression(callee);
 
-                for (index, src) in arguments_src.iter().copied().enumerate() {
-                    let instruction = match src {
-                        Operand::Register(src) => Instruction::MoveR {
-                            dest: index as u8,
-                            src,
-                        },
-                        Operand::Constant(src) => Instruction::MoveK {
-                            dest: index as u8,
-                            src,
-                        },
+                for (index, argument) in arguments.iter().enumerate() {
+                    let instructions_size = self.instructions.len();
+
+                    let src = self.visit_expression(argument);
+
+                    let pending_index = if self.instructions.len() == instructions_size {
+                        let instruction = match src {
+                            Operand::Register(src) => Instruction::MoveR {
+                                dest: index as u8,
+                                src,
+                            },
+                            Operand::Constant(src) => Instruction::MoveK {
+                                dest: index as u8,
+                                src,
+                            },
+                        };
+
+                        self.emit_instruction(instruction)
+                    } else {
+                        FunctionContext::mutate_dest(
+                            self.instructions.last_mut().unwrap(),
+                            index as u8,
+                        );
+
+                        self.instructions.len() - 1
                     };
 
-                    let idx = self.emit_instruction(instruction);
-                    self.pending_arguments.push(idx);
+                    self.pending_arguments.push(pending_index);
                 }
 
                 let instruction = match callee_src {

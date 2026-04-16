@@ -890,6 +890,7 @@ fn opcode_greater_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
+
         if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
             set_value(
                 dest,

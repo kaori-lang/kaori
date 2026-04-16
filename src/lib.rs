@@ -1,4 +1,5 @@
 #![feature(explicit_tail_calls)]
+#![feature(f16)]
 #![allow(incomplete_features)]
 
 pub mod ast;
