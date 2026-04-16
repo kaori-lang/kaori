@@ -36,63 +36,68 @@ macro_rules! type_error {
     }};
 }
 
-const OPCODE_HANDLERS: [Handler; 54] = [
-    opcode_add_rr,           // 0  AddRR
-    opcode_add_rk,           // 1  AddRK
-    opcode_add_kr,           // 2  AddKR
-    opcode_subtract_rr,      // 3  SubtractRR
-    opcode_subtract_rk,      // 4  SubtractRK
-    opcode_subtract_kr,      // 5  SubtractKR
-    opcode_multiply_rr,      // 6  MultiplyRR
-    opcode_multiply_rk,      // 7  MultiplyRK
-    opcode_multiply_kr,      // 8  MultiplyKR
-    opcode_divide_rr,        // 9  DivideRR
-    opcode_divide_rk,        // 10 DivideRK
-    opcode_divide_kr,        // 11 DivideKR
-    opcode_modulo_rr,        // 12 ModuloRR
-    opcode_modulo_rk,        // 13 ModuloRK
-    opcode_modulo_kr,        // 14 ModuloKR
-    opcode_power_rr,         // 15 PowerRR
-    opcode_power_rk,         // 16 PowerRK
-    opcode_power_kr,         // 17 PowerKR
-    opcode_equal_rr,         // 18 EqualRR
-    opcode_equal_rk,         // 19 EqualRK
-    opcode_equal_kr,         // 20 EqualKR
-    opcode_not_equal_rr,     // 21 NotEqualRR
-    opcode_not_equal_rk,     // 22 NotEqualRK
-    opcode_not_equal_kr,     // 23 NotEqualKR
-    opcode_greater_rr,       // 24 GreaterRR
-    opcode_greater_rk,       // 25 GreaterRK
-    opcode_greater_kr,       // 26 GreaterKR
-    opcode_greater_equal_rr, // 27 GreaterEqualRR
-    opcode_greater_equal_rk, // 28 GreaterEqualRK
-    opcode_greater_equal_kr, // 29 GreaterEqualKR
-    opcode_not_k,            // 30 NotK
-    opcode_not_r,            // 31 NotR
-    opcode_negate_k,         // 32 NegateK
-    opcode_negate_r,         // 33 NegateR
-    opcode_move_r,           // 34 MoveR
-    opcode_move_k,           // 35 MoveK
-    opcode_create_dict,      // 36 CreateDict
-    opcode_set_field_rr,     // 37 SetFieldRR
-    opcode_set_field_rk,     // 38 SetFieldRK
-    opcode_set_field_kr,     // 39 SetFieldKR
-    opcode_set_field_kk,     // 40 SetFieldKK
-    opcode_get_field_r,      // 41 GetFieldR
-    opcode_get_field_k,      // 42 GetFieldK
-    opcode_call_k,           // 43 CallK
-    opcode_call_r,           // 44 CallR
-    opcode_return_k,         // 45 ReturnK
-    opcode_return_r,         // 46 ReturnR
-    opcode_jump,             // 47 Jump
-    opcode_jump_if_true_k,   // 48 JumpIfTrueK
-    opcode_jump_if_true_r,   // 49 JumpIfTrueR
-    opcode_jump_if_false_k,  // 50 JumpIfFalseK
-    opcode_jump_if_false_r,  // 51 JumpIfFalseR
-    opcode_print_k,          // 52 PrintK
-    opcode_print_r,          // 53 PrintR
+const OPCODE_HANDLERS: [Handler; 60] = [
+    opcode_add_rr,
+    opcode_add_rk,
+    opcode_add_kr,
+    opcode_subtract_rr,
+    opcode_subtract_rk,
+    opcode_subtract_kr,
+    opcode_multiply_rr,
+    opcode_multiply_rk,
+    opcode_multiply_kr,
+    opcode_divide_rr,
+    opcode_divide_rk,
+    opcode_divide_kr,
+    opcode_modulo_rr,
+    opcode_modulo_rk,
+    opcode_modulo_kr,
+    opcode_power_rr,
+    opcode_power_rk,
+    opcode_power_kr,
+    opcode_equal_rr,
+    opcode_equal_rk,
+    opcode_equal_kr,
+    opcode_not_equal_rr,
+    opcode_not_equal_rk,
+    opcode_not_equal_kr,
+    opcode_less_rr,
+    opcode_less_rk,
+    opcode_less_kr,
+    opcode_less_equal_rr,
+    opcode_less_equal_rk,
+    opcode_less_equal_kr,
+    opcode_greater_rr,
+    opcode_greater_rk,
+    opcode_greater_kr,
+    opcode_greater_equal_rr,
+    opcode_greater_equal_rk,
+    opcode_greater_equal_kr,
+    opcode_not_k,
+    opcode_not_r,
+    opcode_negate_k,
+    opcode_negate_r,
+    opcode_move_r,
+    opcode_move_k,
+    opcode_create_dict,
+    opcode_set_field_rr,
+    opcode_set_field_rk,
+    opcode_set_field_kr,
+    opcode_set_field_kk,
+    opcode_get_field_r,
+    opcode_get_field_k,
+    opcode_call_k,
+    opcode_call_r,
+    opcode_return_k,
+    opcode_return_r,
+    opcode_jump,
+    opcode_jump_if_true_k,
+    opcode_jump_if_true_r,
+    opcode_jump_if_false_k,
+    opcode_jump_if_false_r,
+    opcode_print_k,
+    opcode_print_r,
 ];
-
 pub struct Vm {
     pub registers: Vec<Value>,
     pub frames: Vec<(*mut Value, usize)>,
@@ -867,6 +872,197 @@ fn opcode_not_equal_kr(
         } else {
             type_error!(
                 "cannot compare {:?} and {:?} with !=, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_less_rr(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let Instruction::LessRR { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
+        let lhs = get_register_value(src1, registers);
+        let rhs = get_register_value(src2, registers);
+
+        if lhs.is_number() && rhs.is_number() {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() < rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with <, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_less_rk(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let Instruction::LessRK { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
+
+        let lhs = get_register_value(src1, registers);
+        let rhs = get_constant_value(src2, constants);
+
+        if lhs.is_number() && rhs.is_number() {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() < rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with <, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_less_kr(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let Instruction::LessKR { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
+
+        let lhs = get_constant_value(src1, constants);
+        let rhs = get_register_value(src2, registers);
+
+        if lhs.is_number() && rhs.is_number() {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() < rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with <, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_less_equal_rr(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let Instruction::LessEqualRR { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
+
+        let lhs = get_register_value(src1, registers);
+        let rhs = get_register_value(src2, registers);
+
+        if lhs.is_number() && rhs.is_number() {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() <= rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with <=, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_less_equal_rk(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let Instruction::LessEqualRK { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
+
+        let lhs = get_register_value(src1, registers);
+        let rhs = get_constant_value(src2, constants);
+
+        if lhs.is_number() && rhs.is_number() {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() <= rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with <=, both operands must be numbers",
+                lhs,
+                rhs
+            )
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_less_equal_kr(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let Instruction::LessEqualKR { dest, src1, src2 } = *ip else {
+            unreachable_unchecked()
+        };
+
+        let lhs = get_constant_value(src1, constants);
+        let rhs = get_register_value(src2, registers);
+
+        if lhs.is_number() && rhs.is_number() {
+            set_value(
+                dest,
+                Value::boolean(lhs.as_number() <= rhs.as_number()),
+                registers,
+            );
+            dispatch_next!(ip, vm, registers, constants)
+        } else {
+            type_error!(
+                "cannot compare {:?} and {:?} with <=, both operands must be numbers",
                 lhs,
                 rhs
             )

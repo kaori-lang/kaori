@@ -160,6 +160,12 @@ impl<'a> FunctionContext<'a> {
                 | Instruction::NotEqualRR { dest, .. }
                 | Instruction::NotEqualRK { dest, .. }
                 | Instruction::NotEqualKR { dest, .. }
+                | Instruction::LessRR { dest, .. }
+                | Instruction::LessRK { dest, .. }
+                | Instruction::LessKR { dest, .. }
+                | Instruction::LessEqualRR { dest, .. }
+                | Instruction::LessEqualRK { dest, .. }
+                | Instruction::LessEqualKR { dest, .. }
                 | Instruction::GreaterRR { dest, .. }
                 | Instruction::GreaterRK { dest, .. }
                 | Instruction::GreaterKR { dest, .. }
@@ -222,6 +228,12 @@ impl<'a> FunctionContext<'a> {
             | Instruction::NotEqualRR { dest, .. }
             | Instruction::NotEqualRK { dest, .. }
             | Instruction::NotEqualKR { dest, .. }
+            | Instruction::LessRR { dest, .. }
+            | Instruction::LessRK { dest, .. }
+            | Instruction::LessKR { dest, .. }
+            | Instruction::LessEqualRR { dest, .. }
+            | Instruction::LessEqualRK { dest, .. }
+            | Instruction::LessEqualKR { dest, .. }
             | Instruction::GreaterRR { dest, .. }
             | Instruction::GreaterRK { dest, .. }
             | Instruction::GreaterKR { dest, .. }
@@ -546,17 +558,10 @@ impl<'a> FunctionContext<'a> {
                         BinaryOpKind::GreaterEqual => {
                             Instruction::GreaterEqualRR { dest, src1, src2 }
                         }
-                        BinaryOpKind::Less => Instruction::GreaterRR {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
-                        BinaryOpKind::LessEqual => Instruction::GreaterEqualRR {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
+                        BinaryOpKind::Less => Instruction::LessRR { dest, src1, src2 },
+                        BinaryOpKind::LessEqual => Instruction::LessEqualRR { dest, src1, src2 },
                     },
+
                     (Operand::Register(src1), Operand::Constant(src2)) => match operator.kind {
                         BinaryOpKind::Add => Instruction::AddRK { dest, src1, src2 },
                         BinaryOpKind::Subtract => Instruction::SubtractRK { dest, src1, src2 },
@@ -572,17 +577,10 @@ impl<'a> FunctionContext<'a> {
                         BinaryOpKind::GreaterEqual => {
                             Instruction::GreaterEqualRK { dest, src1, src2 }
                         }
-                        BinaryOpKind::Less => Instruction::GreaterKR {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
-                        BinaryOpKind::LessEqual => Instruction::GreaterEqualKR {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
+                        BinaryOpKind::Less => Instruction::LessRK { dest, src1, src2 },
+                        BinaryOpKind::LessEqual => Instruction::LessEqualRK { dest, src1, src2 },
                     },
+
                     (Operand::Constant(src1), Operand::Register(src2)) => match operator.kind {
                         BinaryOpKind::Add => Instruction::AddKR { dest, src1, src2 },
                         BinaryOpKind::Subtract => Instruction::SubtractKR { dest, src1, src2 },
@@ -590,22 +588,16 @@ impl<'a> FunctionContext<'a> {
                         BinaryOpKind::Divide => Instruction::DivideKR { dest, src1, src2 },
                         BinaryOpKind::Modulo => Instruction::ModuloKR { dest, src1, src2 },
                         BinaryOpKind::Power => Instruction::PowerKR { dest, src1, src2 },
+
                         BinaryOpKind::Equal => Instruction::EqualKR { dest, src1, src2 },
                         BinaryOpKind::NotEqual => Instruction::NotEqualKR { dest, src1, src2 },
+
                         BinaryOpKind::Greater => Instruction::GreaterKR { dest, src1, src2 },
                         BinaryOpKind::GreaterEqual => {
                             Instruction::GreaterEqualKR { dest, src1, src2 }
                         }
-                        BinaryOpKind::Less => Instruction::GreaterRK {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
-                        BinaryOpKind::LessEqual => Instruction::GreaterEqualRK {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
+                        BinaryOpKind::Less => Instruction::LessKR { dest, src1, src2 },
+                        BinaryOpKind::LessEqual => Instruction::LessEqualKR { dest, src1, src2 },
                     },
 
                     (Operand::Constant(_), Operand::Constant(_)) => {
