@@ -130,6 +130,7 @@ impl Vm {
                 ptr.add(*len).offset_from(self.registers.as_ptr()) as usize
             })
             .unwrap_or(0);
+
         let ptr = unsafe { self.registers.as_mut_ptr().add(offset) };
         self.frames.push((ptr, size));
         ptr

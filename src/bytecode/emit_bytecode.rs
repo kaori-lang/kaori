@@ -227,6 +227,30 @@ impl<'a> FunctionContext<'a> {
         }
     }
 
+    fn emit_move(&mut self, expression: &Expr, dest: Operand) {
+        let instructions_size = self.instructions.len();
+        let src = self.visit_expression(expression);
+
+        if self.instructions.len() == instructions_size {
+            let instruction = match src {
+                Operand::Constant(src) => Instruction::MoveK {
+                    dest: dest.unwrap_register(),
+                    src,
+                },
+                Operand::Register(src) => Instruction::MoveR {
+                    dest: dest.unwrap_register(),
+                    src,
+                },
+            };
+            self.emit_instruction(instruction);
+        } else {
+            FunctionContext::mutate_dest(
+                self.instructions.last_mut().unwrap(),
+                dest.unwrap_register(),
+            );
+        }
+    }
+
     fn visit_declaration(&mut self, declaration: &Decl) -> Result<(), KaoriError> {
         match &declaration.kind {
             DeclKind::Function { body, parameters } => {
@@ -367,51 +391,35 @@ impl<'a> FunctionContext<'a> {
             }
 
             ExprKind::DeclareAssign { id, right } => {
-                let instructions_size = self.instructions.len();
-
-                let src = self.visit_expression(right);
-
-                let dest = if self.instructions.len() == instructions_size {
-                    let dest = self.allocate_register().unwrap_register();
-
-                    let instruction = match src {
-                        Operand::Constant(src) => Instruction::MoveK { dest, src },
-                        Operand::Register(src) => Instruction::MoveR { dest, src },
-                    };
-
-                    self.emit_instruction(instruction);
-
-                    Operand::Register(dest)
-                } else {
-                    src
-                };
+                let dest = self.allocate_register();
+                self.emit_move(right, dest);
 
                 self.registers.insert(*id, dest);
+
                 dest
             }
 
             ExprKind::Assign { left, right } => {
-                let dest = self.visit_expression(left).unwrap_register();
+                let dest = self.visit_expression(left);
+                self.emit_move(right, dest);
 
-                let instructions_size = self.instructions.len();
-                let src = self.visit_expression(right);
-
-                if self.instructions.len() == instructions_size {
-                    let instruction = match src {
-                        Operand::Constant(src) => Instruction::MoveK { dest, src },
-                        Operand::Register(src) => Instruction::MoveR { dest, src },
-                    };
-
-                    self.emit_instruction(instruction);
-                } else {
-                    FunctionContext::mutate_dest(self.instructions.last_mut().unwrap(), dest);
-                }
-
-                Operand::Register(dest)
+                dest
             }
 
             ExprKind::LogicalAnd { left, right } => {
-                let dest = self.visit_expression(left);
+                let left = self.visit_expression(left);
+
+                let dest = match left {
+                    Operand::Register(_) => left,
+                    Operand::Constant(src) => {
+                        let dest = self.allocate_register();
+                        self.emit_instruction(Instruction::MoveK {
+                            dest: dest.unwrap_register(),
+                            src,
+                        });
+                        dest
+                    }
+                };
 
                 let jump_to_end = match dest {
                     Operand::Register(src) => {
@@ -422,22 +430,7 @@ impl<'a> FunctionContext<'a> {
                     }
                 };
 
-                let src = self.visit_expression(right);
-
-                match src {
-                    Operand::Register(src) => {
-                        self.emit_instruction(Instruction::MoveR {
-                            dest: dest.unwrap_register(),
-                            src,
-                        });
-                    }
-                    Operand::Constant(src) => {
-                        self.emit_instruction(Instruction::MoveK {
-                            dest: dest.unwrap_register(),
-                            src,
-                        });
-                    }
-                }
+                self.emit_move(right, dest);
 
                 self.patch_jump(jump_to_end);
 
@@ -445,7 +438,19 @@ impl<'a> FunctionContext<'a> {
             }
 
             ExprKind::LogicalOr { left, right } => {
-                let dest = self.visit_expression(left);
+                let left = self.visit_expression(left);
+
+                let dest = match left {
+                    Operand::Register(_) => left,
+                    Operand::Constant(src) => {
+                        let dest = self.allocate_register();
+                        self.emit_instruction(Instruction::MoveK {
+                            dest: dest.unwrap_register(),
+                            src,
+                        });
+                        dest
+                    }
+                };
 
                 let jump_to_end = match dest {
                     Operand::Register(src) => {
@@ -456,22 +461,7 @@ impl<'a> FunctionContext<'a> {
                     }
                 };
 
-                let src = self.visit_expression(right);
-
-                match src {
-                    Operand::Register(src) => {
-                        self.emit_instruction(Instruction::MoveR {
-                            dest: dest.unwrap_register(),
-                            src,
-                        });
-                    }
-                    Operand::Constant(src) => {
-                        self.emit_instruction(Instruction::MoveK {
-                            dest: dest.unwrap_register(),
-                            src,
-                        });
-                    }
-                }
+                self.emit_move(right, dest);
 
                 self.patch_jump(jump_to_end);
 
@@ -589,7 +579,7 @@ impl<'a> FunctionContext<'a> {
                     },
 
                     (Operand::Constant(_), Operand::Constant(_)) => {
-                        unreachable!("you said no KK, but you could fold here")
+                        unreachable!("No constant fold done yet!")
                     }
                 };
 
@@ -622,33 +612,10 @@ impl<'a> FunctionContext<'a> {
                 let callee_src = self.visit_expression(callee);
 
                 for (index, argument) in arguments.iter().enumerate() {
-                    let instructions_size = self.instructions.len();
+                    let dest = Operand::Register(index as u8);
+                    self.emit_move(argument, dest);
 
-                    let src = self.visit_expression(argument);
-
-                    let pending_index = if self.instructions.len() == instructions_size {
-                        let instruction = match src {
-                            Operand::Register(src) => Instruction::MoveR {
-                                dest: index as u8,
-                                src,
-                            },
-                            Operand::Constant(src) => Instruction::MoveK {
-                                dest: index as u8,
-                                src,
-                            },
-                        };
-
-                        self.emit_instruction(instruction)
-                    } else {
-                        FunctionContext::mutate_dest(
-                            self.instructions.last_mut().unwrap(),
-                            index as u8,
-                        );
-
-                        self.instructions.len() - 1
-                    };
-
-                    self.pending_arguments.push(pending_index);
+                    self.pending_arguments.push(self.instructions.len() - 1);
                 }
 
                 let instruction = match callee_src {
