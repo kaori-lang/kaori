@@ -8,7 +8,8 @@ fun fib(n) {
 
 fun main()  {
 
-    print(fib(30));
+    fib(30);
 }
+
 
 

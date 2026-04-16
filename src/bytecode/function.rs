@@ -26,7 +26,7 @@ impl Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         writeln!(f, "CONSTANTS: {:?}", self.constants)?;
         for (ip, instr) in self.instructions.iter().enumerate() {
-            writeln!(f, "{:04}  {:?}", ip, instr)?;
+            writeln!(f, "{:04}  {}", ip, instr)?;
         }
         writeln!(f)?;
         Ok(())

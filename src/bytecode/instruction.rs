@@ -33,49 +33,204 @@ pub enum Instruction {
     GreaterEqualRR { dest: u8, src1: u8, src2: u8 },
     GreaterEqualRK { dest: u8, src1: u8, src2: u8 },
     GreaterEqualKR { dest: u8, src1: u8, src2: u8 },
-
     NotK { dest: u8, src: u8 },
     NotR { dest: u8, src: u8 },
     NegateK { dest: u8, src: u8 },
     NegateR { dest: u8, src: u8 },
-    // ===== Data Movement =====
     MoveR { dest: u8, src: u8 },
     MoveK { dest: u8, src: u8 },
-
-    // ===== Objects =====
     CreateDict { dest: u8 },
-
-    // object[key] = value
     SetFieldRR { object: u8, key: u8, value: u8 },
     SetFieldRK { object: u8, key: u8, value: u8 },
     SetFieldKR { object: u8, key: u8, value: u8 },
     SetFieldKK { object: u8, key: u8, value: u8 },
-
-    // dest = object[key]
     GetFieldR { dest: u8, object: u8, key: u8 },
     GetFieldK { dest: u8, object: u8, key: u8 },
-
-    // ===== Calls =====
     CallK { dest: u8, src: u8 },
     CallR { dest: u8, src: u8 },
-
-    // ===== Control Flow =====
     ReturnK { src: u8 },
     ReturnR { src: u8 },
-
     Jump { offset: i16 },
     JumpIfTrueK { src: u8, offset: i16 },
     JumpIfTrueR { src: u8, offset: i16 },
-
     JumpIfFalseK { src: u8, offset: i16 },
     JumpIfFalseR { src: u8, offset: i16 },
-
-    // ===== Misc =====
     PrintK { src: u8 },
     PrintR { src: u8 },
 }
 impl Instruction {
     pub const fn discriminant(&self) -> usize {
         (unsafe { *(self as *const Self as *const u8) }) as usize
+    }
+}
+
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            // ===== Arithmetic =====
+            Instruction::AddRR { dest, src1, src2 } => {
+                write!(f, "ADD r{} r{} r{}", dest, src1, src2)
+            }
+            Instruction::AddRK { dest, src1, src2 } => {
+                write!(f, "ADD r{} r{} k{}", dest, src1, src2)
+            }
+            Instruction::AddKR { dest, src1, src2 } => {
+                write!(f, "ADD r{} k{} r{}", dest, src1, src2)
+            }
+
+            Instruction::SubtractRR { dest, src1, src2 } => {
+                write!(f, "SUB r{} r{} r{}", dest, src1, src2)
+            }
+            Instruction::SubtractRK { dest, src1, src2 } => {
+                write!(f, "SUB r{} r{} k{}", dest, src1, src2)
+            }
+            Instruction::SubtractKR { dest, src1, src2 } => {
+                write!(f, "SUB r{} k{} r{}", dest, src1, src2)
+            }
+
+            Instruction::MultiplyRR { dest, src1, src2 } => {
+                write!(f, "MUL r{} r{} r{}", dest, src1, src2)
+            }
+            Instruction::MultiplyRK { dest, src1, src2 } => {
+                write!(f, "MUL r{} r{} k{}", dest, src1, src2)
+            }
+            Instruction::MultiplyKR { dest, src1, src2 } => {
+                write!(f, "MUL r{} k{} r{}", dest, src1, src2)
+            }
+
+            Instruction::DivideRR { dest, src1, src2 } => {
+                write!(f, "DIV r{} r{} r{}", dest, src1, src2)
+            }
+            Instruction::DivideRK { dest, src1, src2 } => {
+                write!(f, "DIV r{} r{} k{}", dest, src1, src2)
+            }
+            Instruction::DivideKR { dest, src1, src2 } => {
+                write!(f, "DIV r{} k{} r{}", dest, src1, src2)
+            }
+
+            Instruction::ModuloRR { dest, src1, src2 } => {
+                write!(f, "MOD r{} r{} r{}", dest, src1, src2)
+            }
+            Instruction::ModuloRK { dest, src1, src2 } => {
+                write!(f, "MOD r{} r{} k{}", dest, src1, src2)
+            }
+            Instruction::ModuloKR { dest, src1, src2 } => {
+                write!(f, "MOD r{} k{} r{}", dest, src1, src2)
+            }
+
+            Instruction::PowerRR { dest, src1, src2 } => {
+                write!(f, "POW r{} r{} r{}", dest, src1, src2)
+            }
+            Instruction::PowerRK { dest, src1, src2 } => {
+                write!(f, "POW r{} r{} k{}", dest, src1, src2)
+            }
+            Instruction::PowerKR { dest, src1, src2 } => {
+                write!(f, "POW r{} k{} r{}", dest, src1, src2)
+            }
+
+            // ===== Comparison =====
+            Instruction::EqualRR { dest, src1, src2 } => {
+                write!(f, "EQ r{} r{} r{}", dest, src1, src2)
+            }
+            Instruction::EqualRK { dest, src1, src2 } => {
+                write!(f, "EQ r{} r{} k{}", dest, src1, src2)
+            }
+            Instruction::EqualKR { dest, src1, src2 } => {
+                write!(f, "EQ r{} k{} r{}", dest, src1, src2)
+            }
+
+            Instruction::NotEqualRR { dest, src1, src2 } => {
+                write!(f, "NEQ r{} r{} r{}", dest, src1, src2)
+            }
+            Instruction::NotEqualRK { dest, src1, src2 } => {
+                write!(f, "NEQ r{} r{} k{}", dest, src1, src2)
+            }
+            Instruction::NotEqualKR { dest, src1, src2 } => {
+                write!(f, "NEQ r{} k{} r{}", dest, src1, src2)
+            }
+
+            Instruction::GreaterRR { dest, src1, src2 } => {
+                write!(f, "GT r{} r{} r{}", dest, src1, src2)
+            }
+            Instruction::GreaterRK { dest, src1, src2 } => {
+                write!(f, "GT r{} r{} k{}", dest, src1, src2)
+            }
+            Instruction::GreaterKR { dest, src1, src2 } => {
+                write!(f, "GT r{} k{} r{}", dest, src1, src2)
+            }
+
+            Instruction::GreaterEqualRR { dest, src1, src2 } => {
+                write!(f, "GTE r{} r{} r{}", dest, src1, src2)
+            }
+            Instruction::GreaterEqualRK { dest, src1, src2 } => {
+                write!(f, "GTE r{} r{} k{}", dest, src1, src2)
+            }
+            Instruction::GreaterEqualKR { dest, src1, src2 } => {
+                write!(f, "GTE r{} k{} r{}", dest, src1, src2)
+            }
+
+            // ===== Unary =====
+            Instruction::NotR { dest, src } => write!(f, "NOT r{} r{}", dest, src),
+            Instruction::NotK { dest, src } => write!(f, "NOT r{} k{}", dest, src),
+
+            Instruction::NegateR { dest, src } => write!(f, "NEG r{} r{}", dest, src),
+            Instruction::NegateK { dest, src } => write!(f, "NEG r{} k{}", dest, src),
+
+            // ===== Move =====
+            Instruction::MoveR { dest, src } => write!(f, "MOV r{} r{}", dest, src),
+            Instruction::MoveK { dest, src } => write!(f, "MOV r{} k{}", dest, src),
+
+            // ===== Objects =====
+            Instruction::CreateDict { dest } => write!(f, "DICT r{}", dest),
+
+            Instruction::SetFieldRR { object, key, value } => {
+                write!(f, "SET r{} r{} r{}", object, key, value)
+            }
+            Instruction::SetFieldRK { object, key, value } => {
+                write!(f, "SET r{} r{} k{}", object, key, value)
+            }
+            Instruction::SetFieldKR { object, key, value } => {
+                write!(f, "SET r{} k{} r{}", object, key, value)
+            }
+            Instruction::SetFieldKK { object, key, value } => {
+                write!(f, "SET r{} k{} k{}", object, key, value)
+            }
+
+            Instruction::GetFieldR { dest, object, key } => {
+                write!(f, "GET r{} r{} r{}", dest, object, key)
+            }
+            Instruction::GetFieldK { dest, object, key } => {
+                write!(f, "GET r{} r{} k{}", dest, object, key)
+            }
+
+            // ===== Calls =====
+            Instruction::CallR { dest, src } => write!(f, "CALL r{} r{}", dest, src),
+            Instruction::CallK { dest, src } => write!(f, "CALL r{} k{}", dest, src),
+
+            // ===== Return =====
+            Instruction::ReturnR { src } => write!(f, "RET r{}", src),
+            Instruction::ReturnK { src } => write!(f, "RET k{}", src),
+
+            // ===== Jumps =====
+            Instruction::Jump { offset } => write!(f, "JMP {}", offset),
+
+            Instruction::JumpIfTrueR { src, offset } => {
+                write!(f, "JMP_IF_TRUE r{} {}", src, offset)
+            }
+            Instruction::JumpIfTrueK { src, offset } => {
+                write!(f, "JMP_IF_TRUE k{} {}", src, offset)
+            }
+
+            Instruction::JumpIfFalseR { src, offset } => {
+                write!(f, "JMP_IF_FALSE r{} {}", src, offset)
+            }
+            Instruction::JumpIfFalseK { src, offset } => {
+                write!(f, "JMP_IF_FALSE k{} {}", src, offset)
+            }
+
+            // ===== Print =====
+            Instruction::PrintR { src } => write!(f, "PRINT r{}", src),
+            Instruction::PrintK { src } => write!(f, "PRINT k{}", src),
+        }
     }
 }
