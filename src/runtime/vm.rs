@@ -4,7 +4,7 @@ use super::{function::Function, gc::Gc};
 use crate::error::kaori_error::KaoriError;
 use crate::kaori_error;
 use crate::lexer::span::Span;
-use crate::runtime::value::{TYPE_BOOLEAN, TYPE_DICT, TYPE_FUNCTION, TYPE_NUMBER};
+
 use crate::{bytecode::instruction::Instruction, runtime::value::Value};
 
 type Handler = fn(
@@ -123,15 +123,11 @@ impl Vm {
     }
 
     pub fn push_frame(&mut self, size: usize) -> *mut Value {
-        let offset = self
-            .frames
-            .last()
-            .map(|(ptr, len)| unsafe {
-                ptr.add(*len).offset_from(self.registers.as_ptr()) as usize
-            })
-            .unwrap_or(0);
+        let ptr = match self.frames.last() {
+            Some(&(ptr, len)) => unsafe { ptr.add(len) },
+            None => self.registers.as_mut_ptr(),
+        };
 
-        let ptr = unsafe { self.registers.as_mut_ptr().add(offset) };
         self.frames.push((ptr, size));
         ptr
     }
@@ -171,7 +167,7 @@ fn opcode_add_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() + rhs.as_number()),
@@ -201,7 +197,7 @@ fn opcode_add_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() + rhs.as_number()),
@@ -231,7 +227,7 @@ fn opcode_add_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() + rhs.as_number()),
@@ -261,7 +257,7 @@ fn opcode_subtract_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() - rhs.as_number()),
@@ -291,7 +287,7 @@ fn opcode_subtract_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() - rhs.as_number()),
@@ -321,7 +317,7 @@ fn opcode_subtract_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() - rhs.as_number()),
@@ -351,7 +347,7 @@ fn opcode_multiply_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() * rhs.as_number()),
@@ -381,7 +377,7 @@ fn opcode_multiply_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() * rhs.as_number()),
@@ -411,7 +407,7 @@ fn opcode_multiply_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() * rhs.as_number()),
@@ -441,7 +437,7 @@ fn opcode_divide_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() / rhs.as_number()),
@@ -471,7 +467,7 @@ fn opcode_divide_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() / rhs.as_number()),
@@ -501,7 +497,7 @@ fn opcode_divide_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() / rhs.as_number()),
@@ -531,7 +527,7 @@ fn opcode_modulo_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() % rhs.as_number()),
@@ -561,7 +557,7 @@ fn opcode_modulo_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() % rhs.as_number()),
@@ -591,7 +587,7 @@ fn opcode_modulo_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number() % rhs.as_number()),
@@ -621,7 +617,7 @@ fn opcode_power_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number().powf(rhs.as_number())),
@@ -651,7 +647,7 @@ fn opcode_power_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number().powf(rhs.as_number())),
@@ -681,7 +677,7 @@ fn opcode_power_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::number(lhs.as_number().powf(rhs.as_number())),
@@ -711,7 +707,7 @@ fn opcode_equal_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() == rhs.as_number()),
@@ -741,7 +737,7 @@ fn opcode_equal_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() == rhs.as_number()),
@@ -771,7 +767,7 @@ fn opcode_equal_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() == rhs.as_number()),
@@ -801,7 +797,7 @@ fn opcode_not_equal_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() != rhs.as_number()),
@@ -831,7 +827,7 @@ fn opcode_not_equal_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() != rhs.as_number()),
@@ -861,7 +857,7 @@ fn opcode_not_equal_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() != rhs.as_number()),
@@ -892,7 +888,7 @@ fn opcode_greater_rr(
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
 
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() > rhs.as_number()),
@@ -922,7 +918,7 @@ fn opcode_greater_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() > rhs.as_number()),
@@ -952,7 +948,7 @@ fn opcode_greater_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() > rhs.as_number()),
@@ -982,7 +978,7 @@ fn opcode_greater_equal_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() >= rhs.as_number()),
@@ -1012,7 +1008,7 @@ fn opcode_greater_equal_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() >= rhs.as_number()),
@@ -1042,7 +1038,7 @@ fn opcode_greater_equal_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.tag() == TYPE_NUMBER && rhs.tag() == TYPE_NUMBER {
+        if lhs.is_number() && rhs.is_number() {
             set_value(
                 dest,
                 Value::boolean(lhs.as_number() >= rhs.as_number()),
@@ -1071,7 +1067,7 @@ fn opcode_negate_r(
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
-        if value.tag() == TYPE_NUMBER {
+        if value.is_number() {
             set_value(dest, Value::number(-value.as_number()), registers);
             dispatch_next!(ip, vm, registers, constants)
         } else {
@@ -1092,7 +1088,7 @@ fn opcode_negate_k(
             unreachable_unchecked()
         };
         let value = get_constant_value(src, constants);
-        if value.tag() == TYPE_NUMBER {
+        if value.is_number() {
             set_value(dest, Value::number(-value.as_number()), registers);
             dispatch_next!(ip, vm, registers, constants)
         } else {
@@ -1113,7 +1109,7 @@ fn opcode_not_r(
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
-        if value.tag() == TYPE_BOOLEAN {
+        if value.is_boolean() {
             set_value(dest, Value::boolean(!value.as_boolean()), registers);
             dispatch_next!(ip, vm, registers, constants)
         } else {
@@ -1134,7 +1130,7 @@ fn opcode_not_k(
             unreachable_unchecked()
         };
         let value = get_constant_value(src, constants);
-        if value.tag() == TYPE_BOOLEAN {
+        if value.is_boolean() {
             set_value(dest, Value::boolean(!value.as_boolean()), registers);
             dispatch_next!(ip, vm, registers, constants)
         } else {
@@ -1202,14 +1198,14 @@ fn opcode_set_field_rr(
         let Instruction::SetFieldRR { object, key, value } = *ip else {
             unreachable_unchecked()
         };
-        let obj = get_register_value(object, registers);
+        let object = get_register_value(object, registers);
         let key = get_register_value(key, registers);
         let val = get_register_value(value, registers);
-        if obj.tag() == TYPE_DICT {
-            obj.as_dict().insert(key, val);
+        if object.is_dict() {
+            object.as_dict().insert(key, val);
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!("cannot set field on {:?}, value is not a dict", obj)
+            type_error!("cannot set field on {:?}, value is not a dict", object)
         }
     }
 }
@@ -1225,14 +1221,14 @@ fn opcode_set_field_rk(
         let Instruction::SetFieldRK { object, key, value } = *ip else {
             unreachable_unchecked()
         };
-        let obj = get_register_value(object, registers);
+        let object = get_register_value(object, registers);
         let key = get_register_value(key, registers);
         let val = get_constant_value(value, constants);
-        if obj.tag() == TYPE_DICT {
-            obj.as_dict().insert(key, val);
+        if object.is_dict() {
+            object.as_dict().insert(key, val);
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!("cannot set field on {:?}, value is not a dict", obj)
+            type_error!("cannot set field on {:?}, value is not a dict", object)
         }
     }
 }
@@ -1248,14 +1244,14 @@ fn opcode_set_field_kr(
         let Instruction::SetFieldKR { object, key, value } = *ip else {
             unreachable_unchecked()
         };
-        let obj = get_register_value(object, registers);
+        let object = get_register_value(object, registers);
         let key = get_constant_value(key, constants);
         let val = get_register_value(value, registers);
-        if obj.tag() == TYPE_DICT {
-            obj.as_dict().insert(key, val);
+        if object.is_dict() {
+            object.as_dict().insert(key, val);
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!("cannot set field on {:?}, value is not a dict", obj)
+            type_error!("cannot set field on {:?}, value is not a dict", object)
         }
     }
 }
@@ -1271,14 +1267,14 @@ fn opcode_set_field_kk(
         let Instruction::SetFieldKK { object, key, value } = *ip else {
             unreachable_unchecked()
         };
-        let obj = get_register_value(object, registers);
+        let object = get_register_value(object, registers);
         let key = get_constant_value(key, constants);
         let val = get_constant_value(value, constants);
-        if obj.tag() == TYPE_DICT {
-            obj.as_dict().insert(key, val);
+        if object.is_dict() {
+            object.as_dict().insert(key, val);
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!("cannot set field on {:?}, value is not a dict", obj)
+            type_error!("cannot set field on {:?}, value is not a dict", object)
         }
     }
 }
@@ -1294,14 +1290,14 @@ fn opcode_get_field_r(
         let Instruction::GetFieldR { dest, object, key } = *ip else {
             unreachable_unchecked()
         };
-        let obj = get_register_value(object, registers);
+        let object = get_register_value(object, registers);
         let key = get_register_value(key, registers);
-        if obj.tag() == TYPE_DICT {
-            let value = obj.as_dict().get(&key).copied().unwrap_or_default();
+        if object.is_dict() {
+            let value = object.as_dict().get(&key).copied().unwrap_or_default();
             set_value(dest, value, registers);
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!("cannot get field from {:?}, value is not a dict", obj)
+            type_error!("cannot get field from {:?}, value is not a dict", object)
         }
     }
 }
@@ -1317,14 +1313,14 @@ fn opcode_get_field_k(
         let Instruction::GetFieldK { dest, object, key } = *ip else {
             unreachable_unchecked()
         };
-        let obj = get_register_value(object, registers);
+        let object = get_register_value(object, registers);
         let key = get_constant_value(key, constants);
-        if obj.tag() == TYPE_DICT {
-            let value = obj.as_dict().get(&key).copied().unwrap_or_default();
+        if object.is_dict() {
+            let value = object.as_dict().get(&key).copied().unwrap_or_default();
             set_value(dest, value, registers);
             dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!("cannot get field from {:?}, value is not a dict", obj)
+            type_error!("cannot get field from {:?}, value is not a dict", object)
         }
     }
 }
@@ -1343,7 +1339,7 @@ fn opcode_call_r(
 
         let callee = get_register_value(src, registers);
 
-        if callee.tag() == TYPE_FUNCTION {
+        if callee.is_function() {
             let return_value = {
                 let Function {
                     ref instructions,
@@ -1378,7 +1374,7 @@ fn opcode_call_k(
         };
 
         let callee = get_constant_value(src, constants);
-        if callee.tag() == TYPE_FUNCTION {
+        if callee.is_function() {
             let return_value = {
                 let Function {
                     ref instructions,
@@ -1460,7 +1456,7 @@ fn opcode_jump_if_true_r(
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
-        if value.tag() == TYPE_BOOLEAN {
+        if value.is_boolean() {
             if value.as_boolean() {
                 dispatch_offset!(ip, vm, registers, constants, offset)
             } else {
@@ -1487,7 +1483,7 @@ fn opcode_jump_if_true_k(
             unreachable_unchecked()
         };
         let value = get_constant_value(src, constants);
-        if value.tag() == TYPE_BOOLEAN {
+        if value.is_boolean() {
             if value.as_boolean() {
                 dispatch_offset!(ip, vm, registers, constants, offset)
             } else {
@@ -1514,7 +1510,7 @@ fn opcode_jump_if_false_r(
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
-        if value.tag() == TYPE_BOOLEAN {
+        if value.is_boolean() {
             if value.as_boolean() {
                 dispatch_next!(ip, vm, registers, constants)
             } else {
@@ -1541,7 +1537,7 @@ fn opcode_jump_if_false_k(
             unreachable_unchecked()
         };
         let value = get_constant_value(src, constants);
-        if value.tag() == TYPE_BOOLEAN {
+        if value.is_boolean() {
             if value.as_boolean() {
                 dispatch_next!(ip, vm, registers, constants)
             } else {

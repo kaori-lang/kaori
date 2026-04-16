@@ -1,4 +1,5 @@
 fun main() {
-    true and false;
+    a := 1844744073709551616;
+    print(a ** 5);
 }
 

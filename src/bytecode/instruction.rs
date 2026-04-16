@@ -58,8 +58,6 @@ pub enum Instruction {
     JumpIfFalseR { src: u8, offset: i16 },
     PrintK { src: u8 },
     PrintR { src: u8 },
-
-    Add { dest: u8, src: u8, imm: f16 },
 }
 
 impl Instruction {
@@ -71,9 +69,6 @@ impl Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Instruction::Add { dest, src, imm } => {
-                write!(f, "ADD r{} r{} r{}", dest, src, imm)
-            }
             Instruction::AddRR { dest, src1, src2 } => {
                 write!(f, "ADD r{} r{} r{}", dest, src1, src2)
             }
