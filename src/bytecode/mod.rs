@@ -1,5 +1,6 @@
 pub mod emit_bytecode;
 pub mod function;
+
 pub mod instruction;
 pub mod operand;
 pub use function::Function;

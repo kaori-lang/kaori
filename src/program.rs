@@ -6,7 +6,6 @@ use crate::{
     error::kaori_error::KaoriError,
     hir::{decl::Decl, resolver::Resolver},
     lexer::{lexer::Lexer, token_stream::TokenStream},
-    runtime::{function::from_compiled, gc::Gc, vm::Vm},
 };
 
 fn run_lexical_analysis(source: &'_ str) -> Result<TokenStream<'_>, KaoriError> {
@@ -50,18 +49,18 @@ pub fn run_program(source: &str) -> Result<(), KaoriError> {
         println!("{}", function);
     }
 
-    let mut gc = Gc::default();
-    let functions = from_compiled(bytecode, &mut gc);
+    /*    let mut gc = Gc::default();
+       let functions = from_compiled(bytecode, &mut gc);
 
-    let start = Instant::now();
+       let start = Instant::now();
 
-    let mut vm = Vm::new(gc);
-    let entry = &functions[0];
-    vm.run(entry)?;
+       let mut vm = Vm::new(gc);
+       let entry = &functions[0];
+       vm.run(entry)?;
 
-    let elapsed = start.elapsed();
+       let elapsed = start.elapsed();
 
-    println!("{}", elapsed.as_secs_f64() * 1000.0);
-
+       println!("{}", elapsed.as_secs_f64() * 1000.0);
+    */
     Ok(())
 }

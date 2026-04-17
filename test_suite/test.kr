@@ -1,42 +1,20 @@
-fun main() {
-    iterations := 1000000;
-    max_fib := 30;
 
-    for i := 0; i < iterations; i += 1 {
-        a := 0;
-        b := 1;
-
-        for j := 0; j < max_fib; j += 1 {
-            temp := a + b;
-            a = b;
-            b = temp;
-
-        }
-
-    }
+fun Cat(name, age, color) {
+    return {   
+        name,
+        age,
+        color,
+    };
 }
 
+fun main() {
+    cat := Cat("meow", 5, "black");
 
+    sum := 0;
 
-/*
-CONSTANTS: [Number(1000000.0), Number(30.0), Number(0.0), Number(1.0), Nil]
-0000  MOV r0 k0
-0001  MOV r1 k1
-0002  MOV r2 k2
-0003  GT r3 r0 r2
-0004  JMP_IF_FALSE r3 13
-0005  MOV r4 k2
-0006  MOV r5 k3
-0007  MOV r6 k2
-0008  GT r7 r1 r6
-0009  JMP_IF_FALSE r7 6
-0010  ADD r8 r4 r5
-0011  MOV r4 r5
-0012  MOV r5 r8
-0013  ADD r6 r6 k3
-0014  JMP -6
-0015  ADD r2 r2 k3
-0016  JMP -13
-0017  RET k4
+    for i := 0; i < 100000000; i += 1 {
+        sum += cat.age;
+    }
 
-*/
+    print(sum);
+}
