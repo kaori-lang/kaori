@@ -1,5 +1,5 @@
 
-
+local start = os.clock()
 local iterations = 1000000
 local max_fib = 30
 
@@ -12,4 +12,7 @@ for i = 1, iterations do
         b = temp
     end
 end
+
+local elapsed = os.clock() - start
+print(elapsed * 1000)
 

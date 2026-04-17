@@ -7,26 +7,27 @@ use crate::lexer::span::Span;
 
 use crate::{bytecode::instruction::Instruction, runtime::value::Value};
 
-type Handler = fn(
+type Handler = extern "rust-preserve-none" fn(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>>;
 
 macro_rules! dispatch_next {
-    ($ip:expr, $vm:expr, $registers:expr, $constants:expr) => {{
+    ($ip:expr, $vm:expr, $registers:expr, $constants:expr, $size:expr) => {{
         let ip: *const Instruction = $ip.add(1);
         let index = (*ip).discriminant();
-        become OPCODE_HANDLERS[index](ip, $vm, $registers, $constants);
+        become OPCODE_HANDLERS[index](ip, $vm, $registers, $constants, $size);
     }};
 }
 
 macro_rules! dispatch_offset {
-    ($ip:expr, $vm:expr, $registers:expr, $constants:expr, $offset:expr) => {{
+    ($ip:expr, $vm:expr, $registers:expr, $constants:expr, $offset:expr, $size:expr) => {{
         let ip: *const Instruction = $ip.offset($offset as i16 as isize);
         let index = (*ip).discriminant();
-        become OPCODE_HANDLERS[index](ip, $vm, $registers, $constants);
+        become OPCODE_HANDLERS[index](ip, $vm, $registers, $constants, $size);
     }};
 }
 
@@ -104,7 +105,6 @@ const OPCODE_HANDLERS: [Handler; 60] = [
 
 pub struct Vm {
     pub registers: Vec<Value>,
-    pub frames: Vec<(*mut Value, usize)>,
     pub gc: Gc,
 }
 
@@ -112,7 +112,6 @@ impl Vm {
     pub fn new(gc: Gc) -> Self {
         Self {
             registers: vec![Value::default(); 4096],
-            frames: Vec::new(),
             gc,
         }
     }
@@ -124,24 +123,11 @@ impl Vm {
             constants,
         } = entry;
 
-        let registers = self.push_frame(*registers_count as usize);
+        let registers = self.registers.as_mut_ptr();
         let constants = constants.as_ptr();
         let ip = instructions.as_ptr();
         let index = unsafe { (*ip).discriminant() };
-        OPCODE_HANDLERS[index](ip, self, registers, constants).map_err(|e| *e)
-    }
-
-    pub fn push_frame(&mut self, size: usize) -> *mut Value {
-        let ptr = match self.frames.last() {
-            Some(&(ptr, len)) => unsafe { ptr.add(len) },
-            None => self.registers.as_mut_ptr(),
-        };
-        self.frames.push((ptr, size));
-        ptr
-    }
-
-    pub fn pop_frame(&mut self) {
-        self.frames.pop();
+        OPCODE_HANDLERS[index](ip, self, registers, constants, *registers_count).map_err(|e| *e)
     }
 }
 
@@ -163,11 +149,12 @@ unsafe fn set_value(index: u8, value: Value, registers: *mut Value) {
 }
 
 #[inline(never)]
-fn opcode_add_rr(
+extern "rust-preserve-none" fn opcode_add_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::AddRR { dest, src1, src2 } = *ip else {
@@ -186,16 +173,17 @@ fn opcode_add_rr(
             Value::number(lhs.as_number() + rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_add_rk(
+extern "rust-preserve-none" fn opcode_add_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::AddRK { dest, src1, src2 } = *ip else {
@@ -214,16 +202,17 @@ fn opcode_add_rk(
             Value::number(lhs.as_number() + rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_add_kr(
+extern "rust-preserve-none" fn opcode_add_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::AddKR { dest, src1, src2 } = *ip else {
@@ -242,16 +231,17 @@ fn opcode_add_kr(
             Value::number(lhs.as_number() + rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_subtract_rr(
+extern "rust-preserve-none" fn opcode_subtract_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::SubtractRR { dest, src1, src2 } = *ip else {
@@ -270,16 +260,17 @@ fn opcode_subtract_rr(
             Value::number(lhs.as_number() - rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_subtract_rk(
+extern "rust-preserve-none" fn opcode_subtract_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::SubtractRK { dest, src1, src2 } = *ip else {
@@ -298,16 +289,17 @@ fn opcode_subtract_rk(
             Value::number(lhs.as_number() - rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_subtract_kr(
+extern "rust-preserve-none" fn opcode_subtract_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::SubtractKR { dest, src1, src2 } = *ip else {
@@ -326,16 +318,17 @@ fn opcode_subtract_kr(
             Value::number(lhs.as_number() - rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_multiply_rr(
+extern "rust-preserve-none" fn opcode_multiply_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::MultiplyRR { dest, src1, src2 } = *ip else {
@@ -354,16 +347,17 @@ fn opcode_multiply_rr(
             Value::number(lhs.as_number() * rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_multiply_rk(
+extern "rust-preserve-none" fn opcode_multiply_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::MultiplyRK { dest, src1, src2 } = *ip else {
@@ -382,16 +376,17 @@ fn opcode_multiply_rk(
             Value::number(lhs.as_number() * rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_multiply_kr(
+extern "rust-preserve-none" fn opcode_multiply_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::MultiplyKR { dest, src1, src2 } = *ip else {
@@ -410,16 +405,17 @@ fn opcode_multiply_kr(
             Value::number(lhs.as_number() * rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_divide_rr(
+extern "rust-preserve-none" fn opcode_divide_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::DivideRR { dest, src1, src2 } = *ip else {
@@ -438,16 +434,17 @@ fn opcode_divide_rr(
             Value::number(lhs.as_number() / rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_divide_rk(
+extern "rust-preserve-none" fn opcode_divide_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::DivideRK { dest, src1, src2 } = *ip else {
@@ -466,16 +463,17 @@ fn opcode_divide_rk(
             Value::number(lhs.as_number() / rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_divide_kr(
+extern "rust-preserve-none" fn opcode_divide_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::DivideKR { dest, src1, src2 } = *ip else {
@@ -494,16 +492,17 @@ fn opcode_divide_kr(
             Value::number(lhs.as_number() / rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_modulo_rr(
+extern "rust-preserve-none" fn opcode_modulo_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::ModuloRR { dest, src1, src2 } = *ip else {
@@ -522,16 +521,17 @@ fn opcode_modulo_rr(
             Value::number(lhs.as_number() % rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_modulo_rk(
+extern "rust-preserve-none" fn opcode_modulo_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::ModuloRK { dest, src1, src2 } = *ip else {
@@ -550,16 +550,17 @@ fn opcode_modulo_rk(
             Value::number(lhs.as_number() % rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_modulo_kr(
+extern "rust-preserve-none" fn opcode_modulo_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::ModuloKR { dest, src1, src2 } = *ip else {
@@ -578,16 +579,17 @@ fn opcode_modulo_kr(
             Value::number(lhs.as_number() % rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_power_rr(
+extern "rust-preserve-none" fn opcode_power_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::PowerRR { dest, src1, src2 } = *ip else {
@@ -606,16 +608,17 @@ fn opcode_power_rr(
             Value::number(lhs.as_number().powf(rhs.as_number())),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_power_rk(
+extern "rust-preserve-none" fn opcode_power_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::PowerRK { dest, src1, src2 } = *ip else {
@@ -634,16 +637,17 @@ fn opcode_power_rk(
             Value::number(lhs.as_number().powf(rhs.as_number())),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_power_kr(
+extern "rust-preserve-none" fn opcode_power_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::PowerKR { dest, src1, src2 } = *ip else {
@@ -662,16 +666,17 @@ fn opcode_power_kr(
             Value::number(lhs.as_number().powf(rhs.as_number())),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_equal_rr(
+extern "rust-preserve-none" fn opcode_equal_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::EqualRR { dest, src1, src2 } = *ip else {
@@ -690,16 +695,17 @@ fn opcode_equal_rr(
             Value::boolean(lhs.as_number() == rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_equal_rk(
+extern "rust-preserve-none" fn opcode_equal_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::EqualRK { dest, src1, src2 } = *ip else {
@@ -718,16 +724,17 @@ fn opcode_equal_rk(
             Value::boolean(lhs.as_number() == rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_equal_kr(
+extern "rust-preserve-none" fn opcode_equal_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::EqualKR { dest, src1, src2 } = *ip else {
@@ -746,16 +753,17 @@ fn opcode_equal_kr(
             Value::boolean(lhs.as_number() == rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_not_equal_rr(
+extern "rust-preserve-none" fn opcode_not_equal_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::NotEqualRR { dest, src1, src2 } = *ip else {
@@ -774,16 +782,17 @@ fn opcode_not_equal_rr(
             Value::boolean(lhs.as_number() != rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_not_equal_rk(
+extern "rust-preserve-none" fn opcode_not_equal_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::NotEqualRK { dest, src1, src2 } = *ip else {
@@ -802,16 +811,17 @@ fn opcode_not_equal_rk(
             Value::boolean(lhs.as_number() != rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_not_equal_kr(
+extern "rust-preserve-none" fn opcode_not_equal_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::NotEqualKR { dest, src1, src2 } = *ip else {
@@ -830,16 +840,17 @@ fn opcode_not_equal_kr(
             Value::boolean(lhs.as_number() != rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_less_rr(
+extern "rust-preserve-none" fn opcode_less_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::LessRR { dest, src1, src2 } = *ip else {
@@ -858,16 +869,17 @@ fn opcode_less_rr(
             Value::boolean(lhs.as_number() < rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_less_rk(
+extern "rust-preserve-none" fn opcode_less_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::LessRK { dest, src1, src2 } = *ip else {
@@ -886,16 +898,17 @@ fn opcode_less_rk(
             Value::boolean(lhs.as_number() < rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_less_kr(
+extern "rust-preserve-none" fn opcode_less_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::LessKR { dest, src1, src2 } = *ip else {
@@ -914,16 +927,17 @@ fn opcode_less_kr(
             Value::boolean(lhs.as_number() < rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_less_equal_rr(
+extern "rust-preserve-none" fn opcode_less_equal_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::LessEqualRR { dest, src1, src2 } = *ip else {
@@ -942,16 +956,17 @@ fn opcode_less_equal_rr(
             Value::boolean(lhs.as_number() <= rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_less_equal_rk(
+extern "rust-preserve-none" fn opcode_less_equal_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::LessEqualRK { dest, src1, src2 } = *ip else {
@@ -970,16 +985,17 @@ fn opcode_less_equal_rk(
             Value::boolean(lhs.as_number() <= rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_less_equal_kr(
+extern "rust-preserve-none" fn opcode_less_equal_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::LessEqualKR { dest, src1, src2 } = *ip else {
@@ -998,16 +1014,17 @@ fn opcode_less_equal_kr(
             Value::boolean(lhs.as_number() <= rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_greater_rr(
+extern "rust-preserve-none" fn opcode_greater_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::GreaterRR { dest, src1, src2 } = *ip else {
@@ -1026,16 +1043,17 @@ fn opcode_greater_rr(
             Value::boolean(lhs.as_number() > rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_greater_rk(
+extern "rust-preserve-none" fn opcode_greater_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::GreaterRK { dest, src1, src2 } = *ip else {
@@ -1054,16 +1072,17 @@ fn opcode_greater_rk(
             Value::boolean(lhs.as_number() > rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_greater_kr(
+extern "rust-preserve-none" fn opcode_greater_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::GreaterKR { dest, src1, src2 } = *ip else {
@@ -1082,16 +1101,17 @@ fn opcode_greater_kr(
             Value::boolean(lhs.as_number() > rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_greater_equal_rr(
+extern "rust-preserve-none" fn opcode_greater_equal_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::GreaterEqualRR { dest, src1, src2 } = *ip else {
@@ -1110,16 +1130,17 @@ fn opcode_greater_equal_rr(
             Value::boolean(lhs.as_number() >= rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_greater_equal_rk(
+extern "rust-preserve-none" fn opcode_greater_equal_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::GreaterEqualRK { dest, src1, src2 } = *ip else {
@@ -1138,16 +1159,17 @@ fn opcode_greater_equal_rk(
             Value::boolean(lhs.as_number() >= rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_greater_equal_kr(
+extern "rust-preserve-none" fn opcode_greater_equal_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::GreaterEqualKR { dest, src1, src2 } = *ip else {
@@ -1166,16 +1188,17 @@ fn opcode_greater_equal_kr(
             Value::boolean(lhs.as_number() >= rhs.as_number()),
             registers,
         );
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_negate_r(
+extern "rust-preserve-none" fn opcode_negate_r(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::NegateR { dest, src } = *ip else {
@@ -1188,16 +1211,17 @@ fn opcode_negate_r(
             value
         );
         set_value(dest, Value::number(-value.as_number()), registers);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_negate_k(
+extern "rust-preserve-none" fn opcode_negate_k(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::NegateK { dest, src } = *ip else {
@@ -1210,16 +1234,17 @@ fn opcode_negate_k(
             value
         );
         set_value(dest, Value::number(-value.as_number()), registers);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_not_r(
+extern "rust-preserve-none" fn opcode_not_r(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::NotR { dest, src } = *ip else {
@@ -1232,16 +1257,17 @@ fn opcode_not_r(
             value
         );
         set_value(dest, Value::boolean(!value.as_boolean()), registers);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_not_k(
+extern "rust-preserve-none" fn opcode_not_k(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::NotK { dest, src } = *ip else {
@@ -1254,64 +1280,68 @@ fn opcode_not_k(
             value
         );
         set_value(dest, Value::boolean(!value.as_boolean()), registers);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_move_r(
+extern "rust-preserve-none" fn opcode_move_r(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::MoveR { dest, src } = *ip else {
             unreachable_unchecked()
         };
         set_value(dest, get_register_value(src, registers), registers);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_move_k(
+extern "rust-preserve-none" fn opcode_move_k(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::MoveK { dest, src } = *ip else {
             unreachable_unchecked()
         };
         set_value(dest, get_constant_value(src, constants), registers);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_create_dict(
+extern "rust-preserve-none" fn opcode_create_dict(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::CreateDict { dest } = *ip else {
             unreachable_unchecked()
         };
         set_value(dest, vm.gc.allocate_dict(), registers);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_set_field_rr(
+extern "rust-preserve-none" fn opcode_set_field_rr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::SetFieldRR { object, key, value } = *ip else {
@@ -1326,16 +1356,17 @@ fn opcode_set_field_rr(
             object
         );
         object.as_dict().insert(key, val);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_set_field_rk(
+extern "rust-preserve-none" fn opcode_set_field_rk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::SetFieldRK { object, key, value } = *ip else {
@@ -1350,16 +1381,17 @@ fn opcode_set_field_rk(
             object
         );
         object.as_dict().insert(key, val);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_set_field_kr(
+extern "rust-preserve-none" fn opcode_set_field_kr(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::SetFieldKR { object, key, value } = *ip else {
@@ -1374,16 +1406,17 @@ fn opcode_set_field_kr(
             object
         );
         object.as_dict().insert(key, val);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_set_field_kk(
+extern "rust-preserve-none" fn opcode_set_field_kk(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::SetFieldKK { object, key, value } = *ip else {
@@ -1398,16 +1431,17 @@ fn opcode_set_field_kk(
             object
         );
         object.as_dict().insert(key, val);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_get_field_r(
+extern "rust-preserve-none" fn opcode_get_field_r(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::GetFieldR { dest, object, key } = *ip else {
@@ -1422,16 +1456,17 @@ fn opcode_get_field_r(
         );
         let value = object.as_dict().get(&key).copied().unwrap_or_default();
         set_value(dest, value, registers);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_get_field_k(
+extern "rust-preserve-none" fn opcode_get_field_k(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::GetFieldK { dest, object, key } = *ip else {
@@ -1446,16 +1481,17 @@ fn opcode_get_field_k(
         );
         let value = object.as_dict().get(&key).copied().unwrap_or_default();
         set_value(dest, value, registers);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_call_r(
+extern "rust-preserve-none" fn opcode_call_r(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::CallR { dest, src } = *ip else {
@@ -1473,23 +1509,32 @@ fn opcode_call_r(
                 registers_count,
                 ref constants,
             } = *callee.as_function();
-            let registers = vm.push_frame(registers_count as usize);
+            let registers = registers.add(size as usize);
+
+            if std::hint::unlikely(
+                registers.add(registers_count as usize)
+                    > vm.registers.as_mut_ptr().add(vm.registers.len()),
+            ) {
+                return Err(Box::new(kaori_error!(Span::default(), "stack overflow")));
+            }
+
             let constants = constants.as_ptr();
             let ip = instructions.as_ptr();
             let index = (*ip).discriminant();
-            OPCODE_HANDLERS[index](ip, vm, registers, constants)
+            OPCODE_HANDLERS[index](ip, vm, registers, constants, registers_count)
         }?;
         set_value(dest, return_value, registers);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_call_k(
+extern "rust-preserve-none" fn opcode_call_k(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::CallK { dest, src } = *ip else {
@@ -1507,72 +1552,80 @@ fn opcode_call_k(
                 registers_count,
                 ref constants,
             } = *callee.as_function();
-            let registers = vm.push_frame(registers_count as usize);
+
+            if std::hint::unlikely(
+                registers.add(registers_count as usize)
+                    > vm.registers.as_mut_ptr().add(vm.registers.len()),
+            ) {
+                return Err(Box::new(kaori_error!(Span::default(), "stack overflow")));
+            }
+
+            let registers = registers.add(size as usize);
             let constants = constants.as_ptr();
             let ip = instructions.as_ptr();
             let index = (*ip).discriminant();
-            OPCODE_HANDLERS[index](ip, vm, registers, constants)
+            OPCODE_HANDLERS[index](ip, vm, registers, constants, registers_count)
         }?;
         set_value(dest, return_value, registers);
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_return_r(
+extern "rust-preserve-none" fn opcode_return_r(
     ip: *const Instruction,
-    vm: &mut Vm,
+    _vm: &mut Vm,
     registers: *mut Value,
     _constants: *const Value,
+    _size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::ReturnR { src } = *ip else {
             unreachable_unchecked()
         };
-        let value = get_register_value(src, registers);
-        vm.pop_frame();
-        Ok(value)
+        Ok(get_register_value(src, registers))
     }
 }
 
 #[inline(never)]
-fn opcode_return_k(
+extern "rust-preserve-none" fn opcode_return_k(
     ip: *const Instruction,
-    vm: &mut Vm,
+    _vm: &mut Vm,
     _registers: *mut Value,
     constants: *const Value,
+    _size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::ReturnK { src } = *ip else {
             unreachable_unchecked()
         };
-        let value = get_constant_value(src, constants);
-        vm.pop_frame();
-        Ok(value)
+        Ok(get_constant_value(src, constants))
     }
 }
 
 #[inline(never)]
-fn opcode_jump(
+extern "rust-preserve-none" fn opcode_jump(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Jump { offset } = *ip else {
             unreachable_unchecked()
         };
-        dispatch_offset!(ip, vm, registers, constants, offset)
+        dispatch_offset!(ip, vm, registers, constants, offset, size)
     }
 }
 
 #[inline(never)]
-fn opcode_jump_if_true_r(
+extern "rust-preserve-none" fn opcode_jump_if_true_r(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::JumpIfTrueR { src, offset } = *ip else {
@@ -1585,19 +1638,20 @@ fn opcode_jump_if_true_r(
             value
         );
         if value.as_boolean() {
-            dispatch_offset!(ip, vm, registers, constants, offset)
+            dispatch_offset!(ip, vm, registers, constants, offset, size)
         } else {
-            dispatch_next!(ip, vm, registers, constants)
+            dispatch_next!(ip, vm, registers, constants, size)
         }
     }
 }
 
 #[inline(never)]
-fn opcode_jump_if_true_k(
+extern "rust-preserve-none" fn opcode_jump_if_true_k(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::JumpIfTrueK { src, offset } = *ip else {
@@ -1610,19 +1664,20 @@ fn opcode_jump_if_true_k(
             value
         );
         if value.as_boolean() {
-            dispatch_offset!(ip, vm, registers, constants, offset)
+            dispatch_offset!(ip, vm, registers, constants, offset, size)
         } else {
-            dispatch_next!(ip, vm, registers, constants)
+            dispatch_next!(ip, vm, registers, constants, size)
         }
     }
 }
 
 #[inline(never)]
-fn opcode_jump_if_false_r(
+extern "rust-preserve-none" fn opcode_jump_if_false_r(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::JumpIfFalseR { src, offset } = *ip else {
@@ -1634,21 +1689,21 @@ fn opcode_jump_if_false_r(
             "cannot use {:?} as a condition, value must be a boolean",
             value
         );
-
         if value.as_boolean() {
-            dispatch_next!(ip, vm, registers, constants)
+            dispatch_next!(ip, vm, registers, constants, size)
         } else {
-            dispatch_offset!(ip, vm, registers, constants, offset)
+            dispatch_offset!(ip, vm, registers, constants, offset, size)
         }
     }
 }
 
 #[inline(never)]
-fn opcode_jump_if_false_k(
+extern "rust-preserve-none" fn opcode_jump_if_false_k(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::JumpIfFalseK { src, offset } = *ip else {
@@ -1661,41 +1716,43 @@ fn opcode_jump_if_false_k(
             value
         );
         if value.as_boolean() {
-            dispatch_next!(ip, vm, registers, constants)
+            dispatch_next!(ip, vm, registers, constants, size)
         } else {
-            dispatch_offset!(ip, vm, registers, constants, offset)
+            dispatch_offset!(ip, vm, registers, constants, offset, size)
         }
     }
 }
 
 #[inline(never)]
-fn opcode_print_r(
+extern "rust-preserve-none" fn opcode_print_r(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::PrintR { src } = *ip else {
             unreachable_unchecked()
         };
         println!("{:?}", get_register_value(src, registers));
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }
 
 #[inline(never)]
-fn opcode_print_k(
+extern "rust-preserve-none" fn opcode_print_k(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
     constants: *const Value,
+    size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::PrintK { src } = *ip else {
             unreachable_unchecked()
         };
         println!("{:?}", get_constant_value(src, constants));
-        dispatch_next!(ip, vm, registers, constants)
+        dispatch_next!(ip, vm, registers, constants, size)
     }
 }

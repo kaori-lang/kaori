@@ -1,20 +1,18 @@
-
-fun Cat(name, age, color) {
-    return {   
-        name,
-        age,
-        color,
-    };
-}
-
 fun main() {
-    cat := Cat("meow", 5, "black");
+    iterations := 1000000;
+    max_fib := 30;
 
-    sum := 0;
+    for i := 0; i < iterations; i += 1 {
+        a := 0;
+        b := 1;
 
-    for i := 0; i < 100000000; i += 1 {
-        sum += cat.age;
+        for j := 0; j < max_fib; j += 1 {
+            temp := a + b;
+            a = b;
+            b = temp;
+
+        }
+
     }
-
-    print(sum);
 }
+
