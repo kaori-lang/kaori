@@ -1,7 +1,7 @@
 #![feature(explicit_tail_calls)]
 #![feature(f16)]
 #![allow(incomplete_features)]
-
+#![feature(likely_unlikely)]
 pub mod ast;
 pub mod bytecode;
 pub mod error;

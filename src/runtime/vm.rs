@@ -30,10 +30,13 @@ macro_rules! dispatch_offset {
     }};
 }
 
-macro_rules! type_error {
-    ($($arg:tt)*) => {{
-        return Err(Box::new(kaori_error!(Span::default(), $($arg)*)));
-    }};
+macro_rules! type_check {
+    ($cond:expr, $($arg:tt)*) => {
+        #[cfg(not(feature = "unchecked"))]
+        if std::hint::unlikely(!$cond) {
+            return Err(Box::new(kaori_error!(Span::default(), $($arg)*)));
+        }
+    };
 }
 
 const OPCODE_HANDLERS: [Handler; 60] = [
@@ -98,6 +101,7 @@ const OPCODE_HANDLERS: [Handler; 60] = [
     opcode_print_k,
     opcode_print_r,
 ];
+
 pub struct Vm {
     pub registers: Vec<Value>,
     pub frames: Vec<(*mut Value, usize)>,
@@ -119,11 +123,11 @@ impl Vm {
             registers_count,
             constants,
         } = entry;
+
         let registers = self.push_frame(*registers_count as usize);
         let constants = constants.as_ptr();
         let ip = instructions.as_ptr();
         let index = unsafe { (*ip).discriminant() };
-
         OPCODE_HANDLERS[index](ip, self, registers, constants).map_err(|e| *e)
     }
 
@@ -132,7 +136,6 @@ impl Vm {
             Some(&(ptr, len)) => unsafe { ptr.add(len) },
             None => self.registers.as_mut_ptr(),
         };
-
         self.frames.push((ptr, size));
         ptr
     }
@@ -172,20 +175,18 @@ fn opcode_add_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() + rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot add {:?} and {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot add {:?} and {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() + rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -202,20 +203,18 @@ fn opcode_add_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() + rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot add {:?} and {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot add {:?} and {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() + rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -232,20 +231,18 @@ fn opcode_add_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() + rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot add {:?} and {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot add {:?} and {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() + rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -262,20 +259,18 @@ fn opcode_subtract_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() - rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot subtract {:?} from {:?}, both operands must be numbers",
-                rhs,
-                lhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot subtract {:?} from {:?}, both operands must be numbers",
+            rhs,
+            lhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() - rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -292,20 +287,18 @@ fn opcode_subtract_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() - rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot subtract {:?} from {:?}, both operands must be numbers",
-                rhs,
-                lhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot subtract {:?} from {:?}, both operands must be numbers",
+            rhs,
+            lhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() - rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -322,20 +315,18 @@ fn opcode_subtract_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() - rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot subtract {:?} from {:?}, both operands must be numbers",
-                rhs,
-                lhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot subtract {:?} from {:?}, both operands must be numbers",
+            rhs,
+            lhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() - rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -352,20 +343,18 @@ fn opcode_multiply_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() * rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot multiply {:?} and {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot multiply {:?} and {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() * rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -382,20 +371,18 @@ fn opcode_multiply_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() * rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot multiply {:?} and {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot multiply {:?} and {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() * rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -412,20 +399,18 @@ fn opcode_multiply_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() * rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot multiply {:?} and {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot multiply {:?} and {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() * rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -442,20 +427,18 @@ fn opcode_divide_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() / rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot divide {:?} by {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot divide {:?} by {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() / rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -472,20 +455,18 @@ fn opcode_divide_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() / rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot divide {:?} by {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot divide {:?} by {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() / rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -502,20 +483,18 @@ fn opcode_divide_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() / rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot divide {:?} by {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot divide {:?} by {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() / rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -532,20 +511,18 @@ fn opcode_modulo_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() % rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compute {:?} modulo {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compute {:?} modulo {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() % rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -562,20 +539,18 @@ fn opcode_modulo_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() % rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compute {:?} modulo {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compute {:?} modulo {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() % rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -592,20 +567,18 @@ fn opcode_modulo_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number() % rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compute {:?} modulo {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compute {:?} modulo {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number() % rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -622,20 +595,18 @@ fn opcode_power_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number().powf(rhs.as_number())),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot raise {:?} to the power of {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot raise {:?} to the power of {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number().powf(rhs.as_number())),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -652,20 +623,18 @@ fn opcode_power_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number().powf(rhs.as_number())),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot raise {:?} to the power of {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot raise {:?} to the power of {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number().powf(rhs.as_number())),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -682,20 +651,18 @@ fn opcode_power_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::number(lhs.as_number().powf(rhs.as_number())),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot raise {:?} to the power of {:?}, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot raise {:?} to the power of {:?}, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::number(lhs.as_number().powf(rhs.as_number())),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -712,20 +679,18 @@ fn opcode_equal_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() == rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with ==, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with ==, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() == rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -742,20 +707,18 @@ fn opcode_equal_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() == rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with ==, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with ==, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() == rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -772,20 +735,18 @@ fn opcode_equal_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() == rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with ==, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with ==, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() == rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -802,20 +763,18 @@ fn opcode_not_equal_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() != rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with !=, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with !=, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() != rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -832,20 +791,18 @@ fn opcode_not_equal_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() != rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with !=, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with !=, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() != rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -862,20 +819,18 @@ fn opcode_not_equal_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() != rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with !=, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with !=, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() != rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -892,21 +847,18 @@ fn opcode_less_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() < rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with <, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with <, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() < rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -921,24 +873,20 @@ fn opcode_less_rk(
         let Instruction::LessRK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
-
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() < rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with <, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with <, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() < rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -953,24 +901,20 @@ fn opcode_less_kr(
         let Instruction::LessKR { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
-
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() < rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with <, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with <, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() < rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -985,24 +929,20 @@ fn opcode_less_equal_rr(
         let Instruction::LessEqualRR { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
-
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() <= rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with <=, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with <=, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() <= rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1017,24 +957,20 @@ fn opcode_less_equal_rk(
         let Instruction::LessEqualRK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
-
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() <= rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with <=, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with <=, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() <= rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1049,24 +985,20 @@ fn opcode_less_equal_kr(
         let Instruction::LessEqualKR { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
         };
-
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() <= rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with <=, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with <=, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() <= rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1083,21 +1015,18 @@ fn opcode_greater_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() > rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with >, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with >, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() > rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1114,20 +1043,18 @@ fn opcode_greater_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() > rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with >, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with >, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() > rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1144,20 +1071,18 @@ fn opcode_greater_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() > rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with >, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with >, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() > rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1174,20 +1099,18 @@ fn opcode_greater_equal_rr(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() >= rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with >=, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with >=, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() >= rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1204,20 +1127,18 @@ fn opcode_greater_equal_rk(
         };
         let lhs = get_register_value(src1, registers);
         let rhs = get_constant_value(src2, constants);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() >= rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with >=, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with >=, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() >= rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1234,20 +1155,18 @@ fn opcode_greater_equal_kr(
         };
         let lhs = get_constant_value(src1, constants);
         let rhs = get_register_value(src2, registers);
-        if lhs.is_number() && rhs.is_number() {
-            set_value(
-                dest,
-                Value::boolean(lhs.as_number() >= rhs.as_number()),
-                registers,
-            );
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!(
-                "cannot compare {:?} and {:?} with >=, both operands must be numbers",
-                lhs,
-                rhs
-            )
-        }
+        type_check!(
+            lhs.is_number() && rhs.is_number(),
+            "cannot compare {:?} and {:?} with >=, both operands must be numbers",
+            lhs,
+            rhs
+        );
+        set_value(
+            dest,
+            Value::boolean(lhs.as_number() >= rhs.as_number()),
+            registers,
+        );
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1263,12 +1182,13 @@ fn opcode_negate_r(
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
-        if value.is_number() {
-            set_value(dest, Value::number(-value.as_number()), registers);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot negate {:?}, operand must be a number", value)
-        }
+        type_check!(
+            value.is_number(),
+            "cannot negate {:?}, operand must be a number",
+            value
+        );
+        set_value(dest, Value::number(-value.as_number()), registers);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1284,12 +1204,13 @@ fn opcode_negate_k(
             unreachable_unchecked()
         };
         let value = get_constant_value(src, constants);
-        if value.is_number() {
-            set_value(dest, Value::number(-value.as_number()), registers);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot negate {:?}, operand must be a number", value)
-        }
+        type_check!(
+            value.is_number(),
+            "cannot negate {:?}, operand must be a number",
+            value
+        );
+        set_value(dest, Value::number(-value.as_number()), registers);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1305,12 +1226,13 @@ fn opcode_not_r(
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
-        if value.is_boolean() {
-            set_value(dest, Value::boolean(!value.as_boolean()), registers);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot apply ! to {:?}, operand must be a boolean", value)
-        }
+        type_check!(
+            value.is_boolean(),
+            "cannot apply ! to {:?}, operand must be a boolean",
+            value
+        );
+        set_value(dest, Value::boolean(!value.as_boolean()), registers);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1326,12 +1248,13 @@ fn opcode_not_k(
             unreachable_unchecked()
         };
         let value = get_constant_value(src, constants);
-        if value.is_boolean() {
-            set_value(dest, Value::boolean(!value.as_boolean()), registers);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot apply ! to {:?}, operand must be a boolean", value)
-        }
+        type_check!(
+            value.is_boolean(),
+            "cannot apply ! to {:?}, operand must be a boolean",
+            value
+        );
+        set_value(dest, Value::boolean(!value.as_boolean()), registers);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1397,12 +1320,13 @@ fn opcode_set_field_rr(
         let object = get_register_value(object, registers);
         let key = get_register_value(key, registers);
         let val = get_register_value(value, registers);
-        if object.is_dict() {
-            object.as_dict().insert(key, val);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot set field on {:?}, value is not a dict", object)
-        }
+        type_check!(
+            object.is_dict(),
+            "cannot set field on {:?}, value is not a dict",
+            object
+        );
+        object.as_dict().insert(key, val);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1420,12 +1344,13 @@ fn opcode_set_field_rk(
         let object = get_register_value(object, registers);
         let key = get_register_value(key, registers);
         let val = get_constant_value(value, constants);
-        if object.is_dict() {
-            object.as_dict().insert(key, val);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot set field on {:?}, value is not a dict", object)
-        }
+        type_check!(
+            object.is_dict(),
+            "cannot set field on {:?}, value is not a dict",
+            object
+        );
+        object.as_dict().insert(key, val);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1443,12 +1368,13 @@ fn opcode_set_field_kr(
         let object = get_register_value(object, registers);
         let key = get_constant_value(key, constants);
         let val = get_register_value(value, registers);
-        if object.is_dict() {
-            object.as_dict().insert(key, val);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot set field on {:?}, value is not a dict", object)
-        }
+        type_check!(
+            object.is_dict(),
+            "cannot set field on {:?}, value is not a dict",
+            object
+        );
+        object.as_dict().insert(key, val);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1466,12 +1392,13 @@ fn opcode_set_field_kk(
         let object = get_register_value(object, registers);
         let key = get_constant_value(key, constants);
         let val = get_constant_value(value, constants);
-        if object.is_dict() {
-            object.as_dict().insert(key, val);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot set field on {:?}, value is not a dict", object)
-        }
+        type_check!(
+            object.is_dict(),
+            "cannot set field on {:?}, value is not a dict",
+            object
+        );
+        object.as_dict().insert(key, val);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1488,13 +1415,14 @@ fn opcode_get_field_r(
         };
         let object = get_register_value(object, registers);
         let key = get_register_value(key, registers);
-        if object.is_dict() {
-            let value = object.as_dict().get(&key).copied().unwrap_or_default();
-            set_value(dest, value, registers);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot get field from {:?}, value is not a dict", object)
-        }
+        type_check!(
+            object.is_dict(),
+            "cannot get field from {:?}, value is not a dict",
+            object
+        );
+        let value = object.as_dict().get(&key).copied().unwrap_or_default();
+        set_value(dest, value, registers);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1511,13 +1439,14 @@ fn opcode_get_field_k(
         };
         let object = get_register_value(object, registers);
         let key = get_constant_value(key, constants);
-        if object.is_dict() {
-            let value = object.as_dict().get(&key).copied().unwrap_or_default();
-            set_value(dest, value, registers);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot get field from {:?}, value is not a dict", object)
-        }
+        type_check!(
+            object.is_dict(),
+            "cannot get field from {:?}, value is not a dict",
+            object
+        );
+        let value = object.as_dict().get(&key).copied().unwrap_or_default();
+        set_value(dest, value, registers);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1532,28 +1461,26 @@ fn opcode_call_r(
         let Instruction::CallR { dest, src } = *ip else {
             unreachable_unchecked()
         };
-
         let callee = get_register_value(src, registers);
-
-        if callee.is_function() {
-            let return_value = {
-                let Function {
-                    ref instructions,
-                    registers_count,
-                    ref constants,
-                } = *callee.as_function();
-
-                let registers = vm.push_frame(registers_count as usize);
-                let constants = constants.as_ptr();
-                let ip = instructions.as_ptr();
-                let index = (*ip).discriminant();
-                OPCODE_HANDLERS[index](ip, vm, registers, constants)
-            }?;
-            set_value(dest, return_value, registers);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot call {:?}, value is not a function", callee)
-        }
+        type_check!(
+            callee.is_function(),
+            "cannot call {:?}, value is not a function",
+            callee
+        );
+        let return_value = {
+            let Function {
+                ref instructions,
+                registers_count,
+                ref constants,
+            } = *callee.as_function();
+            let registers = vm.push_frame(registers_count as usize);
+            let constants = constants.as_ptr();
+            let ip = instructions.as_ptr();
+            let index = (*ip).discriminant();
+            OPCODE_HANDLERS[index](ip, vm, registers, constants)
+        }?;
+        set_value(dest, return_value, registers);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1568,26 +1495,26 @@ fn opcode_call_k(
         let Instruction::CallK { dest, src } = *ip else {
             unreachable_unchecked()
         };
-
         let callee = get_constant_value(src, constants);
-        if callee.is_function() {
-            let return_value = {
-                let Function {
-                    ref instructions,
-                    registers_count,
-                    ref constants,
-                } = *callee.as_function();
-                let registers = vm.push_frame(registers_count as usize);
-                let constants = constants.as_ptr();
-                let ip = instructions.as_ptr();
-                let index = (*ip).discriminant();
-                OPCODE_HANDLERS[index](ip, vm, registers, constants)
-            }?;
-            set_value(dest, return_value, registers);
-            dispatch_next!(ip, vm, registers, constants)
-        } else {
-            type_error!("cannot call {:?}, value is not a function", callee)
-        }
+        type_check!(
+            callee.is_function(),
+            "cannot call {:?}, value is not a function",
+            callee
+        );
+        let return_value = {
+            let Function {
+                ref instructions,
+                registers_count,
+                ref constants,
+            } = *callee.as_function();
+            let registers = vm.push_frame(registers_count as usize);
+            let constants = constants.as_ptr();
+            let ip = instructions.as_ptr();
+            let index = (*ip).discriminant();
+            OPCODE_HANDLERS[index](ip, vm, registers, constants)
+        }?;
+        set_value(dest, return_value, registers);
+        dispatch_next!(ip, vm, registers, constants)
     }
 }
 
@@ -1652,17 +1579,15 @@ fn opcode_jump_if_true_r(
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
-        if value.is_boolean() {
-            if value.as_boolean() {
-                dispatch_offset!(ip, vm, registers, constants, offset)
-            } else {
-                dispatch_next!(ip, vm, registers, constants)
-            }
+        type_check!(
+            value.is_boolean(),
+            "cannot use {:?} as a condition, value must be a boolean",
+            value
+        );
+        if value.as_boolean() {
+            dispatch_offset!(ip, vm, registers, constants, offset)
         } else {
-            type_error!(
-                "cannot use {:?} as a condition, value must be a boolean",
-                value
-            )
+            dispatch_next!(ip, vm, registers, constants)
         }
     }
 }
@@ -1679,17 +1604,15 @@ fn opcode_jump_if_true_k(
             unreachable_unchecked()
         };
         let value = get_constant_value(src, constants);
-        if value.is_boolean() {
-            if value.as_boolean() {
-                dispatch_offset!(ip, vm, registers, constants, offset)
-            } else {
-                dispatch_next!(ip, vm, registers, constants)
-            }
+        type_check!(
+            value.is_boolean(),
+            "cannot use {:?} as a condition, value must be a boolean",
+            value
+        );
+        if value.as_boolean() {
+            dispatch_offset!(ip, vm, registers, constants, offset)
         } else {
-            type_error!(
-                "cannot use {:?} as a condition, value must be a boolean",
-                value
-            )
+            dispatch_next!(ip, vm, registers, constants)
         }
     }
 }
@@ -1706,17 +1629,16 @@ fn opcode_jump_if_false_r(
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
-        if value.is_boolean() {
-            if value.as_boolean() {
-                dispatch_next!(ip, vm, registers, constants)
-            } else {
-                dispatch_offset!(ip, vm, registers, constants, offset)
-            }
+        type_check!(
+            value.is_boolean(),
+            "cannot use {:?} as a condition, value must be a boolean",
+            value
+        );
+
+        if value.as_boolean() {
+            dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!(
-                "cannot use {:?} as a condition, value must be a boolean",
-                value
-            )
+            dispatch_offset!(ip, vm, registers, constants, offset)
         }
     }
 }
@@ -1733,17 +1655,15 @@ fn opcode_jump_if_false_k(
             unreachable_unchecked()
         };
         let value = get_constant_value(src, constants);
-        if value.is_boolean() {
-            if value.as_boolean() {
-                dispatch_next!(ip, vm, registers, constants)
-            } else {
-                dispatch_offset!(ip, vm, registers, constants, offset)
-            }
+        type_check!(
+            value.is_boolean(),
+            "cannot use {:?} as a condition, value must be a boolean",
+            value
+        );
+        if value.as_boolean() {
+            dispatch_next!(ip, vm, registers, constants)
         } else {
-            type_error!(
-                "cannot use {:?} as a condition, value must be a boolean",
-                value
-            )
+            dispatch_offset!(ip, vm, registers, constants, offset)
         }
     }
 }
