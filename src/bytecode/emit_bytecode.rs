@@ -374,29 +374,28 @@ impl<'a> FunctionContext<'a> {
                     self.visit_expression(init);
                 }
 
-                let loop_start = self.instructions.len();
+                let jump_to_condition = self.emit_instruction(Instruction::Jump { offset: 0 });
 
-                let cond = self.visit_expression(condition);
-
-                let jump_to_end = match cond {
-                    Operand::Register(src) => {
-                        self.emit_instruction(Instruction::JumpIfFalseR { src, offset: 0 })
-                    }
-                    Operand::Constant(src) => {
-                        self.emit_instruction(Instruction::JumpIfFalseK { src, offset: 0 })
-                    }
-                };
-
+                let loop_body = self.instructions.len();
                 self.visit_statement(block)?;
 
                 if let Some(increment) = increment {
                     self.visit_statement(increment)?;
                 }
 
-                let offset = loop_start as i16 - self.instructions.len() as i16;
-                self.emit_instruction(Instruction::Jump { offset });
+                self.patch_jump(jump_to_condition);
+                let condition = self.visit_expression(condition);
 
-                self.patch_jump(jump_to_end);
+                match condition {
+                    Operand::Register(src) => self.emit_instruction(Instruction::JumpIfTrueR {
+                        src,
+                        offset: loop_body as i16 - self.instructions.len() as i16,
+                    }),
+                    Operand::Constant(src) => self.emit_instruction(Instruction::JumpIfTrueK {
+                        src,
+                        offset: loop_body as i16 - self.instructions.len() as i16,
+                    }),
+                };
             }
 
             StmtKind::Break => {
@@ -550,7 +549,6 @@ impl<'a> FunctionContext<'a> {
                         BinaryOpKind::Divide => Instruction::DivideRR { dest, src1, src2 },
                         BinaryOpKind::Modulo => Instruction::ModuloRR { dest, src1, src2 },
                         BinaryOpKind::Power => Instruction::PowerRR { dest, src1, src2 },
-
                         BinaryOpKind::Equal => Instruction::EqualRR { dest, src1, src2 },
                         BinaryOpKind::NotEqual => Instruction::NotEqualRR { dest, src1, src2 },
 
