@@ -24,7 +24,6 @@ impl<'a> Parser<'a> {
             TokenKind::GreaterEqual => BinaryOpKind::GreaterEqual,
             TokenKind::Less => BinaryOpKind::Less,
             TokenKind::LessEqual => BinaryOpKind::LessEqual,
-            TokenKind::Power => BinaryOpKind::Power,
             _ => unreachable!(),
         };
 
@@ -60,7 +59,6 @@ impl<'a> Parser<'a> {
             TokenKind::MultiplyAssign => AssignOpKind::MultiplyAssign,
             TokenKind::DivideAssign => AssignOpKind::DivideAssign,
             TokenKind::ModuloAssign => AssignOpKind::ModuloAssign,
-            TokenKind::PowerAssign => AssignOpKind::PowerAssign,
             TokenKind::DeclareAssign => {
                 self.token_stream.advance();
 
@@ -183,7 +181,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_factor(&mut self) -> Result<Expr, KaoriError> {
-        let mut left = self.parse_power()?;
+        let mut left = self.parse_prefix_unary()?;
 
         while !self.token_stream.at_end() {
             let token_kind = self.token_stream.token_kind();
@@ -196,27 +194,7 @@ impl<'a> Parser<'a> {
             };
 
             self.token_stream.advance();
-            let right = self.parse_power()?;
-
-            left = Expr::binary(operator, left, right);
-        }
-
-        Ok(left)
-    }
-
-    fn parse_power(&mut self) -> Result<Expr, KaoriError> {
-        let mut left = self.parse_prefix_unary()?;
-
-        while !self.token_stream.at_end() {
-            let token_kind = self.token_stream.token_kind();
-
-            let operator = match token_kind {
-                TokenKind::Power => self.build_binary_operator(),
-                _ => break,
-            };
-
-            self.token_stream.advance();
-            let right = self.parse_power()?;
+            let right = self.parse_prefix_unary()?;
 
             left = Expr::binary(operator, left, right);
         }

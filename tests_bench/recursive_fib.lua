@@ -7,7 +7,7 @@ local function fib(n)
 end
 
 
-fib(35)
+fib(30)
 
 
 local elapsed = os.clock() - start

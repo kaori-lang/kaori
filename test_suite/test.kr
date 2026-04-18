@@ -1,32 +1,33 @@
+
 fun main() {
-    sum := 0;
-    N := 10000;
+    iterations := 1000000;
+    max_fib := 30;
 
-    for i := 0; i < N; i += 1 {
-        sum += i;
+    for i := 0; i < iterations; i += 1 {
+        a := 0;
+        b := 1;
+
+        for j := 0; j < max_fib; j += 1 {
+            temp := a + b;
+            a = b;
+            b = temp;
+
+        }
+
     }
-
-    print(sum);
 }
+
+
 
 /*
 0000  MOV r0 k0
 0001  MOV r1 k1
-0002  MOV r2 k2
-0003  LT r3 r2 r0
-0004  JMP_IF_FALSE r3 13
-0005  MOV r4 k2
-0006  MOV r5 k3
-0007  MOV r6 k2
-0008  LT r7 r6 r1
-0009  JMP_IF_FALSE r7 6
-0010  ADD r8 r4 r5
-0011  MOV r4 r5
-0012  MOV r5 r8
-0013  ADD r6 r6 k3
-0014  JMP -6
-0015  ADD r2 r2 k3
-0016  JMP -13
-0017  RET k4
-
+0002  MOV r2 k0
+0003  JMP 3
+0004  ADD r0 r0 r2
+0005  ADD r2 r2 k2
+0006  LT r5 r2 r1
+0007  JMP_IF_TRUE r5 -3
+0008  PRINT r0
+0009  RET k3
 */

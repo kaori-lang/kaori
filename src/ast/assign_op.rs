@@ -11,7 +11,6 @@ pub enum AssignOpKind {
     MultiplyAssign,
     DivideAssign,
     ModuloAssign,
-    PowerAssign,
 }
 
 impl AssignOp {

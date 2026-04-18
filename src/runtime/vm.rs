@@ -40,7 +40,7 @@ macro_rules! type_check {
     };
 }
 
-const OPCODE_HANDLERS: [Handler; 60] = [
+const OPCODE_HANDLERS: [Handler; 52] = [
     opcode_add_rr,
     opcode_add_rk,
     opcode_add_kr,
@@ -56,9 +56,6 @@ const OPCODE_HANDLERS: [Handler; 60] = [
     opcode_modulo_rr,
     opcode_modulo_rk,
     opcode_modulo_kr,
-    opcode_power_rr,
-    opcode_power_rk,
-    opcode_power_kr,
     opcode_equal_rr,
     opcode_equal_rk,
     opcode_equal_kr,
@@ -77,10 +74,8 @@ const OPCODE_HANDLERS: [Handler; 60] = [
     opcode_greater_equal_rr,
     opcode_greater_equal_rk,
     opcode_greater_equal_kr,
-    opcode_not_k,
-    opcode_not_r,
-    opcode_negate_k,
-    opcode_negate_r,
+    opcode_not,
+    opcode_negate,
     opcode_move_r,
     opcode_move_k,
     opcode_create_dict,
@@ -95,12 +90,9 @@ const OPCODE_HANDLERS: [Handler; 60] = [
     opcode_return_k,
     opcode_return_r,
     opcode_jump,
-    opcode_jump_if_true_k,
-    opcode_jump_if_true_r,
-    opcode_jump_if_false_k,
-    opcode_jump_if_false_r,
-    opcode_print_k,
-    opcode_print_r,
+    opcode_jump_if_true,
+    opcode_jump_if_false,
+    opcode_print,
 ];
 
 pub struct Vm {
@@ -583,92 +575,7 @@ extern "rust-preserve-none" fn opcode_modulo_kr(
     }
 }
 
-#[inline(never)]
-extern "rust-preserve-none" fn opcode_power_rr(
-    ip: *const Instruction,
-    vm: &mut Vm,
-    registers: *mut Value,
-    constants: *const Value,
-    size: u8,
-) -> Result<Value, Box<KaoriError>> {
-    unsafe {
-        let Instruction::PowerRR { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        let lhs = get_register_value(src1, registers);
-        let rhs = get_register_value(src2, registers);
-        type_check!(
-            lhs.is_number() && rhs.is_number(),
-            "cannot raise {:?} to the power of {:?}, both operands must be numbers",
-            lhs,
-            rhs
-        );
-        set_value(
-            dest,
-            Value::number(lhs.as_number().powf(rhs.as_number())),
-            registers,
-        );
-        dispatch_next!(ip, vm, registers, constants, size)
-    }
-}
-
-#[inline(never)]
-extern "rust-preserve-none" fn opcode_power_rk(
-    ip: *const Instruction,
-    vm: &mut Vm,
-    registers: *mut Value,
-    constants: *const Value,
-    size: u8,
-) -> Result<Value, Box<KaoriError>> {
-    unsafe {
-        let Instruction::PowerRK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        let lhs = get_register_value(src1, registers);
-        let rhs = get_constant_value(src2, constants);
-        type_check!(
-            lhs.is_number() && rhs.is_number(),
-            "cannot raise {:?} to the power of {:?}, both operands must be numbers",
-            lhs,
-            rhs
-        );
-        set_value(
-            dest,
-            Value::number(lhs.as_number().powf(rhs.as_number())),
-            registers,
-        );
-        dispatch_next!(ip, vm, registers, constants, size)
-    }
-}
-
-#[inline(never)]
-extern "rust-preserve-none" fn opcode_power_kr(
-    ip: *const Instruction,
-    vm: &mut Vm,
-    registers: *mut Value,
-    constants: *const Value,
-    size: u8,
-) -> Result<Value, Box<KaoriError>> {
-    unsafe {
-        let Instruction::PowerKR { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        let lhs = get_constant_value(src1, constants);
-        let rhs = get_register_value(src2, registers);
-        type_check!(
-            lhs.is_number() && rhs.is_number(),
-            "cannot raise {:?} to the power of {:?}, both operands must be numbers",
-            lhs,
-            rhs
-        );
-        set_value(
-            dest,
-            Value::number(lhs.as_number().powf(rhs.as_number())),
-            registers,
-        );
-        dispatch_next!(ip, vm, registers, constants, size)
-    }
-}
+// ── comparison ───────────────────────────────────────────────────────────────
 
 #[inline(never)]
 extern "rust-preserve-none" fn opcode_equal_rr(
@@ -1193,7 +1100,7 @@ extern "rust-preserve-none" fn opcode_greater_equal_kr(
 }
 
 #[inline(never)]
-extern "rust-preserve-none" fn opcode_negate_r(
+extern "rust-preserve-none" fn opcode_negate(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -1201,7 +1108,7 @@ extern "rust-preserve-none" fn opcode_negate_r(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::NegateR { dest, src } = *ip else {
+        let Instruction::Negate { dest, src } = *ip else {
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
@@ -1216,7 +1123,7 @@ extern "rust-preserve-none" fn opcode_negate_r(
 }
 
 #[inline(never)]
-extern "rust-preserve-none" fn opcode_negate_k(
+extern "rust-preserve-none" fn opcode_not(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -1224,56 +1131,10 @@ extern "rust-preserve-none" fn opcode_negate_k(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::NegateK { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-        let value = get_constant_value(src, constants);
-        type_check!(
-            value.is_number(),
-            "cannot negate {:?}, operand must be a number",
-            value
-        );
-        set_value(dest, Value::number(-value.as_number()), registers);
-        dispatch_next!(ip, vm, registers, constants, size)
-    }
-}
-
-#[inline(never)]
-extern "rust-preserve-none" fn opcode_not_r(
-    ip: *const Instruction,
-    vm: &mut Vm,
-    registers: *mut Value,
-    constants: *const Value,
-    size: u8,
-) -> Result<Value, Box<KaoriError>> {
-    unsafe {
-        let Instruction::NotR { dest, src } = *ip else {
+        let Instruction::Not { dest, src } = *ip else {
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
-        type_check!(
-            value.is_boolean(),
-            "cannot apply ! to {:?}, operand must be a boolean",
-            value
-        );
-        set_value(dest, Value::boolean(!value.as_boolean()), registers);
-        dispatch_next!(ip, vm, registers, constants, size)
-    }
-}
-
-#[inline(never)]
-extern "rust-preserve-none" fn opcode_not_k(
-    ip: *const Instruction,
-    vm: &mut Vm,
-    registers: *mut Value,
-    constants: *const Value,
-    size: u8,
-) -> Result<Value, Box<KaoriError>> {
-    unsafe {
-        let Instruction::NotK { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-        let value = get_constant_value(src, constants);
         type_check!(
             value.is_boolean(),
             "cannot apply ! to {:?}, operand must be a boolean",
@@ -1485,6 +1346,8 @@ extern "rust-preserve-none" fn opcode_get_field_k(
     }
 }
 
+// ── call / return ─────────────────────────────────────────────────────────────
+
 #[inline(never)]
 extern "rust-preserve-none" fn opcode_call_r(
     ip: *const Instruction,
@@ -1510,14 +1373,12 @@ extern "rust-preserve-none" fn opcode_call_r(
                 ref constants,
             } = *callee.as_function();
             let registers = registers.add(size as usize);
-
             if std::hint::unlikely(
                 registers.add(registers_count as usize)
                     > vm.registers.as_mut_ptr().add(vm.registers.len()),
             ) {
                 return Err(Box::new(kaori_error!(Span::default(), "stack overflow")));
             }
-
             let constants = constants.as_ptr();
             let ip = instructions.as_ptr();
             let index = (*ip).discriminant();
@@ -1552,14 +1413,12 @@ extern "rust-preserve-none" fn opcode_call_k(
                 registers_count,
                 ref constants,
             } = *callee.as_function();
-
             if std::hint::unlikely(
                 registers.add(registers_count as usize)
                     > vm.registers.as_mut_ptr().add(vm.registers.len()),
             ) {
                 return Err(Box::new(kaori_error!(Span::default(), "stack overflow")));
             }
-
             let registers = registers.add(size as usize);
             let constants = constants.as_ptr();
             let ip = instructions.as_ptr();
@@ -1620,7 +1479,7 @@ extern "rust-preserve-none" fn opcode_jump(
 }
 
 #[inline(never)]
-extern "rust-preserve-none" fn opcode_jump_if_true_r(
+extern "rust-preserve-none" fn opcode_jump_if_true(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -1628,7 +1487,7 @@ extern "rust-preserve-none" fn opcode_jump_if_true_r(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::JumpIfTrueR { src, offset } = *ip else {
+        let Instruction::JumpIfTrue { src, offset } = *ip else {
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
@@ -1646,7 +1505,7 @@ extern "rust-preserve-none" fn opcode_jump_if_true_r(
 }
 
 #[inline(never)]
-extern "rust-preserve-none" fn opcode_jump_if_true_k(
+extern "rust-preserve-none" fn opcode_jump_if_false(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -1654,33 +1513,7 @@ extern "rust-preserve-none" fn opcode_jump_if_true_k(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::JumpIfTrueK { src, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        let value = get_constant_value(src, constants);
-        type_check!(
-            value.is_boolean(),
-            "cannot use {:?} as a condition, value must be a boolean",
-            value
-        );
-        if value.as_boolean() {
-            dispatch_offset!(ip, vm, registers, constants, offset, size)
-        } else {
-            dispatch_next!(ip, vm, registers, constants, size)
-        }
-    }
-}
-
-#[inline(never)]
-extern "rust-preserve-none" fn opcode_jump_if_false_r(
-    ip: *const Instruction,
-    vm: &mut Vm,
-    registers: *mut Value,
-    constants: *const Value,
-    size: u8,
-) -> Result<Value, Box<KaoriError>> {
-    unsafe {
-        let Instruction::JumpIfFalseR { src, offset } = *ip else {
+        let Instruction::JumpIfFalse { src, offset } = *ip else {
             unreachable_unchecked()
         };
         let value = get_register_value(src, registers);
@@ -1698,7 +1531,7 @@ extern "rust-preserve-none" fn opcode_jump_if_false_r(
 }
 
 #[inline(never)]
-extern "rust-preserve-none" fn opcode_jump_if_false_k(
+extern "rust-preserve-none" fn opcode_print(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -1706,53 +1539,10 @@ extern "rust-preserve-none" fn opcode_jump_if_false_k(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::JumpIfFalseK { src, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        let value = get_constant_value(src, constants);
-        type_check!(
-            value.is_boolean(),
-            "cannot use {:?} as a condition, value must be a boolean",
-            value
-        );
-        if value.as_boolean() {
-            dispatch_next!(ip, vm, registers, constants, size)
-        } else {
-            dispatch_offset!(ip, vm, registers, constants, offset, size)
-        }
-    }
-}
-
-#[inline(never)]
-extern "rust-preserve-none" fn opcode_print_r(
-    ip: *const Instruction,
-    vm: &mut Vm,
-    registers: *mut Value,
-    constants: *const Value,
-    size: u8,
-) -> Result<Value, Box<KaoriError>> {
-    unsafe {
-        let Instruction::PrintR { src } = *ip else {
+        let Instruction::Print { src } = *ip else {
             unreachable_unchecked()
         };
         println!("{:?}", get_register_value(src, registers));
-        dispatch_next!(ip, vm, registers, constants, size)
-    }
-}
-
-#[inline(never)]
-extern "rust-preserve-none" fn opcode_print_k(
-    ip: *const Instruction,
-    vm: &mut Vm,
-    registers: *mut Value,
-    constants: *const Value,
-    size: u8,
-) -> Result<Value, Box<KaoriError>> {
-    unsafe {
-        let Instruction::PrintK { src } = *ip else {
-            unreachable_unchecked()
-        };
-        println!("{:?}", get_constant_value(src, constants));
         dispatch_next!(ip, vm, registers, constants, size)
     }
 }

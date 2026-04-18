@@ -5,13 +5,11 @@ max_fib = 30
 
 start = time.perf_counter()
 
+
 for i in range(iterations):
-    a = 0
-    b = 1
+    a, b = 0, 1
     for j in range(max_fib):
-        temp = a + b
-        a = b
-        b = temp
+        a, b = b, a + b
 
 end = time.perf_counter()
 print((end - start) * 1000)  

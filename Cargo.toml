@@ -9,6 +9,7 @@ ordered-float = "5.1.0"
 mem = "0.5.0"
 uuid = { version = "1.22.0", features = ["v4"] }
 ahash = "0.8.12"
+rustc-hash = "2.1.2"
 
 [profile.release]
 opt-level = 3

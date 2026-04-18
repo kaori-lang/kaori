@@ -1,7 +1,7 @@
 
 local start = os.clock()
-local iterations = 10
-local max_fib = 10
+local iterations = 1000000
+local max_fib = 30
 
 
 for i = 1, iterations do
