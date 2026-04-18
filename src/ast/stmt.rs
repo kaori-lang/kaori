@@ -28,6 +28,7 @@ pub enum StmtKind {
         block: Box<Stmt>,
     },
     Block(Vec<Stmt>),
+    UncheckedBlock(Vec<Stmt>),
     Expression(Box<Expr>),
     Break,
     Continue,
@@ -84,6 +85,14 @@ impl Stmt {
             id: NodeId::default(),
             span,
             kind: StmtKind::Block(statements),
+        }
+    }
+
+    pub fn unchecked_block(statements: Vec<Stmt>, span: Span) -> Stmt {
+        Stmt {
+            id: NodeId::default(),
+            span,
+            kind: StmtKind::UncheckedBlock(statements),
         }
     }
 

@@ -1,9 +1,17 @@
-function foo(a) {
-	let b = 5;
+const start = performance.now(); // milliseconds
 
-	console.log(a, b);
+const iterations = 1_000_0000;
+const max_fib = 30;
+
+for (let i = 0; i < iterations; i++) {
+	let a = 0,
+		b = 1;
+	for (let j = 0; j < max_fib; j++) {
+		const temp = a + b;
+		a = b;
+		b = temp;
+	}
 }
 
-foo(7, 12, 21, 555, 9);
-
-let b = { 2: 3, a: 5 };
+const elapsed = performance.now() - start;
+console.log(elapsed);

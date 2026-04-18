@@ -183,16 +183,14 @@ impl<'a> FunctionContext<'a> {
                 | Instruction::CreateDict { dest }
                 | Instruction::GetFieldR { dest, .. }
                 | Instruction::GetFieldK { dest, .. }
-                | Instruction::CallK { dest, .. }
-                | Instruction::CallR { dest, .. } => {
+                | Instruction::Call { dest, .. } => {
                     *dest += self.next_register;
                 }
                 Instruction::SetFieldRR { .. }
                 | Instruction::SetFieldRK { .. }
                 | Instruction::SetFieldKR { .. }
                 | Instruction::SetFieldKK { .. }
-                | Instruction::ReturnK { .. }
-                | Instruction::ReturnR { .. }
+                | Instruction::Return { .. }
                 | Instruction::Jump { .. }
                 | Instruction::JumpIfTrue { .. }
                 | Instruction::JumpIfFalse { .. }
@@ -243,16 +241,14 @@ impl<'a> FunctionContext<'a> {
             | Instruction::CreateDict { dest }
             | Instruction::GetFieldR { dest, .. }
             | Instruction::GetFieldK { dest, .. }
-            | Instruction::CallK { dest, .. }
-            | Instruction::CallR { dest, .. } => {
+            | Instruction::Call { dest, .. } => {
                 *dest = register;
             }
             Instruction::SetFieldRR { .. }
             | Instruction::SetFieldRK { .. }
             | Instruction::SetFieldKR { .. }
             | Instruction::SetFieldKK { .. }
-            | Instruction::ReturnK { .. }
-            | Instruction::ReturnR { .. }
+            | Instruction::Return { .. }
             | Instruction::Jump { .. }
             | Instruction::JumpIfTrue { .. }
             | Instruction::JumpIfFalse { .. }
@@ -297,8 +293,9 @@ impl<'a> FunctionContext<'a> {
 
                 if !self.block_returns(body) {
                     let src = self.constants.push_nil();
-                    self.emit_instruction(Instruction::ReturnK {
-                        src: src.unwrap_constant(),
+                    let src = self.materialize(src);
+                    self.emit_instruction(Instruction::Return {
+                        src: src.unwrap_register(),
                     });
                 }
 
@@ -362,7 +359,13 @@ impl<'a> FunctionContext<'a> {
                     self.visit_expression(init);
                 }
 
-                let jump_to_condition = self.emit_instruction(Instruction::Jump { offset: 0 });
+                let src = self.visit_expression(condition);
+                let src = self.materialize(src);
+
+                let jump_to_end = self.emit_instruction(Instruction::JumpIfFalse {
+                    src: src.unwrap_register(),
+                    offset: 0,
+                });
 
                 let loop_body = self.instructions.len();
 
@@ -372,8 +375,6 @@ impl<'a> FunctionContext<'a> {
                     self.visit_statement(increment)?;
                 }
 
-                self.patch_jump(jump_to_condition);
-
                 let src = self.visit_expression(condition);
                 let src = self.materialize(src);
 
@@ -381,6 +382,8 @@ impl<'a> FunctionContext<'a> {
                     src: src.unwrap_register(),
                     offset: loop_body as i16 - self.instructions.len() as i16,
                 });
+
+                self.patch_jump(jump_to_end);
             }
 
             StmtKind::Break => {
@@ -398,9 +401,9 @@ impl<'a> FunctionContext<'a> {
                     self.constants.push_nil()
                 };
 
-                let instruction = match src {
-                    Operand::Register(src) => Instruction::ReturnR { src },
-                    Operand::Constant(src) => Instruction::ReturnK { src },
+                let src = self.materialize(src);
+                let instruction = Instruction::Return {
+                    src: src.unwrap_register(),
                 };
 
                 self.emit_instruction(instruction);
@@ -560,6 +563,7 @@ impl<'a> FunctionContext<'a> {
                 let dest = self.allocate_register().unwrap_register();
 
                 let callee_src = self.visit_expression(callee);
+                let callee_src = self.materialize(callee_src);
 
                 for (i, argument) in arguments.iter().enumerate() {
                     let dest = Operand::Register(i as u8);
@@ -567,9 +571,9 @@ impl<'a> FunctionContext<'a> {
                     self.pending_arguments.push(self.instructions.len() - 1);
                 }
 
-                let instruction = match callee_src {
-                    Operand::Register(src) => Instruction::CallR { dest, src },
-                    Operand::Constant(src) => Instruction::CallK { dest, src },
+                let instruction = Instruction::Call {
+                    dest,
+                    src: callee_src.unwrap_register(),
                 };
 
                 self.emit_instruction(instruction);

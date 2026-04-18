@@ -40,7 +40,7 @@ macro_rules! type_check {
     };
 }
 
-const OPCODE_HANDLERS: [Handler; 52] = [
+const OPCODE_HANDLERS: [Handler; 50] = [
     opcode_add_rr,
     opcode_add_rk,
     opcode_add_kr,
@@ -85,10 +85,8 @@ const OPCODE_HANDLERS: [Handler; 52] = [
     opcode_set_field_kk,
     opcode_get_field_r,
     opcode_get_field_k,
-    opcode_call_k,
-    opcode_call_r,
-    opcode_return_k,
-    opcode_return_r,
+    opcode_call,
+    opcode_return,
     opcode_jump,
     opcode_jump_if_true,
     opcode_jump_if_false,
@@ -1335,6 +1333,7 @@ extern "rust-preserve-none" fn opcode_get_field_k(
         };
         let object = get_register_value(object, registers);
         let key = get_constant_value(key, constants);
+
         type_check!(
             object.is_dict(),
             "cannot get field from {:?}, value is not a dict",
@@ -1346,10 +1345,8 @@ extern "rust-preserve-none" fn opcode_get_field_k(
     }
 }
 
-// ── call / return ─────────────────────────────────────────────────────────────
-
 #[inline(never)]
-extern "rust-preserve-none" fn opcode_call_r(
+extern "rust-preserve-none" fn opcode_call(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -1357,7 +1354,7 @@ extern "rust-preserve-none" fn opcode_call_r(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::CallR { dest, src } = *ip else {
+        let Instruction::Call { dest, src } = *ip else {
             unreachable_unchecked()
         };
         let callee = get_register_value(src, registers);
@@ -1390,48 +1387,7 @@ extern "rust-preserve-none" fn opcode_call_r(
 }
 
 #[inline(never)]
-extern "rust-preserve-none" fn opcode_call_k(
-    ip: *const Instruction,
-    vm: &mut Vm,
-    registers: *mut Value,
-    constants: *const Value,
-    size: u8,
-) -> Result<Value, Box<KaoriError>> {
-    unsafe {
-        let Instruction::CallK { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-        let callee = get_constant_value(src, constants);
-        type_check!(
-            callee.is_function(),
-            "cannot call {:?}, value is not a function",
-            callee
-        );
-        let return_value = {
-            let Function {
-                ref instructions,
-                registers_count,
-                ref constants,
-            } = *callee.as_function();
-            if std::hint::unlikely(
-                registers.add(registers_count as usize)
-                    > vm.registers.as_mut_ptr().add(vm.registers.len()),
-            ) {
-                return Err(Box::new(kaori_error!(Span::default(), "stack overflow")));
-            }
-            let registers = registers.add(size as usize);
-            let constants = constants.as_ptr();
-            let ip = instructions.as_ptr();
-            let index = (*ip).discriminant();
-            OPCODE_HANDLERS[index](ip, vm, registers, constants, registers_count)
-        }?;
-        set_value(dest, return_value, registers);
-        dispatch_next!(ip, vm, registers, constants, size)
-    }
-}
-
-#[inline(never)]
-extern "rust-preserve-none" fn opcode_return_r(
+extern "rust-preserve-none" fn opcode_return(
     ip: *const Instruction,
     _vm: &mut Vm,
     registers: *mut Value,
@@ -1439,26 +1395,12 @@ extern "rust-preserve-none" fn opcode_return_r(
     _size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::ReturnR { src } = *ip else {
+        let Instruction::Return { src } = *ip else {
             unreachable_unchecked()
         };
-        Ok(get_register_value(src, registers))
-    }
-}
+        let value = get_register_value(src, registers);
 
-#[inline(never)]
-extern "rust-preserve-none" fn opcode_return_k(
-    ip: *const Instruction,
-    _vm: &mut Vm,
-    _registers: *mut Value,
-    constants: *const Value,
-    _size: u8,
-) -> Result<Value, Box<KaoriError>> {
-    unsafe {
-        let Instruction::ReturnK { src } = *ip else {
-            unreachable_unchecked()
-        };
-        Ok(get_constant_value(src, constants))
+        Ok(value)
     }
 }
 

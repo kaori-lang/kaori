@@ -1,15 +1,16 @@
 import dis
 
 
-class Cat:
-    def __init__(self, age):
-        self.age = age
+a = 5
+b = 6.0
 
-def foo():
-    d = Cat(1)
+print(type(a), type(b),  type(a + b))
 
-    return d.age
 
-a = Cat(2)
+d = { 1: 'bar'}
 
-print(a.b)
+print(d[1.0])
+
+d = { 1.0: 'bar'}
+
+print(d[1])

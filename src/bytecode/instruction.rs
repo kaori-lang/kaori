@@ -47,10 +47,8 @@ pub enum Instruction {
     SetFieldKK { object: u8, key: u8, value: u8 },
     GetFieldR { dest: u8, object: u8, key: u8 },
     GetFieldK { dest: u8, object: u8, key: u8 },
-    CallK { dest: u8, src: u8 },
-    CallR { dest: u8, src: u8 },
-    ReturnK { src: u8 },
-    ReturnR { src: u8 },
+    Call { dest: u8, src: u8 },
+    Return { src: u8 },
     Jump { offset: i16 },
     JumpIfTrue { src: u8, offset: i16 },
     JumpIfFalse { src: u8, offset: i16 },
@@ -75,7 +73,6 @@ impl fmt::Display for Instruction {
             Instruction::AddKR { dest, src1, src2 } => {
                 write!(f, "ADD r{} k{} r{}", dest, src1, src2)
             }
-
             Instruction::SubtractRR { dest, src1, src2 } => {
                 write!(f, "SUB r{} r{} r{}", dest, src1, src2)
             }
@@ -85,7 +82,6 @@ impl fmt::Display for Instruction {
             Instruction::SubtractKR { dest, src1, src2 } => {
                 write!(f, "SUB r{} k{} r{}", dest, src1, src2)
             }
-
             Instruction::MultiplyRR { dest, src1, src2 } => {
                 write!(f, "MUL r{} r{} r{}", dest, src1, src2)
             }
@@ -95,7 +91,6 @@ impl fmt::Display for Instruction {
             Instruction::MultiplyKR { dest, src1, src2 } => {
                 write!(f, "MUL r{} k{} r{}", dest, src1, src2)
             }
-
             Instruction::DivideRR { dest, src1, src2 } => {
                 write!(f, "DIV r{} r{} r{}", dest, src1, src2)
             }
@@ -105,7 +100,6 @@ impl fmt::Display for Instruction {
             Instruction::DivideKR { dest, src1, src2 } => {
                 write!(f, "DIV r{} k{} r{}", dest, src1, src2)
             }
-
             Instruction::ModuloRR { dest, src1, src2 } => {
                 write!(f, "MOD r{} r{} r{}", dest, src1, src2)
             }
@@ -115,7 +109,6 @@ impl fmt::Display for Instruction {
             Instruction::ModuloKR { dest, src1, src2 } => {
                 write!(f, "MOD r{} k{} r{}", dest, src1, src2)
             }
-
             Instruction::EqualRR { dest, src1, src2 } => {
                 write!(f, "EQ r{} r{} r{}", dest, src1, src2)
             }
@@ -125,7 +118,6 @@ impl fmt::Display for Instruction {
             Instruction::EqualKR { dest, src1, src2 } => {
                 write!(f, "EQ r{} k{} r{}", dest, src1, src2)
             }
-
             Instruction::NotEqualRR { dest, src1, src2 } => {
                 write!(f, "NEQ r{} r{} r{}", dest, src1, src2)
             }
@@ -135,7 +127,6 @@ impl fmt::Display for Instruction {
             Instruction::NotEqualKR { dest, src1, src2 } => {
                 write!(f, "NEQ r{} k{} r{}", dest, src1, src2)
             }
-
             Instruction::LessRR { dest, src1, src2 } => {
                 write!(f, "LT r{} r{} r{}", dest, src1, src2)
             }
@@ -145,7 +136,6 @@ impl fmt::Display for Instruction {
             Instruction::LessKR { dest, src1, src2 } => {
                 write!(f, "LT r{} k{} r{}", dest, src1, src2)
             }
-
             Instruction::LessEqualRR { dest, src1, src2 } => {
                 write!(f, "LTE r{} r{} r{}", dest, src1, src2)
             }
@@ -155,7 +145,6 @@ impl fmt::Display for Instruction {
             Instruction::LessEqualKR { dest, src1, src2 } => {
                 write!(f, "LTE r{} k{} r{}", dest, src1, src2)
             }
-
             Instruction::GreaterRR { dest, src1, src2 } => {
                 write!(f, "GT r{} r{} r{}", dest, src1, src2)
             }
@@ -175,7 +164,6 @@ impl fmt::Display for Instruction {
             Instruction::GreaterEqualKR { dest, src1, src2 } => {
                 write!(f, "GTE r{} k{} r{}", dest, src1, src2)
             }
-
             Instruction::Not { dest, src } => {
                 write!(f, "NOT r{} r{}", dest, src)
             }
@@ -188,11 +176,9 @@ impl fmt::Display for Instruction {
             Instruction::MoveK { dest, src } => {
                 write!(f, "MOV r{} k{}", dest, src)
             }
-
             Instruction::CreateDict { dest } => {
                 write!(f, "DICT r{}", dest)
             }
-
             Instruction::SetFieldRR { object, key, value } => {
                 write!(f, "SET r{} r{} r{}", object, key, value)
             }
@@ -212,21 +198,12 @@ impl fmt::Display for Instruction {
             Instruction::GetFieldK { dest, object, key } => {
                 write!(f, "GET r{} r{} k{}", dest, object, key)
             }
-
-            Instruction::CallR { dest, src } => {
+            Instruction::Call { dest, src } => {
                 write!(f, "CALL r{} r{}", dest, src)
             }
-            Instruction::CallK { dest, src } => {
-                write!(f, "CALL r{} k{}", dest, src)
-            }
-
-            Instruction::ReturnR { src } => {
+            Instruction::Return { src } => {
                 write!(f, "RET r{}", src)
             }
-            Instruction::ReturnK { src } => {
-                write!(f, "RET k{}", src)
-            }
-
             Instruction::Jump { offset } => {
                 write!(f, "JMP {}", offset)
             }

@@ -88,6 +88,7 @@ impl Lexer {
             "and" => TokenKind::And,
             "or" => TokenKind::Or,
             "not" => TokenKind::Not,
+            "unchecked" => TokenKind::Unchecked,
             _ => TokenKind::Identifier,
         };
 
