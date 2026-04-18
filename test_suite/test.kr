@@ -2,6 +2,7 @@ fun main() {
     unchecked {
         iterations := 1000000;
         max_fib := 30;
+
         for i := 0; i < iterations; i += 1 {
             a := 0;
             b := 1;
@@ -16,8 +17,6 @@ fun main() {
         }
     }
 }
-
-
 
 
 

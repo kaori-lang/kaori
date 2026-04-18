@@ -54,8 +54,6 @@ macro_rules! type_check {
     };
 }
 
-type Operand = u8;
-
 const REGISTER: u8 = 0;
 const CONSTANT: u8 = 1;
 
@@ -209,7 +207,7 @@ impl Vm {
 }
 
 #[inline(always)]
-unsafe fn get_value<const SRC: Operand>(
+unsafe fn get_value<const SRC: u8>(
     index: u8,
     constants: *const Value,
     registers: *mut Value,
@@ -251,7 +249,7 @@ fn opcode_exit_unchecked_block(
 }
 
 #[inline(never)]
-fn opcode_binary<const OP: u8, const SRC1: Operand, const SRC2: Operand, const UNCHECKED: bool>(
+fn opcode_binary<const OP: u8, const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -593,7 +591,7 @@ fn opcode_negate<const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_move<const SRC: Operand, const UNCHECKED: bool>(
+fn opcode_move<const SRC: u8, const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -650,7 +648,7 @@ fn opcode_create_dict<const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_set_field<const KEY: Operand, const VAL: Operand, const UNCHECKED: bool>(
+fn opcode_set_field<const KEY: u8, const VALUE: u8, const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -658,7 +656,7 @@ fn opcode_set_field<const KEY: Operand, const VAL: Operand, const UNCHECKED: boo
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let (object, key, value) = match (KEY, VAL) {
+        let (object, key, value) = match (KEY, VALUE) {
             (REGISTER, REGISTER) => {
                 let Instruction::SetFieldRR { object, key, value } = *ip else {
                     unreachable_unchecked()
@@ -688,7 +686,7 @@ fn opcode_set_field<const KEY: Operand, const VAL: Operand, const UNCHECKED: boo
 
         let object = get_value::<REGISTER>(object, constants, registers);
         let key = get_value::<KEY>(key, constants, registers);
-        let val = get_value::<VAL>(value, constants, registers);
+        let val = get_value::<VALUE>(value, constants, registers);
 
         if !UNCHECKED {
             type_check!(
@@ -709,7 +707,7 @@ fn opcode_set_field<const KEY: Operand, const VAL: Operand, const UNCHECKED: boo
 }
 
 #[inline(never)]
-fn opcode_get_field<const KEY: Operand, const UNCHECKED: bool>(
+fn opcode_get_field<const KEY: u8, const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,

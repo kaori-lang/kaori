@@ -39,9 +39,3 @@ fn main() {
         Err(_) => eprintln!("Error: Could not read the file by the given path."),
     };
 }
-
-enum Value {
-    Void,
-    Null,
-    Float(Box<f64>),
-}
