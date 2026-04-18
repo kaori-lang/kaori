@@ -52,6 +52,8 @@ pub enum Instruction {
     Jump { offset: i16 },
     JumpIfTrue { src: u8, offset: i16 },
     JumpIfFalse { src: u8, offset: i16 },
+    EnterUncheckedBlock,
+    ExitUncheckedBlock,
     Print { src: u8 },
 }
 
@@ -64,6 +66,12 @@ impl Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Instruction::EnterUncheckedBlock => {
+                write!(f, "ENTER_UNCHECKED_BLOCK")
+            }
+            Instruction::ExitUncheckedBlock => {
+                write!(f, "EXIT_UNCHECKED_BLOCK")
+            }
             Instruction::AddRR { dest, src1, src2 } => {
                 write!(f, "ADD r{} r{} r{}", dest, src1, src2)
             }

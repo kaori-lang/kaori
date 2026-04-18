@@ -102,6 +102,7 @@ impl<'a> FunctionContext<'a> {
         match &statement.kind {
             StmtKind::Return(..) => true,
             StmtKind::Block(statements) => self.block_returns(statements),
+            StmtKind::UncheckedBlock(statements) => self.block_returns(statements),
             StmtKind::Branch {
                 then_branch,
                 else_branch,
@@ -194,7 +195,9 @@ impl<'a> FunctionContext<'a> {
                 | Instruction::Jump { .. }
                 | Instruction::JumpIfTrue { .. }
                 | Instruction::JumpIfFalse { .. }
-                | Instruction::Print { .. } => {}
+                | Instruction::Print { .. }
+                | Instruction::EnterUncheckedBlock
+                | Instruction::ExitUncheckedBlock => {}
             }
         }
     }
@@ -252,7 +255,9 @@ impl<'a> FunctionContext<'a> {
             | Instruction::Jump { .. }
             | Instruction::JumpIfTrue { .. }
             | Instruction::JumpIfFalse { .. }
-            | Instruction::Print { .. } => {}
+            | Instruction::Print { .. }
+            | Instruction::EnterUncheckedBlock
+            | Instruction::ExitUncheckedBlock => {}
         }
     }
 
@@ -311,7 +316,6 @@ impl<'a> FunctionContext<'a> {
             StmtKind::Expression(expression) => {
                 self.visit_expression(expression);
             }
-
             StmtKind::Print(expression) => {
                 let src = self.visit_expression(expression);
                 let src = self.materialize(src);
@@ -319,11 +323,18 @@ impl<'a> FunctionContext<'a> {
                     src: src.unwrap_register(),
                 });
             }
-
             StmtKind::Block(statements) => {
                 for stmt in statements {
                     self.visit_statement(stmt)?;
                 }
+            }
+            StmtKind::UncheckedBlock(statements) => {
+                self.emit_instruction(Instruction::EnterUncheckedBlock);
+                for stmt in statements {
+                    self.visit_statement(stmt)?;
+                }
+
+                self.emit_instruction(Instruction::ExitUncheckedBlock);
             }
 
             StmtKind::Branch {
