@@ -56,7 +56,7 @@ impl<'a> Parser<'a> {
             TokenKind::Break => self.parse_break_statement(),
             TokenKind::Continue => self.parse_continue_statement(),
             TokenKind::Return => self.parse_return_statement(),
-
+            TokenKind::Unchecked => self.parse_unchecked_block_statement(),
             _ => {
                 let statement = self.parse_expression_statement();
 

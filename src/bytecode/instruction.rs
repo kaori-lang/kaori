@@ -52,9 +52,9 @@ pub enum Instruction {
     Jump { offset: i16 },
     JumpIfTrue { src: u8, offset: i16 },
     JumpIfFalse { src: u8, offset: i16 },
+    Print { src: u8 },
     EnterUncheckedBlock,
     ExitUncheckedBlock,
-    Print { src: u8 },
 }
 
 impl Instruction {
