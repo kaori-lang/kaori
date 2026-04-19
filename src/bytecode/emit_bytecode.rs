@@ -102,7 +102,7 @@ impl<'a> FunctionContext<'a> {
         match &statement.kind {
             StmtKind::Return(..) => true,
             StmtKind::Block(statements) => self.block_returns(statements),
-            StmtKind::UncheckedBlock(statements) => self.block_returns(statements),
+            StmtKind::UnsafeBlock(statements) => self.block_returns(statements),
             StmtKind::Branch {
                 then_branch,
                 else_branch,
@@ -144,39 +144,31 @@ impl<'a> FunctionContext<'a> {
     fn patch_arguments(&mut self) {
         for index in self.pending_arguments.iter().copied() {
             match &mut self.instructions[index] {
-                Instruction::AddRR { dest, .. }
-                | Instruction::AddRK { dest, .. }
-                | Instruction::AddKR { dest, .. }
+                Instruction::Add { dest, .. }
+                | Instruction::AddK { dest, .. }
                 | Instruction::SubtractRR { dest, .. }
                 | Instruction::SubtractRK { dest, .. }
                 | Instruction::SubtractKR { dest, .. }
-                | Instruction::MultiplyRR { dest, .. }
-                | Instruction::MultiplyRK { dest, .. }
-                | Instruction::MultiplyKR { dest, .. }
+                | Instruction::Multiply { dest, .. }
+                | Instruction::MultiplyK { dest, .. }
                 | Instruction::DivideRR { dest, .. }
                 | Instruction::DivideRK { dest, .. }
                 | Instruction::DivideKR { dest, .. }
                 | Instruction::ModuloRR { dest, .. }
                 | Instruction::ModuloRK { dest, .. }
                 | Instruction::ModuloKR { dest, .. }
-                | Instruction::EqualRR { dest, .. }
-                | Instruction::EqualRK { dest, .. }
-                | Instruction::EqualKR { dest, .. }
-                | Instruction::NotEqualRR { dest, .. }
-                | Instruction::NotEqualRK { dest, .. }
-                | Instruction::NotEqualKR { dest, .. }
-                | Instruction::LessRR { dest, .. }
-                | Instruction::LessRK { dest, .. }
-                | Instruction::LessKR { dest, .. }
-                | Instruction::LessEqualRR { dest, .. }
-                | Instruction::LessEqualRK { dest, .. }
-                | Instruction::LessEqualKR { dest, .. }
-                | Instruction::GreaterRR { dest, .. }
-                | Instruction::GreaterRK { dest, .. }
-                | Instruction::GreaterKR { dest, .. }
-                | Instruction::GreaterEqualRR { dest, .. }
-                | Instruction::GreaterEqualRK { dest, .. }
-                | Instruction::GreaterEqualKR { dest, .. }
+                | Instruction::Equal { dest, .. }
+                | Instruction::EqualK { dest, .. }
+                | Instruction::NotEqual { dest, .. }
+                | Instruction::NotEqualK { dest, .. }
+                | Instruction::Less { dest, .. }
+                | Instruction::LessK { dest, .. }
+                | Instruction::LessEqual { dest, .. }
+                | Instruction::LessEqualK { dest, .. }
+                | Instruction::Greater { dest, .. }
+                | Instruction::GreaterK { dest, .. }
+                | Instruction::GreaterEqual { dest, .. }
+                | Instruction::GreaterEqualK { dest, .. }
                 | Instruction::Not { dest, .. }
                 | Instruction::Negate { dest, .. }
                 | Instruction::MoveR { dest, .. }
@@ -196,47 +188,39 @@ impl<'a> FunctionContext<'a> {
                 | Instruction::JumpIfTrue { .. }
                 | Instruction::JumpIfFalse { .. }
                 | Instruction::Print { .. }
-                | Instruction::EnterUncheckedBlock
-                | Instruction::ExitUncheckedBlock => {}
+                | Instruction::EnterUnsafeBlock
+                | Instruction::ExitUnsafeBlock => {}
             }
         }
     }
 
     fn mutate_dest(instr: &mut Instruction, register: u8) {
         match instr {
-            Instruction::AddRR { dest, .. }
-            | Instruction::AddRK { dest, .. }
-            | Instruction::AddKR { dest, .. }
+            Instruction::Add { dest, .. }
+            | Instruction::AddK { dest, .. }
             | Instruction::SubtractRR { dest, .. }
             | Instruction::SubtractRK { dest, .. }
             | Instruction::SubtractKR { dest, .. }
-            | Instruction::MultiplyRR { dest, .. }
-            | Instruction::MultiplyRK { dest, .. }
-            | Instruction::MultiplyKR { dest, .. }
+            | Instruction::Multiply { dest, .. }
+            | Instruction::MultiplyK { dest, .. }
             | Instruction::DivideRR { dest, .. }
             | Instruction::DivideRK { dest, .. }
             | Instruction::DivideKR { dest, .. }
             | Instruction::ModuloRR { dest, .. }
             | Instruction::ModuloRK { dest, .. }
             | Instruction::ModuloKR { dest, .. }
-            | Instruction::EqualRR { dest, .. }
-            | Instruction::EqualRK { dest, .. }
-            | Instruction::EqualKR { dest, .. }
-            | Instruction::NotEqualRR { dest, .. }
-            | Instruction::NotEqualRK { dest, .. }
-            | Instruction::NotEqualKR { dest, .. }
-            | Instruction::LessRR { dest, .. }
-            | Instruction::LessRK { dest, .. }
-            | Instruction::LessKR { dest, .. }
-            | Instruction::LessEqualRR { dest, .. }
-            | Instruction::LessEqualRK { dest, .. }
-            | Instruction::LessEqualKR { dest, .. }
-            | Instruction::GreaterRR { dest, .. }
-            | Instruction::GreaterRK { dest, .. }
-            | Instruction::GreaterKR { dest, .. }
-            | Instruction::GreaterEqualRR { dest, .. }
-            | Instruction::GreaterEqualRK { dest, .. }
-            | Instruction::GreaterEqualKR { dest, .. }
+            | Instruction::Equal { dest, .. }
+            | Instruction::EqualK { dest, .. }
+            | Instruction::NotEqual { dest, .. }
+            | Instruction::NotEqualK { dest, .. }
+            | Instruction::Less { dest, .. }
+            | Instruction::LessK { dest, .. }
+            | Instruction::LessEqual { dest, .. }
+            | Instruction::LessEqualK { dest, .. }
+            | Instruction::Greater { dest, .. }
+            | Instruction::GreaterK { dest, .. }
+            | Instruction::GreaterEqual { dest, .. }
+            | Instruction::GreaterEqualK { dest, .. }
             | Instruction::Not { dest, .. }
             | Instruction::Negate { dest, .. }
             | Instruction::MoveR { dest, .. }
@@ -256,8 +240,8 @@ impl<'a> FunctionContext<'a> {
             | Instruction::JumpIfTrue { .. }
             | Instruction::JumpIfFalse { .. }
             | Instruction::Print { .. }
-            | Instruction::EnterUncheckedBlock
-            | Instruction::ExitUncheckedBlock => {}
+            | Instruction::EnterUnsafeBlock
+            | Instruction::ExitUnsafeBlock => {}
         }
     }
 
@@ -328,13 +312,12 @@ impl<'a> FunctionContext<'a> {
                     self.visit_statement(stmt)?;
                 }
             }
-            StmtKind::UncheckedBlock(statements) => {
-                self.emit_instruction(Instruction::EnterUncheckedBlock);
+            StmtKind::UnsafeBlock(statements) => {
+                self.emit_instruction(Instruction::EnterUnsafeBlock);
                 for stmt in statements {
                     self.visit_statement(stmt)?;
                 }
-
-                self.emit_instruction(Instruction::ExitUncheckedBlock);
+                self.emit_instruction(Instruction::ExitUnsafeBlock);
             }
 
             StmtKind::Branch {
@@ -499,52 +482,89 @@ impl<'a> FunctionContext<'a> {
                 let src2 = self.visit_expression(right);
                 let dest = self.allocate_register().unwrap_register();
 
+                use BinaryOpKind::*;
+
                 let instruction = match (src1, src2) {
                     (Operand::Register(src1), Operand::Register(src2)) => match operator.kind {
-                        BinaryOpKind::Add => Instruction::AddRR { dest, src1, src2 },
-                        BinaryOpKind::Subtract => Instruction::SubtractRR { dest, src1, src2 },
-                        BinaryOpKind::Multiply => Instruction::MultiplyRR { dest, src1, src2 },
-                        BinaryOpKind::Divide => Instruction::DivideRR { dest, src1, src2 },
-                        BinaryOpKind::Modulo => Instruction::ModuloRR { dest, src1, src2 },
-                        BinaryOpKind::Equal => Instruction::EqualRR { dest, src1, src2 },
-                        BinaryOpKind::NotEqual => Instruction::NotEqualRR { dest, src1, src2 },
-                        BinaryOpKind::Greater => Instruction::GreaterRR { dest, src1, src2 },
-                        BinaryOpKind::GreaterEqual => {
-                            Instruction::GreaterEqualRR { dest, src1, src2 }
-                        }
-                        BinaryOpKind::Less => Instruction::LessRR { dest, src1, src2 },
-                        BinaryOpKind::LessEqual => Instruction::LessEqualRR { dest, src1, src2 },
+                        Add => Instruction::Add { dest, src1, src2 },
+                        Subtract => Instruction::SubtractRR { dest, src1, src2 },
+                        Multiply => Instruction::Multiply { dest, src1, src2 },
+                        Divide => Instruction::DivideRR { dest, src1, src2 },
+                        Modulo => Instruction::ModuloRR { dest, src1, src2 },
+                        Equal => Instruction::Equal { dest, src1, src2 },
+                        NotEqual => Instruction::NotEqual { dest, src1, src2 },
+                        Less => Instruction::Less { dest, src1, src2 },
+                        LessEqual => Instruction::LessEqual { dest, src1, src2 },
+                        Greater => Instruction::Less {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        GreaterEqual => Instruction::LessEqual {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
                     },
                     (Operand::Register(src1), Operand::Constant(src2)) => match operator.kind {
-                        BinaryOpKind::Add => Instruction::AddRK { dest, src1, src2 },
-                        BinaryOpKind::Subtract => Instruction::SubtractRK { dest, src1, src2 },
-                        BinaryOpKind::Multiply => Instruction::MultiplyRK { dest, src1, src2 },
-                        BinaryOpKind::Divide => Instruction::DivideRK { dest, src1, src2 },
-                        BinaryOpKind::Modulo => Instruction::ModuloRK { dest, src1, src2 },
-                        BinaryOpKind::Equal => Instruction::EqualRK { dest, src1, src2 },
-                        BinaryOpKind::NotEqual => Instruction::NotEqualRK { dest, src1, src2 },
-                        BinaryOpKind::Greater => Instruction::GreaterRK { dest, src1, src2 },
-                        BinaryOpKind::GreaterEqual => {
-                            Instruction::GreaterEqualRK { dest, src1, src2 }
-                        }
-                        BinaryOpKind::Less => Instruction::LessRK { dest, src1, src2 },
-                        BinaryOpKind::LessEqual => Instruction::LessEqualRK { dest, src1, src2 },
+                        Add => Instruction::AddK { dest, src1, src2 },
+                        Subtract => Instruction::SubtractRK { dest, src1, src2 },
+                        Multiply => Instruction::MultiplyK { dest, src1, src2 },
+                        Divide => Instruction::DivideRK { dest, src1, src2 },
+                        Modulo => Instruction::ModuloRK { dest, src1, src2 },
+                        Equal => Instruction::EqualK { dest, src1, src2 },
+                        NotEqual => Instruction::NotEqualK { dest, src1, src2 },
+                        Less => Instruction::LessK { dest, src1, src2 },
+                        LessEqual => Instruction::LessEqualK { dest, src1, src2 },
+                        Greater => Instruction::Less {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        GreaterEqual => Instruction::LessEqualK {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
                     },
                     (Operand::Constant(src1), Operand::Register(src2)) => match operator.kind {
-                        BinaryOpKind::Add => Instruction::AddKR { dest, src1, src2 },
-                        BinaryOpKind::Subtract => Instruction::SubtractKR { dest, src1, src2 },
-                        BinaryOpKind::Multiply => Instruction::MultiplyKR { dest, src1, src2 },
-                        BinaryOpKind::Divide => Instruction::DivideKR { dest, src1, src2 },
-                        BinaryOpKind::Modulo => Instruction::ModuloKR { dest, src1, src2 },
-                        BinaryOpKind::Equal => Instruction::EqualKR { dest, src1, src2 },
-                        BinaryOpKind::NotEqual => Instruction::NotEqualKR { dest, src1, src2 },
-                        BinaryOpKind::Greater => Instruction::GreaterKR { dest, src1, src2 },
-                        BinaryOpKind::GreaterEqual => {
-                            Instruction::GreaterEqualKR { dest, src1, src2 }
-                        }
-                        BinaryOpKind::Less => Instruction::LessKR { dest, src1, src2 },
-                        BinaryOpKind::LessEqual => Instruction::LessEqualKR { dest, src1, src2 },
+                        Add => Instruction::AddK {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        Multiply => Instruction::MultiplyK {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        Equal => Instruction::EqualK {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        NotEqual => Instruction::NotEqualK {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        Subtract => Instruction::SubtractKR { dest, src1, src2 },
+                        Divide => Instruction::DivideKR { dest, src1, src2 },
+                        Modulo => Instruction::ModuloKR { dest, src1, src2 },
+                        Less => Instruction::Less { dest, src1, src2 },
+                        LessEqual => Instruction::LessEqualK { dest, src1, src2 },
+                        Greater => Instruction::LessK {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        GreaterEqual => Instruction::LessEqualK {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
                     },
+
                     (Operand::Constant(_), Operand::Constant(_)) => {
                         unreachable!("No constant fold done yet!")
                     }

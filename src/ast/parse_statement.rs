@@ -71,12 +71,12 @@ impl<'a> Parser<'a> {
         Ok(Stmt::block(statements, span))
     }
 
-    pub fn parse_unchecked_block_statement(&mut self) -> Result<Stmt, KaoriError> {
+    pub fn parse_unsafe_block_statement(&mut self) -> Result<Stmt, KaoriError> {
         let span = self.token_stream.span();
 
         let mut statements = Vec::new();
 
-        self.token_stream.consume(TokenKind::Unchecked)?;
+        self.token_stream.consume(TokenKind::Unsafe)?;
         self.token_stream.consume(TokenKind::LeftBrace)?;
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
@@ -87,7 +87,7 @@ impl<'a> Parser<'a> {
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Stmt::unchecked_block(statements, span))
+        Ok(Stmt::unsafe_block(statements, span))
     }
 
     pub fn parse_if_statement(&mut self) -> Result<Stmt, KaoriError> {

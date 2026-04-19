@@ -3,39 +3,31 @@ use std::fmt;
 #[derive(Debug)]
 #[repr(u8, align(2))]
 pub enum Instruction {
-    AddRR { dest: u8, src1: u8, src2: u8 },
-    AddRK { dest: u8, src1: u8, src2: u8 },
-    AddKR { dest: u8, src1: u8, src2: u8 },
+    Add { dest: u8, src1: u8, src2: u8 },
+    AddK { dest: u8, src1: u8, src2: u8 },
     SubtractRR { dest: u8, src1: u8, src2: u8 },
     SubtractRK { dest: u8, src1: u8, src2: u8 },
     SubtractKR { dest: u8, src1: u8, src2: u8 },
-    MultiplyRR { dest: u8, src1: u8, src2: u8 },
-    MultiplyRK { dest: u8, src1: u8, src2: u8 },
-    MultiplyKR { dest: u8, src1: u8, src2: u8 },
+    Multiply { dest: u8, src1: u8, src2: u8 },
+    MultiplyK { dest: u8, src1: u8, src2: u8 },
     DivideRR { dest: u8, src1: u8, src2: u8 },
     DivideRK { dest: u8, src1: u8, src2: u8 },
     DivideKR { dest: u8, src1: u8, src2: u8 },
     ModuloRR { dest: u8, src1: u8, src2: u8 },
     ModuloRK { dest: u8, src1: u8, src2: u8 },
     ModuloKR { dest: u8, src1: u8, src2: u8 },
-    EqualRR { dest: u8, src1: u8, src2: u8 },
-    EqualRK { dest: u8, src1: u8, src2: u8 },
-    EqualKR { dest: u8, src1: u8, src2: u8 },
-    NotEqualRR { dest: u8, src1: u8, src2: u8 },
-    NotEqualRK { dest: u8, src1: u8, src2: u8 },
-    NotEqualKR { dest: u8, src1: u8, src2: u8 },
-    LessRR { dest: u8, src1: u8, src2: u8 },
-    LessRK { dest: u8, src1: u8, src2: u8 },
-    LessKR { dest: u8, src1: u8, src2: u8 },
-    LessEqualRR { dest: u8, src1: u8, src2: u8 },
-    LessEqualRK { dest: u8, src1: u8, src2: u8 },
-    LessEqualKR { dest: u8, src1: u8, src2: u8 },
-    GreaterRR { dest: u8, src1: u8, src2: u8 },
-    GreaterRK { dest: u8, src1: u8, src2: u8 },
-    GreaterKR { dest: u8, src1: u8, src2: u8 },
-    GreaterEqualRR { dest: u8, src1: u8, src2: u8 },
-    GreaterEqualRK { dest: u8, src1: u8, src2: u8 },
-    GreaterEqualKR { dest: u8, src1: u8, src2: u8 },
+    Equal { dest: u8, src1: u8, src2: u8 },
+    EqualK { dest: u8, src1: u8, src2: u8 },
+    NotEqual { dest: u8, src1: u8, src2: u8 },
+    NotEqualK { dest: u8, src1: u8, src2: u8 },
+    Less { dest: u8, src1: u8, src2: u8 },
+    LessK { dest: u8, src1: u8, src2: u8 },
+    LessEqual { dest: u8, src1: u8, src2: u8 },
+    LessEqualK { dest: u8, src1: u8, src2: u8 },
+    Greater { dest: u8, src1: u8, src2: u8 },
+    GreaterK { dest: u8, src1: u8, src2: u8 },
+    GreaterEqual { dest: u8, src1: u8, src2: u8 },
+    GreaterEqualK { dest: u8, src1: u8, src2: u8 },
     Not { dest: u8, src: u8 },
     Negate { dest: u8, src: u8 },
     MoveR { dest: u8, src: u8 },
@@ -53,8 +45,8 @@ pub enum Instruction {
     JumpIfTrue { src: u8, offset: i16 },
     JumpIfFalse { src: u8, offset: i16 },
     Print { src: u8 },
-    EnterUncheckedBlock,
-    ExitUncheckedBlock,
+    EnterUnsafeBlock,
+    ExitUnsafeBlock,
 }
 
 impl Instruction {
@@ -66,20 +58,13 @@ impl Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Instruction::EnterUncheckedBlock => {
-                write!(f, "ENTER_UNCHECKED_BLOCK")
-            }
-            Instruction::ExitUncheckedBlock => {
-                write!(f, "EXIT_UNCHECKED_BLOCK")
-            }
-            Instruction::AddRR { dest, src1, src2 } => {
+            Instruction::EnterUnsafeBlock => write!(f, "ENTER_UNSAFE_BLOCK"),
+            Instruction::ExitUnsafeBlock => write!(f, "EXIT_UNSAFE_BLOCK"),
+            Instruction::Add { dest, src1, src2 } => {
                 write!(f, "ADD r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::AddRK { dest, src1, src2 } => {
+            Instruction::AddK { dest, src1, src2 } => {
                 write!(f, "ADD r{} r{} k{}", dest, src1, src2)
-            }
-            Instruction::AddKR { dest, src1, src2 } => {
-                write!(f, "ADD r{} k{} r{}", dest, src1, src2)
             }
             Instruction::SubtractRR { dest, src1, src2 } => {
                 write!(f, "SUB r{} r{} r{}", dest, src1, src2)
@@ -90,14 +75,11 @@ impl fmt::Display for Instruction {
             Instruction::SubtractKR { dest, src1, src2 } => {
                 write!(f, "SUB r{} k{} r{}", dest, src1, src2)
             }
-            Instruction::MultiplyRR { dest, src1, src2 } => {
+            Instruction::Multiply { dest, src1, src2 } => {
                 write!(f, "MUL r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::MultiplyRK { dest, src1, src2 } => {
+            Instruction::MultiplyK { dest, src1, src2 } => {
                 write!(f, "MUL r{} r{} k{}", dest, src1, src2)
-            }
-            Instruction::MultiplyKR { dest, src1, src2 } => {
-                write!(f, "MUL r{} k{} r{}", dest, src1, src2)
             }
             Instruction::DivideRR { dest, src1, src2 } => {
                 write!(f, "DIV r{} r{} r{}", dest, src1, src2)
@@ -117,60 +99,41 @@ impl fmt::Display for Instruction {
             Instruction::ModuloKR { dest, src1, src2 } => {
                 write!(f, "MOD r{} k{} r{}", dest, src1, src2)
             }
-            Instruction::EqualRR { dest, src1, src2 } => {
+            Instruction::Equal { dest, src1, src2 } => {
                 write!(f, "EQ r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::EqualRK { dest, src1, src2 } => {
+            Instruction::EqualK { dest, src1, src2 } => {
                 write!(f, "EQ r{} r{} k{}", dest, src1, src2)
             }
-            Instruction::EqualKR { dest, src1, src2 } => {
-                write!(f, "EQ r{} k{} r{}", dest, src1, src2)
-            }
-            Instruction::NotEqualRR { dest, src1, src2 } => {
+            Instruction::NotEqual { dest, src1, src2 } => {
                 write!(f, "NEQ r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::NotEqualRK { dest, src1, src2 } => {
+            Instruction::NotEqualK { dest, src1, src2 } => {
                 write!(f, "NEQ r{} r{} k{}", dest, src1, src2)
             }
-            Instruction::NotEqualKR { dest, src1, src2 } => {
-                write!(f, "NEQ r{} k{} r{}", dest, src1, src2)
-            }
-            Instruction::LessRR { dest, src1, src2 } => {
+            Instruction::Less { dest, src1, src2 } => {
                 write!(f, "LT r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::LessRK { dest, src1, src2 } => {
+            Instruction::LessK { dest, src1, src2 } => {
                 write!(f, "LT r{} r{} k{}", dest, src1, src2)
             }
-            Instruction::LessKR { dest, src1, src2 } => {
-                write!(f, "LT r{} k{} r{}", dest, src1, src2)
-            }
-            Instruction::LessEqualRR { dest, src1, src2 } => {
+            Instruction::LessEqual { dest, src1, src2 } => {
                 write!(f, "LTE r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::LessEqualRK { dest, src1, src2 } => {
+            Instruction::LessEqualK { dest, src1, src2 } => {
                 write!(f, "LTE r{} r{} k{}", dest, src1, src2)
             }
-            Instruction::LessEqualKR { dest, src1, src2 } => {
-                write!(f, "LTE r{} k{} r{}", dest, src1, src2)
-            }
-            Instruction::GreaterRR { dest, src1, src2 } => {
+            Instruction::Greater { dest, src1, src2 } => {
                 write!(f, "GT r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::GreaterRK { dest, src1, src2 } => {
+            Instruction::GreaterK { dest, src1, src2 } => {
                 write!(f, "GT r{} r{} k{}", dest, src1, src2)
             }
-            Instruction::GreaterKR { dest, src1, src2 } => {
-                write!(f, "GT r{} k{} r{}", dest, src1, src2)
-            }
-
-            Instruction::GreaterEqualRR { dest, src1, src2 } => {
+            Instruction::GreaterEqual { dest, src1, src2 } => {
                 write!(f, "GTE r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::GreaterEqualRK { dest, src1, src2 } => {
+            Instruction::GreaterEqualK { dest, src1, src2 } => {
                 write!(f, "GTE r{} r{} k{}", dest, src1, src2)
-            }
-            Instruction::GreaterEqualKR { dest, src1, src2 } => {
-                write!(f, "GTE r{} k{} r{}", dest, src1, src2)
             }
             Instruction::Not { dest, src } => {
                 write!(f, "NOT r{} r{}", dest, src)
@@ -199,13 +162,13 @@ impl fmt::Display for Instruction {
             Instruction::SetFieldKK { object, key, value } => {
                 write!(f, "SET r{} k{} k{}", object, key, value)
             }
-
             Instruction::GetFieldR { dest, object, key } => {
                 write!(f, "GET r{} r{} r{}", dest, object, key)
             }
             Instruction::GetFieldK { dest, object, key } => {
                 write!(f, "GET r{} r{} k{}", dest, object, key)
             }
+
             Instruction::Call { dest, src } => {
                 write!(f, "CALL r{} r{}", dest, src)
             }
@@ -221,7 +184,6 @@ impl fmt::Display for Instruction {
             Instruction::JumpIfFalse { src, offset } => {
                 write!(f, "JMP_IF_FALSE r{} {}", src, offset)
             }
-
             Instruction::Print { src } => {
                 write!(f, "PRINT r{}", src)
             }

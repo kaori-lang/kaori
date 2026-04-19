@@ -24,7 +24,7 @@ pub enum StmtKind {
         increment: Option<Box<Stmt>>,
     },
     Block(Vec<Stmt>),
-    UncheckedBlock(Vec<Stmt>),
+    UnsafeBlock(Vec<Stmt>),
     Expression(Box<Expr>),
     Break,
     Continue,
@@ -84,11 +84,11 @@ impl Stmt {
         }
     }
 
-    pub fn unchecked_block(statements: Vec<Stmt>, span: Span) -> Stmt {
+    pub fn unsafe_block(statements: Vec<Stmt>, span: Span) -> Stmt {
         Stmt {
             id: NodeId::default(),
             span,
-            kind: StmtKind::UncheckedBlock(statements),
+            kind: StmtKind::UnsafeBlock(statements),
         }
     }
 
