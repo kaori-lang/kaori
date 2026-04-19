@@ -145,13 +145,13 @@ impl Resolver {
 
                 Stmt::block(statements, statement.span)
             }
-            ast::StmtKind::UnsafeBlock(statements) => {
+            ast::StmtKind::UncheckedBlock(statements) => {
                 let statements = statements
                     .iter()
                     .map(|stmt| self.resolve_statement(stmt))
                     .collect::<Result<Vec<Stmt>, KaoriError>>()?;
 
-                Stmt::unsafe_block(statements, statement.span)
+                Stmt::unchecked_block(statements, statement.span)
             }
             ast::StmtKind::If {
                 condition,

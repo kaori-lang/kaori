@@ -3,9 +3,11 @@ fun main() {
     sum := 0;
     N := 10000;
 
-    for i := 0; i < N; i += 1 {
-        sum += i;
+    unsafe {
+        for i := 0; i < N; i += 1 {
+            sum += i;
+        }
     }
-
+    
     print(sum);
 }

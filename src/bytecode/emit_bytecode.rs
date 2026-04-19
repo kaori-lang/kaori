@@ -102,7 +102,7 @@ impl<'a> FunctionContext<'a> {
         match &statement.kind {
             StmtKind::Return(..) => true,
             StmtKind::Block(statements) => self.block_returns(statements),
-            StmtKind::UnsafeBlock(statements) => self.block_returns(statements),
+            StmtKind::UncheckedBlock(statements) => self.block_returns(statements),
             StmtKind::Branch {
                 then_branch,
                 else_branch,
@@ -188,8 +188,8 @@ impl<'a> FunctionContext<'a> {
                 | Instruction::JumpIfTrue { .. }
                 | Instruction::JumpIfFalse { .. }
                 | Instruction::Print { .. }
-                | Instruction::EnterUnsafeBlock
-                | Instruction::ExitUnsafeBlock => {}
+                | Instruction::EnterUncheckedBlock
+                | Instruction::ExitUncheckedBlock => {}
             }
         }
     }
@@ -240,8 +240,8 @@ impl<'a> FunctionContext<'a> {
             | Instruction::JumpIfTrue { .. }
             | Instruction::JumpIfFalse { .. }
             | Instruction::Print { .. }
-            | Instruction::EnterUnsafeBlock
-            | Instruction::ExitUnsafeBlock => {}
+            | Instruction::EnterUncheckedBlock
+            | Instruction::ExitUncheckedBlock => {}
         }
     }
 
@@ -312,12 +312,12 @@ impl<'a> FunctionContext<'a> {
                     self.visit_statement(stmt)?;
                 }
             }
-            StmtKind::UnsafeBlock(statements) => {
-                self.emit_instruction(Instruction::EnterUnsafeBlock);
+            StmtKind::UncheckedBlock(statements) => {
+                self.emit_instruction(Instruction::EnterUncheckedBlock);
                 for stmt in statements {
                     self.visit_statement(stmt)?;
                 }
-                self.emit_instruction(Instruction::ExitUnsafeBlock);
+                self.emit_instruction(Instruction::ExitUncheckedBlock);
             }
 
             StmtKind::Branch {

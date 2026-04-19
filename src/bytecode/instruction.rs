@@ -45,8 +45,8 @@ pub enum Instruction {
     JumpIfTrue { src: u8, offset: i16 },
     JumpIfFalse { src: u8, offset: i16 },
     Print { src: u8 },
-    EnterUnsafeBlock,
-    ExitUnsafeBlock,
+    EnterUncheckedBlock,
+    ExitUncheckedBlock,
 }
 
 impl Instruction {
@@ -58,8 +58,8 @@ impl Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Instruction::EnterUnsafeBlock => write!(f, "ENTER_UNSAFE_BLOCK"),
-            Instruction::ExitUnsafeBlock => write!(f, "EXIT_UNSAFE_BLOCK"),
+            Instruction::EnterUncheckedBlock => write!(f, "ENTER_UNCHECKED_BLOCK"),
+            Instruction::ExitUncheckedBlock => write!(f, "EXIT_UNCHECKED_BLOCK"),
             Instruction::Add { dest, src1, src2 } => {
                 write!(f, "ADD r{} r{} r{}", dest, src1, src2)
             }

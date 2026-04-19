@@ -2,7 +2,7 @@ fun main() {
     iterations := 1000000;
     max_fib := 30;
 
-    unsafe {
+    unchecked {
     for i := 0; i < iterations; i += 1 {
         a := 0;
         b := 1;
@@ -14,12 +14,10 @@ fun main() {
 
         }
 
-
     }
 
     }
 }
-
 
 
 /*
