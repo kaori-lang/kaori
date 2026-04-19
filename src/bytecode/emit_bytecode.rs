@@ -128,16 +128,228 @@ impl<'a> FunctionContext<'a> {
         index
     }
 
-    fn patch_jump(&mut self, index: usize) {
-        let offset = self.instructions.len() as i16 - index as i16;
-
+    fn patch_jump(&mut self, index: usize, offset: i16) {
         match &mut self.instructions[index] {
-            Instruction::Jump { offset: o } => *o = offset,
-            Instruction::JumpIfTrue { offset: o, .. }
-            | Instruction::JumpIfFalse { offset: o, .. } => {
-                *o = offset;
-            }
+            Instruction::Jump { offset: o }
+            | Instruction::JumpIfTrue { offset: o, .. }
+            | Instruction::JumpIfFalse { offset: o, .. }
+            | Instruction::JumpIfLess { offset: o, .. }
+            | Instruction::JumpIfLessK { offset: o, .. }
+            | Instruction::JumpIfLessEqual { offset: o, .. }
+            | Instruction::JumpIfLessEqualK { offset: o, .. }
+            | Instruction::JumpIfGreater { offset: o, .. }
+            | Instruction::JumpIfGreaterK { offset: o, .. }
+            | Instruction::JumpIfGreaterEqual { offset: o, .. }
+            | Instruction::JumpIfGreaterEqualK { offset: o, .. }
+            | Instruction::JumpIfEqual { offset: o, .. }
+            | Instruction::JumpIfEqualK { offset: o, .. }
+            | Instruction::JumpIfNotEqual { offset: o, .. }
+            | Instruction::JumpIfNotEqualK { offset: o, .. } => *o = offset,
             _ => panic!("tried to patch a non-jump instruction at index {index}"),
+        }
+    }
+
+    fn make_jump_if_true(&mut self, src: u8) -> Instruction {
+        match self.instructions.last().copied() {
+            Some(Instruction::Less { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfLess {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::LessK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfLessK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::Equal { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::EqualK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfEqualK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::NotEqual { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfNotEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::NotEqualK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfNotEqualK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::LessEqual { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfLessEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::LessEqualK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfLessEqualK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::Greater { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfGreater {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::GreaterK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfGreaterK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::GreaterEqual { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfGreaterEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::GreaterEqualK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfGreaterEqualK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            _ => Instruction::JumpIfTrue { src, offset: 0 },
+        }
+    }
+
+    fn make_jump_if_false(&mut self, src: u8) -> Instruction {
+        match self.instructions.last().copied() {
+            Some(Instruction::Less { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfGreaterEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::LessK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfGreaterEqualK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::LessEqual { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfGreater {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::LessEqualK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfGreaterK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::Greater { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfLessEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::GreaterK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfLessEqualK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::GreaterEqual { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfLess {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::GreaterEqualK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfLessK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::Equal { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfNotEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::EqualK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfNotEqualK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::NotEqual { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            Some(Instruction::NotEqualK { src1, src2, .. }) => {
+                self.instructions.pop();
+                Instruction::JumpIfEqualK {
+                    src1,
+                    src2,
+                    offset: 0,
+                }
+            }
+            _ => Instruction::JumpIfFalse { src, offset: 0 },
         }
     }
 
@@ -189,7 +401,19 @@ impl<'a> FunctionContext<'a> {
                 | Instruction::JumpIfFalse { .. }
                 | Instruction::Print { .. }
                 | Instruction::EnterUncheckedBlock
-                | Instruction::ExitUncheckedBlock => {}
+                | Instruction::ExitUncheckedBlock
+                | Instruction::JumpIfLess { .. }
+                | Instruction::JumpIfLessK { .. }
+                | Instruction::JumpIfEqual { .. }
+                | Instruction::JumpIfEqualK { .. }
+                | Instruction::JumpIfNotEqual { .. }
+                | Instruction::JumpIfNotEqualK { .. }
+                | Instruction::JumpIfLessEqual { .. }
+                | Instruction::JumpIfLessEqualK { .. }
+                | Instruction::JumpIfGreater { .. }
+                | Instruction::JumpIfGreaterK { .. }
+                | Instruction::JumpIfGreaterEqual { .. }
+                | Instruction::JumpIfGreaterEqualK { .. } => {}
             }
         }
     }
@@ -241,7 +465,19 @@ impl<'a> FunctionContext<'a> {
             | Instruction::JumpIfFalse { .. }
             | Instruction::Print { .. }
             | Instruction::EnterUncheckedBlock
-            | Instruction::ExitUncheckedBlock => {}
+            | Instruction::ExitUncheckedBlock
+            | Instruction::JumpIfLess { .. }
+            | Instruction::JumpIfLessK { .. }
+            | Instruction::JumpIfEqual { .. }
+            | Instruction::JumpIfEqualK { .. }
+            | Instruction::JumpIfNotEqual { .. }
+            | Instruction::JumpIfNotEqualK { .. }
+            | Instruction::JumpIfLessEqual { .. }
+            | Instruction::JumpIfLessEqualK { .. }
+            | Instruction::JumpIfGreater { .. }
+            | Instruction::JumpIfGreaterK { .. }
+            | Instruction::JumpIfGreaterEqual { .. }
+            | Instruction::JumpIfGreaterEqualK { .. } => {}
         }
     }
 
@@ -329,14 +565,15 @@ impl<'a> FunctionContext<'a> {
 
                 let src = self.materialize(src);
 
-                let jump_to_else = self.emit_instruction(Instruction::JumpIfFalse {
-                    src: src.unwrap_register(),
-                    offset: 0,
-                });
+                let jump_if_false = self.make_jump_if_false(src.unwrap_register());
+                let jump_if_false = self.emit_instruction(jump_if_false);
 
                 self.visit_statement(then_branch)?;
 
-                self.patch_jump(jump_to_else);
+                self.patch_jump(
+                    jump_if_false,
+                    self.instructions.len() as i16 - jump_if_false as i16,
+                );
 
                 if let Some(else_branch) = else_branch {
                     self.visit_statement(else_branch)?;
@@ -356,10 +593,8 @@ impl<'a> FunctionContext<'a> {
                 let src = self.visit_expression(condition);
                 let src = self.materialize(src);
 
-                let jump_to_end = self.emit_instruction(Instruction::JumpIfFalse {
-                    src: src.unwrap_register(),
-                    offset: 0,
-                });
+                let jump_if_false = self.make_jump_if_false(src.unwrap_register());
+                let jump_if_false = self.emit_instruction(jump_if_false);
 
                 let loop_body = self.instructions.len();
 
@@ -372,12 +607,14 @@ impl<'a> FunctionContext<'a> {
                 let src = self.visit_expression(condition);
                 let src = self.materialize(src);
 
-                self.emit_instruction(Instruction::JumpIfTrue {
-                    src: src.unwrap_register(),
-                    offset: loop_body as i16 - self.instructions.len() as i16,
-                });
+                let jump_if_true = self.make_jump_if_true(src.unwrap_register());
+                let jump_if_true = self.emit_instruction(jump_if_true);
+                self.patch_jump(jump_if_true, loop_body as i16 - jump_if_true as i16);
 
-                self.patch_jump(jump_to_end);
+                self.patch_jump(
+                    jump_if_false,
+                    self.instructions.len() as i16 - jump_if_false as i16,
+                );
             }
 
             StmtKind::Break => {
@@ -433,13 +670,15 @@ impl<'a> FunctionContext<'a> {
 
                 let dest = self.materialize(left);
 
-                let jump_to_end = self.emit_instruction(Instruction::JumpIfFalse {
-                    src: dest.unwrap_register(),
-                    offset: 0,
-                });
+                let jump_if_false = self.make_jump_if_false(dest.unwrap_register());
+                let jump_if_false = self.emit_instruction(jump_if_false);
 
                 self.emit_move(right, dest);
-                self.patch_jump(jump_to_end);
+
+                self.patch_jump(
+                    jump_if_false,
+                    self.instructions.len() as i16 - jump_if_false as i16,
+                );
 
                 dest
             }
@@ -449,13 +688,15 @@ impl<'a> FunctionContext<'a> {
 
                 let dest = self.materialize(left);
 
-                let jump_to_end = self.emit_instruction(Instruction::JumpIfTrue {
-                    src: dest.unwrap_register(),
-                    offset: 0,
-                });
+                let jump_if_true = self.make_jump_if_true(dest.unwrap_register());
+
+                let jump_if_true = self.emit_instruction(jump_if_true);
 
                 self.emit_move(right, dest);
-                self.patch_jump(jump_to_end);
+                self.patch_jump(
+                    jump_if_true,
+                    self.instructions.len() as i16 - jump_if_true as i16,
+                );
 
                 dest
             }

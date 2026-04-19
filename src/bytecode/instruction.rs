@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[repr(u8, align(2))]
 pub enum Instruction {
     Add { dest: u8, src1: u8, src2: u8 },
@@ -44,6 +44,20 @@ pub enum Instruction {
     Jump { offset: i16 },
     JumpIfTrue { src: u8, offset: i16 },
     JumpIfFalse { src: u8, offset: i16 },
+
+    JumpIfLess { src1: u8, src2: u8, offset: i16 },
+    JumpIfLessK { src1: u8, src2: u8, offset: i16 },
+    JumpIfEqual { src1: u8, src2: u8, offset: i16 },
+    JumpIfEqualK { src1: u8, src2: u8, offset: i16 },
+    JumpIfNotEqual { src1: u8, src2: u8, offset: i16 },
+    JumpIfNotEqualK { src1: u8, src2: u8, offset: i16 },
+    JumpIfLessEqual { src1: u8, src2: u8, offset: i16 },
+    JumpIfLessEqualK { src1: u8, src2: u8, offset: i16 },
+    JumpIfGreater { src1: u8, src2: u8, offset: i16 },
+    JumpIfGreaterK { src1: u8, src2: u8, offset: i16 },
+    JumpIfGreaterEqual { src1: u8, src2: u8, offset: i16 },
+    JumpIfGreaterEqualK { src1: u8, src2: u8, offset: i16 },
+
     Print { src: u8 },
     EnterUncheckedBlock,
     ExitUncheckedBlock,
@@ -184,6 +198,43 @@ impl fmt::Display for Instruction {
             Instruction::JumpIfFalse { src, offset } => {
                 write!(f, "JMP_IF_FALSE r{} {}", src, offset)
             }
+            Instruction::JumpIfLess { src1, src2, offset } => {
+                write!(f, "JMP_IF_LT r{} r{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfLessK { src1, src2, offset } => {
+                write!(f, "JMP_IF_LT r{} k{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfEqual { src1, src2, offset } => {
+                write!(f, "JMP_IF_EQ r{} r{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfEqualK { src1, src2, offset } => {
+                write!(f, "JMP_IF_EQ r{} k{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfNotEqual { src1, src2, offset } => {
+                write!(f, "JMP_IF_NEQ r{} r{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfNotEqualK { src1, src2, offset } => {
+                write!(f, "JMP_IF_NEQ r{} k{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfLessEqual { src1, src2, offset } => {
+                write!(f, "JMP_IF_LTE r{} r{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfGreater { src1, src2, offset } => {
+                write!(f, "JMP_IF_GT r{} r{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfGreaterK { src1, src2, offset } => {
+                write!(f, "JMP_IF_GT r{} k{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfGreaterEqual { src1, src2, offset } => {
+                write!(f, "JMP_IF_GTE r{} r{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfGreaterEqualK { src1, src2, offset } => {
+                write!(f, "JMP_IF_GTE r{} k{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfLessEqualK { src1, src2, offset } => {
+                write!(f, "JMP_IF_LTE r{} k{} {}", src1, src2, offset)
+            }
+
             Instruction::Print { src } => {
                 write!(f, "PRINT r{}", src)
             }

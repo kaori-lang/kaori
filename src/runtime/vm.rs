@@ -57,7 +57,7 @@ macro_rules! type_check {
 const REGISTER: u8 = 0;
 const CONSTANT: u8 = 1;
 const HANDLERS_UNCHECKED_OFFSET: usize = HANDLERS.len() / 2;
-const HANDLERS: [Handler; 88] = [
+const HANDLERS: [Handler; 112] = [
     // CHECKED HANDLERS
     opcode_add::<REGISTER, REGISTER, false>,
     opcode_add::<REGISTER, CONSTANT, false>,
@@ -100,6 +100,18 @@ const HANDLERS: [Handler; 88] = [
     opcode_jump::<false>,
     opcode_jump_if_true::<false>,
     opcode_jump_if_false::<false>,
+    opcode_jump_if_less::<REGISTER, false>,
+    opcode_jump_if_less::<CONSTANT, false>,
+    opcode_jump_if_equal::<REGISTER, false>,
+    opcode_jump_if_equal::<CONSTANT, false>,
+    opcode_jump_if_not_equal::<REGISTER, false>,
+    opcode_jump_if_not_equal::<CONSTANT, false>,
+    opcode_jump_if_less_equal::<REGISTER, false>,
+    opcode_jump_if_less_equal::<CONSTANT, false>,
+    opcode_jump_if_greater::<REGISTER, false>,
+    opcode_jump_if_greater::<CONSTANT, false>,
+    opcode_jump_if_greater_equal::<REGISTER, false>,
+    opcode_jump_if_greater_equal::<CONSTANT, false>,
     opcode_print::<false>,
     opcode_enter_unchecked_block,
     opcode_exit_unchecked_block,
@@ -145,6 +157,18 @@ const HANDLERS: [Handler; 88] = [
     opcode_jump::<true>,
     opcode_jump_if_true::<true>,
     opcode_jump_if_false::<true>,
+    opcode_jump_if_less::<REGISTER, true>,
+    opcode_jump_if_less::<CONSTANT, true>,
+    opcode_jump_if_equal::<REGISTER, true>,
+    opcode_jump_if_equal::<CONSTANT, true>,
+    opcode_jump_if_not_equal::<REGISTER, true>,
+    opcode_jump_if_not_equal::<CONSTANT, true>,
+    opcode_jump_if_less_equal::<REGISTER, true>,
+    opcode_jump_if_less_equal::<CONSTANT, true>,
+    opcode_jump_if_greater::<REGISTER, true>,
+    opcode_jump_if_greater::<CONSTANT, true>,
+    opcode_jump_if_greater_equal::<REGISTER, true>,
+    opcode_jump_if_greater_equal::<CONSTANT, true>,
     opcode_print::<true>,
     opcode_enter_unchecked_block,
     opcode_exit_unchecked_block,
@@ -1149,6 +1173,294 @@ fn opcode_jump_if_false<const UNCHECKED: bool>(
             } else {
                 dispatch_offset!(ip, vm, registers, constants, offset, size)
             }
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_jump_if_less<const SRC2: u8, const UNCHECKED: bool>(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+    size: u8,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let (src1, src2, offset) = match SRC2 {
+            REGISTER => {
+                let Instruction::JumpIfLess { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            CONSTANT => {
+                let Instruction::JumpIfLessK { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            _ => unreachable_unchecked(),
+        };
+
+        let lhs = get_value::<REGISTER>(src1, constants, registers);
+        let rhs = get_value::<SRC2>(src2, constants, registers);
+
+        if !UNCHECKED {
+            type_check!(
+                lhs.is_number() && rhs.is_number(),
+                "cannot compare {:?} and {:?}, both operands must be numbers",
+                lhs,
+                rhs
+            );
+        }
+
+        if lhs.as_number() < rhs.as_number() {
+            if UNCHECKED {
+                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+            } else {
+                dispatch_offset!(ip, vm, registers, constants, offset, size)
+            }
+        } else if UNCHECKED {
+            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+        } else {
+            dispatch_next!(ip, vm, registers, constants, size)
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_jump_if_less_equal<const SRC2: u8, const UNCHECKED: bool>(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+    size: u8,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let (src1, src2, offset) = match SRC2 {
+            REGISTER => {
+                let Instruction::JumpIfLessEqual { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            CONSTANT => {
+                let Instruction::JumpIfLessEqualK { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            _ => unreachable_unchecked(),
+        };
+
+        let lhs = get_value::<REGISTER>(src1, constants, registers);
+        let rhs = get_value::<SRC2>(src2, constants, registers);
+
+        if !UNCHECKED {
+            type_check!(
+                lhs.is_number() && rhs.is_number(),
+                "cannot compare {:?} and {:?}, both operands must be numbers",
+                lhs,
+                rhs
+            );
+        }
+
+        if lhs.as_number() <= rhs.as_number() {
+            if UNCHECKED {
+                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+            } else {
+                dispatch_offset!(ip, vm, registers, constants, offset, size)
+            }
+        } else if UNCHECKED {
+            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+        } else {
+            dispatch_next!(ip, vm, registers, constants, size)
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_jump_if_greater<const SRC2: u8, const UNCHECKED: bool>(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+    size: u8,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let (src1, src2, offset) = match SRC2 {
+            REGISTER => {
+                let Instruction::JumpIfGreater { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            CONSTANT => {
+                let Instruction::JumpIfGreaterK { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            _ => unreachable_unchecked(),
+        };
+
+        let lhs = get_value::<REGISTER>(src1, constants, registers);
+        let rhs = get_value::<SRC2>(src2, constants, registers);
+
+        if !UNCHECKED {
+            type_check!(
+                lhs.is_number() && rhs.is_number(),
+                "cannot compare {:?} and {:?}, both operands must be numbers",
+                lhs,
+                rhs
+            );
+        }
+
+        if lhs.as_number() > rhs.as_number() {
+            if UNCHECKED {
+                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+            } else {
+                dispatch_offset!(ip, vm, registers, constants, offset, size)
+            }
+        } else if UNCHECKED {
+            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+        } else {
+            dispatch_next!(ip, vm, registers, constants, size)
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_jump_if_greater_equal<const SRC2: u8, const UNCHECKED: bool>(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+    size: u8,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let (src1, src2, offset) = match SRC2 {
+            REGISTER => {
+                let Instruction::JumpIfGreaterEqual { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            CONSTANT => {
+                let Instruction::JumpIfGreaterEqualK { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            _ => unreachable_unchecked(),
+        };
+
+        let lhs = get_value::<REGISTER>(src1, constants, registers);
+        let rhs = get_value::<SRC2>(src2, constants, registers);
+
+        if !UNCHECKED {
+            type_check!(
+                lhs.is_number() && rhs.is_number(),
+                "cannot compare {:?} and {:?}, both operands must be numbers",
+                lhs,
+                rhs
+            );
+        }
+
+        if lhs.as_number() >= rhs.as_number() {
+            if UNCHECKED {
+                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+            } else {
+                dispatch_offset!(ip, vm, registers, constants, offset, size)
+            }
+        } else if UNCHECKED {
+            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+        } else {
+            dispatch_next!(ip, vm, registers, constants, size)
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_jump_if_equal<const SRC2: u8, const UNCHECKED: bool>(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+    size: u8,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let (src1, src2, offset) = match SRC2 {
+            REGISTER => {
+                let Instruction::JumpIfEqual { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            CONSTANT => {
+                let Instruction::JumpIfEqualK { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            _ => unreachable_unchecked(),
+        };
+
+        let lhs = get_value::<REGISTER>(src1, constants, registers);
+        let rhs = get_value::<SRC2>(src2, constants, registers);
+
+        if lhs == rhs {
+            if UNCHECKED {
+                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+            } else {
+                dispatch_offset!(ip, vm, registers, constants, offset, size)
+            }
+        } else if UNCHECKED {
+            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+        } else {
+            dispatch_next!(ip, vm, registers, constants, size)
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_jump_if_not_equal<const SRC2: u8, const UNCHECKED: bool>(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+    size: u8,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let (src1, src2, offset) = match SRC2 {
+            REGISTER => {
+                let Instruction::JumpIfNotEqual { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            CONSTANT => {
+                let Instruction::JumpIfNotEqualK { src1, src2, offset } = *ip else {
+                    unreachable_unchecked()
+                };
+                (src1, src2, offset)
+            }
+            _ => unreachable_unchecked(),
+        };
+
+        let lhs = get_value::<REGISTER>(src1, constants, registers);
+        let rhs = get_value::<SRC2>(src2, constants, registers);
+
+        if lhs != rhs {
+            if UNCHECKED {
+                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+            } else {
+                dispatch_offset!(ip, vm, registers, constants, offset, size)
+            }
+        } else if UNCHECKED {
+            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+        } else {
+            dispatch_next!(ip, vm, registers, constants, size)
         }
     }
 }
