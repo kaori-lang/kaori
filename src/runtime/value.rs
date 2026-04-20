@@ -20,7 +20,7 @@ pub struct Value(u64);
 
 impl Default for Value {
     fn default() -> Self {
-        Value::nil()
+        Value::boolean(false)
     }
 }
 
@@ -38,11 +38,6 @@ impl Value {
     #[inline(always)]
     fn is_tag(self, tag: u64) -> bool {
         (self.0 & !PTR_MASK) == tag
-    }
-
-    #[inline(always)]
-    pub fn is_nil(self) -> bool {
-        self.0 == TAG_NIL
     }
 
     #[inline(always)]
@@ -73,11 +68,6 @@ impl Value {
     #[inline(always)]
     pub fn tag(self) -> u64 {
         self.0 & !PTR_MASK
-    }
-
-    #[inline(always)]
-    pub fn nil() -> Self {
-        Self(TAG_NIL)
     }
 
     #[inline(always)]
@@ -145,9 +135,6 @@ impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_number() {
             return write!(f, "{}", self.as_number());
-        }
-        if self.is_nil() {
-            return write!(f, "nil");
         }
         if self.is_boolean() {
             return write!(f, "{}", self.as_boolean());

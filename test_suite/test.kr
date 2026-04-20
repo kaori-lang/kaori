@@ -1,15 +1,21 @@
-fun fib(n) {
-    unchecked {
-    if n < 2 {
-        return n;
-    } else {
-        return fib(n - 1) + fib(n - 2);
-    }   
-    }
-}
+fun main() {
+   
+    iterations := 1000000;
+    max_fib := 30;
 
-fun main()  {
-    print(fib(30));
+    for i := 0; i < iterations; i += 1 {
+        a := 0;
+        b := 1;
+
+        for j := 0; j < max_fib; j += 1 {
+            temp := a + b;
+            a = b;
+            b = temp;
+
+        }
+
+    }
+    
 }
 
 
@@ -18,21 +24,18 @@ fun main()  {
 0000  MOV r0 k0
 0001  MOV r1 k1
 0002  MOV r2 k2
-0003  LT r3 r2 r0
-0004  JMP_IF_FALSE r3 15
-0005  MOV r4 k2
-0006  MOV r5 k3
-0007  MOV r6 k2
-0008  LT r7 r6 r1
-0009  JMP_IF_FALSE r7 7
-0010  ADD r8 r4 r5
-0011  MOV r4 r5
-0012  MOV r5 r8
-0013  ADD r6 r6 k3
-0014  LT r11 r6 r1
-0015  JMP_IF_TRUE r11 -5
-0016  ADD r2 r2 k3
-0017  LT r13 r2 r0
-0018  JMP_IF_TRUE r13 -13
-0019  RET k4
+0003  JMP_IF_GTE r2 r0 12
+0004  MOV r4 k2
+0005  MOV r5 k3
+0006  MOV r6 k2
+0007  JMP_IF_GTE r6 r1 6
+0008  ADD r8 r4 r5
+0009  MOV r4 r5
+0010  MOV r5 r8
+0011  ADD r6 r6 k3
+0012  JMP_IF_LT r6 r1 -4
+0013  ADD r2 r2 k3
+0014  JMP_IF_LT r2 r0 -10
+0015  MOV r14 k4
+0016  RET r14
 */

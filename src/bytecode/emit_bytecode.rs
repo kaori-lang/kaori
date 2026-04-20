@@ -391,29 +391,7 @@ impl<'a> FunctionContext<'a> {
                 | Instruction::Call { dest, .. } => {
                     *dest += self.next_register;
                 }
-                Instruction::SetFieldRR { .. }
-                | Instruction::SetFieldRK { .. }
-                | Instruction::SetFieldKR { .. }
-                | Instruction::SetFieldKK { .. }
-                | Instruction::Return { .. }
-                | Instruction::Jump { .. }
-                | Instruction::JumpIfTrue { .. }
-                | Instruction::JumpIfFalse { .. }
-                | Instruction::Print { .. }
-                | Instruction::EnterUncheckedBlock
-                | Instruction::ExitUncheckedBlock
-                | Instruction::JumpIfLess { .. }
-                | Instruction::JumpIfLessK { .. }
-                | Instruction::JumpIfEqual { .. }
-                | Instruction::JumpIfEqualK { .. }
-                | Instruction::JumpIfNotEqual { .. }
-                | Instruction::JumpIfNotEqualK { .. }
-                | Instruction::JumpIfLessEqual { .. }
-                | Instruction::JumpIfLessEqualK { .. }
-                | Instruction::JumpIfGreater { .. }
-                | Instruction::JumpIfGreaterK { .. }
-                | Instruction::JumpIfGreaterEqual { .. }
-                | Instruction::JumpIfGreaterEqualK { .. } => {}
+                _ => {}
             }
         }
     }
@@ -455,29 +433,7 @@ impl<'a> FunctionContext<'a> {
             | Instruction::Call { dest, .. } => {
                 *dest = register;
             }
-            Instruction::SetFieldRR { .. }
-            | Instruction::SetFieldRK { .. }
-            | Instruction::SetFieldKR { .. }
-            | Instruction::SetFieldKK { .. }
-            | Instruction::Return { .. }
-            | Instruction::Jump { .. }
-            | Instruction::JumpIfTrue { .. }
-            | Instruction::JumpIfFalse { .. }
-            | Instruction::Print { .. }
-            | Instruction::EnterUncheckedBlock
-            | Instruction::ExitUncheckedBlock
-            | Instruction::JumpIfLess { .. }
-            | Instruction::JumpIfLessK { .. }
-            | Instruction::JumpIfEqual { .. }
-            | Instruction::JumpIfEqualK { .. }
-            | Instruction::JumpIfNotEqual { .. }
-            | Instruction::JumpIfNotEqualK { .. }
-            | Instruction::JumpIfLessEqual { .. }
-            | Instruction::JumpIfLessEqualK { .. }
-            | Instruction::JumpIfGreater { .. }
-            | Instruction::JumpIfGreaterK { .. }
-            | Instruction::JumpIfGreaterEqual { .. }
-            | Instruction::JumpIfGreaterEqualK { .. } => {}
+            _ => {}
         }
     }
 
@@ -517,7 +473,7 @@ impl<'a> FunctionContext<'a> {
                 }
 
                 if !self.block_returns(body) {
-                    let src = self.constants.push_nil();
+                    let src = self.constants.push_boolean(false);
                     let src = self.materialize(src);
                     self.emit_instruction(Instruction::Return {
                         src: src.unwrap_register(),
@@ -550,6 +506,7 @@ impl<'a> FunctionContext<'a> {
             }
             StmtKind::UncheckedBlock(statements) => {
                 self.emit_instruction(Instruction::EnterUncheckedBlock);
+
                 for stmt in statements {
                     self.visit_statement(stmt)?;
                 }
@@ -629,7 +586,7 @@ impl<'a> FunctionContext<'a> {
                 let src = if let Some(expr) = expr {
                     self.visit_expression(expr)
                 } else {
-                    self.constants.push_nil()
+                    self.constants.push_boolean(false)
                 };
 
                 let src = self.materialize(src);

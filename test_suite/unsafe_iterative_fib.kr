@@ -1,20 +1,20 @@
 fun main() {
-    unsafe {
-    iterations := 1000000;
-    max_fib := 30;
+    unchecked {
+        iterations := 1000000;
+        max_fib := 30;
 
-    for i := 0; i < iterations; i += 1 {
-        a := 0;
-        b := 1;
+        for i := 0; i < iterations; i += 1 {
+            a := 0;
+            b := 1;
 
-        for j := 0; j < max_fib; j += 1 {
-            temp := a + b;
-            a = b;
-            b = temp;
+            for j := 0; j < max_fib; j += 1 {
+                temp := a + b;
+                a = b;
+                b = temp;
+
+            }
 
         }
-
-    }
     }
 }
 

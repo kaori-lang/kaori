@@ -35,10 +35,6 @@ impl Constants {
     pub fn push_boolean(&mut self, value: bool) -> Operand {
         self.push_constant(Constant::Boolean(value))
     }
-
-    pub fn push_nil(&mut self) -> Operand {
-        self.push_constant(Constant::Nil)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -47,5 +43,4 @@ pub enum Constant {
     Number(f64),
     Boolean(bool),
     FunctionIndex(usize),
-    Nil,
 }

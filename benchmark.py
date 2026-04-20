@@ -11,11 +11,11 @@ if platform.system() == "Windows":
     rust_exe = rust_exe.with_suffix(".exe")
 
 scripts = [
-    ("Kaori",        "1.0.0", kaori_folder / "iterative_fib.kr",          kaori_folder / "recursive_fib.kr",          [str(rust_exe)], [str(rust_exe)]),
-    ("Kaori Unsafe", "1.0.0", kaori_folder / "unsafe_iterative_fib.kr",   kaori_folder / "unsafe_recursive_fib.kr",   [str(rust_exe)], [str(rust_exe)]),
-    ("Lua",          "5.5.0", folder / "iterative_fib.lua",               folder / "recursive_fib.lua",               ["lua"],         ["lua"]),
-    ("Python",       "3.14.4", folder / "iterative_fib.py",               folder / "recursive_fib.py",               ["python"],      ["python"]),
-    ("PyPy",         "7.3.20", folder / "iterative_fib.py",               folder / "recursive_fib.py",               ["pypy"],        ["pypy"]),
+    ("Kaori",        "1.0.0",  kaori_folder / "iterative_fib.kr",        kaori_folder / "recursive_fib.kr",        [str(rust_exe)], [str(rust_exe)]),
+    ("Kaori Unsafe", "1.0.0",  kaori_folder / "unsafe_iterative_fib.kr", kaori_folder / "unsafe_recursive_fib.kr", [str(rust_exe)], [str(rust_exe)]),
+    ("Lua",          "5.5.0",  folder / "iterative_fib.lua",             folder / "recursive_fib.lua",             ["lua"],         ["lua"]),
+    ("Python",       "3.14.4", folder / "iterative_fib.py",              folder / "recursive_fib.py",              ["python"],      ["python"]),
+    ("PyPy",         "7.3.20", folder / "iterative_fib.py",              folder / "recursive_fib.py",              ["pypy"],        ["pypy"]),
 ]
 
 
@@ -38,16 +38,18 @@ def run_script(path, cmd_list, runs=20, warmups=5):
 
 
 def fmt_result(mean, pct):
-    return f"{mean:>10.3f} ms  ±{pct:>5.2f}%"
+    ms = f"{mean:.3f} ms"
+    pc = f"±{pct:.2f}%"
+    return f"{ms:>16}  {pc:<8}"
 
 
 def fmt_error():
-    return f"{'ERROR':>10}{'':12}"
+    return f"{'ERROR':>16}  {'':8}"
 
 
 if __name__ == "__main__":
-    print(f"\n{'Language':<14} {'Version':<10} {'Iterative':>16}        {'Recursive':>16}")
-    print("─" * 76)
+    print(f"\n{'Language':<16} {'Version':<10} {'Iterative':>24}    {'Recursive':>24}")
+    print("─" * 88)
 
     for lang, version, iter_path, rec_path, iter_cmd, rec_cmd in scripts:
         try:
@@ -62,6 +64,6 @@ if __name__ == "__main__":
         except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
             rec_str = fmt_error()
 
-        print(f"{lang:<14} {version:<10} {iter_str}    {rec_str}")
+        print(f"{lang:<16} {version:<10} {iter_str}    {rec_str}")
 
     print()

@@ -206,10 +206,12 @@ unsafe fn get_value<const SRC: u8>(
     constants: *const Value,
     registers: *mut Value,
 ) -> Value {
-    if SRC == REGISTER {
-        unsafe { *registers.add(index as usize) }
-    } else {
-        unsafe { *constants.add(index as usize) }
+    unsafe {
+        match SRC {
+            REGISTER => *registers.add(index as usize),
+            CONSTANT => *constants.add(index as usize),
+            _ => unreachable_unchecked(),
+        }
     }
 }
 
