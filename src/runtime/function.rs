@@ -37,7 +37,6 @@ pub fn from_compiled(functions: Vec<bytecode::Function>, gc: &mut Gc) -> Vec<Fun
             .into_iter()
             .map(|constant| match constant {
                 bytecode::Constant::Number(value) => Value::number(value),
-                bytecode::Constant::Boolean(value) => Value::boolean(value),
                 bytecode::Constant::String(value) => gc.allocate_string(&value),
                 bytecode::Constant::FunctionIndex(index) => {
                     let ptr = unsafe { runtime_functions.as_ptr().add(index) };

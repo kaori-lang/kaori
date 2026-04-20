@@ -2,20 +2,24 @@
 pub enum Operand {
     Constant(u8),
     Register(u8),
-    Immediate(u32),
+    Immediate(u16),
 }
 
 impl Operand {
-    pub fn try_f32(value: f64) -> Option<Self> {
-        if (value as f32) as f64 == value {
-            Some(Self::Immediate((value as f32).to_bits()))
-        } else {
-            None
+    pub fn try_f64(value: f64) -> Option<Self> {
+        let scaled = (value * 256.0).round();
+        if (0.0..=32767.0).contains(&scaled) {
+            let as_u16 = scaled as u16;
+            if (as_u16 as f64) / 256.0 == value {
+                return Some(Self::Immediate(as_u16 | (1 << 15)));
+            }
         }
+
+        None
     }
 
     pub fn boolean(value: bool) -> Self {
-        Self::Immediate(value as u32)
+        Self::Immediate(value as u16)
     }
 
     pub fn unwrap_register(self) -> u8 {
