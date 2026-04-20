@@ -2,6 +2,39 @@
 pub enum Operand {
     Constant(u8),
     Register(u8),
+    Immediate(Immediate),
+}
+
+#[derive(Clone, Copy)]
+pub enum ImmediateType {
+    Float,
+    Boolean,
+}
+
+#[derive(Clone, Copy)]
+pub struct Immediate {
+    pub ty: ImmediateType,
+    pub value: u32,
+}
+
+impl Immediate {
+    pub fn try_f32(value: f64) -> Option<Self> {
+        if (value as f32) as f64 == value {
+            Some(Self {
+                ty: ImmediateType::Float,
+                value: (value as f32).to_bits(),
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn boolean(value: bool) -> Self {
+        Self {
+            ty: ImmediateType::Boolean,
+            value: value as u32,
+        }
+    }
 }
 
 impl Operand {

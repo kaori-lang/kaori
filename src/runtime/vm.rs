@@ -22,7 +22,7 @@ macro_rules! dispatch_next {
     }};
 }
 
-macro_rules! dispatch_next_unsafe {
+macro_rules! dispatch_next_unchecked {
     ($ip:expr, $vm:expr, $registers:expr, $constants:expr, $size:expr) => {{
         let ip: *const Instruction = $ip.add(1);
         let index = (*ip).discriminant();
@@ -32,15 +32,15 @@ macro_rules! dispatch_next_unsafe {
 
 macro_rules! dispatch_offset {
     ($ip:expr, $vm:expr, $registers:expr, $constants:expr, $offset:expr, $size:expr) => {{
-        let ip: *const Instruction = $ip.offset($offset as i16 as isize);
+        let ip: *const Instruction = $ip.offset($offset as isize);
         let index = (*ip).discriminant();
         become HANDLERS[index](ip, $vm, $registers, $constants, $size);
     }};
 }
 
-macro_rules! dispatch_offset_unsafe {
+macro_rules! dispatch_offset_unchecked {
     ($ip:expr, $vm:expr, $registers:expr, $constants:expr, $offset:expr, $size:expr) => {{
-        let ip: *const Instruction = $ip.offset($offset as i16 as isize);
+        let ip: *const Instruction = $ip.offset($offset as isize);
         let index = (*ip).discriminant();
         become HANDLERS[index + HANDLERS_UNCHECKED_OFFSET](ip, $vm, $registers, $constants, $size);
     }};
@@ -56,8 +56,9 @@ macro_rules! type_check {
 
 const REGISTER: u8 = 0;
 const CONSTANT: u8 = 1;
+const IMMEDIATE: u8 = 2;
 const HANDLERS_UNCHECKED_OFFSET: usize = HANDLERS.len() / 2;
-const HANDLERS: [Handler; 112] = [
+const HANDLERS: [Handler; 104] = [
     // CHECKED HANDLERS
     opcode_add::<REGISTER, REGISTER, false>,
     opcode_add::<REGISTER, CONSTANT, false>,
@@ -89,12 +90,8 @@ const HANDLERS: [Handler; 112] = [
     opcode_move::<REGISTER, false>,
     opcode_move::<CONSTANT, false>,
     opcode_create_dict::<false>,
-    opcode_set_field::<REGISTER, REGISTER, false>,
-    opcode_set_field::<REGISTER, CONSTANT, false>,
-    opcode_set_field::<CONSTANT, REGISTER, false>,
-    opcode_set_field::<CONSTANT, CONSTANT, false>,
-    opcode_get_field::<REGISTER, false>,
-    opcode_get_field::<CONSTANT, false>,
+    opcode_set_field::<false>,
+    opcode_get_field::<false>,
     opcode_call::<false>,
     opcode_return,
     opcode_jump::<false>,
@@ -146,12 +143,8 @@ const HANDLERS: [Handler; 112] = [
     opcode_move::<REGISTER, true>,
     opcode_move::<CONSTANT, true>,
     opcode_create_dict::<true>,
-    opcode_set_field::<REGISTER, REGISTER, true>,
-    opcode_set_field::<REGISTER, CONSTANT, true>,
-    opcode_set_field::<CONSTANT, REGISTER, true>,
-    opcode_set_field::<CONSTANT, CONSTANT, true>,
-    opcode_get_field::<REGISTER, true>,
-    opcode_get_field::<CONSTANT, true>,
+    opcode_set_field::<false>,
+    opcode_get_field::<false>,
     opcode_call::<true>,
     opcode_return,
     opcode_jump::<true>,
@@ -230,7 +223,7 @@ fn opcode_enter_unchecked_block(
     constants: *const Value,
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
-    unsafe { dispatch_next_unsafe!(ip, vm, registers, constants, size) }
+    unsafe { dispatch_next_unchecked!(ip, vm, registers, constants, size) }
 }
 
 #[inline(never)]
@@ -288,7 +281,7 @@ fn opcode_add<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         );
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -345,7 +338,7 @@ fn opcode_subtract<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         );
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -396,7 +389,7 @@ fn opcode_multiply<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         );
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -453,7 +446,7 @@ fn opcode_divide<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         );
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -510,7 +503,7 @@ fn opcode_modulo<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         );
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -548,7 +541,7 @@ fn opcode_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         set_value(dest, Value::boolean(lhs == rhs), registers);
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -586,7 +579,7 @@ fn opcode_not_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         set_value(dest, Value::boolean(lhs != rhs), registers);
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -637,7 +630,7 @@ fn opcode_less<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         );
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -688,7 +681,7 @@ fn opcode_less_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         );
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -739,7 +732,7 @@ fn opcode_greater<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         );
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -790,7 +783,7 @@ fn opcode_greater_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         );
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -820,7 +813,7 @@ fn opcode_not<const UNCHECKED: bool>(
         set_value(dest, Value::boolean(!value.as_boolean()), registers);
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -851,7 +844,7 @@ fn opcode_negate<const UNCHECKED: bool>(
         set_value(dest, Value::number(-value.as_number()), registers);
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -886,7 +879,7 @@ fn opcode_move<const SRC: u8, const UNCHECKED: bool>(
         set_value(dest, get_value::<SRC>(src, constants, registers), registers);
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -908,7 +901,7 @@ fn opcode_create_dict<const UNCHECKED: bool>(
         set_value(dest, vm.gc.allocate_dict(), registers);
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -916,7 +909,7 @@ fn opcode_create_dict<const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_set_field<const KEY: u8, const VALUE: u8, const UNCHECKED: bool>(
+fn opcode_set_field<const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -924,37 +917,13 @@ fn opcode_set_field<const KEY: u8, const VALUE: u8, const UNCHECKED: bool>(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let (object, key, value) = match (KEY, VALUE) {
-            (REGISTER, REGISTER) => {
-                let Instruction::SetFieldRR { object, key, value } = *ip else {
-                    unreachable_unchecked()
-                };
-                (object, key, value)
-            }
-            (REGISTER, CONSTANT) => {
-                let Instruction::SetFieldRK { object, key, value } = *ip else {
-                    unreachable_unchecked()
-                };
-                (object, key, value)
-            }
-            (CONSTANT, REGISTER) => {
-                let Instruction::SetFieldKR { object, key, value } = *ip else {
-                    unreachable_unchecked()
-                };
-                (object, key, value)
-            }
-            (CONSTANT, CONSTANT) => {
-                let Instruction::SetFieldKK { object, key, value } = *ip else {
-                    unreachable_unchecked()
-                };
-                (object, key, value)
-            }
-            _ => unreachable_unchecked(),
+        let Instruction::SetField { object, key, value } = *ip else {
+            unreachable_unchecked()
         };
 
         let object = get_value::<REGISTER>(object, constants, registers);
-        let key = get_value::<KEY>(key, constants, registers);
-        let value = get_value::<VALUE>(value, constants, registers);
+        let key = get_value::<REGISTER>(key, constants, registers);
+        let value = get_value::<REGISTER>(value, constants, registers);
 
         type_check!(
             object.is_dict(),
@@ -965,7 +934,7 @@ fn opcode_set_field<const KEY: u8, const VALUE: u8, const UNCHECKED: bool>(
         object.as_dict().insert(key, value);
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -973,7 +942,7 @@ fn opcode_set_field<const KEY: u8, const VALUE: u8, const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_get_field<const KEY: u8, const UNCHECKED: bool>(
+fn opcode_get_field<const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -981,24 +950,12 @@ fn opcode_get_field<const KEY: u8, const UNCHECKED: bool>(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let (dest, object, key) = match KEY {
-            REGISTER => {
-                let Instruction::GetFieldR { dest, object, key } = *ip else {
-                    unreachable_unchecked()
-                };
-                (dest, object, key)
-            }
-            CONSTANT => {
-                let Instruction::GetFieldK { dest, object, key } = *ip else {
-                    unreachable_unchecked()
-                };
-                (dest, object, key)
-            }
-            _ => unreachable_unchecked(),
+        let Instruction::GetField { dest, object, key } = *ip else {
+            unreachable_unchecked()
         };
 
         let object = get_value::<REGISTER>(object, constants, registers);
-        let key = get_value::<KEY>(key, constants, registers);
+        let key = get_value::<REGISTER>(key, constants, registers);
 
         type_check!(
             object.is_dict(),
@@ -1010,7 +967,7 @@ fn opcode_get_field<const KEY: u8, const UNCHECKED: bool>(
         set_value(dest, value, registers);
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -1096,7 +1053,7 @@ fn opcode_jump<const UNCHECKED: bool>(
         };
 
         if UNCHECKED {
-            dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+            dispatch_offset_unchecked!(ip, vm, registers, constants, offset, size)
         } else {
             dispatch_offset!(ip, vm, registers, constants, offset, size)
         }
@@ -1127,13 +1084,13 @@ fn opcode_jump_if_true<const UNCHECKED: bool>(
 
         if value.as_boolean() {
             if UNCHECKED {
-                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+                dispatch_offset_unchecked!(ip, vm, registers, constants, offset, size)
             } else {
                 dispatch_offset!(ip, vm, registers, constants, offset, size)
             }
         } else {
             if UNCHECKED {
-                dispatch_next_unsafe!(ip, vm, registers, constants, size)
+                dispatch_next_unchecked!(ip, vm, registers, constants, size)
             } else {
                 dispatch_next!(ip, vm, registers, constants, size)
             }
@@ -1165,13 +1122,13 @@ fn opcode_jump_if_false<const UNCHECKED: bool>(
 
         if value.as_boolean() {
             if UNCHECKED {
-                dispatch_next_unsafe!(ip, vm, registers, constants, size)
+                dispatch_next_unchecked!(ip, vm, registers, constants, size)
             } else {
                 dispatch_next!(ip, vm, registers, constants, size)
             }
         } else {
             if UNCHECKED {
-                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+                dispatch_offset_unchecked!(ip, vm, registers, constants, offset, size)
             } else {
                 dispatch_offset!(ip, vm, registers, constants, offset, size)
             }
@@ -1218,12 +1175,12 @@ fn opcode_jump_if_less<const SRC2: u8, const UNCHECKED: bool>(
 
         if lhs.as_number() < rhs.as_number() {
             if UNCHECKED {
-                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+                dispatch_offset_unchecked!(ip, vm, registers, constants, offset, size)
             } else {
                 dispatch_offset!(ip, vm, registers, constants, offset, size)
             }
         } else if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -1269,12 +1226,12 @@ fn opcode_jump_if_less_equal<const SRC2: u8, const UNCHECKED: bool>(
 
         if lhs.as_number() <= rhs.as_number() {
             if UNCHECKED {
-                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+                dispatch_offset_unchecked!(ip, vm, registers, constants, offset, size)
             } else {
                 dispatch_offset!(ip, vm, registers, constants, offset, size)
             }
         } else if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -1320,12 +1277,12 @@ fn opcode_jump_if_greater<const SRC2: u8, const UNCHECKED: bool>(
 
         if lhs.as_number() > rhs.as_number() {
             if UNCHECKED {
-                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+                dispatch_offset_unchecked!(ip, vm, registers, constants, offset, size)
             } else {
                 dispatch_offset!(ip, vm, registers, constants, offset, size)
             }
         } else if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -1371,12 +1328,12 @@ fn opcode_jump_if_greater_equal<const SRC2: u8, const UNCHECKED: bool>(
 
         if lhs.as_number() >= rhs.as_number() {
             if UNCHECKED {
-                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+                dispatch_offset_unchecked!(ip, vm, registers, constants, offset, size)
             } else {
                 dispatch_offset!(ip, vm, registers, constants, offset, size)
             }
         } else if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -1413,12 +1370,12 @@ fn opcode_jump_if_equal<const SRC2: u8, const UNCHECKED: bool>(
 
         if lhs == rhs {
             if UNCHECKED {
-                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+                dispatch_offset_unchecked!(ip, vm, registers, constants, offset, size)
             } else {
                 dispatch_offset!(ip, vm, registers, constants, offset, size)
             }
         } else if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -1455,12 +1412,12 @@ fn opcode_jump_if_not_equal<const SRC2: u8, const UNCHECKED: bool>(
 
         if lhs != rhs {
             if UNCHECKED {
-                dispatch_offset_unsafe!(ip, vm, registers, constants, offset, size)
+                dispatch_offset_unchecked!(ip, vm, registers, constants, offset, size)
             } else {
                 dispatch_offset!(ip, vm, registers, constants, offset, size)
             }
         } else if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }
@@ -1482,7 +1439,7 @@ fn opcode_print<const UNCHECKED: bool>(
         println!("{:?}", get_value::<REGISTER>(src, constants, registers));
 
         if UNCHECKED {
-            dispatch_next_unsafe!(ip, vm, registers, constants, size)
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {
             dispatch_next!(ip, vm, registers, constants, size)
         }

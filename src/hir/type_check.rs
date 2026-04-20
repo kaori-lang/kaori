@@ -6,6 +6,7 @@ use crate::{
         expr::{Expr, ExprKind},
         stmt::{Stmt, StmtKind},
     },
+    kaori_error,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -14,11 +15,11 @@ enum Type {
     String,
     Boolean,
     Dictionary,
-    Unknown,
     Function,
+    Any,
 }
 
-fn type_check(declarations: Vec<Decl>) -> Result<(), KaoriError> {
+pub fn run_type_check(declarations: &[Decl]) -> Result<(), KaoriError> {
     for declaration in declarations {
         check_declaration(declaration)?;
     }
@@ -26,65 +27,11 @@ fn type_check(declarations: Vec<Decl>) -> Result<(), KaoriError> {
     Ok(())
 }
 
-fn check_declaration(declaration: Decl) -> Result<(), KaoriError> {
+fn check_declaration(declaration: &Decl) -> Result<(), KaoriError> {
     match &declaration.kind {
         DeclKind::Function { body, .. } => {
             for statement in body {
                 check_statement(statement)?;
-            }
-        }
-    };
-
-    Ok(())
-}
-
-fn check_statement(statement: &Stmt) -> Result<(), KaoriError> {
-    match &statement.kind {
-        StmtKind::Expression(expression) => {
-            check_expression(expression)?;
-        }
-        StmtKind::Print(expression) => {
-            check_expression(expression)?;
-        }
-        StmtKind::Block(statements) | StmtKind::UncheckedBlock(statements) => {
-            for statement in statements {
-                check_statement(statement)?;
-            }
-        }
-        StmtKind::Branch {
-            condition,
-            then_branch,
-            else_branch,
-            ..
-        } => {
-            check_expression(condition)?;
-            check_statement(then_branch)?;
-
-            if let Some(else_branch) = else_branch {
-                check_statement(else_branch)?;
-            };
-        }
-        StmtKind::Loop {
-            init,
-            condition,
-            block,
-            increment,
-        } => {
-            if let Some(init) = init {
-                check_expression(init)?;
-            }
-
-            check_expression(condition)?;
-            check_statement(block)?;
-
-            if let Some(increment) = increment {
-                check_statement(increment)?;
-            }
-        }
-        StmtKind::Break | StmtKind::Continue => (),
-        StmtKind::Return(expression) => {
-            if let Some(expression) = expression {
-                check_expression(expression)?;
             }
         }
     };
@@ -107,103 +54,170 @@ fn check_expression(expression: &Expr) -> Result<Type, KaoriError> {
                 | BinaryOpKind::Subtract
                 | BinaryOpKind::Multiply
                 | BinaryOpKind::Divide
-                | BinaryOpKind::Modulo
-                | BinaryOpKind::Greater
+                | BinaryOpKind::Modulo => match (left, right) {
+                    (Type::Number, Type::Number)
+                    | (Type::Any, Type::Number)
+                    | (Type::Number, Type::Any)
+                    | (Type::Any, Type::Any) => Type::Number,
+                    _ => {
+                        return Err(kaori_error!(
+                            expression.span,
+                            "cannot apply arithmetic to {:?} and {:?}",
+                            left,
+                            right
+                        ));
+                    }
+                },
+                BinaryOpKind::Greater
                 | BinaryOpKind::GreaterEqual
                 | BinaryOpKind::Less
                 | BinaryOpKind::LessEqual => match (left, right) {
-                    (Type::Number, Type::Number) => Type::Number,
-                    (Type::Unknown, Type::Number) => Type::Unknown,
-                    (Type::Number, Type::Unknown) => Type::Unknown,
-                    (Type::Unknown, Type::Unknown) => Type::Unknown,
-                    _ => panic!("error"),
-                },
-                BinaryOpKind::Equal | BinaryOpKind::NotEqual => {
-                    if left == right {
-                        Type::Boolean
-                    } else {
-                        panic!("error")
+                    (Type::Number, Type::Number)
+                    | (Type::Any, Type::Number)
+                    | (Type::Number, Type::Any)
+                    | (Type::Any, Type::Any) => Type::Boolean,
+                    _ => {
+                        return Err(kaori_error!(
+                            expression.span,
+                            "cannot compare {:?} and {:?}",
+                            left,
+                            right
+                        ));
                     }
-                }
+                },
+                BinaryOpKind::Equal | BinaryOpKind::NotEqual => match (left, right) {
+                    (Type::Any, _) | (_, Type::Any) => Type::Boolean,
+                    (a, b) if a == b => Type::Boolean,
+                    _ => {
+                        return Err(kaori_error!(
+                            expression.span,
+                            "cannot compare {:?} and {:?}",
+                            left,
+                            right
+                        ));
+                    }
+                },
             }
         }
         ExprKind::Unary { operator, right } => match &operator.kind {
-            UnaryOpKind::Negate => {
-                let right = check_expression(right)?;
+            UnaryOpKind::Negate => match check_expression(right)? {
+                Type::Number | Type::Any => Type::Number,
+                t => return Err(kaori_error!(expression.span, "cannot negate {:?}", t)),
+            },
+        },
+        ExprKind::LogicalNot { expr } => match check_expression(expr)? {
+            Type::Boolean | Type::Any => Type::Boolean,
+            t => return Err(kaori_error!(expression.span, "cannot apply ! to {:?}", t)),
+        },
+        ExprKind::LogicalAnd { left, right } | ExprKind::LogicalOr { left, right } => {
+            let left = check_expression(left)?;
+            let right = check_expression(right)?;
 
-                match right {
-                    Type::Number => Type::Number,
-                    Type::Unknown => Type::Unknown,
-                    _ => panic!("error"),
+            match (left, right) {
+                (Type::Boolean, Type::Boolean)
+                | (Type::Any, Type::Boolean)
+                | (Type::Boolean, Type::Any)
+                | (Type::Any, Type::Any) => Type::Boolean,
+                _ => {
+                    return Err(kaori_error!(
+                        expression.span,
+                        "logical operators require booleans"
+                    ));
                 }
             }
-        },
-        ExprKind::LogicalNot { expr } => {
-            let expr = check_expression(expr)?;
-
-            match expr {
-                Type::Boolean => Type::Boolean,
-                Type::Unknown => Type::Unknown,
-                _ => panic!("error"),
-            }
         }
-        ExprKind::LogicalAnd { left, right } => {
-            let left = check_expression(left)?;
-            let right = check_expression(right)?;
-
-            match (left, right) {
-                (Type::Boolean, Type::Boolean) => Type::Boolean,
-                (Type::Unknown, Type::Boolean) => Type::Unknown,
-                (Type::Boolean, Type::Unknown) => Type::Unknown,
-                (Type::Unknown, Type::Unknown) => Type::Unknown,
-                _ => panic!("error"),
-            }
-        }
-        ExprKind::LogicalOr { left, right } => {
-            let left = check_expression(left)?;
-            let right = check_expression(right)?;
-
-            match (left, right) {
-                (Type::Boolean, Type::Boolean) => Type::Boolean,
-                (Type::Unknown, Type::Boolean) => Type::Unknown,
-                (Type::Boolean, Type::Unknown) => Type::Unknown,
-                (Type::Unknown, Type::Unknown) => Type::Unknown,
-                _ => panic!("error"),
-            }
-        }
-
         ExprKind::Assign { right, .. } => check_expression(right)?,
         ExprKind::DeclareAssign { right, .. } => check_expression(right)?,
-        ExprKind::Variable(_) => Type::Unknown,
+        ExprKind::Variable(_) => Type::Any,
         ExprKind::Number(_) => Type::Number,
         ExprKind::String(_) => Type::String,
         ExprKind::Boolean(_) => Type::Boolean,
         ExprKind::Function(_) => Type::Function,
         ExprKind::FunctionCall { callee, arguments } => {
             check_expression(callee)?;
-
             for argument in arguments {
                 check_expression(argument)?;
             }
-
-            Type::Unknown
+            Type::Any
         }
         ExprKind::DictLiteral { fields } => {
             for (key, value) in fields {
                 check_expression(key)?;
                 check_expression(value)?;
             }
-
             Type::Dictionary
         }
         ExprKind::MemberAccess { object, property } => {
             check_expression(object)?;
             check_expression(property)?;
-
-            Type::Unknown
+            Type::Any
         }
-        ExprKind::Parameter(_) => Type::Unknown,
+        ExprKind::Parameter(_) => Type::Any,
     };
 
     Ok(ty)
+}
+
+fn check_statement(statement: &Stmt) -> Result<(), KaoriError> {
+    match &statement.kind {
+        StmtKind::Expression(expression) => {
+            check_expression(expression)?;
+        }
+        StmtKind::Print(expression) => {
+            check_expression(expression)?;
+        }
+        StmtKind::Block(statements) | StmtKind::UncheckedBlock(statements) => {
+            for statement in statements {
+                check_statement(statement)?;
+            }
+        }
+        StmtKind::Branch {
+            condition,
+            then_branch,
+            else_branch,
+            ..
+        } => {
+            let cond_type = check_expression(condition)?;
+            if !matches!(cond_type, Type::Boolean | Type::Any) {
+                return Err(kaori_error!(
+                    condition.span,
+                    "condition must be a boolean, got {:?}",
+                    cond_type
+                ));
+            }
+            check_statement(then_branch)?;
+            if let Some(else_branch) = else_branch {
+                check_statement(else_branch)?;
+            }
+        }
+        StmtKind::Loop {
+            init,
+            condition,
+            block,
+            increment,
+        } => {
+            if let Some(init) = init {
+                check_expression(init)?;
+            }
+            let cond_type = check_expression(condition)?;
+            if !matches!(cond_type, Type::Boolean | Type::Any) {
+                return Err(kaori_error!(
+                    condition.span,
+                    "loop condition must be a boolean, got {:?}",
+                    cond_type
+                ));
+            }
+            check_statement(block)?;
+            if let Some(increment) = increment {
+                check_statement(increment)?;
+            }
+        }
+        StmtKind::Break | StmtKind::Continue => (),
+        StmtKind::Return(expression) => {
+            if let Some(expression) = expression {
+                check_expression(expression)?;
+            }
+        }
+    }
+    Ok(())
 }

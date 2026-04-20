@@ -31,16 +31,11 @@ impl Constants {
     pub fn push_number(&mut self, value: f64) -> Operand {
         self.push_constant(Constant::Number(value))
     }
-
-    pub fn push_boolean(&mut self, value: bool) -> Operand {
-        self.push_constant(Constant::Boolean(value))
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Constant {
     String(String),
     Number(f64),
-    Boolean(bool),
     FunctionIndex(usize),
 }

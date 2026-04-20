@@ -1,7 +1,4 @@
 fun main() {
-   
-
-   /*
     iterations := 1000000;
     max_fib := 30;
 
@@ -13,14 +10,12 @@ fun main() {
             temp := a + b;
             a = b;
             b = temp;
-
         }
-
     }
-    */
-    
 }
 
+
+ 
 
 
 /*
