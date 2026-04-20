@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
-    bytecode::operand::{Immediate, ImmediateType},
     error::kaori_error::KaoriError,
     hir::{
         decl::{Decl, DeclKind},
@@ -87,18 +86,12 @@ impl<'a> FunctionContext<'a> {
                 });
                 dest
             }
-            Operand::Immediate(immediate) => {
+            Operand::Immediate(src) => {
                 let dest = self.allocate_register();
 
-                let instruction = match immediate.ty {
-                    ImmediateType::Float => Instruction::LoadFloat {
-                        dest: dest.unwrap_register(),
-                        src: immediate.value,
-                    },
-                    ImmediateType::Boolean => Instruction::LoadBoolean {
-                        dest: dest.unwrap_register(),
-                        src: immediate.value,
-                    },
+                let instruction = Instruction::LoadImm {
+                    dest: dest.unwrap_register(),
+                    src,
                 };
 
                 self.emit_instruction(instruction);
@@ -407,8 +400,7 @@ impl<'a> FunctionContext<'a> {
                 | Instruction::Negate { dest, .. }
                 | Instruction::Move { dest, .. }
                 | Instruction::LoadK { dest, .. }
-                | Instruction::LoadFloat { dest, .. }
-                | Instruction::LoadBoolean { dest, .. }
+                | Instruction::LoadImm { dest, .. }
                 | Instruction::CreateDict { dest }
                 | Instruction::GetField { dest, .. }
                 | Instruction::Call { dest, .. } => {
@@ -454,8 +446,7 @@ impl<'a> FunctionContext<'a> {
             | Instruction::Negate { dest, .. }
             | Instruction::Move { dest, .. }
             | Instruction::LoadK { dest, .. }
-            | Instruction::LoadFloat { dest, .. }
-            | Instruction::LoadBoolean { dest, .. }
+            | Instruction::LoadImm { dest, .. }
             | Instruction::CreateDict { dest }
             | Instruction::GetField { dest, .. }
             | Instruction::Call { dest, .. } => {
@@ -478,15 +469,9 @@ impl<'a> FunctionContext<'a> {
                     dest: dest.unwrap_register(),
                     src,
                 },
-                Operand::Immediate(imm) => match imm.ty {
-                    ImmediateType::Float => Instruction::LoadFloat {
-                        dest: dest.unwrap_register(),
-                        src: imm.value,
-                    },
-                    ImmediateType::Boolean => Instruction::LoadBoolean {
-                        dest: dest.unwrap_register(),
-                        src: imm.value,
-                    },
+                Operand::Immediate(src) => Instruction::LoadImm {
+                    dest: dest.unwrap_register(),
+                    src,
                 },
             };
 
@@ -511,10 +496,7 @@ impl<'a> FunctionContext<'a> {
                 }
 
                 if !self.block_returns(body) {
-                    let src = Operand::Immediate(Immediate {
-                        ty: ImmediateType::Boolean,
-                        value: (false as u32),
-                    });
+                    let src = Operand::boolean(false);
                     let src = self.materialize(src);
                     self.emit_instruction(Instruction::Return {
                         src: src.unwrap_register(),
@@ -627,10 +609,7 @@ impl<'a> FunctionContext<'a> {
                 let src = if let Some(expr) = expr {
                     self.visit_expression(expr)
                 } else {
-                    Operand::Immediate(Immediate {
-                        ty: ImmediateType::Boolean,
-                        value: false as u32,
-                    })
+                    Operand::boolean(false)
                 };
 
                 let src = self.materialize(src);
@@ -740,10 +719,7 @@ impl<'a> FunctionContext<'a> {
                         Greater => Instruction::Greater { dest, src1, src2 },
                         GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
                     },
-                    (
-                        Operand::Register(src1),
-                        Operand::Immediate(Immediate { value: src2, .. }),
-                    ) => match operator.kind {
+                    (Operand::Register(src1), Operand::Immediate(src2)) => match operator.kind {
                         Add => Instruction::AddI { dest, src1, src2 },
                         Subtract => Instruction::SubtractRI { dest, src1, src2 },
                         Multiply => Instruction::MultiplyI { dest, src1, src2 },
@@ -756,10 +732,7 @@ impl<'a> FunctionContext<'a> {
                         Greater => Instruction::GreaterRI { dest, src1, src2 },
                         GreaterEqual => Instruction::GreaterEqualRI { dest, src1, src2 },
                     },
-                    (
-                        Operand::Immediate(Immediate { value: src1, .. }),
-                        Operand::Register(src2),
-                    ) => match operator.kind {
+                    (Operand::Immediate(src1), Operand::Register(src2)) => match operator.kind {
                         Add => Instruction::AddI {
                             dest,
                             src1: src2,
@@ -902,12 +875,12 @@ impl<'a> FunctionContext<'a> {
             }
 
             ExprKind::String(value) => self.constants.push_string(value.to_owned()),
-            ExprKind::Boolean(value) => Operand::Immediate(Immediate::boolean(*value)),
+            ExprKind::Boolean(value) => Operand::boolean(*value),
             ExprKind::Number(value) => {
                 let value = *value;
 
-                if let Some(imm) = Immediate::try_f32(value) {
-                    Operand::Immediate(imm)
+                if let Some(imm) = Operand::try_f32(value) {
+                    imm
                 } else {
                     self.constants.push_number(value)
                 }

@@ -42,8 +42,7 @@ pub enum Instruction {
     // Loads
     Move { dest: u8, src: u8 },
     LoadK { dest: u8, src: u8 },
-    LoadFloat { dest: u8, src: u32 },
-    LoadBoolean { dest: u8, src: u32 },
+    LoadImm { dest: u8, src: u32 },
 
     // Tables
     CreateDict { dest: u8 },
@@ -204,11 +203,8 @@ impl fmt::Display for Instruction {
             Instruction::LoadK { dest, src } => {
                 write!(f, "LOADK r{} k{}", dest, src)
             }
-            Instruction::LoadFloat { dest, src } => {
+            Instruction::LoadImm { dest, src } => {
                 write!(f, "LOADF r{} {}", dest, f32::from_bits(*src))
-            }
-            Instruction::LoadBoolean { dest, src } => {
-                write!(f, "LOADB r{} {}", dest, *src == 1)
             }
 
             // Tables

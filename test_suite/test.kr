@@ -12,6 +12,8 @@ fun main() {
             b = temp;
         }
     }
+
+    1 and 2;
 }
 
 

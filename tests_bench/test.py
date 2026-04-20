@@ -1,3 +1,5 @@
 
 
-print(False or "abc")
+
+while 1000:
+    print("hi")
