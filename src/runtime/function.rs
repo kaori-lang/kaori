@@ -44,7 +44,6 @@ pub fn from_compiled(functions: Vec<bytecode::Function>, gc: &mut Gc) -> Vec<Fun
 
                     Value::function(ptr)
                 }
-                bytecode::Constant::Nil => Value::default(),
             })
             .collect();
 
