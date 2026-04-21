@@ -7,7 +7,6 @@ pub enum TokenKind {
     Multiply,
     Divide,
     Modulo,
-
     Assign,
     DeclareAssign,
     AddAssign,
@@ -15,14 +14,12 @@ pub enum TokenKind {
     MultiplyAssign,
     DivideAssign,
     ModuloAssign,
-
     NotEqual,
     Equal,
     Greater,
     GreaterEqual,
     Less,
     LessEqual,
-
     Dollar,
     Comma,
     Semicolon,
@@ -35,7 +32,6 @@ pub enum TokenKind {
     LeftBrace,
     RightBrace,
 
-    // Keywords
     And,
     Or,
     Not,

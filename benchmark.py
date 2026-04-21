@@ -12,7 +12,7 @@ if platform.system() == "Windows":
 
 scripts = [
     ("Kaori",        "1.0.0",  kaori_folder / "iterative_fib.kr",        kaori_folder / "recursive_fib.kr",        [str(rust_exe)], [str(rust_exe)]),
-    ("Kaori Unsafe", "1.0.0",  kaori_folder / "unsafe_iterative_fib.kr", kaori_folder / "unsafe_recursive_fib.kr", [str(rust_exe)], [str(rust_exe)]),
+    ("Kaori Unchecked", "1.0.0",  kaori_folder / "unsafe_iterative_fib.kr", kaori_folder / "unsafe_recursive_fib.kr", [str(rust_exe)], [str(rust_exe)]),
     ("Lua",          "5.5.0",  folder / "iterative_fib.lua",             folder / "recursive_fib.lua",             ["lua"],         ["lua"]),
     ("Python",       "3.14.4", folder / "iterative_fib.py",              folder / "recursive_fib.py",              ["python"],      ["python"]),
     ("PyPy",         "7.3.20", folder / "iterative_fib.py",              folder / "recursive_fib.py",              ["pypy"],        ["pypy"]),

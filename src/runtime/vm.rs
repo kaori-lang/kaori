@@ -47,9 +47,9 @@ macro_rules! dispatch_offset_unchecked {
 }
 
 macro_rules! type_check {
-    ($checked:expr, $cond:expr, $($arg:tt)*) => {
+    ($unchecked:expr, $cond:expr, $($arg:tt)*) => {
 
-        if $checked && std::hint::unlikely(!$cond) {
+        if !$unchecked && std::hint::unlikely(!$cond) {
             return Err(Box::new(kaori_error!(Span::default(), $($arg)*)));
         }
     };
@@ -98,8 +98,8 @@ const HANDLERS: [Handler; 108] = [
     opcode_call::<false>,
     opcode_return,
     opcode_jump::<false>,
-    opcode_jump_if_true::<false>,
-    opcode_jump_if_false::<false>,
+    opcode_jump_if_not_zero::<false>,
+    opcode_jump_if_zero::<false>,
     opcode_jump_if_less::<REGISTER, REGISTER, false>,
     opcode_jump_if_less::<REGISTER, IMMEDIATE, false>,
     opcode_jump_if_less_equal::<REGISTER, REGISTER, false>,
@@ -153,8 +153,8 @@ const HANDLERS: [Handler; 108] = [
     opcode_call::<true>,
     opcode_return,
     opcode_jump::<true>,
-    opcode_jump_if_true::<true>,
-    opcode_jump_if_false::<true>,
+    opcode_jump_if_not_zero::<true>,
+    opcode_jump_if_zero::<true>,
     opcode_jump_if_less::<REGISTER, REGISTER, true>,
     opcode_jump_if_less::<REGISTER, IMMEDIATE, true>,
     opcode_jump_if_less_equal::<REGISTER, REGISTER, true>,
@@ -260,7 +260,7 @@ fn opcode_add<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot add {:?} and {:?}, both operands must be numbers",
             src1,
@@ -322,7 +322,7 @@ fn opcode_subtract<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot subtract {:?} from {:?}, both operands must be numbers",
             src1,
@@ -375,7 +375,7 @@ fn opcode_multiply<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot multiply {:?} and {:?}, both operands must be numbers",
             src1,
@@ -437,7 +437,7 @@ fn opcode_divide<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot divide {:?} by {:?}, both operands must be numbers",
             src1,
@@ -499,7 +499,7 @@ fn opcode_modulo<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compute {:?} modulo {:?}, both operands must be numbers",
             src1,
@@ -634,7 +634,7 @@ fn opcode_less<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare {:?} and {:?}, both operands must be numbers",
             src1,
@@ -687,7 +687,7 @@ fn opcode_less_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare {:?} and {:?}, both operands must be numbers",
             src1,
@@ -740,7 +740,7 @@ fn opcode_greater<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare {:?} and {:?}, both operands must be numbers",
             src1,
@@ -793,7 +793,7 @@ fn opcode_greater_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare {:?} and {:?}, both operands must be numbers",
             src1,
@@ -829,7 +829,7 @@ fn opcode_not<const UNCHECKED: bool>(
         let src = *registers.add(src as usize);
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src.is_number(),
             "cannot apply not to {:?}, operand must be a boolean",
             src
@@ -864,7 +864,7 @@ fn opcode_negate<const UNCHECKED: bool>(
         let src = *registers.add(src as usize);
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src.is_number(),
             "cannot negate {:?}, operand must be a number",
             src
@@ -1001,7 +1001,7 @@ fn opcode_set_field<const VALUE: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             object.is_dict(),
             "cannot set field on {:?}, value is not a dict",
             object
@@ -1033,7 +1033,7 @@ fn opcode_get_field<const UNCHECKED: bool>(
         let key = *registers.add(key as usize);
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             object.is_dict(),
             "cannot get field from {:?}, value is not a dict",
             object
@@ -1065,7 +1065,7 @@ fn opcode_call<const UNCHECKED: bool>(
         let callee = *registers.add(src as usize);
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             callee.is_function(),
             "cannot call {:?}, value is not a function",
             callee
@@ -1138,7 +1138,7 @@ fn opcode_jump<const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_jump_if_true<const UNCHECKED: bool>(
+fn opcode_jump_if_not_zero<const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -1146,13 +1146,14 @@ fn opcode_jump_if_true<const UNCHECKED: bool>(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::JumpIfTrue { src, offset } = *ip else {
+        let Instruction::JumpIfNotZero { src, offset } = *ip else {
             unreachable_unchecked()
         };
+
         let src = *registers.add(src as usize);
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src.is_number(),
             "cannot use {:?} as a condition, value must be a boolean",
             src
@@ -1173,7 +1174,7 @@ fn opcode_jump_if_true<const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_jump_if_false<const UNCHECKED: bool>(
+fn opcode_jump_if_zero<const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -1181,13 +1182,14 @@ fn opcode_jump_if_false<const UNCHECKED: bool>(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::JumpIfFalse { src, offset } = *ip else {
+        let Instruction::JumpIfZero { src, offset } = *ip else {
             unreachable_unchecked()
         };
+
         let src = *registers.add(src as usize);
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src.is_number(),
             "cannot use {:?} as a condition, value must be a boolean",
             src
@@ -1221,6 +1223,7 @@ fn opcode_jump_if_less<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
                 let Instruction::JumpIfLess { src1, src2, offset } = *ip else {
                     unreachable_unchecked()
                 };
+
                 let src1 = *registers.add(src1 as usize);
                 let src2 = *registers.add(src2 as usize);
 
@@ -1230,6 +1233,7 @@ fn opcode_jump_if_less<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
                 let Instruction::JumpIfLessI { src1, src2, offset } = *ip else {
                     unreachable_unchecked()
                 };
+
                 let src1 = *registers.add(src1 as usize);
                 let src2 = Value::number(src2.decode());
 
@@ -1239,7 +1243,7 @@ fn opcode_jump_if_less<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare {:?} and {:?}, both operands must be numbers",
             src1,
@@ -1274,6 +1278,7 @@ fn opcode_jump_if_less_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bo
                 let Instruction::JumpIfLessEqual { src1, src2, offset } = *ip else {
                     unreachable_unchecked()
                 };
+
                 let src1 = *registers.add(src1 as usize);
                 let src2 = *registers.add(src2 as usize);
 
@@ -1283,6 +1288,7 @@ fn opcode_jump_if_less_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bo
                 let Instruction::JumpIfLessEqualI { src1, src2, offset } = *ip else {
                     unreachable_unchecked()
                 };
+
                 let src1 = *registers.add(src1 as usize);
                 let src2 = Value::number(src2.decode());
 
@@ -1292,7 +1298,7 @@ fn opcode_jump_if_less_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bo
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare {:?} and {:?}, both operands must be numbers",
             src1,
@@ -1327,6 +1333,7 @@ fn opcode_jump_if_greater<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>
                 let Instruction::JumpIfGreater { src1, src2, offset } = *ip else {
                     unreachable_unchecked()
                 };
+
                 let src1 = *registers.add(src1 as usize);
                 let src2 = *registers.add(src2 as usize);
 
@@ -1336,6 +1343,7 @@ fn opcode_jump_if_greater<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>
                 let Instruction::JumpIfGreaterI { src1, src2, offset } = *ip else {
                     unreachable_unchecked()
                 };
+
                 let src1 = *registers.add(src1 as usize);
                 let src2 = Value::number(src2.decode());
 
@@ -1345,7 +1353,7 @@ fn opcode_jump_if_greater<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare {:?} and {:?}, both operands must be numbers",
             src1,
@@ -1380,6 +1388,7 @@ fn opcode_jump_if_greater_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED:
                 let Instruction::JumpIfGreaterEqual { src1, src2, offset } = *ip else {
                     unreachable_unchecked()
                 };
+
                 let src1 = *registers.add(src1 as usize);
                 let src2 = *registers.add(src2 as usize);
 
@@ -1389,6 +1398,7 @@ fn opcode_jump_if_greater_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED:
                 let Instruction::JumpIfGreaterEqualI { src1, src2, offset } = *ip else {
                     unreachable_unchecked()
                 };
+
                 let src1 = *registers.add(src1 as usize);
                 let src2 = Value::number(src2.decode());
 
@@ -1398,7 +1408,7 @@ fn opcode_jump_if_greater_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED:
         };
 
         type_check!(
-            !UNCHECKED,
+            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare {:?} and {:?}, both operands must be numbers",
             src1,

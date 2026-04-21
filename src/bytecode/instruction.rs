@@ -1,6 +1,7 @@
 use std::fmt;
 
 use crate::bytecode::immediate::Imm;
+
 #[derive(Clone, Copy)]
 pub enum Instruction {
     Add { dest: u8, src1: u8, src2: u8 },
@@ -40,8 +41,8 @@ pub enum Instruction {
     Call { dest: u8, src: u8 },
     Return { src: u8 },
     Jump { offset: i32 },
-    JumpIfTrue { src: u8, offset: i32 },
-    JumpIfFalse { src: u8, offset: i32 },
+    JumpIfZero { src: u8, offset: i32 },
+    JumpIfNotZero { src: u8, offset: i32 },
     JumpIfLess { src1: u8, src2: u8, offset: i32 },
     JumpIfLessI { src1: u8, src2: Imm, offset: i32 },
     JumpIfLessEqual { src1: u8, src2: u8, offset: i32 },
@@ -58,9 +59,66 @@ pub enum Instruction {
     EnterUncheckedBlock,
     ExitUncheckedBlock,
 }
+
 impl Instruction {
+    #[inline(always)]
     pub const fn discriminant(&self) -> usize {
-        (unsafe { *(self as *const Self as *const u8) }) as usize
+        match self {
+            Instruction::Add { .. } => 0,
+            Instruction::AddI { .. } => 1,
+            Instruction::Subtract { .. } => 2,
+            Instruction::SubtractRI { .. } => 3,
+            Instruction::SubtractIR { .. } => 4,
+            Instruction::Multiply { .. } => 5,
+            Instruction::MultiplyI { .. } => 6,
+            Instruction::Divide { .. } => 7,
+            Instruction::DivideRI { .. } => 8,
+            Instruction::DivideIR { .. } => 9,
+            Instruction::Modulo { .. } => 10,
+            Instruction::ModuloRI { .. } => 11,
+            Instruction::ModuloIR { .. } => 12,
+            Instruction::Equal { .. } => 13,
+            Instruction::EqualI { .. } => 14,
+            Instruction::NotEqual { .. } => 15,
+            Instruction::NotEqualI { .. } => 16,
+            Instruction::Less { .. } => 17,
+            Instruction::LessI { .. } => 18,
+            Instruction::LessEqual { .. } => 19,
+            Instruction::LessEqualI { .. } => 20,
+            Instruction::Greater { .. } => 21,
+            Instruction::GreaterI { .. } => 22,
+            Instruction::GreaterEqual { .. } => 23,
+            Instruction::GreaterEqualI { .. } => 24,
+            Instruction::Not { .. } => 25,
+            Instruction::Negate { .. } => 26,
+            Instruction::Move { .. } => 27,
+            Instruction::LoadK { .. } => 28,
+            Instruction::LoadImm { .. } => 29,
+            Instruction::CreateDict { .. } => 30,
+            Instruction::SetField { .. } => 31,
+            Instruction::SetFieldI { .. } => 32,
+            Instruction::GetField { .. } => 33,
+            Instruction::Call { .. } => 34,
+            Instruction::Return { .. } => 35,
+            Instruction::Jump { .. } => 36,
+            Instruction::JumpIfNotZero { .. } => 37,
+            Instruction::JumpIfZero { .. } => 38,
+            Instruction::JumpIfLess { .. } => 39,
+            Instruction::JumpIfLessI { .. } => 40,
+            Instruction::JumpIfLessEqual { .. } => 41,
+            Instruction::JumpIfLessEqualI { .. } => 42,
+            Instruction::JumpIfGreater { .. } => 43,
+            Instruction::JumpIfGreaterI { .. } => 44,
+            Instruction::JumpIfGreaterEqual { .. } => 45,
+            Instruction::JumpIfGreaterEqualI { .. } => 46,
+            Instruction::JumpIfEqual { .. } => 47,
+            Instruction::JumpIfEqualI { .. } => 48,
+            Instruction::JumpIfNotEqual { .. } => 49,
+            Instruction::JumpIfNotEqualI { .. } => 50,
+            Instruction::Print { .. } => 51,
+            Instruction::EnterUncheckedBlock => 52,
+            Instruction::ExitUncheckedBlock => 53,
+        }
     }
 }
 
@@ -195,11 +253,11 @@ impl fmt::Display for Instruction {
 
             Instruction::Jump { offset } => write!(f, "JMP {}", offset),
 
-            Instruction::JumpIfTrue { src, offset } => {
-                write!(f, "JMP_IF_TRUE r{} {}", src, offset)
+            Instruction::JumpIfNotZero { src, offset } => {
+                write!(f, "JMP_IF_NOT_ZERO r{} {}", src, offset)
             }
-            Instruction::JumpIfFalse { src, offset } => {
-                write!(f, "JMP_IF_FALSE r{} {}", src, offset)
+            Instruction::JumpIfZero { src, offset } => {
+                write!(f, "JMP_IF_ZERO r{} {}", src, offset)
             }
 
             Instruction::JumpIfLess { src1, src2, offset } => {
@@ -207,20 +265,6 @@ impl fmt::Display for Instruction {
             }
             Instruction::JumpIfLessI { src1, src2, offset } => {
                 write!(f, "JMP_IF_LT r{} {} {}", src1, src2, offset)
-            }
-
-            Instruction::JumpIfEqual { src1, src2, offset } => {
-                write!(f, "JMP_IF_EQ r{} r{} {}", src1, src2, offset)
-            }
-            Instruction::JumpIfEqualI { src1, src2, offset } => {
-                write!(f, "JMP_IF_EQ r{} {} {}", src1, src2, offset)
-            }
-
-            Instruction::JumpIfNotEqual { src1, src2, offset } => {
-                write!(f, "JMP_IF_NEQ r{} r{} {}", src1, src2, offset)
-            }
-            Instruction::JumpIfNotEqualI { src1, src2, offset } => {
-                write!(f, "JMP_IF_NEQ r{} {} {}", src1, src2, offset)
             }
 
             Instruction::JumpIfLessEqual { src1, src2, offset } => {
@@ -242,6 +286,20 @@ impl fmt::Display for Instruction {
             }
             Instruction::JumpIfGreaterEqualI { src1, src2, offset } => {
                 write!(f, "JMP_IF_GTE r{} {} {}", src1, src2, offset)
+            }
+
+            Instruction::JumpIfEqual { src1, src2, offset } => {
+                write!(f, "JMP_IF_EQ r{} r{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfEqualI { src1, src2, offset } => {
+                write!(f, "JMP_IF_EQ r{} {} {}", src1, src2, offset)
+            }
+
+            Instruction::JumpIfNotEqual { src1, src2, offset } => {
+                write!(f, "JMP_IF_NEQ r{} r{} {}", src1, src2, offset)
+            }
+            Instruction::JumpIfNotEqualI { src1, src2, offset } => {
+                write!(f, "JMP_IF_NEQ r{} {} {}", src1, src2, offset)
             }
 
             Instruction::Print { src } => {

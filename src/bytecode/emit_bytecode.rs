@@ -143,8 +143,8 @@ impl<'a> FunctionContext<'a> {
     fn patch_jump(&mut self, index: usize, offset: i32) {
         match &mut self.instructions[index] {
             Instruction::Jump { offset: o }
-            | Instruction::JumpIfTrue { offset: o, .. }
-            | Instruction::JumpIfFalse { offset: o, .. }
+            | Instruction::JumpIfNotZero { offset: o, .. }
+            | Instruction::JumpIfZero { offset: o, .. }
             | Instruction::JumpIfLess { offset: o, .. }
             | Instruction::JumpIfLessI { offset: o, .. }
             | Instruction::JumpIfLessEqual { offset: o, .. }
@@ -161,7 +161,7 @@ impl<'a> FunctionContext<'a> {
         }
     }
 
-    fn make_jump_if_true(&mut self, src: u8) -> Instruction {
+    fn make_jump_if_not_zero(&mut self, src: u8) -> Instruction {
         match self.instructions.last().copied() {
             Some(Instruction::Less { src1, src2, .. }) => {
                 self.instructions.pop();
@@ -259,11 +259,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            _ => Instruction::JumpIfTrue { src, offset: 0 },
+            _ => Instruction::JumpIfNotZero { src, offset: 0 },
         }
     }
 
-    fn make_jump_if_false(&mut self, src: u8) -> Instruction {
+    fn make_jump_if_zero(&mut self, src: u8) -> Instruction {
         match self.instructions.last().copied() {
             Some(Instruction::Less { src1, src2, .. }) => {
                 self.instructions.pop();
@@ -361,7 +361,7 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            _ => Instruction::JumpIfFalse { src, offset: 0 },
+            _ => Instruction::JumpIfZero { src, offset: 0 },
         }
     }
 
@@ -490,7 +490,7 @@ impl<'a> FunctionContext<'a> {
                 }
 
                 if !self.block_returns(body) {
-                    let src = Operand::Immediate(Imm::try_from_f64(0.0).unwrap());
+                    let src = Operand::Immediate(Imm::try_to_encode(0.0).unwrap());
                     let src = self.materialize(src);
                     self.emit_instruction(Instruction::Return {
                         src: src.unwrap_register(),
@@ -539,14 +539,14 @@ impl<'a> FunctionContext<'a> {
 
                 let src = self.materialize(src);
 
-                let jump_if_false = self.make_jump_if_false(src.unwrap_register());
-                let jump_if_false = self.emit_instruction(jump_if_false);
+                let jump_if_zero = self.make_jump_if_zero(src.unwrap_register());
+                let jump_if_zero = self.emit_instruction(jump_if_zero);
 
                 self.visit_statement(then_branch)?;
 
                 self.patch_jump(
-                    jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
+                    jump_if_zero,
+                    self.instructions.len() as i32 - jump_if_zero as i32,
                 );
 
                 if let Some(else_branch) = else_branch {
@@ -567,8 +567,8 @@ impl<'a> FunctionContext<'a> {
                 let src = self.visit_expression(condition);
                 let src = self.materialize(src);
 
-                let jump_if_false = self.make_jump_if_false(src.unwrap_register());
-                let jump_if_false = self.emit_instruction(jump_if_false);
+                let jump_if_zero = self.make_jump_if_zero(src.unwrap_register());
+                let jump_if_zero = self.emit_instruction(jump_if_zero);
 
                 let loop_body = self.instructions.len();
 
@@ -581,13 +581,13 @@ impl<'a> FunctionContext<'a> {
                 let src = self.visit_expression(condition);
                 let src = self.materialize(src);
 
-                let jump_if_true = self.make_jump_if_true(src.unwrap_register());
-                let jump_if_true = self.emit_instruction(jump_if_true);
-                self.patch_jump(jump_if_true, loop_body as i32 - jump_if_true as i32);
+                let jump_if_not_zero = self.make_jump_if_not_zero(src.unwrap_register());
+                let jump_if_not_zero = self.emit_instruction(jump_if_not_zero);
+                self.patch_jump(jump_if_not_zero, loop_body as i32 - jump_if_not_zero as i32);
 
                 self.patch_jump(
-                    jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
+                    jump_if_zero,
+                    self.instructions.len() as i32 - jump_if_zero as i32,
                 );
             }
 
@@ -603,7 +603,7 @@ impl<'a> FunctionContext<'a> {
                 let src = if let Some(expr) = expr {
                     self.visit_expression(expr)
                 } else {
-                    Operand::Immediate(Imm::try_from_f64(0.0).unwrap())
+                    Operand::Immediate(Imm::try_to_encode(0.0).unwrap())
                 };
 
                 let src = self.materialize(src);
@@ -644,14 +644,14 @@ impl<'a> FunctionContext<'a> {
 
                 let dest = self.materialize(left);
 
-                let jump_if_false = self.make_jump_if_false(dest.unwrap_register());
-                let jump_if_false = self.emit_instruction(jump_if_false);
+                let jump_if_zero = self.make_jump_if_zero(dest.unwrap_register());
+                let jump_if_zero = self.emit_instruction(jump_if_zero);
 
                 self.emit_move(right, dest);
 
                 self.patch_jump(
-                    jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
+                    jump_if_zero,
+                    self.instructions.len() as i32 - jump_if_zero as i32,
                 );
 
                 dest
@@ -662,14 +662,14 @@ impl<'a> FunctionContext<'a> {
 
                 let dest = self.materialize(left);
 
-                let jump_if_true = self.make_jump_if_true(dest.unwrap_register());
+                let jump_if_not_zero = self.make_jump_if_not_zero(dest.unwrap_register());
 
-                let jump_if_true = self.emit_instruction(jump_if_true);
+                let jump_if_not_zero = self.emit_instruction(jump_if_not_zero);
 
                 self.emit_move(right, dest);
                 self.patch_jump(
-                    jump_if_true,
-                    self.instructions.len() as i32 - jump_if_true as i32,
+                    jump_if_not_zero,
+                    self.instructions.len() as i32 - jump_if_not_zero as i32,
                 );
 
                 dest
@@ -882,7 +882,7 @@ impl<'a> FunctionContext<'a> {
             ExprKind::Number(value) => {
                 let value = *value;
 
-                if let Some(imm) = Imm::try_from_f64(value) {
+                if let Some(imm) = Imm::try_to_encode(value) {
                     Operand::Immediate(imm)
                 } else {
                     self.constants.push_number(value)
