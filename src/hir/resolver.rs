@@ -347,7 +347,9 @@ impl Resolver {
                 Expr::member_access(object, property, expression.span)
             }
             ast::ExprKind::NumberLiteral(value) => Expr::number(*value, expression.span),
-            ast::ExprKind::BooleanLiteral(value) => Expr::boolean(*value, expression.span),
+            ast::ExprKind::BooleanLiteral(value) => {
+                Expr::number(*value as u8 as f64, expression.span)
+            }
             ast::ExprKind::StringLiteral(value) => Expr::string(value.to_owned(), expression.span),
             ast::ExprKind::DictLiteral { fields } => {
                 let fields = fields

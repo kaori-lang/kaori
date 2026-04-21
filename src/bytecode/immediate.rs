@@ -1,11 +1,15 @@
 use std::fmt;
 
-#[derive(Clone, Copy)]
-pub struct Immediate(pub u16);
+const FLAG: u16 = 1 << 15;
+const MASK: u16 = !FLAG;
+const SCALE: f64 = 256.0;
 
-impl Immediate {
+#[derive(Clone, Copy)]
+pub struct Imm(pub u16);
+
+impl Imm {
     #[inline(always)]
-    fn decode_immediate(self) -> f64 {
+    pub fn decode(self) -> f64 {
         if self.0 & (1 << 15) != 0 {
             (self.0 & !(1 << 15)) as f64 / 256.0
         } else {
@@ -25,15 +29,11 @@ impl Immediate {
 
         None
     }
-
-    pub fn from_boolean(value: bool) -> Self {
-        Self(value as u16)
-    }
 }
 
-impl fmt::Display for Immediate {
+impl fmt::Display for Imm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let value = self.decode_immediate();
+        let value = self.decode();
 
         // Optional: print integers without ".0"
         if value.fract() == 0.0 {

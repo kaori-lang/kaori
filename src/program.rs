@@ -4,7 +4,7 @@ use crate::{
     ast::{self, parser::Parser},
     bytecode::{self, emit_bytecode::emit_bytecode},
     error::kaori_error::KaoriError,
-    hir::{decl::Decl, resolver::Resolver, type_check::run_type_check},
+    hir::{decl::Decl, resolver::Resolver},
     lexer::{lexer::Lexer, token_stream::TokenStream},
     runtime::{function::from_compiled, gc::Gc, vm::Vm},
     //runtime::{function::from_compiled, gc::Gc, vm::Vm},
@@ -31,8 +31,6 @@ fn run_semantic_analysis(ast: &mut [ast::Decl]) -> Result<Vec<Decl>, KaoriError>
     let mut resolver = Resolver::default();
 
     let declarations = resolver.resolve(ast)?;
-
-    run_type_check(&declarations)?;
 
     Ok(declarations)
 }

@@ -55,7 +55,6 @@ pub enum ExprKind {
     Function(NodeId),
     String(String),
     Number(f64),
-    Boolean(bool),
     DictLiteral {
         fields: Vec<(Expr, Expr)>,
     },
@@ -198,14 +197,6 @@ impl Expr {
             id: NodeId::default(),
             span,
             kind: ExprKind::Number(value),
-        }
-    }
-
-    pub fn boolean(value: bool, span: Span) -> Expr {
-        Expr {
-            id: NodeId::default(),
-            span,
-            kind: ExprKind::Boolean(value),
         }
     }
 

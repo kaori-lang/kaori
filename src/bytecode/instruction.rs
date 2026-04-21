@@ -1,42 +1,41 @@
 use std::fmt;
 
-use crate::bytecode::immediate::Immediate;
-
+use crate::bytecode::immediate::Imm;
 #[derive(Clone, Copy)]
 pub enum Instruction {
     Add { dest: u8, src1: u8, src2: u8 },
-    AddI { dest: u8, src1: u8, imm: Immediate },
+    AddI { dest: u8, src1: u8, src2: Imm },
     Subtract { dest: u8, src1: u8, src2: u8 },
-    SubtractRI { dest: u8, src1: u8, imm: Immediate },
-    SubtractIR { dest: u8, imm: u16, src2: u8 },
+    SubtractRI { dest: u8, src1: u8, src2: Imm },
+    SubtractIR { dest: u8, src1: Imm, src2: u8 },
     Multiply { dest: u8, src1: u8, src2: u8 },
-    MultiplyI { dest: u8, src1: u8, imm: Immediate },
+    MultiplyI { dest: u8, src1: u8, src2: Imm },
     Divide { dest: u8, src1: u8, src2: u8 },
-    DivideRI { dest: u8, src1: u8, imm: Immediate },
-    DivideIR { dest: u8, imm: u16, src2: u8 },
+    DivideRI { dest: u8, src1: u8, src2: Imm },
+    DivideIR { dest: u8, src1: Imm, src2: u8 },
     Modulo { dest: u8, src1: u8, src2: u8 },
-    ModuloRI { dest: u8, src1: u8, imm: Immediate },
-    ModuloIR { dest: u8, imm: u16, src2: u8 },
+    ModuloRI { dest: u8, src1: u8, src2: Imm },
+    ModuloIR { dest: u8, src1: Imm, src2: u8 },
     Equal { dest: u8, src1: u8, src2: u8 },
-    EqualI { dest: u8, src1: u8, imm: Immediate },
+    EqualI { dest: u8, src1: u8, src2: Imm },
     NotEqual { dest: u8, src1: u8, src2: u8 },
-    NotEqualI { dest: u8, src1: u8, imm: Immediate },
+    NotEqualI { dest: u8, src1: u8, src2: Imm },
     Less { dest: u8, src1: u8, src2: u8 },
-    LessI { dest: u8, src1: u8, imm: Immediate },
+    LessI { dest: u8, src1: u8, src2: Imm },
     LessEqual { dest: u8, src1: u8, src2: u8 },
-    LessEqualI { dest: u8, src1: u8, imm: Immediate },
+    LessEqualI { dest: u8, src1: u8, src2: Imm },
     Greater { dest: u8, src1: u8, src2: u8 },
-    GreaterI { dest: u8, src1: u8, imm: Immediate },
+    GreaterI { dest: u8, src1: u8, src2: Imm },
     GreaterEqual { dest: u8, src1: u8, src2: u8 },
-    GreaterEqualI { dest: u8, src1: u8, imm: Immediate },
+    GreaterEqualI { dest: u8, src1: u8, src2: Imm },
     Not { dest: u8, src: u8 },
     Negate { dest: u8, src: u8 },
     Move { dest: u8, src: u8 },
     LoadK { dest: u8, src: u8 },
-    LoadImm { dest: u8, imm: Immediate },
+    LoadImm { dest: u8, src: Imm },
     CreateDict { dest: u8 },
     SetField { object: u8, key: u8, value: u8 },
-    SetFieldI { object: u8, key: u8, imm: Immediate },
+    SetFieldI { object: u8, key: u8, src: Imm },
     GetField { dest: u8, object: u8, key: u8 },
     Call { dest: u8, src: u8 },
     Return { src: u8 },
@@ -44,22 +43,21 @@ pub enum Instruction {
     JumpIfTrue { src: u8, offset: i32 },
     JumpIfFalse { src: u8, offset: i32 },
     JumpIfLess { src1: u8, src2: u8, offset: i32 },
-    JumpIfLessI { src1: u8, imm: u16, offset: i32 },
+    JumpIfLessI { src1: u8, src2: Imm, offset: i32 },
     JumpIfLessEqual { src1: u8, src2: u8, offset: i32 },
-    JumpIfLessEqualI { src1: u8, imm: u16, offset: i32 },
+    JumpIfLessEqualI { src1: u8, src2: Imm, offset: i32 },
     JumpIfGreater { src1: u8, src2: u8, offset: i32 },
-    JumpIfGreaterI { src1: u8, imm: u16, offset: i32 },
+    JumpIfGreaterI { src1: u8, src2: Imm, offset: i32 },
     JumpIfGreaterEqual { src1: u8, src2: u8, offset: i32 },
-    JumpIfGreaterEqualI { src1: u8, imm: u16, offset: i32 },
+    JumpIfGreaterEqualI { src1: u8, src2: Imm, offset: i32 },
     JumpIfEqual { src1: u8, src2: u8, offset: i32 },
-    JumpIfEqualI { src1: u8, imm: u16, offset: i32 },
+    JumpIfEqualI { src1: u8, src2: Imm, offset: i32 },
     JumpIfNotEqual { src1: u8, src2: u8, offset: i32 },
-    JumpIfNotEqualI { src1: u8, imm: u16, offset: i32 },
+    JumpIfNotEqualI { src1: u8, src2: Imm, offset: i32 },
     Print { src: u8 },
     EnterUncheckedBlock,
     ExitUncheckedBlock,
 }
-
 impl Instruction {
     pub const fn discriminant(&self) -> usize {
         (unsafe { *(self as *const Self as *const u8) }) as usize
@@ -75,86 +73,87 @@ impl fmt::Display for Instruction {
             Instruction::Add { dest, src1, src2 } => {
                 write!(f, "ADD r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::AddI { dest, src1, imm } => {
-                write!(f, "ADD r{} r{} {}", dest, src1, imm)
+            Instruction::AddI { dest, src1, src2 } => {
+                write!(f, "ADD r{} r{} {}", dest, src1, src2)
             }
 
             Instruction::Subtract { dest, src1, src2 } => {
                 write!(f, "SUB r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::SubtractRI { dest, src1, imm } => {
-                write!(f, "SUB r{} r{} {}", dest, src1, imm)
+            Instruction::SubtractRI { dest, src1, src2 } => {
+                write!(f, "SUB r{} r{} {}", dest, src1, src2)
             }
-            Instruction::SubtractIR { dest, imm, src2 } => {
-                write!(f, "SUB r{} {} r{}", dest, imm, src2)
+            Instruction::SubtractIR { dest, src1, src2 } => {
+                write!(f, "SUB r{} {} r{}", dest, src1, src2)
             }
 
             Instruction::Multiply { dest, src1, src2 } => {
                 write!(f, "MUL r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::MultiplyI { dest, src1, imm } => {
-                write!(f, "MUL r{} r{} {}", dest, src1, imm)
+            Instruction::MultiplyI { dest, src1, src2 } => {
+                write!(f, "MUL r{} r{} {}", dest, src1, src2)
             }
 
             Instruction::Divide { dest, src1, src2 } => {
                 write!(f, "DIV r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::DivideRI { dest, src1, imm } => {
-                write!(f, "DIV r{} r{} {}", dest, src1, imm)
+            Instruction::DivideRI { dest, src1, src2 } => {
+                write!(f, "DIV r{} r{} {}", dest, src1, src2)
             }
-            Instruction::DivideIR { dest, imm, src2 } => {
-                write!(f, "DIV r{} {} r{}", dest, imm, src2)
+            Instruction::DivideIR { dest, src1, src2 } => {
+                write!(f, "DIV r{} {} r{}", dest, src1, src2)
             }
 
             Instruction::Modulo { dest, src1, src2 } => {
                 write!(f, "MOD r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::ModuloRI { dest, src1, imm } => {
-                write!(f, "MOD r{} r{} {}", dest, src1, imm)
+            Instruction::ModuloRI { dest, src1, src2 } => {
+                write!(f, "MOD r{} r{} {}", dest, src1, src2)
             }
-            Instruction::ModuloIR { dest, imm, src2 } => {
-                write!(f, "MOD r{} {} r{}", dest, imm, src2)
+            Instruction::ModuloIR { dest, src1, src2 } => {
+                write!(f, "MOD r{} {} r{}", dest, src1, src2)
             }
+
             Instruction::Equal { dest, src1, src2 } => {
                 write!(f, "EQ r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::EqualI { dest, src1, imm } => {
-                write!(f, "EQ r{} r{} {}", dest, src1, imm)
+            Instruction::EqualI { dest, src1, src2 } => {
+                write!(f, "EQ r{} r{} {}", dest, src1, src2)
             }
 
             Instruction::NotEqual { dest, src1, src2 } => {
                 write!(f, "NEQ r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::NotEqualI { dest, src1, imm } => {
-                write!(f, "NEQ r{} r{} {}", dest, src1, imm)
+            Instruction::NotEqualI { dest, src1, src2 } => {
+                write!(f, "NEQ r{} r{} {}", dest, src1, src2)
             }
 
             Instruction::Less { dest, src1, src2 } => {
                 write!(f, "LT r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::LessI { dest, src1, imm } => {
-                write!(f, "LT r{} r{} {}", dest, src1, imm)
+            Instruction::LessI { dest, src1, src2 } => {
+                write!(f, "LT r{} r{} {}", dest, src1, src2)
             }
 
             Instruction::LessEqual { dest, src1, src2 } => {
                 write!(f, "LTE r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::LessEqualI { dest, src1, imm } => {
-                write!(f, "LTE r{} r{} {}", dest, src1, imm)
+            Instruction::LessEqualI { dest, src1, src2 } => {
+                write!(f, "LTE r{} r{} {}", dest, src1, src2)
             }
 
             Instruction::Greater { dest, src1, src2 } => {
                 write!(f, "GT r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::GreaterI { dest, src1, imm } => {
-                write!(f, "GT r{} r{} {}", dest, src1, imm)
+            Instruction::GreaterI { dest, src1, src2 } => {
+                write!(f, "GT r{} r{} {}", dest, src1, src2)
             }
 
             Instruction::GreaterEqual { dest, src1, src2 } => {
                 write!(f, "GTE r{} r{} r{}", dest, src1, src2)
             }
-            Instruction::GreaterEqualI { dest, src1, imm } => {
-                write!(f, "GTE r{} r{} {}", dest, src1, imm)
+            Instruction::GreaterEqualI { dest, src1, src2 } => {
+                write!(f, "GTE r{} r{} {}", dest, src1, src2)
             }
 
             Instruction::Not { dest, src } => {
@@ -170,8 +169,8 @@ impl fmt::Display for Instruction {
             Instruction::LoadK { dest, src } => {
                 write!(f, "LOADK r{} k{}", dest, src)
             }
-            Instruction::LoadImm { dest, imm } => {
-                write!(f, "LOAD_IMM r{} {}", dest, imm)
+            Instruction::LoadImm { dest, src } => {
+                write!(f, "LOAD_IMM r{} {}", dest, src)
             }
 
             Instruction::CreateDict { dest } => {
@@ -180,8 +179,8 @@ impl fmt::Display for Instruction {
             Instruction::SetField { object, key, value } => {
                 write!(f, "SET r{} r{} r{}", object, key, value)
             }
-            Instruction::SetFieldI { object, key, imm } => {
-                write!(f, "SET r{} r{} {}", object, key, imm)
+            Instruction::SetFieldI { object, key, src } => {
+                write!(f, "SET r{} r{} {}", object, key, src)
             }
             Instruction::GetField { dest, object, key } => {
                 write!(f, "GET r{} r{} r{}", dest, object, key)
@@ -206,43 +205,43 @@ impl fmt::Display for Instruction {
             Instruction::JumpIfLess { src1, src2, offset } => {
                 write!(f, "JMP_IF_LT r{} r{} {}", src1, src2, offset)
             }
-            Instruction::JumpIfLessI { src1, imm, offset } => {
-                write!(f, "JMP_IF_LT r{} {} {}", src1, imm, offset)
+            Instruction::JumpIfLessI { src1, src2, offset } => {
+                write!(f, "JMP_IF_LT r{} {} {}", src1, src2, offset)
             }
 
             Instruction::JumpIfEqual { src1, src2, offset } => {
                 write!(f, "JMP_IF_EQ r{} r{} {}", src1, src2, offset)
             }
-            Instruction::JumpIfEqualI { src1, imm, offset } => {
-                write!(f, "JMP_IF_EQ r{} {} {}", src1, imm, offset)
+            Instruction::JumpIfEqualI { src1, src2, offset } => {
+                write!(f, "JMP_IF_EQ r{} {} {}", src1, src2, offset)
             }
 
             Instruction::JumpIfNotEqual { src1, src2, offset } => {
                 write!(f, "JMP_IF_NEQ r{} r{} {}", src1, src2, offset)
             }
-            Instruction::JumpIfNotEqualI { src1, imm, offset } => {
-                write!(f, "JMP_IF_NEQ r{} {} {}", src1, imm, offset)
+            Instruction::JumpIfNotEqualI { src1, src2, offset } => {
+                write!(f, "JMP_IF_NEQ r{} {} {}", src1, src2, offset)
             }
 
             Instruction::JumpIfLessEqual { src1, src2, offset } => {
                 write!(f, "JMP_IF_LTE r{} r{} {}", src1, src2, offset)
             }
-            Instruction::JumpIfLessEqualI { src1, imm, offset } => {
-                write!(f, "JMP_IF_LTE r{} {} {}", src1, imm, offset)
+            Instruction::JumpIfLessEqualI { src1, src2, offset } => {
+                write!(f, "JMP_IF_LTE r{} {} {}", src1, src2, offset)
             }
 
             Instruction::JumpIfGreater { src1, src2, offset } => {
                 write!(f, "JMP_IF_GT r{} r{} {}", src1, src2, offset)
             }
-            Instruction::JumpIfGreaterI { src1, imm, offset } => {
-                write!(f, "JMP_IF_GT r{} {} {}", src1, imm, offset)
+            Instruction::JumpIfGreaterI { src1, src2, offset } => {
+                write!(f, "JMP_IF_GT r{} {} {}", src1, src2, offset)
             }
 
             Instruction::JumpIfGreaterEqual { src1, src2, offset } => {
                 write!(f, "JMP_IF_GTE r{} r{} {}", src1, src2, offset)
             }
-            Instruction::JumpIfGreaterEqualI { src1, imm, offset } => {
-                write!(f, "JMP_IF_GTE r{} {} {}", src1, imm, offset)
+            Instruction::JumpIfGreaterEqualI { src1, src2, offset } => {
+                write!(f, "JMP_IF_GTE r{} {} {}", src1, src2, offset)
             }
 
             Instruction::Print { src } => {

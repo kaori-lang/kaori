@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{binary_op::BinaryOpKind, unary_op::UnaryOpKind},
+    bytecode::immediate::Imm,
     error::kaori_error::KaoriError,
     hir::{
         decl::{Decl, DeclKind},
@@ -86,12 +87,12 @@ impl<'a> FunctionContext<'a> {
                 });
                 dest
             }
-            Operand::Immediate(imm) => {
+            Operand::Immediate(src) => {
                 let dest = self.allocate_register();
 
                 let instruction = Instruction::LoadImm {
                     dest: dest.unwrap_register(),
-                    imm,
+                    src,
                 };
 
                 self.emit_instruction(instruction);
@@ -170,11 +171,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::LessI { src1, imm, .. }) => {
+            Some(Instruction::LessI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfLessI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -186,11 +187,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::LessEqualI { src1, imm, .. }) => {
+            Some(Instruction::LessEqualI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfLessEqualI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -202,11 +203,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::GreaterI { src1, imm, .. }) => {
+            Some(Instruction::GreaterI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfGreaterI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -218,11 +219,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::GreaterEqualI { src1, imm, .. }) => {
+            Some(Instruction::GreaterEqualI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfGreaterEqualI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -234,11 +235,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::EqualI { src1, imm, .. }) => {
+            Some(Instruction::EqualI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfEqualI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -250,11 +251,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::NotEqualI { src1, imm, .. }) => {
+            Some(Instruction::NotEqualI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfNotEqualI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -264,7 +265,6 @@ impl<'a> FunctionContext<'a> {
 
     fn make_jump_if_false(&mut self, src: u8) -> Instruction {
         match self.instructions.last().copied() {
-            // flip: less -> not less = greater equal
             Some(Instruction::Less { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfGreaterEqual {
@@ -273,11 +273,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::LessI { src1, imm, .. }) => {
+            Some(Instruction::LessI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfGreaterEqualI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -289,11 +289,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::LessEqualI { src1, imm, .. }) => {
+            Some(Instruction::LessEqualI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfGreaterI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -305,11 +305,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::GreaterI { src1, imm, .. }) => {
+            Some(Instruction::GreaterI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfLessEqualI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -321,11 +321,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::GreaterEqualI { src1, imm, .. }) => {
+            Some(Instruction::GreaterEqualI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfLessI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -337,11 +337,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::EqualI { src1, imm, .. }) => {
+            Some(Instruction::EqualI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfNotEqualI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -353,11 +353,11 @@ impl<'a> FunctionContext<'a> {
                     offset: 0,
                 }
             }
-            Some(Instruction::NotEqualI { src1, imm, .. }) => {
+            Some(Instruction::NotEqualI { src1, src2, .. }) => {
                 self.instructions.pop();
                 Instruction::JumpIfEqualI {
                     src1,
-                    imm,
+                    src2,
                     offset: 0,
                 }
             }
@@ -463,9 +463,9 @@ impl<'a> FunctionContext<'a> {
                     dest: dest.unwrap_register(),
                     src,
                 },
-                Operand::Immediate(imm) => Instruction::LoadImm {
+                Operand::Immediate(src) => Instruction::LoadImm {
                     dest: dest.unwrap_register(),
-                    imm,
+                    src,
                 },
             };
 
@@ -490,7 +490,7 @@ impl<'a> FunctionContext<'a> {
                 }
 
                 if !self.block_returns(body) {
-                    let src = Operand::boolean(false);
+                    let src = Operand::Immediate(Imm::try_from_f64(0.0).unwrap());
                     let src = self.materialize(src);
                     self.emit_instruction(Instruction::Return {
                         src: src.unwrap_register(),
@@ -603,7 +603,7 @@ impl<'a> FunctionContext<'a> {
                 let src = if let Some(expr) = expr {
                     self.visit_expression(expr)
                 } else {
-                    Operand::boolean(false)
+                    Operand::Immediate(Imm::try_from_f64(0.0).unwrap())
                 };
 
                 let src = self.materialize(src);
@@ -687,7 +687,6 @@ impl<'a> FunctionContext<'a> {
 
                 dest
             }
-
             ExprKind::Binary {
                 operator,
                 left,
@@ -713,48 +712,66 @@ impl<'a> FunctionContext<'a> {
                         Greater => Instruction::Greater { dest, src1, src2 },
                         GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
                     },
-                    (Operand::Register(src1), Operand::Immediate(imm)) => match operator.kind {
-                        Add => Instruction::AddI { dest, src1, imm },
-                        Subtract => Instruction::SubtractRI { dest, src1, imm },
-                        Multiply => Instruction::MultiplyI { dest, src1, imm },
-                        Divide => Instruction::DivideRI { dest, src1, imm },
-                        Modulo => Instruction::ModuloRI { dest, src1, imm },
-                        Equal => Instruction::EqualI { dest, src1, imm },
-                        NotEqual => Instruction::NotEqualI { dest, src1, imm },
-                        Less => Instruction::LessI { dest, src1, imm },
-                        LessEqual => Instruction::LessEqualI { dest, src1, imm },
-                        Greater => Instruction::GreaterI { dest, src1, imm },
-                        GreaterEqual => Instruction::GreaterEqualI { dest, src1, imm },
+                    (Operand::Register(src1), Operand::Immediate(src2)) => match operator.kind {
+                        Add => Instruction::AddI { dest, src1, src2 },
+                        Subtract => Instruction::SubtractRI { dest, src1, src2 },
+                        Multiply => Instruction::MultiplyI { dest, src1, src2 },
+                        Divide => Instruction::DivideRI { dest, src1, src2 },
+                        Modulo => Instruction::ModuloRI { dest, src1, src2 },
+                        Equal => Instruction::EqualI { dest, src1, src2 },
+                        NotEqual => Instruction::NotEqualI { dest, src1, src2 },
+                        Less => Instruction::LessI { dest, src1, src2 },
+                        LessEqual => Instruction::LessEqualI { dest, src1, src2 },
+                        Greater => Instruction::GreaterI { dest, src1, src2 },
+                        GreaterEqual => Instruction::GreaterEqualI { dest, src1, src2 },
                     },
-                    (Operand::Immediate(imm), Operand::Register(src1)) => match operator.kind {
-                        Add => Instruction::AddI { dest, src1, imm },
-                        Multiply => Instruction::MultiplyI { dest, src1, imm },
-                        Equal => Instruction::EqualI { dest, src1, imm },
-                        NotEqual => Instruction::NotEqualI { dest, src1, imm },
-                        Subtract => Instruction::SubtractIR {
+                    (Operand::Immediate(src1), Operand::Register(src2)) => match operator.kind {
+                        Add => Instruction::AddI {
                             dest,
-                            imm,
+                            src1: src2,
                             src2: src1,
                         },
-                        Divide => Instruction::DivideIR {
+                        Multiply => Instruction::MultiplyI {
                             dest,
-                            imm,
+                            src1: src2,
                             src2: src1,
                         },
-                        Modulo => Instruction::ModuloIR {
+                        Equal => Instruction::EqualI {
                             dest,
-                            imm,
+                            src1: src2,
                             src2: src1,
                         },
-                        // comparisons: flip the operator, reuse RI variant
-                        Less => Instruction::GreaterI { dest, src1, imm },
-                        LessEqual => Instruction::GreaterEqualI { dest, src1, imm },
-                        Greater => Instruction::LessI { dest, src1, imm },
-                        GreaterEqual => Instruction::LessEqualI { dest, src1, imm },
+                        NotEqual => Instruction::NotEqualI {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        Subtract => Instruction::SubtractIR { dest, src1, src2 },
+                        Divide => Instruction::DivideIR { dest, src1, src2 },
+                        Modulo => Instruction::ModuloIR { dest, src1, src2 },
+                        Less => Instruction::GreaterI {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        LessEqual => Instruction::GreaterEqualI {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        Greater => Instruction::LessI {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
+                        GreaterEqual => Instruction::LessEqualI {
+                            dest,
+                            src1: src2,
+                            src2: src1,
+                        },
                     },
                     (Operand::Constant(src1), Operand::Register(src2)) => {
                         let src1 = self.materialize(Operand::Constant(src1)).unwrap_register();
-
                         match operator.kind {
                             Add => Instruction::Add { dest, src1, src2 },
                             Subtract => Instruction::Subtract { dest, src1, src2 },
@@ -771,7 +788,6 @@ impl<'a> FunctionContext<'a> {
                     }
                     (Operand::Register(src1), Operand::Constant(src2)) => {
                         let src2 = self.materialize(Operand::Constant(src2)).unwrap_register();
-
                         match operator.kind {
                             Add => Instruction::Add { dest, src1, src2 },
                             Subtract => Instruction::Subtract { dest, src1, src2 },
@@ -862,14 +878,12 @@ impl<'a> FunctionContext<'a> {
 
                 self.constants.push_function_index(index)
             }
-
             ExprKind::String(value) => self.constants.push_string(value.to_owned()),
-            ExprKind::Boolean(value) => Operand::boolean(*value),
             ExprKind::Number(value) => {
                 let value = *value;
 
-                if let Some(imm) = Operand::try_f64(value) {
-                    imm
+                if let Some(imm) = Imm::try_from_f64(value) {
+                    Operand::Immediate(imm)
                 } else {
                     self.constants.push_number(value)
                 }

@@ -7,8 +7,6 @@ use super::gc::GcObject;
 const QNAN: u64 = 0x7FFC_0000_0000_0000;
 const PTR_MASK: u64 = 0x0000_FFFF_FFFF_FFFF;
 
-pub const TAG_NIL: u64 = QNAN | 0x0001_0000_0000_0000;
-pub const TAG_BOOL: u64 = QNAN | 0x0002_0000_0000_0000;
 pub const TAG_FUNCTION: u64 = QNAN | 0x0003_0000_0000_0000;
 pub const TAG_STRING: u64 = QNAN | 0x0004_0000_0000_0000;
 pub const TAG_DICT: u64 = QNAN | 0x0005_0000_0000_0000;
@@ -20,16 +18,11 @@ pub struct Value(u64);
 
 impl Default for Value {
     fn default() -> Self {
-        Value::boolean(false)
+        Value::number(0.0)
     }
 }
 
 impl Value {
-    #[inline(always)]
-    pub fn is_nan(self) -> bool {
-        (self.0 & QNAN) == QNAN
-    }
-
     #[inline(always)]
     pub fn is_number(self) -> bool {
         (self.0 & QNAN) != QNAN
@@ -38,11 +31,6 @@ impl Value {
     #[inline(always)]
     fn is_tag(self, tag: u64) -> bool {
         (self.0 & !PTR_MASK) == tag
-    }
-
-    #[inline(always)]
-    pub fn is_boolean(self) -> bool {
-        self.is_tag(TAG_BOOL)
     }
 
     #[inline(always)]
@@ -76,8 +64,13 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn boolean(value: bool) -> Self {
-        Self(TAG_BOOL | value as u64)
+    pub fn as_number(self) -> f64 {
+        f64::from_bits(self.0)
+    }
+
+    #[inline(always)]
+    pub fn is_truthy(self) -> bool {
+        self.is_number() && self.as_number() != 0.0
     }
 
     #[inline(always)]
@@ -98,16 +91,6 @@ impl Value {
     #[inline(always)]
     pub fn vec(ptr: *mut GcObject<Vec<Value>>) -> Self {
         Self(TAG_VEC | (ptr as u64 & PTR_MASK))
-    }
-
-    #[inline(always)]
-    pub fn as_number(self) -> f64 {
-        f64::from_bits(self.0)
-    }
-
-    #[inline(always)]
-    pub fn as_boolean(self) -> bool {
-        self.0 & 1 != 0
     }
 
     #[inline(always)]
@@ -135,9 +118,6 @@ impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_number() {
             return write!(f, "{}", self.as_number());
-        }
-        if self.is_boolean() {
-            return write!(f, "{}", self.as_boolean());
         }
         if self.is_function() {
             return write!(f, "Function({:p})", self.as_function());
