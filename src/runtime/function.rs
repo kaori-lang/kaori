@@ -6,9 +6,9 @@ use crate::{
 use super::gc::Gc;
 
 pub struct Function {
-    pub instructions: Vec<Instruction>,
+    pub instructions: Box<[Instruction]>,
     pub registers_count: u8,
-    pub constants: Vec<Value>,
+    pub constants: Box<[Value]>,
 }
 
 use std::fmt::{self, Display, Formatter};
@@ -47,7 +47,7 @@ pub fn from_compiled(functions: Vec<bytecode::Function>, gc: &mut Gc) -> Vec<Fun
             .collect();
 
         runtime_functions.push(Function {
-            instructions,
+            instructions: instructions.into(),
             registers_count,
             constants,
         });

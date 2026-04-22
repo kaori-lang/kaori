@@ -481,8 +481,9 @@ impl<'a> FunctionContext<'a> {
     fn visit_declaration(&mut self, declaration: &Decl) -> Result<(), KaoriError> {
         match &declaration.kind {
             DeclKind::Function { body, parameters } => {
-                for parameter in parameters {
-                    self.visit_expression(parameter);
+                for (id, _) in parameters {
+                    let dest = self.allocate_register();
+                    self.registers.insert(*id, dest);
                 }
 
                 for statement in body {
@@ -620,12 +621,6 @@ impl<'a> FunctionContext<'a> {
 
     fn visit_expression(&mut self, expression: &Expr) -> Operand {
         match &expression.kind {
-            ExprKind::Parameter(id) => {
-                let dest = self.allocate_register();
-                self.registers.insert(*id, dest);
-                dest
-            }
-
             ExprKind::DeclareAssign { id, right } => {
                 let dest = self.allocate_register();
                 self.emit_move(right, dest);

@@ -892,6 +892,7 @@ fn opcode_move<const UNCHECKED: bool>(
         let Instruction::Move { dest, src } = *ip else {
             unreachable_unchecked()
         };
+
         let src = *registers.add(src as usize);
         set_value(dest, src, registers);
 
@@ -1096,7 +1097,11 @@ fn opcode_call<const UNCHECKED: bool>(
 
         set_value(dest, return_value, registers);
 
-        dispatch_next!(ip, vm, registers, constants, size)
+        if UNCHECKED {
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
+        } else {
+            dispatch_next!(ip, vm, registers, constants, size)
+        }
     }
 }
 

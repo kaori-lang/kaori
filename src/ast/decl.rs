@@ -13,13 +13,18 @@ pub struct Decl {
 pub enum DeclKind {
     Function {
         name: String,
-        parameters: Vec<Expr>,
+        parameters: Vec<(String, Span)>,
         body: Vec<Stmt>,
     },
 }
 
 impl Decl {
-    pub fn function(name: String, parameters: Vec<Expr>, body: Vec<Stmt>, span: Span) -> Decl {
+    pub fn function(
+        name: String,
+        parameters: Vec<(String, Span)>,
+        body: Vec<Stmt>,
+        span: Span,
+    ) -> Decl {
         Decl {
             id: NodeId::default(),
             span,

@@ -3,6 +3,8 @@ use std::fmt;
 use crate::bytecode::immediate::Imm;
 
 #[derive(Clone, Copy)]
+#[repr(u8)]
+#[repr(align(8))]
 pub enum Instruction {
     Add { dest: u8, src1: u8, src2: u8 },
     AddI { dest: u8, src1: u8, src2: Imm },
@@ -61,64 +63,8 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    #[inline(always)]
-    pub const fn discriminant(&self) -> usize {
-        match self {
-            Instruction::Add { .. } => 0,
-            Instruction::AddI { .. } => 1,
-            Instruction::Subtract { .. } => 2,
-            Instruction::SubtractRI { .. } => 3,
-            Instruction::SubtractIR { .. } => 4,
-            Instruction::Multiply { .. } => 5,
-            Instruction::MultiplyI { .. } => 6,
-            Instruction::Divide { .. } => 7,
-            Instruction::DivideRI { .. } => 8,
-            Instruction::DivideIR { .. } => 9,
-            Instruction::Modulo { .. } => 10,
-            Instruction::ModuloRI { .. } => 11,
-            Instruction::ModuloIR { .. } => 12,
-            Instruction::Equal { .. } => 13,
-            Instruction::EqualI { .. } => 14,
-            Instruction::NotEqual { .. } => 15,
-            Instruction::NotEqualI { .. } => 16,
-            Instruction::Less { .. } => 17,
-            Instruction::LessI { .. } => 18,
-            Instruction::LessEqual { .. } => 19,
-            Instruction::LessEqualI { .. } => 20,
-            Instruction::Greater { .. } => 21,
-            Instruction::GreaterI { .. } => 22,
-            Instruction::GreaterEqual { .. } => 23,
-            Instruction::GreaterEqualI { .. } => 24,
-            Instruction::Not { .. } => 25,
-            Instruction::Negate { .. } => 26,
-            Instruction::Move { .. } => 27,
-            Instruction::LoadK { .. } => 28,
-            Instruction::LoadImm { .. } => 29,
-            Instruction::CreateDict { .. } => 30,
-            Instruction::SetField { .. } => 31,
-            Instruction::SetFieldI { .. } => 32,
-            Instruction::GetField { .. } => 33,
-            Instruction::Call { .. } => 34,
-            Instruction::Return { .. } => 35,
-            Instruction::Jump { .. } => 36,
-            Instruction::JumpIfNotZero { .. } => 37,
-            Instruction::JumpIfZero { .. } => 38,
-            Instruction::JumpIfLess { .. } => 39,
-            Instruction::JumpIfLessI { .. } => 40,
-            Instruction::JumpIfLessEqual { .. } => 41,
-            Instruction::JumpIfLessEqualI { .. } => 42,
-            Instruction::JumpIfGreater { .. } => 43,
-            Instruction::JumpIfGreaterI { .. } => 44,
-            Instruction::JumpIfGreaterEqual { .. } => 45,
-            Instruction::JumpIfGreaterEqualI { .. } => 46,
-            Instruction::JumpIfEqual { .. } => 47,
-            Instruction::JumpIfEqualI { .. } => 48,
-            Instruction::JumpIfNotEqual { .. } => 49,
-            Instruction::JumpIfNotEqualI { .. } => 50,
-            Instruction::Print { .. } => 51,
-            Instruction::EnterUncheckedBlock => 52,
-            Instruction::ExitUncheckedBlock => 53,
-        }
+    pub fn discriminant(self) -> usize {
+        unsafe { *<*const _>::from(&self).cast::<u8>() as usize }
     }
 }
 

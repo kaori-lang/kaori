@@ -1,13 +1,23 @@
 fun main() {
-    n := 3000;
+    iterations := 1000000;
+    max_fib := 30;
 
-    result := 1.0; // assuming numbers are floats in your language
+    for i := 0; i < iterations; i += 1 {
+        a := 0;
+        b := 1;
 
-    for i := 1; i <= n; i += 1 {
-        result = result * i;
+        for j := 0; j < max_fib; j += 1 {
+            temp := a + b;
+            a = b;
+            b = temp;
+        }
     }
-
 }
+
+
+
+
+
 /*
 0000  MOV r0 k0
 0001  MOV r1 k1

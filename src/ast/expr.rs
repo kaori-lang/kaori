@@ -1,4 +1,4 @@
-use crate::lexer::span::Span;
+use crate::{ast::Stmt, lexer::span::Span};
 
 use super::{assign_op::AssignOp, binary_op::BinaryOp, node_id::NodeId, unary_op::UnaryOp};
 
@@ -41,7 +41,6 @@ pub enum ExprKind {
         right: Box<Expr>,
     },
     Identifier(String),
-    Parameter(String),
     FunctionCall {
         callee: Box<Expr>,
         arguments: Vec<Expr>,
@@ -55,6 +54,10 @@ pub enum ExprKind {
     BooleanLiteral(bool),
     DictLiteral {
         fields: Vec<(Expr, Option<Expr>)>,
+    },
+    Closure {
+        parameters: Vec<(String, Span)>,
+        body: Vec<Stmt>,
     },
 }
 
@@ -157,14 +160,6 @@ impl Expr {
         }
     }
 
-    pub fn parameter(name: String, span: Span) -> Expr {
-        Expr {
-            id: NodeId::default(),
-            span,
-            kind: ExprKind::Parameter(name),
-        }
-    }
-
     pub fn function_call(callee: Expr, arguments: Vec<Expr>, span: Span) -> Expr {
         let span = Span::merge(callee.span, span);
 
@@ -220,6 +215,14 @@ impl Expr {
             id: NodeId::default(),
             span,
             kind: ExprKind::DictLiteral { fields },
+        }
+    }
+
+    pub fn closure(parameters: Vec<(String, Span)>, body: Vec<Stmt>, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Closure { parameters, body },
         }
     }
 }

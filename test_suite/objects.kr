@@ -1,4 +1,19 @@
 
+fun Cat(name) {
+    this = { name };
+
+
+    fun get_name() {
+        return this.name;
+    }
+
+    return {   
+        get_name
+    };
+}
+
+
+
 fun Cat(name, age, color) {
     return {   
         name,

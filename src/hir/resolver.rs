@@ -104,8 +104,22 @@ impl Resolver {
 
                 let parameters = parameters
                     .iter()
-                    .map(|parameter| self.resolve_expression(parameter))
-                    .collect::<Result<Vec<Expr>, KaoriError>>()?;
+                    .map(|(name, span)| {
+                        if self.symbol_table.search_current_scope(&name).is_some() {
+                            return Err(kaori_error!(
+                                *span,
+                                "function can't have parameters with the same name: {}",
+                                name,
+                            ));
+                        };
+
+                        let id = NodeId::default();
+
+                        self.symbol_table.declare_variable(id, name.to_owned());
+
+                        Ok((id, *span))
+                    })
+                    .collect::<Result<Vec<(NodeId, Span)>, KaoriError>>()?;
 
                 let body = body
                     .iter()
@@ -231,21 +245,6 @@ impl Resolver {
 
     fn resolve_expression(&mut self, expression: &ast::Expr) -> Result<Expr, KaoriError> {
         Ok(match &expression.kind {
-            ast::ExprKind::Parameter(name) => {
-                if self.symbol_table.search_current_scope(name).is_some() {
-                    return Err(kaori_error!(
-                        expression.span,
-                        "function can't have parameters with the same name: {}",
-                        name,
-                    ));
-                };
-
-                let id = NodeId::default();
-
-                self.symbol_table.declare_variable(id, name.to_owned());
-
-                Expr::parameter(id, expression.span)
-            }
             ast::ExprKind::DeclareAssign { left, right } => {
                 let right = self.resolve_expression(right)?;
 

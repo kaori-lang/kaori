@@ -51,7 +51,6 @@ pub enum ExprKind {
         object: Box<Expr>,
         property: Box<Expr>,
     },
-    Parameter(NodeId),
     Function(NodeId),
     String(String),
     Number(f64),
@@ -165,14 +164,6 @@ impl Expr {
             id: NodeId::default(),
             span,
             kind: ExprKind::Variable(id),
-        }
-    }
-
-    pub fn parameter(id: NodeId, span: Span) -> Expr {
-        Expr {
-            id: NodeId::default(),
-            span,
-            kind: ExprKind::Parameter(id),
         }
     }
 

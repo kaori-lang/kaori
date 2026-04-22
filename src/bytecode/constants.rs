@@ -9,10 +9,7 @@ impl Constants {
             index
         } else {
             let index = self.0.len();
-            assert!(
-                index < 128,
-                "constant pool overflow (i8 negative space limit)"
-            );
+            assert!(index < 256, "constant pool overflow (u8)");
             self.0.push(constant);
             index
         };
