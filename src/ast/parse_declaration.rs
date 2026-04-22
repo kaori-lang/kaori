@@ -37,7 +37,7 @@ impl<'a> Parser<'a> {
         Ok(Decl::function(name, parameters, body, span))
     }
 
-    fn parse_function_parameter(&mut self) -> Result<(String, Span), KaoriError> {
+    pub fn parse_function_parameter(&mut self) -> Result<(String, Span), KaoriError> {
         let name = self.token_stream.lexeme().to_owned();
         let span = self.token_stream.span();
 

@@ -245,6 +245,9 @@ impl Resolver {
 
     fn resolve_expression(&mut self, expression: &ast::Expr) -> Result<Expr, KaoriError> {
         Ok(match &expression.kind {
+            ast::ExprKind::Closure { parameters, body } => {
+                todo!()
+            }
             ast::ExprKind::DeclareAssign { left, right } => {
                 let right = self.resolve_expression(right)?;
 

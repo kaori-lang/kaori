@@ -237,6 +237,7 @@ impl<'a> Parser<'a> {
         let span = self.token_stream.span();
 
         let primary = match token_kind {
+            TokenKind::Function => self.parse_closure()?,
             TokenKind::LeftParen => {
                 self.token_stream.consume(TokenKind::LeftParen)?;
                 let expr = self.parse_expression()?;
@@ -362,5 +363,32 @@ impl<'a> Parser<'a> {
         let member_access = Expr::member_access(object, property);
 
         self.parse_postfix_unary(member_access)
+    }
+
+    fn parse_closure(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Function)?;
+
+        self.token_stream.consume(TokenKind::LeftParen)?;
+
+        let parameters =
+            self.parse_comma_separator(Parser::parse_function_parameter, TokenKind::RightParen)?;
+
+        self.token_stream.consume(TokenKind::RightParen)?;
+
+        let mut body = Vec::new();
+
+        self.token_stream.consume(TokenKind::LeftBrace)?;
+
+        while !self.token_stream.at_end() {
+            let statement = self.parse_statement()?;
+
+            body.push(statement);
+        }
+
+        self.token_stream.consume(TokenKind::RightBrace)?;
+
+        Ok(Expr::closure(parameters, body, span))
     }
 }
