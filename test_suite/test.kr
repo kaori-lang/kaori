@@ -1,18 +1,18 @@
-fun main() {
-    iterations := 1000000;
-    max_fib := 30;
 
-    for i := 0; i < iterations; i += 1 {
-        a := 0;
-        b := 1;
-
-        for j := 0; j < max_fib; j += 1 {
-            temp := a + b;
-            a = b;
-            b = temp;
-        }
-    }
+fun fib(n) {
+    if n < 2 {
+        return n;
+    } else {
+        return fib(n - 1) + fib(n - 2);
+    }   
 }
+
+fun main()  {
+    fib(30);
+}
+
+
+
 
 
 

@@ -48,7 +48,6 @@ macro_rules! dispatch_offset_unchecked {
 
 macro_rules! type_check {
     ($unchecked:expr, $cond:expr, $($arg:tt)*) => {
-
         if !$unchecked && std::hint::unlikely(!$cond) {
             return Err(Box::new(kaori_error!(Span::default(), $($arg)*)));
         }
@@ -57,9 +56,10 @@ macro_rules! type_check {
 
 const REGISTER: u8 = 0;
 const IMMEDIATE: u8 = 1;
+const CONSTANT: u8 = 2;
 const HANDLERS_UNCHECKED_OFFSET: usize = HANDLERS.len() / 2;
 
-const HANDLERS: [Handler; 108] = [
+const HANDLERS: [Handler; 110] = [
     // CHECKED HANDLERS
     opcode_add::<REGISTER, REGISTER, false>,
     opcode_add::<REGISTER, IMMEDIATE, false>,
@@ -95,7 +95,8 @@ const HANDLERS: [Handler; 108] = [
     opcode_set_field::<REGISTER, false>,
     opcode_set_field::<IMMEDIATE, false>,
     opcode_get_field::<false>,
-    opcode_call::<false>,
+    opcode_call::<REGISTER, false>,
+    opcode_call::<CONSTANT, false>,
     opcode_return,
     opcode_jump::<false>,
     opcode_jump_if_true::<false>,
@@ -150,7 +151,8 @@ const HANDLERS: [Handler; 108] = [
     opcode_set_field::<REGISTER, true>,
     opcode_set_field::<IMMEDIATE, true>,
     opcode_get_field::<true>,
-    opcode_call::<true>,
+    opcode_call::<REGISTER, true>,
+    opcode_call::<CONSTANT, true>,
     opcode_return,
     opcode_jump::<true>,
     opcode_jump_if_true::<true>,
@@ -1052,7 +1054,7 @@ fn opcode_get_field<const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_call<const UNCHECKED: bool>(
+fn opcode_call<const SRC: u8, const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -1060,16 +1062,29 @@ fn opcode_call<const UNCHECKED: bool>(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::Call { dest, src } = *ip else {
-            unreachable_unchecked()
+        let (dest, src) = match SRC {
+            REGISTER => {
+                let Instruction::Call { dest, src } = *ip else {
+                    unreachable_unchecked()
+                };
+
+                (dest, *registers.add(src as usize))
+            }
+            CONSTANT => {
+                let Instruction::CallK { dest, src } = *ip else {
+                    unreachable_unchecked()
+                };
+
+                (dest, *constants.add(src as usize))
+            }
+            _ => unreachable_unchecked(),
         };
-        let callee = *registers.add(src as usize);
 
         type_check!(
             UNCHECKED,
-            callee.is_function(),
+            src.is_function(),
             "cannot call {:?}, value is not a function",
-            callee
+            src
         );
 
         let return_value = {
@@ -1077,12 +1092,12 @@ fn opcode_call<const UNCHECKED: bool>(
                 ref instructions,
                 registers_count,
                 ref constants,
-            } = *callee.as_function();
+            } = *src.as_function();
 
-            let callee_registers = registers.add(size as usize);
+            let registers = registers.add(size as usize);
 
             if std::hint::unlikely(
-                callee_registers.add(registers_count as usize)
+                registers.add(registers_count as usize)
                     > vm.registers.as_mut_ptr().add(vm.registers.len()),
             ) {
                 return Err(Box::new(kaori_error!(Span::default(), "stack overflow")));
@@ -1092,7 +1107,7 @@ fn opcode_call<const UNCHECKED: bool>(
             let ip = instructions.as_ptr();
             let index = (*ip).discriminant();
 
-            HANDLERS[index](ip, vm, callee_registers, constants, registers_count)
+            HANDLERS[index](ip, vm, registers, constants, registers_count)
         }?;
 
         set_value(dest, return_value, registers);

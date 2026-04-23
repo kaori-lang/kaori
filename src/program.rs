@@ -12,7 +12,6 @@ use crate::{
 
 fn run_lexical_analysis(source: &'_ str) -> Result<TokenStream<'_>, KaoriError> {
     let lexer = Lexer::new(source);
-
     let tokens = lexer.tokenize()?;
 
     let token_stream = TokenStream::new(source, tokens);

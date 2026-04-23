@@ -694,7 +694,6 @@ impl<'a> FunctionContext<'a> {
                 let dest = self.allocate_register();
 
                 let callee_src = self.visit_expression(callee);
-                let callee_src = self.materialize(callee_src);
 
                 for (i, argument) in arguments.iter().enumerate() {
                     let arg_dest = Operand::Register(i as u8);
@@ -702,10 +701,26 @@ impl<'a> FunctionContext<'a> {
                     self.pending_arguments.push(self.instructions.len() - 1);
                 }
 
-                self.emit_instruction(Instruction::Call {
-                    dest: dest.unwrap_register(),
-                    src: callee_src.unwrap_register(),
-                });
+                let instruction = match callee_src {
+                    Operand::Constant(src) => Instruction::CallK {
+                        dest: dest.unwrap_register(),
+                        src,
+                    },
+                    Operand::Register(src) => Instruction::Call {
+                        dest: dest.unwrap_register(),
+                        src,
+                    },
+                    Operand::Immediate(_) => {
+                        let src = self.materialize(callee_src);
+
+                        Instruction::Call {
+                            dest: dest.unwrap_register(),
+                            src: src.unwrap_register(),
+                        }
+                    }
+                };
+
+                self.emit_instruction(instruction);
 
                 dest
             }
@@ -753,30 +768,17 @@ impl<'a> FunctionContext<'a> {
 
                 self.visit_expression(then_branch);
 
+                self.patch_jump(
+                    jump_if_false,
+                    self.instructions.len() as i32 - jump_if_false as i32,
+                );
+
                 if let Some(else_branch) = else_branch {
-                    let jump_over_else = self.emit_instruction(Instruction::Jump { offset: 0 });
-
-                    self.patch_jump(
-                        jump_if_false,
-                        self.instructions.len() as i32 - jump_if_false as i32,
-                    );
-
                     self.visit_expression(else_branch);
-
-                    self.patch_jump(
-                        jump_over_else,
-                        self.instructions.len() as i32 - jump_over_else as i32,
-                    );
-                } else {
-                    self.patch_jump(
-                        jump_if_false,
-                        self.instructions.len() as i32 - jump_if_false as i32,
-                    );
                 }
 
                 Self::unit()
             }
-
             ExprKind::Loop {
                 init,
                 condition,
