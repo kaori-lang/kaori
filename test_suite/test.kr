@@ -7,8 +7,10 @@ fun fib(n) {
     }   
 }
 
+
+
 fun main()  {
-    fib(30);
+    unchecked {fib(30);}
 }
 
 

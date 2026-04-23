@@ -1132,6 +1132,7 @@ fn opcode_return(
         let Instruction::Return { src } = *ip else {
             unreachable_unchecked()
         };
+
         Ok(*registers.add(src as usize))
     }
 }
