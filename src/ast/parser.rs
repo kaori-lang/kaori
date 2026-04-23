@@ -1,10 +1,8 @@
 use crate::{
+    ast::Expr,
     error::kaori_error::KaoriError,
-    kaori_error,
     lexer::{token_kind::TokenKind, token_stream::TokenStream},
 };
-
-use super::{decl::Decl, stmt::Stmt};
 
 pub struct Parser<'a> {
     pub token_stream: TokenStream<'a>,
@@ -15,50 +13,32 @@ impl<'a> Parser<'a> {
         Self { token_stream }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Decl>, KaoriError> {
-        let mut declarations = Vec::new();
+    pub fn parse(&mut self) -> Result<Vec<Expr>, KaoriError> {
+        let mut functions = Vec::new();
 
         while !self.token_stream.at_end() {
-            let declaration = self.parse_declaration()?;
+            let function = self.parse_function()?;
 
-            let declaration = match declaration {
-                Some(decl) => Ok(decl),
-                _ => Err(kaori_error!(
-                    self.token_stream.span(),
-                    "invalid declaration at global scope"
-                )),
-            }?;
-
-            declarations.push(declaration);
+            functions.push(function);
         }
 
-        Ok(declarations)
+        Ok(functions)
     }
 
-    pub fn parse_declaration(&mut self) -> Result<Option<Decl>, KaoriError> {
-        let declaration = match self.token_stream.token_kind() {
-            TokenKind::Function => Some(self.parse_function_declaration()?),
-
-            _ => None,
-        };
-
-        Ok(declaration)
-    }
-
-    pub fn parse_statement(&mut self) -> Result<Stmt, KaoriError> {
+    pub fn parse_statement_expression(&mut self) -> Result<Stmt, KaoriError> {
         let token_kind = self.token_stream.token_kind();
 
         let statement = match token_kind {
-            TokenKind::Print => self.parse_print_statement(),
-            TokenKind::If => self.parse_if_statement(),
-            TokenKind::While => self.parse_while_loop_statement(),
-            TokenKind::For => self.parse_for_loop_statement(),
-            TokenKind::Break => self.parse_break_statement(),
-            TokenKind::Continue => self.parse_continue_statement(),
-            TokenKind::Return => self.parse_return_statement(),
-            TokenKind::Unchecked => self.parse_unchecked_block_statement(),
+            TokenKind::Print => self.parse_print(),
+            TokenKind::If => self.parse_if(),
+            TokenKind::While => self.parse_while_loop(),
+            TokenKind::For => self.parse_for_loop(),
+            TokenKind::Break => self.parse_break(),
+            TokenKind::Continue => self.parse_continue(),
+            TokenKind::Return => self.parse_return(),
+            TokenKind::Unchecked => self.parse_unchecked_block(),
             _ => {
-                let statement = self.parse_expression_statement();
+                let statement = self.parse_expression();
 
                 if statement.is_ok() {
                     self.token_stream.consume(TokenKind::Semicolon)?;

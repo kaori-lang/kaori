@@ -1,4 +1,4 @@
-use crate::{ast::Stmt, lexer::span::Span};
+use crate::lexer::span::Span;
 
 use super::{assign_op::AssignOp, binary_op::BinaryOp, node_id::NodeId, unary_op::UnaryOp};
 
@@ -41,6 +41,9 @@ pub enum ExprKind {
         right: Box<Expr>,
     },
     Identifier(String),
+    StringLiteral(String),
+    NumberLiteral(f64),
+    BooleanLiteral(bool),
     FunctionCall {
         callee: Box<Expr>,
         arguments: Vec<Expr>,
@@ -49,22 +52,46 @@ pub enum ExprKind {
         object: Box<Expr>,
         property: Box<Expr>,
     },
-    StringLiteral(String),
-    NumberLiteral(f64),
-    BooleanLiteral(bool),
     DictLiteral {
         fields: Vec<(Expr, Option<Expr>)>,
     },
-    Closure {
+    Function {
+        name: String,
         parameters: Vec<(String, Span)>,
-        body: Vec<Stmt>,
+        body: Vec<Expr>,
     },
+    Block {
+        body: Vec<Expr>,
+        tail: Option<Box<Expr>>,
+    },
+    If {
+        condition: Box<Expr>,
+        then_branch: Box<Expr>,
+        else_branch: Option<Box<Expr>>,
+    },
+    WhileLoop {
+        condition: Box<Expr>,
+        block: Box<Expr>,
+    },
+    ForLoop {
+        init: Box<Expr>,
+        condition: Box<Expr>,
+        increment: Box<Expr>,
+        block: Box<Expr>,
+    },
+    UncheckedBlock {
+        body: Vec<Expr>,
+        tail: Option<Box<Expr>>,
+    },
+    Return(Option<Box<Expr>>),
+    Break,
+    Continue,
+    Print(Box<Expr>),
 }
 
 impl Expr {
     pub fn binary(operator: BinaryOp, left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
-
         Expr {
             id: NodeId::default(),
             span,
@@ -78,7 +105,6 @@ impl Expr {
 
     pub fn logical_and(left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
-
         Expr {
             id: NodeId::default(),
             span,
@@ -91,7 +117,6 @@ impl Expr {
 
     pub fn logical_or(left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
-
         Expr {
             id: NodeId::default(),
             span,
@@ -114,7 +139,6 @@ impl Expr {
 
     pub fn unary(operator: UnaryOp, right: Expr) -> Expr {
         let span = right.span;
-
         Expr {
             id: NodeId::default(),
             span,
@@ -127,7 +151,6 @@ impl Expr {
 
     pub fn assign(operator: AssignOp, left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
-
         Expr {
             id: NodeId::default(),
             span,
@@ -141,7 +164,6 @@ impl Expr {
 
     pub fn declare_assign(left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
-
         Expr {
             id: NodeId::default(),
             span,
@@ -162,7 +184,6 @@ impl Expr {
 
     pub fn function_call(callee: Expr, arguments: Vec<Expr>, span: Span) -> Expr {
         let span = Span::merge(callee.span, span);
-
         Expr {
             id: NodeId::default(),
             span,
@@ -175,7 +196,6 @@ impl Expr {
 
     pub fn member_access(object: Expr, property: Expr) -> Expr {
         let span = Span::merge(object.span, property.span);
-
         Expr {
             id: NodeId::default(),
             span,
@@ -218,11 +238,110 @@ impl Expr {
         }
     }
 
-    pub fn closure(parameters: Vec<(String, Span)>, body: Vec<Stmt>, span: Span) -> Expr {
+    pub fn function(
+        name: String,
+        parameters: Vec<(String, Span)>,
+        body: Vec<Expr>,
+        span: Span,
+    ) -> Expr {
         Expr {
             id: NodeId::default(),
             span,
-            kind: ExprKind::Closure { parameters, body },
+            kind: ExprKind::Function {
+                name,
+                parameters,
+                body,
+            },
+        }
+    }
+
+    pub fn block(body: Vec<Expr>, tail: Option<Expr>, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Block {
+                body,
+                tail: tail.map(Box::new),
+            },
+        }
+    }
+
+    pub fn if_(condition: Expr, then_branch: Expr, else_branch: Option<Expr>, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::If {
+                condition: Box::new(condition),
+                then_branch: Box::new(then_branch),
+                else_branch: else_branch.map(Box::new),
+            },
+        }
+    }
+
+    pub fn while_loop(condition: Expr, block: Expr, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::WhileLoop {
+                condition: Box::new(condition),
+                block: Box::new(block),
+            },
+        }
+    }
+
+    pub fn for_loop(init: Expr, condition: Expr, increment: Expr, block: Expr, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::ForLoop {
+                init: Box::new(init),
+                condition: Box::new(condition),
+                increment: Box::new(increment),
+                block: Box::new(block),
+            },
+        }
+    }
+
+    pub fn unchecked_block(body: Vec<Expr>, tail: Option<Expr>, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::UncheckedBlock {
+                body,
+                tail: tail.map(Box::new),
+            },
+        }
+    }
+
+    pub fn return_(expression: Option<Expr>, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Return(expression.map(Box::new)),
+        }
+    }
+
+    pub fn break_(span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Break,
+        }
+    }
+
+    pub fn continue_(span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Continue,
+        }
+    }
+
+    pub fn print(expression: Expr, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Print(Box::new(expression)),
         }
     }
 }

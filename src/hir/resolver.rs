@@ -105,7 +105,7 @@ impl Resolver {
                 let parameters = parameters
                     .iter()
                     .map(|(name, span)| {
-                        if self.symbol_table.search_current_scope(&name).is_some() {
+                        if self.symbol_table.search_current_scope(name).is_some() {
                             return Err(kaori_error!(
                                 *span,
                                 "function can't have parameters with the same name: {}",

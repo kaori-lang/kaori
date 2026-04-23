@@ -1,4 +1,8 @@
-use crate::{error::kaori_error::KaoriError, kaori_error, lexer::token_kind::TokenKind};
+use crate::{
+    error::kaori_error::KaoriError,
+    kaori_error,
+    lexer::{span::Span, token_kind::TokenKind},
+};
 
 use super::{
     assign_op::{AssignOp, AssignOpKind},
@@ -9,6 +13,196 @@ use super::{
 };
 
 impl<'a> Parser<'a> {
+    pub fn parse_return(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Return)?;
+
+        if self.token_stream.token_kind() == TokenKind::Semicolon {
+            return Ok(Expr::return_(None, span));
+        }
+
+        let expression = Some(self.parse_expression()?);
+
+        Ok(Expr::return_(expression, span))
+    }
+
+    pub fn parse_continue(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Continue)?;
+
+        Ok(Expr::continue_(span))
+    }
+
+    pub fn parse_break(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Break)?;
+
+        Ok(Expr::break_(span))
+    }
+
+    pub fn parse_print(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Print)?;
+        self.token_stream.consume(TokenKind::LeftParen)?;
+        let expression = self.parse_expression()?;
+        self.token_stream.consume(TokenKind::RightParen)?;
+
+        Ok(Expr::print(expression, span))
+    }
+
+    pub fn parse_block(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::LeftBrace)?;
+
+        let mut body = Vec::new();
+        let mut tail = None;
+
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
+        {
+            let expr = self.parse_expression()?;
+
+            if self.token_stream.token_kind() == TokenKind::Semicolon {
+                self.token_stream.advance();
+                body.push(expr);
+            } else {
+                // no semicolon before } — this is the tail expression
+                tail = Some(expr);
+                break;
+            }
+        }
+
+        self.token_stream.consume(TokenKind::RightBrace)?;
+
+        Ok(Expr::block(body, tail, span))
+    }
+
+    pub fn parse_unchecked_block(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Unchecked)?;
+        self.token_stream.consume(TokenKind::LeftBrace)?;
+
+        let mut body = Vec::new();
+        let mut tail = None;
+
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
+        {
+            let expr = self.parse_expression()?;
+
+            if self.token_stream.token_kind() == TokenKind::Semicolon {
+                self.token_stream.advance();
+                body.push(expr);
+            } else {
+                tail = Some(expr);
+                break;
+            }
+        }
+
+        self.token_stream.consume(TokenKind::RightBrace)?;
+
+        Ok(Expr::unchecked_block(body, tail, span))
+    }
+
+    pub fn parse_if(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::If)?;
+
+        let condition = self.parse_expression()?;
+        let then_branch = self.parse_block()?;
+
+        if self.token_stream.token_kind() != TokenKind::Else {
+            return Ok(Expr::if_(condition, then_branch, None, span));
+        }
+
+        self.token_stream.advance();
+
+        if self.token_stream.token_kind() == TokenKind::If {
+            let else_branch = Some(self.parse_if()?);
+            return Ok(Expr::if_(condition, then_branch, else_branch, span));
+        }
+
+        let else_branch = Some(self.parse_block()?);
+
+        Ok(Expr::if_(condition, then_branch, else_branch, span))
+    }
+
+    pub fn parse_while_loop(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::While)?;
+
+        let condition = self.parse_expression()?;
+        let block = self.parse_block()?;
+
+        Ok(Expr::while_loop(condition, block, span))
+    }
+
+    pub fn parse_for_loop(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::For)?;
+
+        let init = self.parse_expression()?;
+
+        self.token_stream.consume(TokenKind::Semicolon)?;
+
+        let condition = self.parse_expression()?;
+
+        self.token_stream.consume(TokenKind::Semicolon)?;
+
+        let increment = self.parse_expression()?;
+
+        let block = self.parse_block()?;
+
+        Ok(Expr::for_loop(init, condition, increment, block, span))
+    }
+
+    pub fn parse_function(&mut self) -> Result<Expr, KaoriError> {
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Function)?;
+
+        let name = self.token_stream.lexeme().to_owned();
+
+        self.token_stream.consume(TokenKind::Identifier)?;
+
+        self.token_stream.consume(TokenKind::LeftParen)?;
+
+        let parameters =
+            self.parse_comma_separator(Parser::parse_function_parameter, TokenKind::RightParen)?;
+
+        self.token_stream.consume(TokenKind::RightParen)?;
+
+        let mut body = Vec::new();
+
+        self.token_stream.consume(TokenKind::LeftBrace)?;
+
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
+        {
+            let statement = self.parse_expression()?;
+            body.push(statement);
+        }
+
+        self.token_stream.consume(TokenKind::RightBrace)?;
+
+        Ok(Expr::function(name, parameters, body, span))
+    }
+
+    pub fn parse_function_parameter(&mut self) -> Result<(String, Span), KaoriError> {
+        let name = self.token_stream.lexeme().to_owned();
+        let span = self.token_stream.span();
+
+        self.token_stream.consume(TokenKind::Identifier)?;
+
+        Ok((name, span))
+    }
+
     fn build_binary_operator(&mut self) -> BinaryOp {
         let token_kind = self.token_stream.token_kind();
 
@@ -237,7 +431,7 @@ impl<'a> Parser<'a> {
         let span = self.token_stream.span();
 
         let primary = match token_kind {
-            TokenKind::Function => self.parse_closure()?,
+            TokenKind::Function => self.parse_function()?,
             TokenKind::LeftParen => {
                 self.token_stream.consume(TokenKind::LeftParen)?;
                 let expr = self.parse_expression()?;
@@ -363,32 +557,5 @@ impl<'a> Parser<'a> {
         let member_access = Expr::member_access(object, property);
 
         self.parse_postfix_unary(member_access)
-    }
-
-    fn parse_closure(&mut self) -> Result<Expr, KaoriError> {
-        let span = self.token_stream.span();
-
-        self.token_stream.consume(TokenKind::Function)?;
-
-        self.token_stream.consume(TokenKind::LeftParen)?;
-
-        let parameters =
-            self.parse_comma_separator(Parser::parse_function_parameter, TokenKind::RightParen)?;
-
-        self.token_stream.consume(TokenKind::RightParen)?;
-
-        let mut body = Vec::new();
-
-        self.token_stream.consume(TokenKind::LeftBrace)?;
-
-        while !self.token_stream.at_end() {
-            let statement = self.parse_statement()?;
-
-            body.push(statement);
-        }
-
-        self.token_stream.consume(TokenKind::RightBrace)?;
-
-        Ok(Expr::closure(parameters, body, span))
     }
 }

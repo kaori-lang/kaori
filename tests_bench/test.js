@@ -1,1 +1,7 @@
-console.log(1 + 1.0);
+let bar = function (n) {
+	console.log("hello");
+
+	console.log(bar);
+};
+
+bar(5);
