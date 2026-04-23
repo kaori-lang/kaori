@@ -1004,7 +1004,7 @@ fn opcode_set_field<const VALUE: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
+            false,
             object.is_dict(),
             "cannot set field on {:?}, value is not a dict",
             object
@@ -1036,7 +1036,7 @@ fn opcode_get_field<const UNCHECKED: bool>(
         let key = *registers.add(key as usize);
 
         type_check!(
-            UNCHECKED,
+            false,
             object.is_dict(),
             "cannot get field from {:?}, value is not a dict",
             object
@@ -1081,7 +1081,7 @@ fn opcode_call<const SRC: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
+            false,
             src.is_function(),
             "cannot call {:?}, value is not a function",
             src
