@@ -1,6 +1,10 @@
-use crate::lexer::span::Span;
-
-use super::{assign_op::AssignOp, binary_op::BinaryOp, node_id::NodeId, unary_op::UnaryOp};
+use crate::{
+    ast::{
+        NodeId,
+        ops::{AssignOp, BinaryOp, UnaryOp},
+    },
+    lexer::span::Span,
+};
 
 #[derive(Debug)]
 pub struct Expr {
@@ -60,10 +64,7 @@ pub enum ExprKind {
         parameters: Vec<(String, Span)>,
         body: Vec<Expr>,
     },
-    Block {
-        body: Vec<Expr>,
-        tail: Option<Box<Expr>>,
-    },
+    Block(Vec<Expr>),
     If {
         condition: Box<Expr>,
         then_branch: Box<Expr>,
@@ -79,10 +80,7 @@ pub enum ExprKind {
         increment: Box<Expr>,
         block: Box<Expr>,
     },
-    UncheckedBlock {
-        body: Vec<Expr>,
-        tail: Option<Box<Expr>>,
-    },
+    UncheckedBlock(Vec<Expr>),
     Return(Option<Box<Expr>>),
     Break,
     Continue,
@@ -255,14 +253,11 @@ impl Expr {
         }
     }
 
-    pub fn block(body: Vec<Expr>, tail: Option<Expr>, span: Span) -> Expr {
+    pub fn block(body: Vec<Expr>, span: Span) -> Expr {
         Expr {
             id: NodeId::default(),
             span,
-            kind: ExprKind::Block {
-                body,
-                tail: tail.map(Box::new),
-            },
+            kind: ExprKind::Block(body),
         }
     }
 
@@ -302,14 +297,11 @@ impl Expr {
         }
     }
 
-    pub fn unchecked_block(body: Vec<Expr>, tail: Option<Expr>, span: Span) -> Expr {
+    pub fn unchecked_block(body: Vec<Expr>, span: Span) -> Expr {
         Expr {
             id: NodeId::default(),
             span,
-            kind: ExprKind::UncheckedBlock {
-                body,
-                tail: tail.map(Box::new),
-            },
+            kind: ExprKind::UncheckedBlock(body),
         }
     }
 

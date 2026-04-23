@@ -98,8 +98,8 @@ const HANDLERS: [Handler; 108] = [
     opcode_call::<false>,
     opcode_return,
     opcode_jump::<false>,
-    opcode_jump_if_not_zero::<false>,
-    opcode_jump_if_zero::<false>,
+    opcode_jump_if_true::<false>,
+    opcode_jump_if_false::<false>,
     opcode_jump_if_less::<REGISTER, REGISTER, false>,
     opcode_jump_if_less::<REGISTER, IMMEDIATE, false>,
     opcode_jump_if_less_equal::<REGISTER, REGISTER, false>,
@@ -153,8 +153,8 @@ const HANDLERS: [Handler; 108] = [
     opcode_call::<true>,
     opcode_return,
     opcode_jump::<true>,
-    opcode_jump_if_not_zero::<true>,
-    opcode_jump_if_zero::<true>,
+    opcode_jump_if_true::<true>,
+    opcode_jump_if_false::<true>,
     opcode_jump_if_less::<REGISTER, REGISTER, true>,
     opcode_jump_if_less::<REGISTER, IMMEDIATE, true>,
     opcode_jump_if_less_equal::<REGISTER, REGISTER, true>,
@@ -1143,7 +1143,7 @@ fn opcode_jump<const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_jump_if_not_zero<const UNCHECKED: bool>(
+fn opcode_jump_if_true<const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -1151,7 +1151,7 @@ fn opcode_jump_if_not_zero<const UNCHECKED: bool>(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::JumpIfNotZero { src, offset } = *ip else {
+        let Instruction::JumpIfTrue { src, offset } = *ip else {
             unreachable_unchecked()
         };
 
@@ -1179,7 +1179,7 @@ fn opcode_jump_if_not_zero<const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_jump_if_zero<const UNCHECKED: bool>(
+fn opcode_jump_if_false<const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -1187,7 +1187,7 @@ fn opcode_jump_if_zero<const UNCHECKED: bool>(
     size: u8,
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
-        let Instruction::JumpIfZero { src, offset } = *ip else {
+        let Instruction::JumpIfFalse { src, offset } = *ip else {
             unreachable_unchecked()
         };
 

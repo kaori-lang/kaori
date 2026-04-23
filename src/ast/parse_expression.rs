@@ -1,16 +1,11 @@
 use crate::{
+    ast::ops::{AssignOp, BinaryOp, UnaryOp},
     error::kaori_error::KaoriError,
     kaori_error,
     lexer::{span::Span, token_kind::TokenKind},
 };
 
-use super::{
-    assign_op::{AssignOp, AssignOpKind},
-    binary_op::{BinaryOp, BinaryOpKind},
-    expr::Expr,
-    parser::Parser,
-    unary_op::{UnaryOp, UnaryOpKind},
-};
+use super::{expr::Expr, parser::Parser};
 
 impl<'a> Parser<'a> {
     pub fn parse_return(&mut self) -> Result<Expr, KaoriError> {
@@ -60,25 +55,17 @@ impl<'a> Parser<'a> {
         self.token_stream.consume(TokenKind::LeftBrace)?;
 
         let mut body = Vec::new();
-        let mut tail = None;
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
         {
-            let expr = self.parse_expression()?;
+            let expr = self.parse_expression_statement()?;
 
-            if self.token_stream.token_kind() == TokenKind::Semicolon {
-                self.token_stream.advance();
-                body.push(expr);
-            } else {
-                // no semicolon before } — this is the tail expression
-                tail = Some(expr);
-                break;
-            }
+            body.push(expr);
         }
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Expr::block(body, tail, span))
+        Ok(Expr::block(body, span))
     }
 
     pub fn parse_unchecked_block(&mut self) -> Result<Expr, KaoriError> {
@@ -88,24 +75,17 @@ impl<'a> Parser<'a> {
         self.token_stream.consume(TokenKind::LeftBrace)?;
 
         let mut body = Vec::new();
-        let mut tail = None;
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
         {
-            let expr = self.parse_expression()?;
+            let expr = self.parse_expression_statement()?;
 
-            if self.token_stream.token_kind() == TokenKind::Semicolon {
-                self.token_stream.advance();
-                body.push(expr);
-            } else {
-                tail = Some(expr);
-                break;
-            }
+            body.push(expr);
         }
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Expr::unchecked_block(body, tail, span))
+        Ok(Expr::unchecked_block(body, span))
     }
 
     pub fn parse_if(&mut self) -> Result<Expr, KaoriError> {
@@ -185,7 +165,7 @@ impl<'a> Parser<'a> {
 
         while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
         {
-            let statement = self.parse_expression()?;
+            let statement = self.parse_expression_statement()?;
             body.push(statement);
         }
 
@@ -206,33 +186,29 @@ impl<'a> Parser<'a> {
     fn build_binary_operator(&mut self) -> BinaryOp {
         let token_kind = self.token_stream.token_kind();
 
-        let op_kind = match token_kind {
-            TokenKind::Plus => BinaryOpKind::Add,
-            TokenKind::Minus => BinaryOpKind::Subtract,
-            TokenKind::Multiply => BinaryOpKind::Multiply,
-            TokenKind::Divide => BinaryOpKind::Divide,
-            TokenKind::Modulo => BinaryOpKind::Modulo,
-            TokenKind::Equal => BinaryOpKind::Equal,
-            TokenKind::NotEqual => BinaryOpKind::NotEqual,
-            TokenKind::Greater => BinaryOpKind::Greater,
-            TokenKind::GreaterEqual => BinaryOpKind::GreaterEqual,
-            TokenKind::Less => BinaryOpKind::Less,
-            TokenKind::LessEqual => BinaryOpKind::LessEqual,
+        match token_kind {
+            TokenKind::Plus => BinaryOp::Add,
+            TokenKind::Minus => BinaryOp::Subtract,
+            TokenKind::Multiply => BinaryOp::Multiply,
+            TokenKind::Divide => BinaryOp::Divide,
+            TokenKind::Modulo => BinaryOp::Modulo,
+            TokenKind::Equal => BinaryOp::Equal,
+            TokenKind::NotEqual => BinaryOp::NotEqual,
+            TokenKind::Greater => BinaryOp::Greater,
+            TokenKind::GreaterEqual => BinaryOp::GreaterEqual,
+            TokenKind::Less => BinaryOp::Less,
+            TokenKind::LessEqual => BinaryOp::LessEqual,
             _ => unreachable!(),
-        };
-
-        BinaryOp::new(op_kind)
+        }
     }
 
     fn build_unary_operator(&mut self) -> UnaryOp {
         let token_kind = self.token_stream.token_kind();
 
-        let op_kind = match token_kind {
-            TokenKind::Minus => UnaryOpKind::Negate,
+        match token_kind {
+            TokenKind::Minus => UnaryOp::Negate,
             _ => unreachable!(),
-        };
-
-        UnaryOp::new(op_kind)
+        }
     }
 
     pub fn parse_expression(&mut self) -> Result<Expr, KaoriError> {
@@ -247,12 +223,12 @@ impl<'a> Parser<'a> {
         let token_kind = self.token_stream.token_kind();
 
         let operator = match token_kind {
-            TokenKind::Assign => AssignOpKind::Assign,
-            TokenKind::AddAssign => AssignOpKind::AddAssign,
-            TokenKind::SubtractAssign => AssignOpKind::SubtractAssign,
-            TokenKind::MultiplyAssign => AssignOpKind::MultiplyAssign,
-            TokenKind::DivideAssign => AssignOpKind::DivideAssign,
-            TokenKind::ModuloAssign => AssignOpKind::ModuloAssign,
+            TokenKind::Assign => AssignOp::Assign,
+            TokenKind::AddAssign => AssignOp::AddAssign,
+            TokenKind::SubtractAssign => AssignOp::SubtractAssign,
+            TokenKind::MultiplyAssign => AssignOp::MultiplyAssign,
+            TokenKind::DivideAssign => AssignOp::DivideAssign,
+            TokenKind::ModuloAssign => AssignOp::ModuloAssign,
             TokenKind::DeclareAssign => {
                 self.token_stream.advance();
 
@@ -262,8 +238,6 @@ impl<'a> Parser<'a> {
             }
             _ => return Ok(left),
         };
-
-        let operator = AssignOp::new(operator);
 
         self.token_stream.advance();
 

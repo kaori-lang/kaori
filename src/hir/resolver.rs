@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use crate::{
     ast::{
         self,
-        assign_op::AssignOpKind,
-        binary_op::{BinaryOp, BinaryOpKind},
+        ops::{AssignOp, BinaryOp},
     },
     error::kaori_error::KaoriError,
     kaori_error,
@@ -12,10 +11,8 @@ use crate::{
 };
 
 use super::{
-    decl::Decl,
     expr::{Expr, ExprKind},
     node_id::NodeId,
-    stmt::Stmt,
     symbol::SymbolKind,
     symbol_table::SymbolTable,
 };
@@ -47,16 +44,17 @@ impl Resolver {
         hir_id
     }
 
-    fn resolve_main_function(&mut self, declarations: &mut [ast::Decl]) -> Result<(), KaoriError> {
-        for (index, declaration) in declarations.iter().enumerate() {
-            match &declaration.kind {
-                ast::DeclKind::Function { name, .. } => {
+    fn resolve_main_function(&mut self, functions: &mut [ast::Expr]) -> Result<(), KaoriError> {
+        for (index, function) in functions.iter().enumerate() {
+            match &function.kind {
+                ast::ExprKind::Function { name, .. } => {
                     if name == "main" {
-                        declarations.swap(0, index);
+                        functions.swap(0, index);
 
                         return Ok(());
                     }
                 }
+                _ => panic!("Expected only function the global scope"),
             }
         }
 
@@ -66,38 +64,39 @@ impl Resolver {
         ))
     }
 
-    pub fn resolve(&mut self, declarations: &mut [ast::Decl]) -> Result<Vec<Decl>, KaoriError> {
-        self.resolve_main_function(declarations)?;
+    pub fn resolve(&mut self, expressions: &mut [ast::Expr]) -> Result<Vec<Expr>, KaoriError> {
+        self.resolve_main_function(expressions)?;
 
-        for declaration in declarations.iter() {
-            match &declaration.kind {
-                ast::DeclKind::Function { name, .. } => {
+        for expression in expressions.iter() {
+            match &expression.kind {
+                ast::ExprKind::Function { name, .. } => {
                     if self.symbol_table.search_current_scope(name).is_some() {
                         return Err(kaori_error!(
-                            declaration.span,
+                            expression.span,
                             "{} is already declared",
                             name
                         ));
                     }
 
-                    let id = self.generate_id(declaration.id);
+                    let id = self.generate_id(expression.id);
 
                     self.symbol_table.declare_function(id, name.to_owned());
                 }
+                _ => panic!("Expected only function the global scope"),
             };
         }
 
-        let declarations = declarations
+        let expressions = expressions
             .iter()
-            .map(|declaration| self.resolve_declaration(declaration))
-            .collect::<Result<Vec<Decl>, KaoriError>>()?;
+            .map(|expression| self.resolve_function(expression))
+            .collect::<Result<Vec<Expr>, KaoriError>>()?;
 
-        Ok(declarations)
+        Ok(expressions)
     }
 
-    fn resolve_declaration(&mut self, declaration: &ast::Decl) -> Result<Decl, KaoriError> {
-        Ok(match &declaration.kind {
-            ast::DeclKind::Function {
+    fn resolve_function(&mut self, expression: &ast::Expr) -> Result<Expr, KaoriError> {
+        Ok(match &expression.kind {
+            ast::ExprKind::Function {
                 parameters, body, ..
             } => {
                 self.enter_function();
@@ -123,76 +122,77 @@ impl Resolver {
 
                 let body = body
                     .iter()
-                    .map(|stmt| self.resolve_statement(stmt))
-                    .collect::<Result<Vec<Stmt>, KaoriError>>()?;
+                    .map(|stmt| self.resolve_expression(stmt))
+                    .collect::<Result<Vec<Expr>, KaoriError>>()?;
 
                 self.exit_function();
 
-                let id = self.ast_to_hir.get(&declaration.id).unwrap();
+                let id = self.ast_to_hir.get(&expression.id).unwrap();
 
-                Decl::function(*id, parameters, body, declaration.span)
+                Expr::function(*id, parameters, body, expression.span)
             }
+            _ => panic!("Should resolve only functions!"),
         })
     }
 
-    fn resolve_statement(&mut self, statement: &ast::Stmt) -> Result<Stmt, KaoriError> {
-        Ok(match &statement.kind {
-            ast::StmtKind::Expression(expression) => {
+    fn resolve_expression(&mut self, expression: &ast::Expr) -> Result<Expr, KaoriError> {
+        Ok(match &expression.kind {
+            ast::ExprKind::Function {
+                name,
+                parameters,
+                body,
+            } => todo!(),
+            ast::ExprKind::Print(expression) => {
                 let expr = self.resolve_expression(expression)?;
 
-                Stmt::expression(expr, statement.span)
+                Expr::print(expr, expression.span)
             }
-            ast::StmtKind::Print(expression) => {
-                let expr = self.resolve_expression(expression)?;
-
-                Stmt::print(expr, statement.span)
-            }
-            ast::StmtKind::Block(statements) => {
+            ast::ExprKind::Block(expressions) => {
                 self.symbol_table.enter_scope();
 
-                let statements = statements
+                let expressions = expressions
                     .iter()
-                    .map(|stmt| self.resolve_statement(stmt))
-                    .collect::<Result<Vec<Stmt>, KaoriError>>()?;
+                    .map(|expr| self.resolve_expression(expr))
+                    .collect::<Result<Vec<Expr>, KaoriError>>()?;
 
                 self.symbol_table.exit_scope();
 
-                Stmt::block(statements, statement.span)
+                Expr::block(expressions, expression.span)
             }
-            ast::StmtKind::UncheckedBlock(statements) => {
-                let statements = statements
+            ast::ExprKind::UncheckedBlock(expressions) => {
+                let expressions = expressions
                     .iter()
-                    .map(|stmt| self.resolve_statement(stmt))
-                    .collect::<Result<Vec<Stmt>, KaoriError>>()?;
+                    .map(|stmt| self.resolve_expression(stmt))
+                    .collect::<Result<Vec<Expr>, KaoriError>>()?;
 
-                Stmt::unchecked_block(statements, statement.span)
+                Expr::unchecked_block(expressions, expression.span)
             }
-            ast::StmtKind::If {
+            ast::ExprKind::If {
                 condition,
                 then_branch,
                 else_branch,
             } => {
                 let condition = self.resolve_expression(condition)?;
-                let then_branch = self.resolve_statement(then_branch)?;
+                let then_branch = self.resolve_expression(then_branch)?;
                 let else_branch = match else_branch {
-                    Some(branch) => Some(self.resolve_statement(branch)?),
+                    Some(branch) => Some(self.resolve_expression(branch)?),
                     _ => None,
                 };
 
-                Stmt::branch_(condition, then_branch, else_branch, statement.span)
+                Expr::branch(condition, then_branch, else_branch, expression.span)
             }
-            ast::StmtKind::WhileLoop { condition, block } => {
+            ast::ExprKind::WhileLoop { condition, block } => {
                 let init = None;
                 let condition = self.resolve_expression(condition)?;
                 let increment = None;
 
                 self.active_loops += 1;
-                let block = self.resolve_statement(block)?;
+                let block = self.resolve_expression(block)?;
                 self.active_loops -= 1;
 
-                Stmt::loop_(init, condition, block, increment, statement.span)
+                Expr::loop_(init, condition, block, increment, expression.span)
             }
-            ast::StmtKind::ForLoop {
+            ast::ExprKind::ForLoop {
                 init,
                 condition,
                 increment,
@@ -202,51 +202,43 @@ impl Resolver {
 
                 let init = Some(self.resolve_expression(init)?);
                 let condition = self.resolve_expression(condition)?;
-                let increment = Some(self.resolve_statement(increment)?);
+                let increment = Some(self.resolve_expression(increment)?);
 
                 self.active_loops += 1;
-                let block = self.resolve_statement(block)?;
+                let block = self.resolve_expression(block)?;
                 self.active_loops -= 1;
 
                 self.symbol_table.exit_scope();
 
-                Stmt::loop_(init, condition, block, increment, statement.span)
+                Expr::loop_(init, condition, block, increment, expression.span)
             }
-            ast::StmtKind::Break => {
+            ast::ExprKind::Break => {
                 if self.active_loops == 0 {
                     return Err(kaori_error!(
-                        statement.span,
+                        expression.span,
                         "break statement can't appear outside of loops"
                     ));
                 }
 
-                Stmt::break_(statement.span)
+                Expr::break_(expression.span)
             }
-            ast::StmtKind::Continue => {
+            ast::ExprKind::Continue => {
                 if self.active_loops == 0 {
                     return Err(kaori_error!(
-                        statement.span,
+                        expression.span,
                         "continue statement can't appear outside of loops"
                     ));
                 }
 
-                Stmt::continue_(statement.span)
+                Expr::continue_(expression.span)
             }
-            ast::StmtKind::Return(expr) => {
+            ast::ExprKind::Return(expr) => {
                 let expr = match expr {
                     Some(e) => Some(self.resolve_expression(e)?),
                     _ => None,
                 };
 
-                Stmt::return_(expr, statement.span)
-            }
-        })
-    }
-
-    fn resolve_expression(&mut self, expression: &ast::Expr) -> Result<Expr, KaoriError> {
-        Ok(match &expression.kind {
-            ast::ExprKind::Closure { parameters, body } => {
-                todo!()
+                Expr::return_(expr, expression.span)
             }
             ast::ExprKind::DeclareAssign { left, right } => {
                 let right = self.resolve_expression(right)?;
@@ -276,23 +268,21 @@ impl Resolver {
                 let right = self.resolve_expression(right)?;
                 let left = self.resolve_expression(left)?;
 
-                let (ExprKind::Variable(_) | ExprKind::MemberAccess { .. }) = &left.kind else {
+                let (ExprKind::VariableRef(_) | ExprKind::MemberAccess { .. }) = &left.kind else {
                     return Err(kaori_error!(
                         left.span,
                         "expected a valid left hand side to assign values to"
                     ));
                 };
 
-                let operator_kind = match &operator.kind {
-                    AssignOpKind::AddAssign => BinaryOpKind::Add,
-                    AssignOpKind::SubtractAssign => BinaryOpKind::Subtract,
-                    AssignOpKind::MultiplyAssign => BinaryOpKind::Multiply,
-                    AssignOpKind::DivideAssign => BinaryOpKind::Divide,
-                    AssignOpKind::ModuloAssign => BinaryOpKind::Modulo,
-                    AssignOpKind::Assign => return Ok(Expr::assign(left, right, expression.span)),
+                let operator = match operator {
+                    AssignOp::AddAssign => BinaryOp::Add,
+                    AssignOp::SubtractAssign => BinaryOp::Subtract,
+                    AssignOp::MultiplyAssign => BinaryOp::Multiply,
+                    AssignOp::DivideAssign => BinaryOp::Divide,
+                    AssignOp::ModuloAssign => BinaryOp::Modulo,
+                    AssignOp::Assign => return Ok(Expr::assign(left, right, expression.span)),
                 };
-
-                let operator = BinaryOp::new(operator_kind);
 
                 let right = Expr::binary(operator, left.to_owned(), right.to_owned(), right.span);
 
@@ -381,8 +371,8 @@ impl Resolver {
                 };
 
                 match symbol.kind {
-                    SymbolKind::Function => Expr::function(symbol.id, expression.span),
-                    SymbolKind::Variable => Expr::variable(symbol.id, expression.span),
+                    SymbolKind::Function => Expr::function_ref(symbol.id, expression.span),
+                    SymbolKind::Variable => Expr::variable_ref(symbol.id, expression.span),
                 }
             }
         })

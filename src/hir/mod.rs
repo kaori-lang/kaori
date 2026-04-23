@@ -1,6 +1,4 @@
-pub mod decl;
 pub mod expr;
-pub mod stmt;
 
 pub mod node_id;
 pub mod resolver;

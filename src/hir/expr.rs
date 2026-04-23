@@ -1,5 +1,5 @@
 use crate::{
-    ast::{binary_op::BinaryOp, unary_op::UnaryOp},
+    ast::ops::{BinaryOp, UnaryOp},
     lexer::span::Span,
 };
 
@@ -42,7 +42,13 @@ pub enum ExprKind {
         id: NodeId,
         right: Box<Expr>,
     },
-    Variable(NodeId),
+    VariableRef(NodeId),
+    FunctionRef(NodeId),
+    String(String),
+    Number(f64),
+    DictLiteral {
+        fields: Vec<(Expr, Expr)>,
+    },
     FunctionCall {
         callee: Box<Expr>,
         arguments: Vec<Expr>,
@@ -51,12 +57,27 @@ pub enum ExprKind {
         object: Box<Expr>,
         property: Box<Expr>,
     },
-    Function(NodeId),
-    String(String),
-    Number(f64),
-    DictLiteral {
-        fields: Vec<(Expr, Expr)>,
+    Block(Vec<Expr>),
+    UncheckedBlock(Vec<Expr>),
+    Function {
+        parameters: Vec<(NodeId, Span)>,
+        body: Vec<Expr>,
     },
+    Branch {
+        condition: Box<Expr>,
+        then_branch: Box<Expr>,
+        else_branch: Option<Box<Expr>>,
+    },
+    Loop {
+        init: Option<Box<Expr>>,
+        condition: Box<Expr>,
+        block: Box<Expr>,
+        increment: Option<Box<Expr>>,
+    },
+    Return(Option<Box<Expr>>),
+    Break,
+    Continue,
+    Print(Box<Expr>),
 }
 
 impl Expr {
@@ -137,41 +158,19 @@ impl Expr {
         }
     }
 
-    pub fn function_call(callee: Expr, arguments: Vec<Expr>, span: Span) -> Expr {
+    pub fn variable_ref(id: NodeId, span: Span) -> Expr {
         Expr {
             id: NodeId::default(),
             span,
-            kind: ExprKind::FunctionCall {
-                callee: Box::new(callee),
-                arguments,
-            },
+            kind: ExprKind::VariableRef(id),
         }
     }
 
-    pub fn member_access(object: Expr, property: Expr, span: Span) -> Expr {
+    pub fn function_ref(id: NodeId, span: Span) -> Expr {
         Expr {
             id: NodeId::default(),
             span,
-            kind: ExprKind::MemberAccess {
-                object: Box::new(object),
-                property: Box::new(property),
-            },
-        }
-    }
-
-    pub fn variable(id: NodeId, span: Span) -> Expr {
-        Expr {
-            id: NodeId::default(),
-            span,
-            kind: ExprKind::Variable(id),
-        }
-    }
-
-    pub fn function(id: NodeId, span: Span) -> Expr {
-        Expr {
-            id: NodeId::default(),
-            span,
-            kind: ExprKind::Function(id),
+            kind: ExprKind::FunctionRef(id),
         }
     }
 
@@ -196,6 +195,125 @@ impl Expr {
             id: NodeId::default(),
             span,
             kind: ExprKind::DictLiteral { fields },
+        }
+    }
+
+    pub fn function_call(callee: Expr, arguments: Vec<Expr>, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::FunctionCall {
+                callee: Box::new(callee),
+                arguments,
+            },
+        }
+    }
+
+    pub fn member_access(object: Expr, property: Expr, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::MemberAccess {
+                object: Box::new(object),
+                property: Box::new(property),
+            },
+        }
+    }
+
+    pub fn block(body: Vec<Expr>, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Block(body),
+        }
+    }
+
+    pub fn unchecked_block(body: Vec<Expr>, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::UncheckedBlock(body),
+        }
+    }
+
+    pub fn function(
+        id: NodeId,
+        parameters: Vec<(NodeId, Span)>,
+        body: Vec<Expr>,
+        span: Span,
+    ) -> Expr {
+        Expr {
+            id,
+            span,
+            kind: ExprKind::Function { parameters, body },
+        }
+    }
+
+    pub fn branch(
+        condition: Expr,
+        then_branch: Expr,
+        else_branch: Option<Expr>,
+        span: Span,
+    ) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Branch {
+                condition: Box::new(condition),
+                then_branch: Box::new(then_branch),
+                else_branch: else_branch.map(Box::new),
+            },
+        }
+    }
+
+    pub fn loop_(
+        init: Option<Expr>,
+        condition: Expr,
+        block: Expr,
+        increment: Option<Expr>,
+        span: Span,
+    ) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Loop {
+                init: init.map(Box::new),
+                condition: Box::new(condition),
+                block: Box::new(block),
+                increment: increment.map(Box::new),
+            },
+        }
+    }
+
+    pub fn return_(expr: Option<Expr>, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Return(expr.map(Box::new)),
+        }
+    }
+
+    pub fn break_(span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Break,
+        }
+    }
+
+    pub fn continue_(span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Continue,
+        }
+    }
+
+    pub fn print(expr: Expr, span: Span) -> Expr {
+        Expr {
+            id: NodeId::default(),
+            span,
+            kind: ExprKind::Print(Box::new(expr)),
         }
     }
 }

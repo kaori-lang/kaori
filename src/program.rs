@@ -4,7 +4,7 @@ use crate::{
     ast::{self, parser::Parser},
     bytecode::{self, emit_bytecode::emit_bytecode},
     error::kaori_error::KaoriError,
-    hir::{decl::Decl, resolver::Resolver},
+    hir::{expr::Expr, resolver::Resolver},
     lexer::{lexer::Lexer, token_stream::TokenStream},
     runtime::{function::from_compiled, gc::Gc, vm::Vm},
     //runtime::{function::from_compiled, gc::Gc, vm::Vm},
@@ -19,29 +19,29 @@ fn run_lexical_analysis(source: &'_ str) -> Result<TokenStream<'_>, KaoriError> 
     Ok(token_stream)
 }
 
-fn run_syntax_analysis(token_stream: TokenStream) -> Result<Vec<ast::Decl>, KaoriError> {
+fn run_syntax_analysis(token_stream: TokenStream) -> Result<Vec<ast::Expr>, KaoriError> {
     let mut parser = Parser::new(token_stream);
 
-    let ast = parser.parse()?;
+    let functions = parser.parse()?;
 
-    Ok(ast)
+    Ok(functions)
 }
 
-fn run_semantic_analysis(ast: &mut [ast::Decl]) -> Result<Vec<Decl>, KaoriError> {
+fn run_semantic_analysis(ast: &mut [ast::Expr]) -> Result<Vec<Expr>, KaoriError> {
     let mut resolver = Resolver::default();
 
-    let declarations = resolver.resolve(ast)?;
+    let functions = resolver.resolve(ast)?;
 
-    Ok(declarations)
+    Ok(functions)
 }
 
 pub fn compile_source_code(source: &str) -> Result<Vec<bytecode::Function>, KaoriError> {
     let token_stream = run_lexical_analysis(source)?;
-    let mut ast = run_syntax_analysis(token_stream)?;
+    let mut functions = run_syntax_analysis(token_stream)?;
 
-    let declarations = run_semantic_analysis(&mut ast)?;
+    let functions = run_semantic_analysis(&mut functions)?;
 
-    emit_bytecode(&declarations)
+    emit_bytecode(&functions)
 }
 
 pub fn run_program(source: &str) -> Result<(), KaoriError> {

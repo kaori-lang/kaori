@@ -25,10 +25,10 @@ impl<'a> Parser<'a> {
         Ok(functions)
     }
 
-    pub fn parse_statement_expression(&mut self) -> Result<Stmt, KaoriError> {
+    pub fn parse_expression_statement(&mut self) -> Result<Expr, KaoriError> {
         let token_kind = self.token_stream.token_kind();
 
-        let statement = match token_kind {
+        let expression = match token_kind {
             TokenKind::Print => self.parse_print(),
             TokenKind::If => self.parse_if(),
             TokenKind::While => self.parse_while_loop(),
@@ -38,13 +38,13 @@ impl<'a> Parser<'a> {
             TokenKind::Return => self.parse_return(),
             TokenKind::Unchecked => self.parse_unchecked_block(),
             _ => {
-                let statement = self.parse_expression();
+                let expression = self.parse_expression();
 
-                if statement.is_ok() {
+                if expression.is_ok() {
                     self.token_stream.consume(TokenKind::Semicolon)?;
-                    statement
+                    expression
                 } else {
-                    statement
+                    expression
                 }
             }
         }?;
@@ -56,7 +56,7 @@ impl<'a> Parser<'a> {
             _ => (),
         };
 
-        Ok(statement)
+        Ok(expression)
     }
 
     pub fn parse_comma_separator<T>(

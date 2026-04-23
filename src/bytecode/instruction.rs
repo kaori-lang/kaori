@@ -42,8 +42,8 @@ pub enum Instruction {
     Call { dest: u8, src: u8 },
     Return { src: u8 },
     Jump { offset: i32 },
-    JumpIfZero { src: u8, offset: i32 },
-    JumpIfNotZero { src: u8, offset: i32 },
+    JumpIfFalse { src: u8, offset: i32 },
+    JumpIfTrue { src: u8, offset: i32 },
     JumpIfLess { src1: u8, src2: u8, offset: i32 },
     JumpIfLessI { src1: u8, src2: Imm, offset: i32 },
     JumpIfLessEqual { src1: u8, src2: u8, offset: i32 },
@@ -182,11 +182,11 @@ impl fmt::Display for Instruction {
             }
             Instruction::Jump { offset } => write!(f, "JMP {}", offset),
 
-            Instruction::JumpIfNotZero { src, offset } => {
-                write!(f, "JMP_IF_NOT_ZERO r{} {}", src, offset)
+            Instruction::JumpIfTrue { src, offset } => {
+                write!(f, "JMP_IF_TRUE r{} {}", src, offset)
             }
-            Instruction::JumpIfZero { src, offset } => {
-                write!(f, "JMP_IF_ZERO r{} {}", src, offset)
+            Instruction::JumpIfFalse { src, offset } => {
+                write!(f, "JMP_IF_FALSE r{} {}", src, offset)
             }
             Instruction::JumpIfLess { src1, src2, offset } => {
                 write!(f, "JMP_IF_LT r{} r{} {}", src1, src2, offset)
