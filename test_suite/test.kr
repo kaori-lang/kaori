@@ -1,12 +1,59 @@
 fun main() {
+    iterations := 1000000;
+    max_fib := 30;
 
+    for i := 0; i < iterations; i += 1 {
+        a := 0;
+        b := 1;
 
-    print(true or false);
+        for j := 0; j < max_fib; j += 1 {
+            temp := a + b;
+            a = b;
+            b = temp;
+        }
+    }
 }
 
 
 
 /*
+0000  NOP
+0001  JMP_IF_GTE r0 2 5
+0002  RET r0
+0003  LOAD_IMM r1 0
+0004  NOP
+0005  JMP 11
+0006  SUB r10 r0 1
+0007  NOP
+0008  CALL r4 k0
+0009  SUB r10 r0 2
+0010  NOP
+0011  CALL r6 k0
+0012  ADD r8 r4 r6
+0013  RET r8
+0014  LOAD_IMM r1 0
+0015  NOP
+
+0000  LOADK r0 k0
+0001  LOAD_IMM r1 30
+0002  LOAD_IMM r2 0
+0003  JMP_IF_GTE r2 r0 12
+0004  LOAD_IMM r4 0
+0005  LOAD_IMM r5 1
+0006  LOAD_IMM r6 0
+0007  JMP_IF_GTE r6 r1 6
+0008  ADD r8 r4 r5
+0009  MOV r4 r5
+0010  MOV r5 r8
+0011  ADD r6 r6 1
+0012  JMP_IF_LT r6 r1 -4
+0013  ADD r2 r2 1
+0014  JMP_IF_LT r2 r0 -10
+0015  LOAD_IMM r14 0
+0016  RET r14
+
+
+
 0000  LOAD_IMM r1 0
 0001  MOV r0 r1
 0002  LT r2 r0 100

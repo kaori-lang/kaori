@@ -8,3 +8,4 @@ pub use function::Function;
 pub use constants::Constant;
 pub mod constants;
 pub mod immediate;
+pub mod optimize_bytecode;

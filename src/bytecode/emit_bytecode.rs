@@ -523,14 +523,15 @@ impl<'a> FunctionContext<'a> {
                 } else {
                     Self::unit()
                 };
-
                 let src = self.materialize(src);
+
                 self.emit_instruction(Instruction::Move {
                     dest: dest.unwrap_register(),
                     src: src.unwrap_register(),
                 });
 
                 self.patch_jump(jump_end, self.instructions.len() as i32 - jump_end as i32);
+
                 dest
             }
             ExprKind::Loop {

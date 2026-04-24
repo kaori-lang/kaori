@@ -60,6 +60,7 @@ pub enum Instruction {
     Print { src: u8 },
     EnterUncheckedBlock,
     ExitUncheckedBlock,
+    Nop,
 }
 
 impl Instruction {
@@ -233,6 +234,9 @@ impl fmt::Display for Instruction {
             }
             Instruction::Print { src } => {
                 write!(f, "PRINT r{}", src)
+            }
+            Instruction::Nop => {
+                write!(f, "NOP")
             }
         }
     }
