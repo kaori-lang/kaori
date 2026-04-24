@@ -1,24 +1,24 @@
-
-fun fib(n) {
-    if n < 2 {
-        return n;
-    } else {
-        return fib(n - 1) + fib(n - 2);
-    }   
+fun main() {
+    for i := 0; i < 100; i += 1 {
+        print(i);
+    }
 }
-
-
-
-fun main()  {
-    unchecked {fib(30);}
-}
-
-
-
 
 
 
 /*
+0000  LOAD_IMM r1 0
+0001  MOV r0 r1
+0002  LT r2 r0 100
+0003  JMP_IF_FALSE r2 6
+0004  PRINT r0
+0005  ADD r3 r0 1
+0006  MOV r0 r3
+0007  LT r4 r0 100
+0008  JMP_IF_TRUE r4 -4
+0009  LOAD_IMM r5 0
+0010  RET r5
+
 fn main() {
     x := 0; // r0
     y := 0; // r1

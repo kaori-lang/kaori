@@ -60,22 +60,25 @@ const CONSTANT: u8 = 2;
 const HANDLERS_UNCHECKED_OFFSET: usize = HANDLERS.len() / 2;
 
 const HANDLERS: [Handler; 110] = [
-    // CHECKED HANDLERS
-    opcode_add::<REGISTER, REGISTER, false>,
-    opcode_add::<REGISTER, IMMEDIATE, false>,
-    opcode_subtract::<REGISTER, REGISTER, false>,
-    opcode_subtract::<REGISTER, IMMEDIATE, false>,
-    opcode_subtract::<IMMEDIATE, REGISTER, false>,
-    opcode_multiply::<REGISTER, REGISTER, false>,
-    opcode_multiply::<REGISTER, IMMEDIATE, false>,
-    opcode_divide::<REGISTER, REGISTER, false>,
-    opcode_divide::<REGISTER, IMMEDIATE, false>,
-    opcode_divide::<IMMEDIATE, REGISTER, false>,
-    opcode_modulo::<REGISTER, REGISTER, false>,
-    opcode_modulo::<REGISTER, IMMEDIATE, false>,
-    opcode_modulo::<IMMEDIATE, REGISTER, false>,
-    opcode_equal::<REGISTER, REGISTER, false>,
-    opcode_equal::<REGISTER, IMMEDIATE, false>,
+    // CHECKED HANDLERS (false)
+
+    // --- Arithmetic ---
+    opcode_add::<REGISTER, REGISTER, false>,  // Add
+    opcode_add::<REGISTER, IMMEDIATE, false>, // AddI
+    opcode_subtract::<REGISTER, REGISTER, false>, // Subtract
+    opcode_subtract::<REGISTER, IMMEDIATE, false>, // SubtractRI
+    opcode_subtract::<IMMEDIATE, REGISTER, false>, // SubtractIR
+    opcode_multiply::<REGISTER, REGISTER, false>, // Multiply
+    opcode_multiply::<REGISTER, IMMEDIATE, false>, // MultiplyI
+    opcode_divide::<REGISTER, REGISTER, false>, // Divide
+    opcode_divide::<REGISTER, IMMEDIATE, false>, // DivideRI
+    opcode_divide::<IMMEDIATE, REGISTER, false>, // DivideIR
+    opcode_modulo::<REGISTER, REGISTER, false>, // Modulo
+    opcode_modulo::<REGISTER, IMMEDIATE, false>, // ModuloRI
+    opcode_modulo::<IMMEDIATE, REGISTER, false>, // ModuloIR
+    // --- Comparisons ---
+    opcode_equal::<REGISTER, REGISTER, false>,  // Equal
+    opcode_equal::<REGISTER, IMMEDIATE, false>, // EqualI
     opcode_not_equal::<REGISTER, REGISTER, false>,
     opcode_not_equal::<REGISTER, IMMEDIATE, false>,
     opcode_less::<REGISTER, REGISTER, false>,
@@ -86,21 +89,26 @@ const HANDLERS: [Handler; 110] = [
     opcode_greater::<REGISTER, IMMEDIATE, false>,
     opcode_greater_equal::<REGISTER, REGISTER, false>,
     opcode_greater_equal::<REGISTER, IMMEDIATE, false>,
+    // --- Unary ---
     opcode_not::<false>,
     opcode_negate::<false>,
+    // --- Move / Load ---
     opcode_move::<false>,
     opcode_load_k::<false>,
     opcode_load_imm::<false>,
+    // --- Objects ---
     opcode_create_dict::<false>,
-    opcode_set_field::<REGISTER, false>,
-    opcode_set_field::<IMMEDIATE, false>,
+    opcode_set_field::<REGISTER, false>,  // SetField
+    opcode_set_field::<IMMEDIATE, false>, // SetFieldI
     opcode_get_field::<false>,
-    opcode_call::<REGISTER, false>,
-    opcode_call::<CONSTANT, false>,
+    // --- Calls ---
+    opcode_call::<REGISTER, false>, // Call
+    opcode_call::<CONSTANT, false>, // CallK
     opcode_return,
+    // --- Control Flow ---
     opcode_jump::<false>,
-    opcode_jump_if_true::<false>,
     opcode_jump_if_false::<false>,
+    opcode_jump_if_true::<false>,
     opcode_jump_if_less::<REGISTER, REGISTER, false>,
     opcode_jump_if_less::<REGISTER, IMMEDIATE, false>,
     opcode_jump_if_less_equal::<REGISTER, REGISTER, false>,
@@ -113,10 +121,13 @@ const HANDLERS: [Handler; 110] = [
     opcode_jump_if_equal::<REGISTER, IMMEDIATE, false>,
     opcode_jump_if_not_equal::<REGISTER, REGISTER, false>,
     opcode_jump_if_not_equal::<REGISTER, IMMEDIATE, false>,
+    // --- Misc ---
     opcode_print::<false>,
     opcode_enter_unchecked_block,
     opcode_exit_unchecked_block,
-    // UNCHECKED HANDLERS
+    // =============================
+    // UNCHECKED HANDLERS (true)
+    // =============================
     opcode_add::<REGISTER, REGISTER, true>,
     opcode_add::<REGISTER, IMMEDIATE, true>,
     opcode_subtract::<REGISTER, REGISTER, true>,
@@ -155,8 +166,8 @@ const HANDLERS: [Handler; 110] = [
     opcode_call::<CONSTANT, true>,
     opcode_return,
     opcode_jump::<true>,
-    opcode_jump_if_true::<true>,
     opcode_jump_if_false::<true>,
+    opcode_jump_if_true::<true>,
     opcode_jump_if_less::<REGISTER, REGISTER, true>,
     opcode_jump_if_less::<REGISTER, IMMEDIATE, true>,
     opcode_jump_if_less_equal::<REGISTER, REGISTER, true>,
@@ -173,7 +184,6 @@ const HANDLERS: [Handler; 110] = [
     opcode_enter_unchecked_block,
     opcode_exit_unchecked_block,
 ];
-
 pub struct Vm {
     pub registers: Vec<Value>,
     pub gc: Gc,
@@ -201,7 +211,6 @@ impl Vm {
     }
 }
 
-#[inline(always)]
 unsafe fn set_value(dest: u8, value: Value, registers: *mut Value) {
     unsafe {
         *registers.add(dest as usize) = value;

@@ -21,19 +21,16 @@ use super::{
 pub struct Resolver {
     symbol_table: SymbolTable,
     active_loops: u8,
-    local_scope: bool,
     ast_to_hir: HashMap<ast::NodeId, NodeId>,
 }
 
 impl Resolver {
     pub fn enter_function(&mut self) {
         self.symbol_table.enter_scope();
-        self.local_scope = true;
     }
 
     pub fn exit_function(&mut self) {
         self.symbol_table.exit_scope();
-        self.local_scope = false;
     }
 
     pub fn generate_id(&mut self, ast_id: ast::NodeId) -> NodeId {

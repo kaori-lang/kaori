@@ -3,7 +3,6 @@ use std::fmt;
 
 #[derive(Clone, Copy)]
 #[repr(u8)]
-#[repr(align(8))]
 pub enum Instruction {
     Add { dest: u8, src1: u8, src2: u8 },
     AddI { dest: u8, src1: u8, src2: Imm },
@@ -63,8 +62,8 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn discriminant(self) -> usize {
-        unsafe { *<*const _>::from(&self).cast::<u8>() as usize }
+    pub const fn discriminant(&self) -> usize {
+        unsafe { *(self as *const Instruction as *const u8) as usize }
     }
 }
 
