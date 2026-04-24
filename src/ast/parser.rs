@@ -481,6 +481,7 @@ impl<'a> Parser<'a> {
         let span = self.token_stream.span();
 
         let primary = match token_kind {
+            TokenKind::If => self.parse_if()?,
             TokenKind::Function => self.parse_function()?,
             TokenKind::LeftParen => {
                 self.token_stream.consume(TokenKind::LeftParen)?;

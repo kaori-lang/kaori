@@ -50,7 +50,6 @@ pub struct FunctionContext<'a> {
     constants: Constants,
     instructions: Vec<Instruction>,
     node_to_function: &'a HashMap<NodeId, usize>,
-    pending_arguments: Vec<usize>,
 }
 
 impl<'a> FunctionContext<'a> {
@@ -61,7 +60,6 @@ impl<'a> FunctionContext<'a> {
             constants: Constants::default(),
             instructions: Vec::new(),
             node_to_function,
-            pending_arguments: Vec::new(),
         }
     }
 
@@ -104,8 +102,8 @@ impl<'a> FunctionContext<'a> {
             .any(|expression| self.expression_returns(expression))
     }
 
-    fn expression_returns(&self, expr: &Expr) -> bool {
-        match &expr.kind {
+    fn expression_returns(&self, expression: &Expr) -> bool {
+        match &expression.kind {
             ExprKind::Return(..) => true,
             ExprKind::Block(expressions) | ExprKind::UncheckedBlock(expressions) => {
                 self.block_returns(expressions)
@@ -139,19 +137,17 @@ impl<'a> FunctionContext<'a> {
         }
     }
 
-    fn patch_arguments(&mut self) {
-        for index in self.pending_arguments.iter().copied() {
-            if let Instruction::Move { dest, .. } = &mut self.instructions[index] {
+    fn patch_function_arguments(&mut self) {
+        for instruction in self.instructions.iter_mut() {
+            if let Instruction::MoveArg { dest, .. } = instruction {
                 *dest += self.next_register;
-            } else {
-                panic!("Expected a move to be patched for function call argument!")
             }
         }
     }
 
-    fn visit_function(&mut self, expr: &Expr) -> Result<(), KaoriError> {
-        let ExprKind::Function { parameters, body } = &expr.kind else {
-            unreachable!("visit_function called on non-Function expr");
+    fn visit_function(&mut self, expression: &Expr) -> Result<(), KaoriError> {
+        let ExprKind::Function { parameters, body } = &expression.kind else {
+            unreachable!("visit_function called on non-Function expression");
         };
 
         for (id, _span) in parameters {
@@ -159,8 +155,8 @@ impl<'a> FunctionContext<'a> {
             self.registers.insert(*id, dest);
         }
 
-        for expr in body {
-            self.visit_expression(expr);
+        for expression in body {
+            self.visit_expression(expression);
         }
 
         if !self.block_returns(body) {
@@ -170,7 +166,7 @@ impl<'a> FunctionContext<'a> {
             });
         }
 
-        self.patch_arguments();
+        self.patch_function_arguments();
 
         Ok(())
     }
@@ -266,10 +262,10 @@ impl<'a> FunctionContext<'a> {
 
                 dest
             }
-            ExprKind::LogicalNot { expr } => {
+            ExprKind::LogicalNot(expression) => {
                 let dest = self.allocate_register();
 
-                let src = self.visit_expression(expr);
+                let src = self.visit_expression(expression);
                 let src = self.materialize(src);
 
                 self.emit_instruction(Instruction::Not {
@@ -430,12 +426,10 @@ impl<'a> FunctionContext<'a> {
                     let argument = self.visit_expression(argument);
                     let argument = self.materialize(argument);
 
-                    let pending_argument = self.emit_instruction(Instruction::Move {
+                    self.emit_instruction(Instruction::MoveArg {
                         dest: index as u8,
                         src: argument.unwrap_register(),
                     });
-
-                    self.pending_arguments.push(pending_argument);
                 }
 
                 let instruction = match callee_src {
@@ -475,18 +469,20 @@ impl<'a> FunctionContext<'a> {
 
                 dest
             }
-            ExprKind::Block(exprs) => {
+            ExprKind::Block(expressions) => {
                 let mut last = Self::unit();
-                for expr in exprs {
-                    last = self.visit_expression(expr);
+
+                for expression in expressions {
+                    last = self.visit_expression(expression);
                 }
+
                 last
             }
-            ExprKind::UncheckedBlock(exprs) => {
+            ExprKind::UncheckedBlock(expressions) => {
                 self.emit_instruction(Instruction::EnterUncheckedBlock);
                 let mut last = Self::unit();
-                for expr in exprs {
-                    last = self.visit_expression(expr);
+                for expression in expressions {
+                    last = self.visit_expression(expression);
                 }
                 self.emit_instruction(Instruction::ExitUncheckedBlock);
 
@@ -515,6 +511,8 @@ impl<'a> FunctionContext<'a> {
                     src: src.unwrap_register(),
                 });
 
+                let jump_end = self.emit_instruction(Instruction::Jump { offset: 0 });
+
                 self.patch_jump(
                     jump_if_false,
                     self.instructions.len() as i32 - jump_if_false as i32,
@@ -532,6 +530,7 @@ impl<'a> FunctionContext<'a> {
                     src: src.unwrap_register(),
                 });
 
+                self.patch_jump(jump_end, self.instructions.len() as i32 - jump_end as i32);
                 dest
             }
             ExprKind::Loop {
@@ -578,9 +577,9 @@ impl<'a> FunctionContext<'a> {
                 Self::unit()
             }
 
-            ExprKind::Return(expr) => {
-                let src = match expr {
-                    Some(expr) => self.visit_expression(expr),
+            ExprKind::Return(expression) => {
+                let src = match expression {
+                    Some(expression) => self.visit_expression(expression),
                     None => Self::unit(),
                 };
                 let src = self.materialize(src);
@@ -590,8 +589,8 @@ impl<'a> FunctionContext<'a> {
 
                 Self::unit()
             }
-            ExprKind::Print(expr) => {
-                let src = self.visit_expression(expr);
+            ExprKind::Print(expression) => {
+                let src = self.visit_expression(expression);
                 let src = self.materialize(src);
                 self.emit_instruction(Instruction::Print {
                     src: src.unwrap_register(),
@@ -652,7 +651,7 @@ impl<'a> FunctionContext<'a> {
                 dest
             }
             ExprKind::Function { .. } => {
-                unreachable!("Nested Function expr must be referenced via FunctionRef")
+                unreachable!("Nested Function expression must be referenced via FunctionRef")
             }
         }
     }

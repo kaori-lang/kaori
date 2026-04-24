@@ -28,9 +28,7 @@ pub enum ExprKind {
         left: Box<Expr>,
         right: Box<Expr>,
     },
-    LogicalNot {
-        expr: Box<Expr>,
-    },
+    LogicalNot(Box<Expr>),
     Unary {
         operator: UnaryOp,
         right: Box<Expr>,
@@ -125,13 +123,11 @@ impl Expr {
         }
     }
 
-    pub fn logical_not(expr: Expr) -> Expr {
+    pub fn logical_not(expression: Expr) -> Expr {
         Expr {
             id: NodeId::default(),
-            span: expr.span,
-            kind: ExprKind::LogicalNot {
-                expr: Box::new(expr),
-            },
+            span: expression.span,
+            kind: ExprKind::LogicalNot(Box::new(expression)),
         }
     }
 

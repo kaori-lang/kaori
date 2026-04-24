@@ -157,6 +157,9 @@ impl fmt::Display for Instruction {
             Instruction::Move { dest, src } => {
                 write!(f, "MOV r{} r{}", dest, src)
             }
+            Instruction::MoveArg { dest, src } => {
+                write!(f, "MOV_ARG r{} r{}", dest, src)
+            }
             Instruction::LoadK { dest, src } => {
                 write!(f, "LOADK r{} k{}", dest, src)
             }

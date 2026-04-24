@@ -299,7 +299,7 @@ impl Resolver {
                 Expr::logical_or(left, right, expression.span)
             }
 
-            ast::ExprKind::LogicalNot { expr } => {
+            ast::ExprKind::LogicalNot(expr) => {
                 let expr = self.resolve_expression(expr)?;
 
                 Expr::logical_not(expr, expression.span)
