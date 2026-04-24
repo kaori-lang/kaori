@@ -141,43 +141,10 @@ impl<'a> FunctionContext<'a> {
 
     fn patch_arguments(&mut self) {
         for index in self.pending_arguments.iter().copied() {
-            match &mut self.instructions[index] {
-                Instruction::Add { dest, .. }
-                | Instruction::AddI { dest, .. }
-                | Instruction::Subtract { dest, .. }
-                | Instruction::SubtractRI { dest, .. }
-                | Instruction::SubtractIR { dest, .. }
-                | Instruction::Multiply { dest, .. }
-                | Instruction::MultiplyI { dest, .. }
-                | Instruction::Divide { dest, .. }
-                | Instruction::DivideRI { dest, .. }
-                | Instruction::DivideIR { dest, .. }
-                | Instruction::Modulo { dest, .. }
-                | Instruction::ModuloRI { dest, .. }
-                | Instruction::ModuloIR { dest, .. }
-                | Instruction::Equal { dest, .. }
-                | Instruction::EqualI { dest, .. }
-                | Instruction::NotEqual { dest, .. }
-                | Instruction::NotEqualI { dest, .. }
-                | Instruction::Less { dest, .. }
-                | Instruction::LessI { dest, .. }
-                | Instruction::LessEqual { dest, .. }
-                | Instruction::LessEqualI { dest, .. }
-                | Instruction::Greater { dest, .. }
-                | Instruction::GreaterI { dest, .. }
-                | Instruction::GreaterEqual { dest, .. }
-                | Instruction::GreaterEqualI { dest, .. }
-                | Instruction::Not { dest, .. }
-                | Instruction::Negate { dest, .. }
-                | Instruction::Move { dest, .. }
-                | Instruction::LoadK { dest, .. }
-                | Instruction::LoadImm { dest, .. }
-                | Instruction::CreateDict { dest }
-                | Instruction::GetField { dest, .. }
-                | Instruction::Call { dest, .. } => {
-                    *dest += self.next_register;
-                }
-                _ => {}
+            if let Instruction::Move { dest, .. } = &mut self.instructions[index] {
+                *dest += self.next_register;
+            } else {
+                panic!("Expected a move to be patched for function call argument!")
             }
         }
     }
@@ -463,10 +430,12 @@ impl<'a> FunctionContext<'a> {
                     let argument = self.visit_expression(argument);
                     let argument = self.materialize(argument);
 
-                    self.emit_instruction(Instruction::Move {
+                    let pending_argument = self.emit_instruction(Instruction::Move {
                         dest: index as u8,
                         src: argument.unwrap_register(),
                     });
+
+                    self.pending_arguments.push(pending_argument);
                 }
 
                 let instruction = match callee_src {

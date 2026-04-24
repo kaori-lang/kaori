@@ -32,6 +32,7 @@ pub enum Instruction {
     Not { dest: u8, src: u8 },
     Negate { dest: u8, src: u8 },
     Move { dest: u8, src: u8 },
+    MoveArg { dest: u8, src: u8 },
     LoadK { dest: u8, src: u8 },
     LoadImm { dest: u8, src: Imm },
     CreateDict { dest: u8 },

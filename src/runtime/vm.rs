@@ -59,23 +59,21 @@ const IMMEDIATE: u8 = 1;
 const CONSTANT: u8 = 2;
 const HANDLERS_UNCHECKED_OFFSET: usize = HANDLERS.len() / 2;
 
-const HANDLERS: [Handler; 110] = [
+const HANDLERS: [Handler; 112] = [
     // CHECKED HANDLERS (false)
-
-    // --- Arithmetic ---
-    opcode_add::<REGISTER, REGISTER, false>,  // Add
-    opcode_add::<REGISTER, IMMEDIATE, false>, // AddI
-    opcode_subtract::<REGISTER, REGISTER, false>, // Subtract
+    opcode_add::<REGISTER, REGISTER, false>,       // Add
+    opcode_add::<REGISTER, IMMEDIATE, false>,      // AddI
+    opcode_subtract::<REGISTER, REGISTER, false>,  // Subtract
     opcode_subtract::<REGISTER, IMMEDIATE, false>, // SubtractRI
     opcode_subtract::<IMMEDIATE, REGISTER, false>, // SubtractIR
-    opcode_multiply::<REGISTER, REGISTER, false>, // Multiply
+    opcode_multiply::<REGISTER, REGISTER, false>,  // Multiply
     opcode_multiply::<REGISTER, IMMEDIATE, false>, // MultiplyI
-    opcode_divide::<REGISTER, REGISTER, false>, // Divide
-    opcode_divide::<REGISTER, IMMEDIATE, false>, // DivideRI
-    opcode_divide::<IMMEDIATE, REGISTER, false>, // DivideIR
-    opcode_modulo::<REGISTER, REGISTER, false>, // Modulo
-    opcode_modulo::<REGISTER, IMMEDIATE, false>, // ModuloRI
-    opcode_modulo::<IMMEDIATE, REGISTER, false>, // ModuloIR
+    opcode_divide::<REGISTER, REGISTER, false>,    // Divide
+    opcode_divide::<REGISTER, IMMEDIATE, false>,   // DivideRI
+    opcode_divide::<IMMEDIATE, REGISTER, false>,   // DivideIR
+    opcode_modulo::<REGISTER, REGISTER, false>,    // Modulo
+    opcode_modulo::<REGISTER, IMMEDIATE, false>,   // ModuloRI
+    opcode_modulo::<IMMEDIATE, REGISTER, false>,   // ModuloIR
     // --- Comparisons ---
     opcode_equal::<REGISTER, REGISTER, false>,  // Equal
     opcode_equal::<REGISTER, IMMEDIATE, false>, // EqualI
@@ -94,6 +92,7 @@ const HANDLERS: [Handler; 110] = [
     opcode_negate::<false>,
     // --- Move / Load ---
     opcode_move::<false>,
+    opcode_move_arg::<false>,
     opcode_load_k::<false>,
     opcode_load_imm::<false>,
     // --- Objects ---
@@ -156,6 +155,7 @@ const HANDLERS: [Handler; 110] = [
     opcode_not::<true>,
     opcode_negate::<true>,
     opcode_move::<true>,
+    opcode_move_arg::<false>,
     opcode_load_k::<true>,
     opcode_load_imm::<true>,
     opcode_create_dict::<true>,
@@ -901,6 +901,30 @@ fn opcode_move<const UNCHECKED: bool>(
 ) -> Result<Value, Box<KaoriError>> {
     unsafe {
         let Instruction::Move { dest, src } = *ip else {
+            unreachable_unchecked()
+        };
+
+        let src = *registers.add(src as usize);
+        set_value(dest, src, registers);
+
+        if UNCHECKED {
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
+        } else {
+            dispatch_next!(ip, vm, registers, constants, size)
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_move_arg<const UNCHECKED: bool>(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+    size: u8,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
+        let Instruction::MoveArg { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
