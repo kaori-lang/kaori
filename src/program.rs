@@ -1,44 +1,18 @@
-use std::time::Instant;
-
 use crate::{
-    ast::{self, emit_bytecode::emit_bytecode_from_ast, parser::Parser},
-    bytecode::{self, emit_bytecode::emit_bytecode, optimize_bytecode::optimize_bytecode},
+    ast::parser::Parser,
+    bytecode::{
+        Function, emit_bytecode::emit_bytecode_from_ast, optimize_bytecode::optimize_bytecode,
+    },
     error::kaori_error::KaoriError,
-    hir::{expr::Expr, resolver::Resolver},
     lexer::{lexer::Lexer, token_stream::TokenStream},
-    runtime::{function::from_compiled, gc::Gc, vm::Vm},
 };
 
-fn run_lexical_analysis(source: &'_ str) -> Result<TokenStream<'_>, KaoriError> {
+pub fn compile_source_code(source: &str) -> Result<Vec<Function>, KaoriError> {
     let lexer = Lexer::new(source);
     let tokens = lexer.tokenize()?;
-
     let token_stream = TokenStream::new(source, tokens);
-    Ok(token_stream)
-}
-
-fn run_syntax_analysis(token_stream: TokenStream) -> Result<Vec<ast::Expr>, KaoriError> {
     let mut parser = Parser::new(token_stream);
-
     let functions = parser.parse()?;
-
-    Ok(functions)
-}
-
-fn run_semantic_analysis(ast: &mut [ast::Expr]) -> Result<Vec<Expr>, KaoriError> {
-    let mut resolver = Resolver::default();
-
-    let functions = resolver.resolve(ast)?;
-
-    Ok(functions)
-}
-
-pub fn compile_source_code(source: &str) -> Result<Vec<bytecode::Function>, KaoriError> {
-    let token_stream = run_lexical_analysis(source)?;
-    let functions = run_syntax_analysis(token_stream)?;
-
-    //let functions = run_semantic_analysis(&mut functions)?;
-
     let mut bytecode = emit_bytecode_from_ast(&functions)?;
 
     optimize_bytecode(&mut bytecode);

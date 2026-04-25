@@ -1,24 +1,23 @@
 use std::collections::HashMap;
 
 use crate::{
-    ast::ops::{BinaryOp, UnaryOp},
-    bytecode::immediate::Imm,
-    error::kaori_error::KaoriError,
-    hir::{
-        expr::{Expr, ExprKind},
-        node_id::NodeId,
+    ast::{
+        Expr, ExprKind,
+        ops::{AssignOp, BinaryOp, UnaryOp},
     },
+    bytecode::{
+        Function, constants::Constants, immediate::Imm, instruction::Instruction, operand::Operand,
+    },
+    error::kaori_error::KaoriError,
 };
 
-use super::{constants::Constants, function::Function, instruction::Instruction, operand::Operand};
+pub fn emit_bytecode_from_ast(expressions: &[Expr]) -> Result<Vec<Function>, KaoriError> {
+    let mut global_functions: HashMap<String, usize> = HashMap::new();
 
-pub fn emit_bytecode(expressions: &[Expr]) -> Result<Vec<Function>, KaoriError> {
-    let mut node_to_function: HashMap<NodeId, usize> = HashMap::new();
-
-    for (i, expression) in expressions.iter().enumerate() {
+    for (index, expression) in expressions.iter().enumerate() {
         match &expression.kind {
-            ExprKind::Function { .. } => {
-                node_to_function.insert(expression.id, i);
+            ExprKind::Function { name, .. } => {
+                global_functions.insert(name.to_owned(), index);
             }
             _ => unreachable!("Only Function expressions are allowed at the top level"),
         }
@@ -29,7 +28,8 @@ pub fn emit_bytecode(expressions: &[Expr]) -> Result<Vec<Function>, KaoriError> 
     for expression in expressions {
         match &expression.kind {
             ExprKind::Function { .. } => {
-                let mut ctx = FunctionContext::new(&node_to_function);
+                let mut ctx = FunctionContext::new(&global_functions);
+
                 ctx.visit_function(expression)?;
                 functions.push(Function::new(
                     ctx.instructions,
@@ -46,20 +46,20 @@ pub fn emit_bytecode(expressions: &[Expr]) -> Result<Vec<Function>, KaoriError> 
 
 pub struct FunctionContext<'a> {
     next_register: u8,
-    registers: HashMap<NodeId, Operand>,
+    registers: HashMap<String, Operand>,
     constants: Constants,
     instructions: Vec<Instruction>,
-    node_to_function: &'a HashMap<NodeId, usize>,
+    global_functions: &'a HashMap<String, usize>,
 }
 
 impl<'a> FunctionContext<'a> {
-    pub fn new(node_to_function: &'a HashMap<NodeId, usize>) -> Self {
+    pub fn new(global_functions: &'a HashMap<String, usize>) -> Self {
         Self {
             registers: HashMap::new(),
             next_register: 0,
             constants: Constants::default(),
             instructions: Vec::new(),
-            node_to_function,
+            global_functions,
         }
     }
 
@@ -86,7 +86,6 @@ impl<'a> FunctionContext<'a> {
                     dest: dest.unwrap_register(),
                     src,
                 });
-
                 dest
             }
         }
@@ -108,13 +107,13 @@ impl<'a> FunctionContext<'a> {
             ExprKind::Block(expressions) | ExprKind::UncheckedBlock(expressions) => {
                 self.block_returns(expressions)
             }
-            ExprKind::Branch {
+            ExprKind::If {
                 then_branch,
                 else_branch: Some(else_branch),
                 ..
             } => self.expression_returns(then_branch) && self.expression_returns(else_branch),
 
-            ExprKind::Branch {
+            ExprKind::If {
                 else_branch: None, ..
             } => false,
             _ => false,
@@ -124,7 +123,6 @@ impl<'a> FunctionContext<'a> {
     fn emit_instruction(&mut self, instruction: Instruction) -> usize {
         let index = self.instructions.len();
         self.instructions.push(instruction);
-
         index
     }
 
@@ -146,13 +144,17 @@ impl<'a> FunctionContext<'a> {
     }
 
     fn visit_function(&mut self, expression: &Expr) -> Result<(), KaoriError> {
-        let ExprKind::Function { parameters, body } = &expression.kind else {
+        let ExprKind::Function {
+            parameters, body, ..
+        } = &expression.kind
+        else {
             unreachable!("visit_function called on non-Function expression");
         };
 
-        for (id, _span) in parameters {
+        // FIX: Parameters are (String, Span); store by name.
+        for (name, _span) in parameters {
             let dest = self.allocate_register();
-            self.registers.insert(*id, dest);
+            self.registers.insert(name.clone(), dest);
         }
 
         for expression in body {
@@ -173,12 +175,17 @@ impl<'a> FunctionContext<'a> {
 
     fn visit_expression(&mut self, expression: &Expr) -> Operand {
         match &expression.kind {
-            ExprKind::DeclareAssign { id, right } => {
+            ExprKind::DeclareAssign { left, right } => {
+                let name = match &left.kind {
+                    ExprKind::Identifier(name) => name.clone(),
+                    _ => panic!("DeclareAssign left-hand side must be an Identifier"),
+                };
+
                 let dest = self.allocate_register();
                 let src = self.visit_expression(right);
                 let src = self.materialize(src);
 
-                self.registers.insert(*id, dest);
+                self.registers.insert(name, dest);
 
                 self.emit_instruction(Instruction::Move {
                     dest: dest.unwrap_register(),
@@ -187,16 +194,62 @@ impl<'a> FunctionContext<'a> {
 
                 dest
             }
-
-            ExprKind::Assign { left, right } => {
+            ExprKind::Assign {
+                operator,
+                left,
+                right,
+            } => {
                 let dest = self.visit_expression(left);
+                let dest = self.materialize(dest);
                 let src = self.visit_expression(right);
                 let src = self.materialize(src);
 
-                self.emit_instruction(Instruction::Move {
-                    dest: dest.unwrap_register(),
-                    src: src.unwrap_register(),
-                });
+                // FIX: Handle compound assignment operators instead of ignoring them.
+                // For plain Assign just move; for compound operators emit the arithmetic
+                // instruction first, writing the result back into dest.
+                match operator {
+                    AssignOp::Assign => {
+                        self.emit_instruction(Instruction::Move {
+                            dest: dest.unwrap_register(),
+                            src: src.unwrap_register(),
+                        });
+                    }
+                    AssignOp::AddAssign => {
+                        self.emit_instruction(Instruction::Add {
+                            dest: dest.unwrap_register(),
+                            src1: dest.unwrap_register(),
+                            src2: src.unwrap_register(),
+                        });
+                    }
+                    AssignOp::SubtractAssign => {
+                        self.emit_instruction(Instruction::Subtract {
+                            dest: dest.unwrap_register(),
+                            src1: dest.unwrap_register(),
+                            src2: src.unwrap_register(),
+                        });
+                    }
+                    AssignOp::MultiplyAssign => {
+                        self.emit_instruction(Instruction::Multiply {
+                            dest: dest.unwrap_register(),
+                            src1: dest.unwrap_register(),
+                            src2: src.unwrap_register(),
+                        });
+                    }
+                    AssignOp::DivideAssign => {
+                        self.emit_instruction(Instruction::Divide {
+                            dest: dest.unwrap_register(),
+                            src1: dest.unwrap_register(),
+                            src2: src.unwrap_register(),
+                        });
+                    }
+                    AssignOp::ModuloAssign => {
+                        self.emit_instruction(Instruction::Modulo {
+                            dest: dest.unwrap_register(),
+                            src1: dest.unwrap_register(),
+                            src2: src.unwrap_register(),
+                        });
+                    }
+                }
 
                 dest
             }
@@ -264,7 +317,6 @@ impl<'a> FunctionContext<'a> {
             }
             ExprKind::LogicalNot(expression) => {
                 let dest = self.allocate_register();
-
                 let src = self.visit_expression(expression);
                 let src = self.materialize(src);
 
@@ -443,7 +495,6 @@ impl<'a> FunctionContext<'a> {
                     },
                     Operand::Immediate(_) => {
                         let src = self.materialize(callee_src);
-
                         Instruction::Call {
                             dest: dest.unwrap_register(),
                             src: src.unwrap_register(),
@@ -458,6 +509,9 @@ impl<'a> FunctionContext<'a> {
             ExprKind::MemberAccess { object, property } => {
                 let dest = self.allocate_register();
                 let object = self.visit_expression(object);
+                // FIX: Materialize object — it may be a Constant or Immediate,
+                // and GetField requires a register operand.
+                let object = self.materialize(object);
                 let key = self.visit_expression(property);
                 let key = self.materialize(key);
 
@@ -488,7 +542,7 @@ impl<'a> FunctionContext<'a> {
 
                 last
             }
-            ExprKind::Branch {
+            ExprKind::If {
                 condition,
                 then_branch,
                 else_branch,
@@ -534,50 +588,15 @@ impl<'a> FunctionContext<'a> {
 
                 dest
             }
-            ExprKind::Loop {
+            ExprKind::ForLoop {
                 init,
                 condition,
                 block,
                 increment,
-            } => {
-                if let Some(init) = init {
-                    self.visit_expression(init);
-                }
-
-                let src = self.visit_expression(condition);
-                let src = self.materialize(src);
-
-                let jump_if_false = self.emit_instruction(Instruction::JumpIfFalse {
-                    src: src.unwrap_register(),
-                    offset: 0,
-                });
-
-                let loop_body = self.instructions.len();
-
-                self.visit_expression(block);
-
-                if let Some(increment) = increment {
-                    self.visit_expression(increment);
-                }
-
-                let src = self.visit_expression(condition);
-                let src = self.materialize(src);
-
-                let jump_if_true = self.emit_instruction(Instruction::JumpIfTrue {
-                    src: src.unwrap_register(),
-                    offset: 0,
-                });
-
-                self.patch_jump(jump_if_true, loop_body as i32 - jump_if_true as i32);
-
-                self.patch_jump(
-                    jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
-                );
-
-                Self::unit()
+            } => self.visit_loop(Some(init), condition, block, Some(increment)),
+            ExprKind::WhileLoop { condition, block } => {
+                self.visit_loop(None, condition, block, None)
             }
-
             ExprKind::Return(expression) => {
                 let src = match expression {
                     Some(expression) => self.visit_expression(expression),
@@ -602,26 +621,29 @@ impl<'a> FunctionContext<'a> {
             ExprKind::Break => {
                 todo!()
             }
-
             ExprKind::Continue => {
                 todo!()
             }
-
-            ExprKind::VariableRef(id) => *self
-                .registers
-                .get(id)
-                .unwrap_or_else(|| panic!("VariableRef points to unknown NodeId {id:?}")),
-
-            ExprKind::FunctionRef(id) => {
-                let index = *self
-                    .node_to_function
-                    .get(id)
-                    .unwrap_or_else(|| panic!("FunctionRef points to unknown NodeId {id:?}"));
-
-                self.constants.push_function_index(index)
+            ExprKind::Identifier(name) => {
+                if let Some(&operand) = self.registers.get(name) {
+                    operand
+                } else if let Some(&index) = self.global_functions.get(name) {
+                    self.constants.push_function_index(index)
+                } else {
+                    panic!("Unknown identifier: {name}")
+                }
             }
-            ExprKind::String(value) => self.constants.push_string(value.clone()),
-            ExprKind::Number(value) => {
+            ExprKind::BooleanLiteral(value) => {
+                let numeric = if *value { 1.0 } else { 0.0 };
+                if let Some(imm) = Imm::try_to_encode(numeric) {
+                    Operand::Immediate(imm)
+                } else {
+                    self.constants.push_number(numeric)
+                }
+            }
+            ExprKind::StringLiteral(value) => self.constants.push_string(value.clone()),
+
+            ExprKind::NumberLiteral(value) => {
                 let value = *value;
                 if let Some(imm) = Imm::try_to_encode(value) {
                     Operand::Immediate(imm)
@@ -629,6 +651,7 @@ impl<'a> FunctionContext<'a> {
                     self.constants.push_number(value)
                 }
             }
+
             ExprKind::DictLiteral { fields } => {
                 let dest = self.allocate_register();
 
@@ -639,21 +662,76 @@ impl<'a> FunctionContext<'a> {
                 for (key, value) in fields {
                     let key_op = self.visit_expression(key);
                     let key_op = self.materialize(key_op);
-                    let val_op = self.visit_expression(value);
-                    let val_op = self.materialize(val_op);
+
+                    // FIX: value is Option<Expr>. When None (shorthand `{ x }`),
+                    // re-evaluate the key expression as the value.
+                    let value_op = match value {
+                        Some(v) => {
+                            let v = self.visit_expression(v);
+                            self.materialize(v)
+                        }
+                        None => {
+                            let v = self.visit_expression(key);
+                            self.materialize(v)
+                        }
+                    };
 
                     self.emit_instruction(Instruction::SetField {
                         object: dest.unwrap_register(),
                         key: key_op.unwrap_register(),
-                        value: val_op.unwrap_register(),
+                        value: value_op.unwrap_register(),
                     });
                 }
 
                 dest
             }
+
             ExprKind::Function { .. } => {
-                unreachable!("Nested Function expression must be referenced via FunctionRef")
+                unreachable!("Nested Function expression must be referenced via Identifier")
             }
         }
+    }
+
+    fn visit_loop(
+        &mut self,
+        init: Option<&Expr>,
+        condition: &Expr,
+        block: &Expr,
+        increment: Option<&Expr>,
+    ) -> Operand {
+        if let Some(init) = init {
+            self.visit_expression(init);
+        }
+
+        // FIX: Mark the condition start so the back-edge jumps here, not to the
+        // body. This ensures the condition is re-evaluated on every iteration
+        // rather than being skipped after the first pass.
+        let loop_start = self.instructions.len();
+
+        let src = self.visit_expression(condition);
+        let src = self.materialize(src);
+
+        let jump_if_false = self.emit_instruction(Instruction::JumpIfFalse {
+            src: src.unwrap_register(),
+            offset: 0,
+        });
+
+        self.visit_expression(block);
+
+        if let Some(increment) = increment {
+            self.visit_expression(increment);
+        }
+
+        // FIX: Unconditional jump back to condition (loop_start), replacing the
+        // duplicated condition evaluation + JumpIfTrue that was in the original.
+        let jump_back = self.emit_instruction(Instruction::Jump { offset: 0 });
+        self.patch_jump(jump_back, loop_start as i32 - jump_back as i32);
+
+        self.patch_jump(
+            jump_if_false,
+            self.instructions.len() as i32 - jump_if_false as i32,
+        );
+
+        Self::unit()
     }
 }

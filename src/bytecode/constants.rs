@@ -1,4 +1,4 @@
-use super::operand::Operand;
+use crate::bytecode::operand::Operand;
 
 #[derive(Default)]
 pub struct Constants(pub Vec<Constant>);
@@ -12,6 +12,7 @@ impl Constants {
             assert!(index < 256, "constant pool overflow (u8)");
 
             self.0.push(constant);
+
             index
         };
 

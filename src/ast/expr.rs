@@ -1,14 +1,10 @@
 use crate::{
-    ast::{
-        NodeId,
-        ops::{AssignOp, BinaryOp, UnaryOp},
-    },
+    ast::ops::{AssignOp, BinaryOp, UnaryOp},
     lexer::span::Span,
 };
 
 #[derive(Debug)]
 pub struct Expr {
-    pub id: NodeId,
     pub span: Span,
     pub kind: ExprKind,
 }
@@ -89,7 +85,6 @@ impl Expr {
     pub fn binary(operator: BinaryOp, left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::Binary {
                 operator,
@@ -102,7 +97,6 @@ impl Expr {
     pub fn logical_and(left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::LogicalAnd {
                 left: Box::new(left),
@@ -114,7 +108,6 @@ impl Expr {
     pub fn logical_or(left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::LogicalOr {
                 left: Box::new(left),
@@ -125,7 +118,6 @@ impl Expr {
 
     pub fn logical_not(expression: Expr) -> Expr {
         Expr {
-            id: NodeId::default(),
             span: expression.span,
             kind: ExprKind::LogicalNot(Box::new(expression)),
         }
@@ -134,7 +126,6 @@ impl Expr {
     pub fn unary(operator: UnaryOp, right: Expr) -> Expr {
         let span = right.span;
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::Unary {
                 operator,
@@ -146,7 +137,6 @@ impl Expr {
     pub fn assign(operator: AssignOp, left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::Assign {
                 operator,
@@ -159,7 +149,6 @@ impl Expr {
     pub fn declare_assign(left: Expr, right: Expr) -> Expr {
         let span = Span::merge(left.span, right.span);
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::DeclareAssign {
                 left: Box::new(left),
@@ -170,7 +159,6 @@ impl Expr {
 
     pub fn identifier(name: String, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::Identifier(name),
         }
@@ -179,7 +167,6 @@ impl Expr {
     pub fn function_call(callee: Expr, arguments: Vec<Expr>, span: Span) -> Expr {
         let span = Span::merge(callee.span, span);
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::FunctionCall {
                 callee: Box::new(callee),
@@ -191,7 +178,6 @@ impl Expr {
     pub fn member_access(object: Expr, property: Expr) -> Expr {
         let span = Span::merge(object.span, property.span);
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::MemberAccess {
                 object: Box::new(object),
@@ -202,7 +188,6 @@ impl Expr {
 
     pub fn string_literal(value: String, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::StringLiteral(value),
         }
@@ -210,7 +195,6 @@ impl Expr {
 
     pub fn number_literal(value: f64, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::NumberLiteral(value),
         }
@@ -218,7 +202,6 @@ impl Expr {
 
     pub fn boolean_literal(value: bool, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::BooleanLiteral(value),
         }
@@ -226,7 +209,6 @@ impl Expr {
 
     pub fn dict_literal(fields: Vec<(Expr, Option<Expr>)>, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::DictLiteral { fields },
         }
@@ -239,7 +221,6 @@ impl Expr {
         span: Span,
     ) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::Function {
                 name,
@@ -251,7 +232,6 @@ impl Expr {
 
     pub fn block(body: Vec<Expr>, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::Block(body),
         }
@@ -259,7 +239,6 @@ impl Expr {
 
     pub fn if_(condition: Expr, then_branch: Expr, else_branch: Option<Expr>, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::If {
                 condition: Box::new(condition),
@@ -271,7 +250,6 @@ impl Expr {
 
     pub fn while_loop(condition: Expr, block: Expr, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::WhileLoop {
                 condition: Box::new(condition),
@@ -282,7 +260,6 @@ impl Expr {
 
     pub fn for_loop(init: Expr, condition: Expr, increment: Expr, block: Expr, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::ForLoop {
                 init: Box::new(init),
@@ -295,7 +272,6 @@ impl Expr {
 
     pub fn unchecked_block(body: Vec<Expr>, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::UncheckedBlock(body),
         }
@@ -303,7 +279,6 @@ impl Expr {
 
     pub fn return_(expression: Option<Expr>, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::Return(expression.map(Box::new)),
         }
@@ -311,7 +286,6 @@ impl Expr {
 
     pub fn break_(span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::Break,
         }
@@ -319,7 +293,6 @@ impl Expr {
 
     pub fn continue_(span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::Continue,
         }
@@ -327,7 +300,6 @@ impl Expr {
 
     pub fn print(expression: Expr, span: Span) -> Expr {
         Expr {
-            id: NodeId::default(),
             span,
             kind: ExprKind::Print(Box::new(expression)),
         }
