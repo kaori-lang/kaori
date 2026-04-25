@@ -1,9 +1,11 @@
 fun fib(n) {
     if n < 2 {
-        return n;
+        3;
     } else {
-        return fib(n - 1) + fib(n - 2);
+        4;
     }   
+
+    return n;
 }
 
 fun main()  {

@@ -2,76 +2,125 @@ use crate::bytecode::{Function, instruction::Instruction};
 
 pub fn optimize_bytecode(functions: &mut [Function]) {
     for function in functions {
-        remove_redundant_move(&mut function.instructions);
+        let (reachable, leaders) = reachable_and_leaders(&function.instructions);
+        eliminate_dead_code(&mut function.instructions, &reachable);
+        remove_redundant_moves(&mut function.instructions, &leaders);
         merge_conditional_jumps(&mut function.instructions);
         remove_nop(&mut function.instructions);
     }
 }
 
-fn remove_redundant_move(instructions: &mut [Instruction]) {
-    for index in 0..instructions.len() {
+fn eliminate_dead_code(instructions: &mut [Instruction], reachable: &[bool]) {
+    for i in 0..instructions.len() {
+        if !reachable[i] {
+            instructions[i] = Instruction::Nop;
+        }
+    }
+}
+
+fn reachable_and_leaders(instructions: &[Instruction]) -> (Vec<bool>, Vec<bool>) {
+    let mut reachable = vec![false; instructions.len()];
+    let mut leaders = vec![false; instructions.len()];
+    let mut stack = vec![0usize];
+
+    leaders[0] = true;
+
+    while let Some(index) = stack.pop() {
+        if reachable[index] {
+            continue;
+        }
+        reachable[index] = true;
+
         match instructions[index] {
-            Instruction::Move {
-                dest: move_dest,
-                src,
+            Instruction::Jump { offset } => {
+                let target = ((index as i32 + offset) as usize).clamp(0, instructions.len() - 1);
+                leaders[target] = true;
+                stack.push(target);
             }
-            | Instruction::MoveArg {
-                dest: move_dest,
-                src,
-            } => {
-                let mut i = index;
-
-                while i > 0 {
-                    i -= 1;
-
-                    match &mut instructions[i] {
-                        Instruction::Add { dest, .. }
-                        | Instruction::AddI { dest, .. }
-                        | Instruction::Subtract { dest, .. }
-                        | Instruction::SubtractRI { dest, .. }
-                        | Instruction::SubtractIR { dest, .. }
-                        | Instruction::Multiply { dest, .. }
-                        | Instruction::MultiplyI { dest, .. }
-                        | Instruction::Divide { dest, .. }
-                        | Instruction::DivideRI { dest, .. }
-                        | Instruction::DivideIR { dest, .. }
-                        | Instruction::Modulo { dest, .. }
-                        | Instruction::ModuloRI { dest, .. }
-                        | Instruction::ModuloIR { dest, .. }
-                        | Instruction::Equal { dest, .. }
-                        | Instruction::EqualI { dest, .. }
-                        | Instruction::NotEqual { dest, .. }
-                        | Instruction::NotEqualI { dest, .. }
-                        | Instruction::Less { dest, .. }
-                        | Instruction::LessI { dest, .. }
-                        | Instruction::LessEqual { dest, .. }
-                        | Instruction::LessEqualI { dest, .. }
-                        | Instruction::Greater { dest, .. }
-                        | Instruction::GreaterI { dest, .. }
-                        | Instruction::GreaterEqual { dest, .. }
-                        | Instruction::GreaterEqualI { dest, .. }
-                        | Instruction::Not { dest, .. }
-                        | Instruction::Negate { dest, .. }
-                        | Instruction::Move { dest, .. }
-                        | Instruction::MoveArg { dest, .. }
-                        | Instruction::LoadK { dest, .. }
-                        | Instruction::LoadImm { dest, .. }
-                        | Instruction::CreateDict { dest }
-                        | Instruction::GetField { dest, .. }
-                        | Instruction::Call { dest, .. }
-                        | Instruction::CallK { dest, .. } => {
-                            if *dest == src {
-                                *dest = move_dest;
-                                instructions[index] = Instruction::Nop;
-                            }
-
-                            break;
-                        }
-                        _ => {}
-                    }
+            Instruction::JumpIfFalse { offset, .. } | Instruction::JumpIfTrue { offset, .. } => {
+                let target = ((index as i32 + offset) as usize).clamp(0, instructions.len() - 1);
+                leaders[target] = true;
+                stack.push(target);
+                stack.push(index + 1);
+            }
+            Instruction::Return { .. } => {
+                if index + 1 < instructions.len() {
+                    leaders[index + 1] = true;
                 }
             }
-            _ => {}
+            _ => stack.push(index + 1),
+        }
+    }
+
+    (reachable, leaders)
+}
+
+fn remove_redundant_moves(instructions: &mut [Instruction], leaders: &[bool]) {
+    let mut leader = 0;
+
+    for index in 0..instructions.len() {
+        let (move_dest, src) = match instructions[index] {
+            Instruction::Move { dest, src } | Instruction::MoveArg { dest, src } => (dest, src),
+            _ => continue,
+        };
+
+        if leaders[index] {
+            leader = index;
+        };
+
+        let mut i = index;
+
+        while i > leader {
+            i -= 1;
+
+            match &mut instructions[i] {
+                Instruction::Add { dest, .. }
+                | Instruction::AddI { dest, .. }
+                | Instruction::Subtract { dest, .. }
+                | Instruction::SubtractRI { dest, .. }
+                | Instruction::SubtractIR { dest, .. }
+                | Instruction::Multiply { dest, .. }
+                | Instruction::MultiplyI { dest, .. }
+                | Instruction::Divide { dest, .. }
+                | Instruction::DivideRI { dest, .. }
+                | Instruction::DivideIR { dest, .. }
+                | Instruction::Modulo { dest, .. }
+                | Instruction::ModuloRI { dest, .. }
+                | Instruction::ModuloIR { dest, .. }
+                | Instruction::Equal { dest, .. }
+                | Instruction::EqualI { dest, .. }
+                | Instruction::NotEqual { dest, .. }
+                | Instruction::NotEqualI { dest, .. }
+                | Instruction::Less { dest, .. }
+                | Instruction::LessI { dest, .. }
+                | Instruction::LessEqual { dest, .. }
+                | Instruction::LessEqualI { dest, .. }
+                | Instruction::Greater { dest, .. }
+                | Instruction::GreaterI { dest, .. }
+                | Instruction::GreaterEqual { dest, .. }
+                | Instruction::GreaterEqualI { dest, .. }
+                | Instruction::Not { dest, .. }
+                | Instruction::Negate { dest, .. }
+                | Instruction::MoveArg { dest, .. }
+                | Instruction::Move { dest, .. }
+                | Instruction::LoadK { dest, .. }
+                | Instruction::LoadImm { dest, .. }
+                | Instruction::CreateDict { dest }
+                | Instruction::GetField { dest, .. }
+                | Instruction::Call { dest, .. }
+                | Instruction::CallK { dest, .. }
+                    if *dest == src =>
+                {
+                    *dest = move_dest;
+                    instructions[index] = Instruction::Nop;
+
+                    break;
+                }
+                Instruction::Nop => {}
+                _ => {
+                    break;
+                }
+            }
         }
     }
 }
@@ -119,6 +168,7 @@ fn merge_conditional_jumps(instructions: &mut [Instruction]) {
                     }
                     _ => None,
                 };
+
                 if let Some(instruction) = instruction {
                     instructions[index - 1] = Instruction::Nop;
                     instructions[index] = instruction;
@@ -164,6 +214,7 @@ fn merge_conditional_jumps(instructions: &mut [Instruction]) {
                     }
                     _ => None,
                 };
+
                 if let Some(instruction) = instruction {
                     instructions[index - 1] = Instruction::Nop;
                     instructions[index] = instruction;
@@ -175,8 +226,7 @@ fn merge_conditional_jumps(instructions: &mut [Instruction]) {
 }
 
 fn remove_nop(instructions: &mut Vec<Instruction>) {
-    let mut instructions_map = vec![0; instructions.len()];
-
+    let mut instructions_map = vec![0usize; instructions.len()];
     let mut index = 0;
 
     for i in 0..instructions.len() {
@@ -207,30 +257,15 @@ fn remove_nop(instructions: &mut Vec<Instruction>) {
             | Instruction::JumpIfEqualI { offset, .. }
             | Instruction::JumpIfNotEqual { offset, .. }
             | Instruction::JumpIfNotEqualI { offset, .. } => {
-                let target = i as i32 + *offset;
-
-                if target < 0 || target >= instructions_map.len() as i32 {
-                    continue;
-                };
-
-                let target = instructions_map[target as usize];
+                let target = (i as i32 + *offset) as usize;
+                let target = instructions_map[target];
                 *offset = target as i32 - index as i32;
-
                 instructions[index] = instructions[i];
-
-                if index != i {
-                    instructions[i] = Instruction::Nop;
-                }
-
                 index += 1;
             }
             Instruction::Nop => {}
             _ => {
                 instructions[index] = instructions[i];
-                if index != i {
-                    instructions[i] = Instruction::Nop;
-                }
-
                 index += 1;
             }
         }

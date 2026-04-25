@@ -1,98 +1,27 @@
 fun main() {
-    iterations := 1000000;
-    max_fib := 30;
+    a := 1;
+    b := 2;
 
-    for i := 0; i < iterations; i += 1 {
-        a := 0;
-        b := 1;
+    b /= 7;
 
-        for j := 0; j < max_fib; j += 1 {
-            temp := a + b;
-            a = b;
-            b = temp;
-        }
-    }
+    print(b);
 }
 
 
 
 /*
-0000  NOP
-0001  JMP_IF_GTE r0 2 5
-0002  RET r0
-0003  LOAD_IMM r1 0
-0004  NOP
-0005  JMP 11
-0006  SUB r10 r0 1
-0007  NOP
-0008  CALL r4 k0
-0009  SUB r10 r0 2
-0010  NOP
-0011  CALL r6 k0
-0012  ADD r8 r4 r6
-0013  RET r8
-0014  LOAD_IMM r1 0
-0015  NOP
-
-0000  LOADK r0 k0
-0001  LOAD_IMM r1 30
-0002  LOAD_IMM r2 0
-0003  JMP_IF_GTE r2 r0 12
-0004  LOAD_IMM r4 0
-0005  LOAD_IMM r5 1
-0006  LOAD_IMM r6 0
-0007  JMP_IF_GTE r6 r1 6
-0008  ADD r8 r4 r5
-0009  MOV r4 r5
-0010  MOV r5 r8
-0011  ADD r6 r6 1
-0012  JMP_IF_LT r6 r1 -4
-0013  ADD r2 r2 1
-0014  JMP_IF_LT r2 r0 -10
-0015  LOAD_IMM r14 0
-0016  RET r14
-
-
-
-0000  LOAD_IMM r1 0
+CONSTANTS: [Number(1000000.0)]
 0001  MOV r0 r1
-0002  LT r2 r0 100
-0003  JMP_IF_FALSE r2 6
-0004  PRINT r0
-0005  ADD r3 r0 1
-0006  MOV r0 r3
-0007  LT r4 r0 100
-0008  JMP_IF_TRUE r4 -4
-0009  LOAD_IMM r5 0
-0010  RET r5
-
-fn main() {
-    x := 0; // r0
-    y := 0; // r1
-
-    z := foo(a, b) {
-        a // r0
-        b // r1
-        x // r2
-        z // r3
-
-        w := bar(c, d) {
-            c // r0
-            d // r1
-            a // r2
-            b // r3
-            x // r4
-            z // r5
-
-            e := 7; // r6
-
-            print(x); // r4
-
-        }
-        print(x) // r2
-        r := 11; // r4
-    }
-
-    s := 10; // r2
-
-}*/
+0002  LOAD_IMM r3 2
+0003  MOV r2 r3
+0004  JMP_IF_GTE r0 r2 4
+0005  LOAD_IMM r7 3
+0006  MOV r5 r7
+0007  JMP 3
+0008  LOAD_IMM r8 4
+0009  MOV r5 r8
+0010  MOV r4 r5
+0011  PRINT r4
+0012  LOAD_IMM r9 0
+0013  RET r9
+*/
