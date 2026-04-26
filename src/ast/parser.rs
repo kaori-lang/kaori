@@ -132,17 +132,14 @@ impl<'a> Parser<'a> {
 
         let mut expressions = Vec::new();
 
-        while !self.token_stream.at_end() {
-            if self.token_stream.token_kind() == TokenKind::RightBrace {
-                break;
-            }
-
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
+        {
             let expression = self.parse_expression_statement()?;
 
             expressions.push(expression);
         }
 
-        let tail = self.parse_expression_statement()?;
+        let tail = expressions.pop();
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
@@ -157,17 +154,14 @@ impl<'a> Parser<'a> {
 
         let mut expressions = Vec::new();
 
-        while !self.token_stream.at_end() {
-            if self.token_stream.token_kind() == TokenKind::RightBrace {
-                break;
-            }
-
+        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
+        {
             let expression = self.parse_expression_statement()?;
 
             expressions.push(expression);
         }
 
-        let tail = self.parse_expression_statement()?;
+        let tail = expressions.pop();
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 

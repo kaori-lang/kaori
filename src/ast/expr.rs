@@ -60,7 +60,7 @@ pub enum ExprKind {
     },
     Block {
         expressions: Vec<Expr>,
-        tail: Box<Expr>,
+        tail: Option<Box<Expr>>,
     },
     If {
         condition: Box<Expr>,
@@ -79,7 +79,7 @@ pub enum ExprKind {
     },
     UncheckedBlock {
         expressions: Vec<Expr>,
-        tail: Box<Expr>,
+        tail: Option<Box<Expr>>,
     },
     Return(Option<Box<Expr>>),
     Break,
@@ -236,12 +236,12 @@ impl Expr {
         }
     }
 
-    pub fn block(expressions: Vec<Expr>, tail: Expr, span: Span) -> Expr {
+    pub fn block(expressions: Vec<Expr>, tail: Option<Expr>, span: Span) -> Expr {
         Expr {
             span,
             kind: ExprKind::Block {
                 expressions,
-                tail: Box::new(tail),
+                tail: tail.map(Box::new),
             },
         }
     }
@@ -279,12 +279,12 @@ impl Expr {
         }
     }
 
-    pub fn unchecked_block(expressions: Vec<Expr>, tail: Expr, span: Span) -> Expr {
+    pub fn unchecked_block(expressions: Vec<Expr>, tail: Option<Expr>, span: Span) -> Expr {
         Expr {
             span,
             kind: ExprKind::UncheckedBlock {
                 expressions,
-                tail: Box::new(tail),
+                tail: tail.map(Box::new),
             },
         }
     }

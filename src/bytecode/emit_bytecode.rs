@@ -118,8 +118,12 @@ impl<'a> FunctionContext<'a> {
     fn expression_returns(&self, expression: &Expr) -> bool {
         match &expression.kind {
             ExprKind::Return(..) => true,
-            ExprKind::Block(expressions) | ExprKind::UncheckedBlock(expressions) => {
+            ExprKind::Block { expressions, tail }
+            | ExprKind::UncheckedBlock { expressions, tail } => {
                 self.block_returns(expressions)
+                    || tail
+                        .as_deref()
+                        .is_some_and(|expression| self.expression_returns(expression))
             }
             ExprKind::If {
                 then_branch,
@@ -362,27 +366,37 @@ impl<'a> FunctionContext<'a> {
 
                 Operand::Register(dest)
             }
-            ExprKind::Block(expressions) => {
-                let mut last = Self::unit();
-
+            ExprKind::Block { expressions, tail } => {
                 self.enter_scope();
 
                 for expression in expressions {
-                    last = self.visit_expression(expression);
+                    self.visit_expression(expression);
                 }
+
+                let tail = match tail {
+                    Some(tail) => self.visit_expression(tail),
+                    None => Self::unit(),
+                };
 
                 self.exit_scope();
-                last
+
+                tail
             }
-            ExprKind::UncheckedBlock(expressions) => {
+            ExprKind::UncheckedBlock { expressions, tail } => {
                 self.emit_instruction(Instruction::EnterUncheckedBlock);
-                let mut last = Self::unit();
+
                 for expression in expressions {
-                    last = self.visit_expression(expression);
+                    self.visit_expression(expression);
                 }
+
+                let tail = match tail {
+                    Some(tail) => self.visit_expression(tail),
+                    None => Self::unit(),
+                };
+
                 self.emit_instruction(Instruction::ExitUncheckedBlock);
 
-                last
+                tail
             }
             ExprKind::If {
                 condition,
