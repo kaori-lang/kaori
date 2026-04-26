@@ -1,10 +1,19 @@
 fun main() {
-    a := 5;
+    iterations := 1000000;
+    max_fib := 30;
 
-    a := 7;
+    for i := 0; i < iterations; i += 1 {
+        a := 0;
+        b := 1;
 
-    print(a);
+        for j := 0; j < max_fib; j += 1 {
+            temp := a + b;
+            a = b;
+            b = temp;
+        }
+    }
 }
+
 
 
 

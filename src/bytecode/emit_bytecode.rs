@@ -32,7 +32,11 @@ pub fn emit_bytecode_from_ast(expressions: &[Expr]) -> Result<Vec<Function>, Kao
                 let mut ctx = FunctionContext::new(&global_functions);
 
                 ctx.visit_function(expression)?;
-                functions.push(Function::new(ctx.instructions, 0, ctx.constants.0));
+                functions.push(Function::new(
+                    ctx.instructions,
+                    ctx.registers_allocator.get_highest_register(),
+                    ctx.constants.0,
+                ));
             }
             _ => unreachable!("Only Function expressions are allowed at the top level"),
         }
@@ -115,6 +119,14 @@ impl<'a> FunctionContext<'a> {
             .any(|expression| self.expression_returns(expression))
     }
 
+    fn patch_function_arguments(&mut self) {
+        for instruction in self.instructions.iter_mut() {
+            if let Instruction::MoveArg { dest, .. } = instruction {
+                *dest += self.registers_allocator.get_highest_register();
+            }
+        }
+    }
+
     fn expression_returns(&self, expression: &Expr) -> bool {
         match &expression.kind {
             ExprKind::Return(..) => true,
@@ -155,6 +167,8 @@ impl<'a> FunctionContext<'a> {
     }
 
     fn visit_function(&mut self, expression: &Expr) -> Result<(), KaoriError> {
+        self.enter_scope();
+
         let ExprKind::Function {
             parameters, body, ..
         } = &expression.kind
@@ -177,6 +191,10 @@ impl<'a> FunctionContext<'a> {
                 src: src.unwrap_register(),
             });
         }
+
+        self.exit_scope();
+
+        self.patch_function_arguments();
 
         Ok(())
     }
@@ -385,6 +403,8 @@ impl<'a> FunctionContext<'a> {
             ExprKind::UncheckedBlock { expressions, tail } => {
                 self.emit_instruction(Instruction::EnterUncheckedBlock);
 
+                self.enter_scope();
+
                 for expression in expressions {
                     self.visit_expression(expression);
                 }
@@ -393,6 +413,8 @@ impl<'a> FunctionContext<'a> {
                     Some(tail) => self.visit_expression(tail),
                     None => Self::unit(),
                 };
+
+                self.exit_scope();
 
                 self.emit_instruction(Instruction::ExitUncheckedBlock);
 

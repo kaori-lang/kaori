@@ -47,6 +47,8 @@ pub enum TokenKind {
     True,
     False,
     Unchecked,
+    To,
+    By,
 
     Identifier,
     StringLiteral,
@@ -107,6 +109,8 @@ impl fmt::Display for TokenKind {
             TokenKind::True => "true",
             TokenKind::False => "false",
             TokenKind::Unchecked => "unchecked",
+            TokenKind::To => "to",
+            TokenKind::By => "by",
 
             TokenKind::Identifier => "identifier",
             TokenKind::StringLiteral => "string",
