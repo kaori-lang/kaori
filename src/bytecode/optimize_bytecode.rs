@@ -1,4 +1,4 @@
-use crate::bytecode::{Function, instruction::Instruction};
+use crate::bytecode::{function::Function, instruction::Instruction};
 
 pub fn optimize_bytecode(functions: &mut [Function]) {
     for function in functions {

@@ -9,3 +9,4 @@ pub mod constants;
 pub mod emit_bytecode;
 pub mod immediate;
 pub mod optimize_bytecode;
+pub mod register_allocator;

@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        Expr,
+        expr::Expr,
         ops::{AssignOp, BinaryOp, UnaryOp},
     },
     error::kaori_error::KaoriError,
@@ -29,7 +29,7 @@ impl<'a> Parser<'a> {
         Ok(functions)
     }
 
-    pub fn parse_expression_statement(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_expression_statement(&mut self) -> Result<Expr, KaoriError> {
         let token_kind = self.token_stream.token_kind();
 
         let expression = match token_kind {
@@ -63,7 +63,7 @@ impl<'a> Parser<'a> {
         Ok(expression)
     }
 
-    pub fn parse_comma_separator<T>(
+    fn parse_comma_separator<T>(
         &mut self,
         parse_item: fn(&mut Self) -> Result<T, KaoriError>,
         terminator: TokenKind,
@@ -84,7 +84,7 @@ impl<'a> Parser<'a> {
         Ok(items)
     }
 
-    pub fn parse_return(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_return(&mut self) -> Result<Expr, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::Return)?;
@@ -98,7 +98,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::return_(expression, span))
     }
 
-    pub fn parse_continue(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_continue(&mut self) -> Result<Expr, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::Continue)?;
@@ -106,7 +106,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::continue_(span))
     }
 
-    pub fn parse_break(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_break(&mut self) -> Result<Expr, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::Break)?;
@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::break_(span))
     }
 
-    pub fn parse_print(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_print(&mut self) -> Result<Expr, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::Print)?;
@@ -125,7 +125,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::print(expression, span))
     }
 
-    pub fn parse_block(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_block(&mut self) -> Result<Expr, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::LeftBrace)?;
@@ -144,7 +144,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::block(body, span))
     }
 
-    pub fn parse_unchecked_block(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_unchecked_block(&mut self) -> Result<Expr, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::Unchecked)?;
@@ -164,7 +164,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::unchecked_block(body, span))
     }
 
-    pub fn parse_if(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_if(&mut self) -> Result<Expr, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::If)?;
@@ -188,7 +188,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::if_(condition, then_branch, else_branch, span))
     }
 
-    pub fn parse_while_loop(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_while_loop(&mut self) -> Result<Expr, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::While)?;
@@ -199,7 +199,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::while_loop(condition, block, span))
     }
 
-    pub fn parse_for_loop(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_for_loop(&mut self) -> Result<Expr, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::For)?;
@@ -219,7 +219,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::for_loop(init, condition, increment, block, span))
     }
 
-    pub fn parse_function(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_function(&mut self) -> Result<Expr, KaoriError> {
         let span = self.token_stream.span();
 
         self.token_stream.consume(TokenKind::Function)?;
@@ -250,7 +250,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::function(name, parameters, body, span))
     }
 
-    pub fn parse_function_parameter(&mut self) -> Result<(String, Span), KaoriError> {
+    fn parse_function_parameter(&mut self) -> Result<(String, Span), KaoriError> {
         let name = self.token_stream.lexeme().to_owned();
         let span = self.token_stream.span();
 
@@ -287,7 +287,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_expression(&mut self) -> Result<Expr, KaoriError> {
+    fn parse_expression(&mut self) -> Result<Expr, KaoriError> {
         let assign = self.parse_assign()?;
 
         Ok(assign)

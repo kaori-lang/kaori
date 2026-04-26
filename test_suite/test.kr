@@ -1,11 +1,11 @@
 fun main() {
-    a := 1;
-    b := 2;
+    a := 5;
 
-    b /= 7;
+    a := 7;
 
-    print(b);
+    print(a);
 }
+
 
 
 

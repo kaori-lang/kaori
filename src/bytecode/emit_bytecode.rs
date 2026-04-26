@@ -2,11 +2,12 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{
-        Expr, ExprKind,
+        expr::{Expr, ExprKind},
         ops::{AssignOp, BinaryOp, UnaryOp},
     },
     bytecode::{
-        Function, constants::Constants, immediate::Imm, instruction::Instruction, operand::Operand,
+        constants::Constants, function::Function, immediate::Imm, instruction::Instruction,
+        operand::Operand, register_allocator::RegisterAllocator,
     },
     error::kaori_error::KaoriError,
 };
@@ -31,11 +32,7 @@ pub fn emit_bytecode_from_ast(expressions: &[Expr]) -> Result<Vec<Function>, Kao
                 let mut ctx = FunctionContext::new(&global_functions);
 
                 ctx.visit_function(expression)?;
-                functions.push(Function::new(
-                    ctx.instructions,
-                    ctx.next_register,
-                    ctx.constants.0,
-                ));
+                functions.push(Function::new(ctx.instructions, 0, ctx.constants.0));
             }
             _ => unreachable!("Only Function expressions are allowed at the top level"),
         }
@@ -45,8 +42,8 @@ pub fn emit_bytecode_from_ast(expressions: &[Expr]) -> Result<Vec<Function>, Kao
 }
 
 pub struct FunctionContext<'a> {
-    next_register: u8,
-    registers: HashMap<String, Operand>,
+    symbols: Vec<HashMap<String, u8>>,
+    registers_allocator: RegisterAllocator,
     constants: Constants,
     instructions: Vec<Instruction>,
     global_functions: &'a HashMap<String, usize>,
@@ -55,18 +52,12 @@ pub struct FunctionContext<'a> {
 impl<'a> FunctionContext<'a> {
     pub fn new(global_functions: &'a HashMap<String, usize>) -> Self {
         Self {
-            registers: HashMap::new(),
-            next_register: 0,
+            symbols: Vec::new(),
+            registers_allocator: RegisterAllocator::new(),
             constants: Constants::default(),
             instructions: Vec::new(),
             global_functions,
         }
-    }
-
-    pub fn allocate_register(&mut self) -> Operand {
-        let register = self.next_register;
-        self.next_register += 1;
-        Operand::Register(register)
     }
 
     fn materialize(&mut self, src: Operand) -> Operand {
@@ -126,11 +117,11 @@ impl<'a> FunctionContext<'a> {
         index
     }
 
-    fn patch_jump(&mut self, index: usize, offset: i32) {
+    fn patch_jump(&mut self, index: usize, new_offset: i32) {
         match &mut self.instructions[index] {
-            Instruction::Jump { offset: o }
-            | Instruction::JumpIfTrue { offset: o, .. }
-            | Instruction::JumpIfFalse { offset: o, .. } => *o = offset,
+            Instruction::Jump { offset }
+            | Instruction::JumpIfTrue { offset, .. }
+            | Instruction::JumpIfFalse { offset, .. } => *offset = new_offset,
             _ => panic!("tried to patch a non-jump instruction at index {index}"),
         }
     }
@@ -151,7 +142,6 @@ impl<'a> FunctionContext<'a> {
             unreachable!("visit_function called on non-Function expression");
         };
 
-        // FIX: Parameters are (String, Span); store by name.
         for (name, _span) in parameters {
             let dest = self.allocate_register();
             self.registers.insert(name.clone(), dest);
@@ -200,56 +190,25 @@ impl<'a> FunctionContext<'a> {
                 right,
             } => {
                 let dest = self.visit_expression(left);
-                let dest = self.materialize(dest);
-                let src = self.visit_expression(right);
-                let src = self.materialize(src);
 
-                // FIX: Handle compound assignment operators instead of ignoring them.
-                // For plain Assign just move; for compound operators emit the arithmetic
-                // instruction first, writing the result back into dest.
-                match operator {
-                    AssignOp::Assign => {
-                        self.emit_instruction(Instruction::Move {
-                            dest: dest.unwrap_register(),
-                            src: src.unwrap_register(),
-                        });
-                    }
-                    AssignOp::AddAssign => {
-                        self.emit_instruction(Instruction::Add {
-                            dest: dest.unwrap_register(),
-                            src1: dest.unwrap_register(),
-                            src2: src.unwrap_register(),
-                        });
-                    }
+                let src = match operator {
+                    AssignOp::Assign => self.visit_expression(right),
+                    AssignOp::AddAssign => self.visit_binary_op(BinaryOp::Add, left, right),
                     AssignOp::SubtractAssign => {
-                        self.emit_instruction(Instruction::Subtract {
-                            dest: dest.unwrap_register(),
-                            src1: dest.unwrap_register(),
-                            src2: src.unwrap_register(),
-                        });
+                        self.visit_binary_op(BinaryOp::Subtract, left, right)
                     }
                     AssignOp::MultiplyAssign => {
-                        self.emit_instruction(Instruction::Multiply {
-                            dest: dest.unwrap_register(),
-                            src1: dest.unwrap_register(),
-                            src2: src.unwrap_register(),
-                        });
+                        self.visit_binary_op(BinaryOp::Multiply, left, right)
                     }
-                    AssignOp::DivideAssign => {
-                        self.emit_instruction(Instruction::Divide {
-                            dest: dest.unwrap_register(),
-                            src1: dest.unwrap_register(),
-                            src2: src.unwrap_register(),
-                        });
-                    }
-                    AssignOp::ModuloAssign => {
-                        self.emit_instruction(Instruction::Modulo {
-                            dest: dest.unwrap_register(),
-                            src1: dest.unwrap_register(),
-                            src2: src.unwrap_register(),
-                        });
-                    }
-                }
+                    AssignOp::DivideAssign => self.visit_binary_op(BinaryOp::Divide, left, right),
+                    AssignOp::ModuloAssign => self.visit_binary_op(BinaryOp::Modulo, left, right),
+                };
+                let src = self.materialize(src);
+
+                self.emit_instruction(Instruction::Move {
+                    dest: dest.unwrap_register(),
+                    src: src.unwrap_register(),
+                });
 
                 dest
             }
@@ -331,128 +290,7 @@ impl<'a> FunctionContext<'a> {
                 operator,
                 left,
                 right,
-            } => {
-                let src1 = self.visit_expression(left);
-                let src2 = self.visit_expression(right);
-                let dest = self.allocate_register().unwrap_register();
-
-                use BinaryOp::*;
-
-                let instruction = match (src1, src2) {
-                    (Operand::Register(src1), Operand::Register(src2)) => match operator {
-                        Add => Instruction::Add { dest, src1, src2 },
-                        Subtract => Instruction::Subtract { dest, src1, src2 },
-                        Multiply => Instruction::Multiply { dest, src1, src2 },
-                        Divide => Instruction::Divide { dest, src1, src2 },
-                        Modulo => Instruction::Modulo { dest, src1, src2 },
-                        Equal => Instruction::Equal { dest, src1, src2 },
-                        NotEqual => Instruction::NotEqual { dest, src1, src2 },
-                        Less => Instruction::Less { dest, src1, src2 },
-                        LessEqual => Instruction::LessEqual { dest, src1, src2 },
-                        Greater => Instruction::Greater { dest, src1, src2 },
-                        GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
-                    },
-                    (Operand::Register(src1), Operand::Immediate(src2)) => match operator {
-                        Add => Instruction::AddI { dest, src1, src2 },
-                        Subtract => Instruction::SubtractRI { dest, src1, src2 },
-                        Multiply => Instruction::MultiplyI { dest, src1, src2 },
-                        Divide => Instruction::DivideRI { dest, src1, src2 },
-                        Modulo => Instruction::ModuloRI { dest, src1, src2 },
-                        Equal => Instruction::EqualI { dest, src1, src2 },
-                        NotEqual => Instruction::NotEqualI { dest, src1, src2 },
-                        Less => Instruction::LessI { dest, src1, src2 },
-                        LessEqual => Instruction::LessEqualI { dest, src1, src2 },
-                        Greater => Instruction::GreaterI { dest, src1, src2 },
-                        GreaterEqual => Instruction::GreaterEqualI { dest, src1, src2 },
-                    },
-                    (Operand::Immediate(src1), Operand::Register(src2)) => match operator {
-                        Add => Instruction::AddI {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
-                        Multiply => Instruction::MultiplyI {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
-                        Equal => Instruction::EqualI {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
-                        NotEqual => Instruction::NotEqualI {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
-                        Subtract => Instruction::SubtractIR { dest, src1, src2 },
-                        Divide => Instruction::DivideIR { dest, src1, src2 },
-                        Modulo => Instruction::ModuloIR { dest, src1, src2 },
-                        Less => Instruction::GreaterI {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
-                        LessEqual => Instruction::GreaterEqualI {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
-                        Greater => Instruction::LessI {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
-                        GreaterEqual => Instruction::LessEqualI {
-                            dest,
-                            src1: src2,
-                            src2: src1,
-                        },
-                    },
-                    (Operand::Constant(src1), Operand::Register(src2)) => {
-                        let src1 = self.materialize(Operand::Constant(src1)).unwrap_register();
-                        match operator {
-                            Add => Instruction::Add { dest, src1, src2 },
-                            Subtract => Instruction::Subtract { dest, src1, src2 },
-                            Multiply => Instruction::Multiply { dest, src1, src2 },
-                            Divide => Instruction::Divide { dest, src1, src2 },
-                            Modulo => Instruction::Modulo { dest, src1, src2 },
-                            Equal => Instruction::Equal { dest, src1, src2 },
-                            NotEqual => Instruction::NotEqual { dest, src1, src2 },
-                            Less => Instruction::Less { dest, src1, src2 },
-                            LessEqual => Instruction::LessEqual { dest, src1, src2 },
-                            Greater => Instruction::Greater { dest, src1, src2 },
-                            GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
-                        }
-                    }
-                    (Operand::Register(src1), Operand::Constant(src2)) => {
-                        let src2 = self.materialize(Operand::Constant(src2)).unwrap_register();
-                        match operator {
-                            Add => Instruction::Add { dest, src1, src2 },
-                            Subtract => Instruction::Subtract { dest, src1, src2 },
-                            Multiply => Instruction::Multiply { dest, src1, src2 },
-                            Divide => Instruction::Divide { dest, src1, src2 },
-                            Modulo => Instruction::Modulo { dest, src1, src2 },
-                            Equal => Instruction::Equal { dest, src1, src2 },
-                            NotEqual => Instruction::NotEqual { dest, src1, src2 },
-                            Less => Instruction::Less { dest, src1, src2 },
-                            LessEqual => Instruction::LessEqual { dest, src1, src2 },
-                            Greater => Instruction::Greater { dest, src1, src2 },
-                            GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
-                        }
-                    }
-                    (Operand::Constant(_), Operand::Constant(_))
-                    | (Operand::Immediate(_), Operand::Immediate(_))
-                    | (Operand::Constant(_), Operand::Immediate(_))
-                    | (Operand::Immediate(_), Operand::Constant(_)) => {
-                        unreachable!("No constant fold done yet!")
-                    }
-                };
-
-                self.emit_instruction(instruction);
-                Operand::Register(dest)
-            }
+            } => self.visit_binary_op(*operator, left, right),
             ExprKind::Unary { operator, right } => {
                 let src = self.visit_expression(right);
                 let src = self.materialize(src);
@@ -493,13 +331,7 @@ impl<'a> FunctionContext<'a> {
                         dest: dest.unwrap_register(),
                         src,
                     },
-                    Operand::Immediate(_) => {
-                        let src = self.materialize(callee_src);
-                        Instruction::Call {
-                            dest: dest.unwrap_register(),
-                            src: src.unwrap_register(),
-                        }
-                    }
+                    _ => panic!("Function should be either coming from a constant or a register"),
                 };
 
                 self.emit_instruction(instruction);
@@ -508,9 +340,8 @@ impl<'a> FunctionContext<'a> {
             }
             ExprKind::MemberAccess { object, property } => {
                 let dest = self.allocate_register();
+
                 let object = self.visit_expression(object);
-                // FIX: Materialize object — it may be a Constant or Immediate,
-                // and GetField requires a register operand.
                 let object = self.materialize(object);
                 let key = self.visit_expression(property);
                 let key = self.materialize(key);
@@ -635,23 +466,19 @@ impl<'a> FunctionContext<'a> {
             }
             ExprKind::BooleanLiteral(value) => {
                 let numeric = if *value { 1.0 } else { 0.0 };
-                if let Some(imm) = Imm::try_to_encode(numeric) {
-                    Operand::Immediate(imm)
-                } else {
-                    self.constants.push_number(numeric)
-                }
+
+                Operand::Immediate(Imm::try_to_encode(numeric).unwrap())
             }
             ExprKind::StringLiteral(value) => self.constants.push_string(value.clone()),
-
             ExprKind::NumberLiteral(value) => {
                 let value = *value;
+
                 if let Some(imm) = Imm::try_to_encode(value) {
                     Operand::Immediate(imm)
                 } else {
                     self.constants.push_number(value)
                 }
             }
-
             ExprKind::DictLiteral { fields } => {
                 let dest = self.allocate_register();
 
@@ -663,8 +490,6 @@ impl<'a> FunctionContext<'a> {
                     let key_op = self.visit_expression(key);
                     let key_op = self.materialize(key_op);
 
-                    // FIX: value is Option<Expr>. When None (shorthand `{ x }`),
-                    // re-evaluate the key expression as the value.
                     let value_op = match value {
                         Some(v) => {
                             let v = self.visit_expression(v);
@@ -685,11 +510,131 @@ impl<'a> FunctionContext<'a> {
 
                 dest
             }
-
             ExprKind::Function { .. } => {
                 unreachable!("Nested Function expression must be referenced via Identifier")
             }
         }
+    }
+
+    fn visit_binary_op(&mut self, operator: BinaryOp, left: &Expr, right: &Expr) -> Operand {
+        let src1 = self.visit_expression(left);
+        let src2 = self.visit_expression(right);
+        let dest = self.allocate_register().unwrap_register();
+
+        let instruction = match (src1, src2) {
+            (Operand::Register(src1), Operand::Register(src2)) => match operator {
+                BinaryOp::Add => Instruction::Add { dest, src1, src2 },
+                BinaryOp::Subtract => Instruction::Subtract { dest, src1, src2 },
+                BinaryOp::Multiply => Instruction::Multiply { dest, src1, src2 },
+                BinaryOp::Divide => Instruction::Divide { dest, src1, src2 },
+                BinaryOp::Modulo => Instruction::Modulo { dest, src1, src2 },
+                BinaryOp::Equal => Instruction::Equal { dest, src1, src2 },
+                BinaryOp::NotEqual => Instruction::NotEqual { dest, src1, src2 },
+                BinaryOp::Less => Instruction::Less { dest, src1, src2 },
+                BinaryOp::LessEqual => Instruction::LessEqual { dest, src1, src2 },
+                BinaryOp::Greater => Instruction::Greater { dest, src1, src2 },
+                BinaryOp::GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
+            },
+            (Operand::Register(src1), Operand::Immediate(src2)) => match operator {
+                BinaryOp::Add => Instruction::AddI { dest, src1, src2 },
+                BinaryOp::Subtract => Instruction::SubtractRI { dest, src1, src2 },
+                BinaryOp::Multiply => Instruction::MultiplyI { dest, src1, src2 },
+                BinaryOp::Divide => Instruction::DivideRI { dest, src1, src2 },
+                BinaryOp::Modulo => Instruction::ModuloRI { dest, src1, src2 },
+                BinaryOp::Equal => Instruction::EqualI { dest, src1, src2 },
+                BinaryOp::NotEqual => Instruction::NotEqualI { dest, src1, src2 },
+                BinaryOp::Less => Instruction::LessI { dest, src1, src2 },
+                BinaryOp::LessEqual => Instruction::LessEqualI { dest, src1, src2 },
+                BinaryOp::Greater => Instruction::GreaterI { dest, src1, src2 },
+                BinaryOp::GreaterEqual => Instruction::GreaterEqualI { dest, src1, src2 },
+            },
+            (Operand::Immediate(src1), Operand::Register(src2)) => match operator {
+                BinaryOp::Add => Instruction::AddI {
+                    dest,
+                    src1: src2,
+                    src2: src1,
+                },
+                BinaryOp::Multiply => Instruction::MultiplyI {
+                    dest,
+                    src1: src2,
+                    src2: src1,
+                },
+                BinaryOp::Equal => Instruction::EqualI {
+                    dest,
+                    src1: src2,
+                    src2: src1,
+                },
+                BinaryOp::NotEqual => Instruction::NotEqualI {
+                    dest,
+                    src1: src2,
+                    src2: src1,
+                },
+                BinaryOp::Subtract => Instruction::SubtractIR { dest, src1, src2 },
+                BinaryOp::Divide => Instruction::DivideIR { dest, src1, src2 },
+                BinaryOp::Modulo => Instruction::ModuloIR { dest, src1, src2 },
+                BinaryOp::Less => Instruction::GreaterI {
+                    dest,
+                    src1: src2,
+                    src2: src1,
+                },
+                BinaryOp::LessEqual => Instruction::GreaterEqualI {
+                    dest,
+                    src1: src2,
+                    src2: src1,
+                },
+                BinaryOp::Greater => Instruction::LessI {
+                    dest,
+                    src1: src2,
+                    src2: src1,
+                },
+                BinaryOp::GreaterEqual => Instruction::LessEqualI {
+                    dest,
+                    src1: src2,
+                    src2: src1,
+                },
+            },
+            (Operand::Constant(src1), Operand::Register(src2)) => {
+                let src1 = self.materialize(Operand::Constant(src1)).unwrap_register();
+                match operator {
+                    BinaryOp::Add => Instruction::Add { dest, src1, src2 },
+                    BinaryOp::Subtract => Instruction::Subtract { dest, src1, src2 },
+                    BinaryOp::Multiply => Instruction::Multiply { dest, src1, src2 },
+                    BinaryOp::Divide => Instruction::Divide { dest, src1, src2 },
+                    BinaryOp::Modulo => Instruction::Modulo { dest, src1, src2 },
+                    BinaryOp::Equal => Instruction::Equal { dest, src1, src2 },
+                    BinaryOp::NotEqual => Instruction::NotEqual { dest, src1, src2 },
+                    BinaryOp::Less => Instruction::Less { dest, src1, src2 },
+                    BinaryOp::LessEqual => Instruction::LessEqual { dest, src1, src2 },
+                    BinaryOp::Greater => Instruction::Greater { dest, src1, src2 },
+                    BinaryOp::GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
+                }
+            }
+            (Operand::Register(src1), Operand::Constant(src2)) => {
+                let src2 = self.materialize(Operand::Constant(src2)).unwrap_register();
+                match operator {
+                    BinaryOp::Add => Instruction::Add { dest, src1, src2 },
+                    BinaryOp::Subtract => Instruction::Subtract { dest, src1, src2 },
+                    BinaryOp::Multiply => Instruction::Multiply { dest, src1, src2 },
+                    BinaryOp::Divide => Instruction::Divide { dest, src1, src2 },
+                    BinaryOp::Modulo => Instruction::Modulo { dest, src1, src2 },
+                    BinaryOp::Equal => Instruction::Equal { dest, src1, src2 },
+                    BinaryOp::NotEqual => Instruction::NotEqual { dest, src1, src2 },
+                    BinaryOp::Less => Instruction::Less { dest, src1, src2 },
+                    BinaryOp::LessEqual => Instruction::LessEqual { dest, src1, src2 },
+                    BinaryOp::Greater => Instruction::Greater { dest, src1, src2 },
+                    BinaryOp::GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
+                }
+            }
+            (Operand::Constant(_), Operand::Constant(_))
+            | (Operand::Immediate(_), Operand::Immediate(_))
+            | (Operand::Constant(_), Operand::Immediate(_))
+            | (Operand::Immediate(_), Operand::Constant(_)) => {
+                unreachable!("No constant fold done yet!")
+            }
+        };
+
+        self.emit_instruction(instruction);
+        Operand::Register(dest)
     }
 
     fn visit_loop(
@@ -703,11 +648,6 @@ impl<'a> FunctionContext<'a> {
             self.visit_expression(init);
         }
 
-        // FIX: Mark the condition start so the back-edge jumps here, not to the
-        // body. This ensures the condition is re-evaluated on every iteration
-        // rather than being skipped after the first pass.
-        let loop_start = self.instructions.len();
-
         let src = self.visit_expression(condition);
         let src = self.materialize(src);
 
@@ -716,16 +656,23 @@ impl<'a> FunctionContext<'a> {
             offset: 0,
         });
 
+        let loop_body = self.instructions.len();
+
         self.visit_expression(block);
 
         if let Some(increment) = increment {
             self.visit_expression(increment);
         }
 
-        // FIX: Unconditional jump back to condition (loop_start), replacing the
-        // duplicated condition evaluation + JumpIfTrue that was in the original.
-        let jump_back = self.emit_instruction(Instruction::Jump { offset: 0 });
-        self.patch_jump(jump_back, loop_start as i32 - jump_back as i32);
+        let src = self.visit_expression(condition);
+        let src = self.materialize(src);
+
+        let jump_if_true = self.emit_instruction(Instruction::JumpIfTrue {
+            src: src.unwrap_register(),
+            offset: 0,
+        });
+
+        self.patch_jump(jump_if_true, loop_body as i32 - jump_if_true as i32);
 
         self.patch_jump(
             jump_if_false,
