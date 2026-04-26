@@ -58,7 +58,10 @@ pub enum ExprKind {
         parameters: Vec<(String, Span)>,
         body: Vec<Expr>,
     },
-    Block(Vec<Expr>),
+    Block {
+        expressions: Vec<Expr>,
+        tail: Box<Expr>,
+    },
     If {
         condition: Box<Expr>,
         then_branch: Box<Expr>,
@@ -74,7 +77,10 @@ pub enum ExprKind {
         increment: Box<Expr>,
         block: Box<Expr>,
     },
-    UncheckedBlock(Vec<Expr>),
+    UncheckedBlock {
+        expressions: Vec<Expr>,
+        tail: Box<Expr>,
+    },
     Return(Option<Box<Expr>>),
     Break,
     Continue,
@@ -230,10 +236,13 @@ impl Expr {
         }
     }
 
-    pub fn block(body: Vec<Expr>, span: Span) -> Expr {
+    pub fn block(expressions: Vec<Expr>, tail: Expr, span: Span) -> Expr {
         Expr {
             span,
-            kind: ExprKind::Block(body),
+            kind: ExprKind::Block {
+                expressions,
+                tail: Box::new(tail),
+            },
         }
     }
 
@@ -270,10 +279,13 @@ impl Expr {
         }
     }
 
-    pub fn unchecked_block(body: Vec<Expr>, span: Span) -> Expr {
+    pub fn unchecked_block(expressions: Vec<Expr>, tail: Expr, span: Span) -> Expr {
         Expr {
             span,
-            kind: ExprKind::UncheckedBlock(body),
+            kind: ExprKind::UncheckedBlock {
+                expressions,
+                tail: Box::new(tail),
+            },
         }
     }
 

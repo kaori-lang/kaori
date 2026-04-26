@@ -60,24 +60,47 @@ impl<'a> FunctionContext<'a> {
         }
     }
 
+    fn enter_scope(&mut self) {
+        self.symbols.push(HashMap::new());
+    }
+
+    fn exit_scope(&mut self) {
+        for register in self.symbols.last().unwrap().values().copied() {
+            self.registers_allocator.free_register(register);
+        }
+
+        self.symbols.pop();
+    }
+
+    fn insert_symbol(&mut self, name: &str, register: u8) {
+        self.symbols
+            .last_mut()
+            .unwrap()
+            .insert(name.to_owned(), register);
+    }
+
+    fn lookup_symbol(&self, name: &str) -> Option<u8> {
+        self.symbols
+            .iter()
+            .rev()
+            .find_map(|table| table.get(name).copied())
+    }
+
     fn materialize(&mut self, src: Operand) -> Operand {
         match src {
             Operand::Register(_) => src,
             Operand::Constant(src) => {
-                let dest = self.allocate_register();
-                self.emit_instruction(Instruction::LoadK {
-                    dest: dest.unwrap_register(),
-                    src,
-                });
-                dest
+                let dest = self.registers_allocator.allocate_register();
+
+                self.emit_instruction(Instruction::LoadK { dest, src });
+
+                Operand::Register(dest)
             }
             Operand::Immediate(src) => {
-                let dest = self.allocate_register();
-                self.emit_instruction(Instruction::LoadImm {
-                    dest: dest.unwrap_register(),
-                    src,
-                });
-                dest
+                let dest = self.registers_allocator.allocate_register();
+                self.emit_instruction(Instruction::LoadImm { dest, src });
+
+                Operand::Register(dest)
             }
         }
     }
@@ -114,6 +137,7 @@ impl<'a> FunctionContext<'a> {
     fn emit_instruction(&mut self, instruction: Instruction) -> usize {
         let index = self.instructions.len();
         self.instructions.push(instruction);
+
         index
     }
 
@@ -126,14 +150,6 @@ impl<'a> FunctionContext<'a> {
         }
     }
 
-    fn patch_function_arguments(&mut self) {
-        for instruction in self.instructions.iter_mut() {
-            if let Instruction::MoveArg { dest, .. } = instruction {
-                *dest += self.next_register;
-            }
-        }
-    }
-
     fn visit_function(&mut self, expression: &Expr) -> Result<(), KaoriError> {
         let ExprKind::Function {
             parameters, body, ..
@@ -143,8 +159,8 @@ impl<'a> FunctionContext<'a> {
         };
 
         for (name, _span) in parameters {
-            let dest = self.allocate_register();
-            self.registers.insert(name.clone(), dest);
+            let dest = self.registers_allocator.allocate_register();
+            self.insert_symbol(name, dest);
         }
 
         for expression in body {
@@ -158,8 +174,6 @@ impl<'a> FunctionContext<'a> {
             });
         }
 
-        self.patch_function_arguments();
-
         Ok(())
     }
 
@@ -171,18 +185,18 @@ impl<'a> FunctionContext<'a> {
                     _ => panic!("DeclareAssign left-hand side must be an Identifier"),
                 };
 
-                let dest = self.allocate_register();
+                let dest = self.registers_allocator.allocate_register();
                 let src = self.visit_expression(right);
                 let src = self.materialize(src);
 
-                self.registers.insert(name, dest);
+                self.insert_symbol(&name, dest);
 
                 self.emit_instruction(Instruction::Move {
-                    dest: dest.unwrap_register(),
+                    dest,
                     src: src.unwrap_register(),
                 });
 
-                dest
+                Operand::Register(dest)
             }
             ExprKind::Assign {
                 operator,
@@ -213,18 +227,18 @@ impl<'a> FunctionContext<'a> {
                 dest
             }
             ExprKind::LogicalAnd { left, right } => {
-                let dest = self.allocate_register();
+                let dest = self.registers_allocator.allocate_register();
 
                 let src = self.visit_expression(left);
                 let src = self.materialize(src);
 
                 self.emit_instruction(Instruction::Move {
-                    dest: dest.unwrap_register(),
+                    dest,
                     src: src.unwrap_register(),
                 });
 
                 let jump_if_false = self.emit_instruction(Instruction::JumpIfFalse {
-                    src: dest.unwrap_register(),
+                    src: dest,
                     offset: 0,
                 });
 
@@ -232,7 +246,7 @@ impl<'a> FunctionContext<'a> {
                 let src = self.materialize(src);
 
                 self.emit_instruction(Instruction::Move {
-                    dest: dest.unwrap_register(),
+                    dest,
                     src: src.unwrap_register(),
                 });
 
@@ -241,21 +255,21 @@ impl<'a> FunctionContext<'a> {
                     self.instructions.len() as i32 - jump_if_false as i32,
                 );
 
-                dest
+                Operand::Register(dest)
             }
             ExprKind::LogicalOr { left, right } => {
-                let dest = self.allocate_register();
+                let dest = self.registers_allocator.allocate_register();
 
                 let src = self.visit_expression(left);
                 let src = self.materialize(src);
 
                 self.emit_instruction(Instruction::Move {
-                    dest: dest.unwrap_register(),
+                    dest,
                     src: src.unwrap_register(),
                 });
 
                 let jump_if_true = self.emit_instruction(Instruction::JumpIfTrue {
-                    src: dest.unwrap_register(),
+                    src: dest,
                     offset: 0,
                 });
 
@@ -263,7 +277,7 @@ impl<'a> FunctionContext<'a> {
                 let src = self.materialize(src);
 
                 self.emit_instruction(Instruction::Move {
-                    dest: dest.unwrap_register(),
+                    dest,
                     src: src.unwrap_register(),
                 });
 
@@ -272,19 +286,19 @@ impl<'a> FunctionContext<'a> {
                     self.instructions.len() as i32 - jump_if_true as i32,
                 );
 
-                dest
+                Operand::Register(dest)
             }
             ExprKind::LogicalNot(expression) => {
-                let dest = self.allocate_register();
+                let dest = self.registers_allocator.allocate_register();
                 let src = self.visit_expression(expression);
                 let src = self.materialize(src);
 
                 self.emit_instruction(Instruction::Not {
-                    dest: dest.unwrap_register(),
+                    dest,
                     src: src.unwrap_register(),
                 });
 
-                dest
+                Operand::Register(dest)
             }
             ExprKind::Binary {
                 operator,
@@ -294,21 +308,21 @@ impl<'a> FunctionContext<'a> {
             ExprKind::Unary { operator, right } => {
                 let src = self.visit_expression(right);
                 let src = self.materialize(src);
-                let dest = self.allocate_register();
+                let dest = self.registers_allocator.allocate_register();
 
                 let instruction = match operator {
                     UnaryOp::Negate => Instruction::Negate {
-                        dest: dest.unwrap_register(),
+                        dest,
                         src: src.unwrap_register(),
                     },
                 };
 
                 self.emit_instruction(instruction);
 
-                dest
+                Operand::Register(dest)
             }
             ExprKind::FunctionCall { callee, arguments } => {
-                let dest = self.allocate_register();
+                let dest = self.registers_allocator.allocate_register();
 
                 let callee_src = self.visit_expression(callee);
 
@@ -323,23 +337,17 @@ impl<'a> FunctionContext<'a> {
                 }
 
                 let instruction = match callee_src {
-                    Operand::Constant(src) => Instruction::CallK {
-                        dest: dest.unwrap_register(),
-                        src,
-                    },
-                    Operand::Register(src) => Instruction::Call {
-                        dest: dest.unwrap_register(),
-                        src,
-                    },
+                    Operand::Constant(src) => Instruction::CallK { dest, src },
+                    Operand::Register(src) => Instruction::Call { dest, src },
                     _ => panic!("Function should be either coming from a constant or a register"),
                 };
 
                 self.emit_instruction(instruction);
 
-                dest
+                Operand::Register(dest)
             }
             ExprKind::MemberAccess { object, property } => {
-                let dest = self.allocate_register();
+                let dest = self.registers_allocator.allocate_register();
 
                 let object = self.visit_expression(object);
                 let object = self.materialize(object);
@@ -347,20 +355,23 @@ impl<'a> FunctionContext<'a> {
                 let key = self.materialize(key);
 
                 self.emit_instruction(Instruction::GetField {
-                    dest: dest.unwrap_register(),
+                    dest,
                     object: object.unwrap_register(),
                     key: key.unwrap_register(),
                 });
 
-                dest
+                Operand::Register(dest)
             }
             ExprKind::Block(expressions) => {
                 let mut last = Self::unit();
+
+                self.enter_scope();
 
                 for expression in expressions {
                     last = self.visit_expression(expression);
                 }
 
+                self.exit_scope();
                 last
             }
             ExprKind::UncheckedBlock(expressions) => {
@@ -378,7 +389,7 @@ impl<'a> FunctionContext<'a> {
                 then_branch,
                 else_branch,
             } => {
-                let dest = self.allocate_register();
+                let dest = self.registers_allocator.allocate_register();
 
                 let src = self.visit_expression(condition);
                 let src = self.materialize(src);
@@ -392,7 +403,7 @@ impl<'a> FunctionContext<'a> {
                 let src = self.materialize(src);
 
                 self.emit_instruction(Instruction::Move {
-                    dest: dest.unwrap_register(),
+                    dest,
                     src: src.unwrap_register(),
                 });
 
@@ -411,13 +422,13 @@ impl<'a> FunctionContext<'a> {
                 let src = self.materialize(src);
 
                 self.emit_instruction(Instruction::Move {
-                    dest: dest.unwrap_register(),
+                    dest,
                     src: src.unwrap_register(),
                 });
 
                 self.patch_jump(jump_end, self.instructions.len() as i32 - jump_end as i32);
 
-                dest
+                Operand::Register(dest)
             }
             ExprKind::ForLoop {
                 init,
@@ -456,8 +467,8 @@ impl<'a> FunctionContext<'a> {
                 todo!()
             }
             ExprKind::Identifier(name) => {
-                if let Some(&operand) = self.registers.get(name) {
-                    operand
+                if let Some(register) = self.lookup_symbol(name) {
+                    Operand::Register(register)
                 } else if let Some(&index) = self.global_functions.get(name) {
                     self.constants.push_function_index(index)
                 } else {
@@ -480,11 +491,9 @@ impl<'a> FunctionContext<'a> {
                 }
             }
             ExprKind::DictLiteral { fields } => {
-                let dest = self.allocate_register();
+                let dest = self.registers_allocator.allocate_register();
 
-                self.emit_instruction(Instruction::CreateDict {
-                    dest: dest.unwrap_register(),
-                });
+                self.emit_instruction(Instruction::CreateDict { dest });
 
                 for (key, value) in fields {
                     let key_op = self.visit_expression(key);
@@ -502,13 +511,13 @@ impl<'a> FunctionContext<'a> {
                     };
 
                     self.emit_instruction(Instruction::SetField {
-                        object: dest.unwrap_register(),
+                        object: dest,
                         key: key_op.unwrap_register(),
                         value: value_op.unwrap_register(),
                     });
                 }
 
-                dest
+                Operand::Register(dest)
             }
             ExprKind::Function { .. } => {
                 unreachable!("Nested Function expression must be referenced via Identifier")
@@ -519,7 +528,7 @@ impl<'a> FunctionContext<'a> {
     fn visit_binary_op(&mut self, operator: BinaryOp, left: &Expr, right: &Expr) -> Operand {
         let src1 = self.visit_expression(left);
         let src2 = self.visit_expression(right);
-        let dest = self.allocate_register().unwrap_register();
+        let dest = self.registers_allocator.allocate_register();
 
         let instruction = match (src1, src2) {
             (Operand::Register(src1), Operand::Register(src2)) => match operator {

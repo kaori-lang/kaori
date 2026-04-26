@@ -130,18 +130,23 @@ impl<'a> Parser<'a> {
 
         self.token_stream.consume(TokenKind::LeftBrace)?;
 
-        let mut body = Vec::new();
+        let mut expressions = Vec::new();
 
-        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
-        {
-            let expr = self.parse_expression_statement()?;
+        while !self.token_stream.at_end() {
+            if self.token_stream.token_kind() == TokenKind::RightBrace {
+                break;
+            }
 
-            body.push(expr);
+            let expression = self.parse_expression_statement()?;
+
+            expressions.push(expression);
         }
+
+        let tail = self.parse_expression_statement()?;
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Expr::block(body, span))
+        Ok(Expr::block(expressions, tail, span))
     }
 
     fn parse_unchecked_block(&mut self) -> Result<Expr, KaoriError> {
@@ -150,18 +155,23 @@ impl<'a> Parser<'a> {
         self.token_stream.consume(TokenKind::Unchecked)?;
         self.token_stream.consume(TokenKind::LeftBrace)?;
 
-        let mut body = Vec::new();
+        let mut expressions = Vec::new();
 
-        while !self.token_stream.at_end() && self.token_stream.token_kind() != TokenKind::RightBrace
-        {
-            let expr = self.parse_expression_statement()?;
+        while !self.token_stream.at_end() {
+            if self.token_stream.token_kind() == TokenKind::RightBrace {
+                break;
+            }
 
-            body.push(expr);
+            let expression = self.parse_expression_statement()?;
+
+            expressions.push(expression);
         }
+
+        let tail = self.parse_expression_statement()?;
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Expr::unchecked_block(body, span))
+        Ok(Expr::unchecked_block(expressions, tail, span))
     }
 
     fn parse_if(&mut self) -> Result<Expr, KaoriError> {
