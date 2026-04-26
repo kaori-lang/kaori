@@ -73,8 +73,8 @@ pub enum ExprKind {
     },
     ForLoop {
         init: Box<Expr>,
-        condition: Box<Expr>,
-        increment: Box<Expr>,
+        end: Box<Expr>,
+        step: Box<Expr>,
         block: Box<Expr>,
     },
     UncheckedBlock {
@@ -267,13 +267,13 @@ impl Expr {
         }
     }
 
-    pub fn for_loop(init: Expr, condition: Expr, increment: Expr, block: Expr, span: Span) -> Expr {
+    pub fn for_loop(init: Expr, end: Expr, step: Expr, block: Expr, span: Span) -> Expr {
         Expr {
             span,
             kind: ExprKind::ForLoop {
                 init: Box::new(init),
-                condition: Box::new(condition),
-                increment: Box::new(increment),
+                end: Box::new(end),
+                step: Box::new(step),
                 block: Box::new(block),
             },
         }

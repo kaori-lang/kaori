@@ -210,17 +210,17 @@ impl<'a> Parser<'a> {
 
         let init = self.parse_expression()?;
 
-        self.token_stream.consume(TokenKind::Semicolon)?;
+        self.token_stream.consume(TokenKind::To)?;
 
-        let condition = self.parse_expression()?;
+        let end = self.parse_expression()?;
 
-        self.token_stream.consume(TokenKind::Semicolon)?;
+        self.token_stream.consume(TokenKind::By)?;
 
-        let increment = self.parse_expression()?;
+        let step = self.parse_expression()?;
 
         let block = self.parse_block()?;
 
-        Ok(Expr::for_loop(init, condition, increment, block, span))
+        Ok(Expr::for_loop(init, end, step, block, span))
     }
 
     fn parse_function(&mut self) -> Result<Expr, KaoriError> {

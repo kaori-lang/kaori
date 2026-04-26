@@ -473,7 +473,34 @@ impl<'a> FunctionContext<'a> {
                 increment,
             } => self.visit_loop(Some(init), condition, block, Some(increment)),
             ExprKind::WhileLoop { condition, block } => {
-                self.visit_loop(None, condition, block, None)
+                let src = self.visit_expression(condition);
+                let src = self.materialize(src);
+
+                let jump_if_false = self.emit_instruction(Instruction::JumpIfFalse {
+                    src: src.unwrap_register(),
+                    offset: 0,
+                });
+
+                let loop_body = self.instructions.len();
+
+                self.visit_expression(block);
+
+                let src = self.visit_expression(condition);
+                let src = self.materialize(src);
+
+                let jump_if_true = self.emit_instruction(Instruction::JumpIfTrue {
+                    src: src.unwrap_register(),
+                    offset: 0,
+                });
+
+                self.patch_jump(jump_if_true, loop_body as i32 - jump_if_true as i32);
+
+                self.patch_jump(
+                    jump_if_false,
+                    self.instructions.len() as i32 - jump_if_false as i32,
+                );
+
+                Self::unit()
             }
             ExprKind::Return(expression) => {
                 let src = match expression {
