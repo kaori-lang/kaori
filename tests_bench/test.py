@@ -1,7 +1,11 @@
+import time
+
+def foo():
+
+    for i in range(10):
+        yield i
 
 
 
-
-a = 5 + 6
-
-
+print(foo().__next__())
+print(foo().__next__())

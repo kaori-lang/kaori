@@ -466,12 +466,7 @@ impl<'a> FunctionContext<'a> {
 
                 Operand::Register(dest)
             }
-            ExprKind::ForLoop {
-                init,
-                condition,
-                block,
-                increment,
-            } => self.visit_loop(Some(init), condition, block, Some(increment)),
+            ExprKind::ForLoop { start, end, block } => Self::unit(),
             ExprKind::WhileLoop { condition, block } => {
                 let src = self.visit_expression(condition);
                 let src = self.materialize(src);
@@ -508,6 +503,7 @@ impl<'a> FunctionContext<'a> {
                     None => Self::unit(),
                 };
                 let src = self.materialize(src);
+
                 self.emit_instruction(Instruction::Return {
                     src: src.unwrap_register(),
                 });

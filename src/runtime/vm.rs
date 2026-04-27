@@ -59,7 +59,7 @@ const IMMEDIATE: u8 = 1;
 const CONSTANT: u8 = 2;
 const HANDLERS_UNCHECKED_OFFSET: usize = HANDLERS.len() / 2;
 
-const HANDLERS: [Handler; 112] = [
+const HANDLERS: [Handler; 114] = [
     // CHECKED HANDLERS (false)
     opcode_add::<REGISTER, REGISTER, false>,       // Add
     opcode_add::<REGISTER, IMMEDIATE, false>,      // AddI
@@ -124,6 +124,7 @@ const HANDLERS: [Handler; 112] = [
     opcode_print::<false>,
     opcode_enter_unchecked_block,
     opcode_exit_unchecked_block,
+    opcode_nop::<false>,
     // =============================
     // UNCHECKED HANDLERS (true)
     // =============================
@@ -183,6 +184,7 @@ const HANDLERS: [Handler; 112] = [
     opcode_print::<true>,
     opcode_enter_unchecked_block,
     opcode_exit_unchecked_block,
+    opcode_nop::<true>,
 ];
 pub struct Vm {
     pub registers: Vec<Value>,
@@ -1584,6 +1586,23 @@ fn opcode_print<const UNCHECKED: bool>(
         let src = *registers.add(src as usize);
         println!("{:?}", src);
 
+        if UNCHECKED {
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
+        } else {
+            dispatch_next!(ip, vm, registers, constants, size)
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_nop<const UNCHECKED: bool>(
+    ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+    size: u8,
+) -> Result<Value, Box<KaoriError>> {
+    unsafe {
         if UNCHECKED {
             dispatch_next_unchecked!(ip, vm, registers, constants, size)
         } else {

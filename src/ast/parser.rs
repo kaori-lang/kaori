@@ -208,19 +208,29 @@ impl<'a> Parser<'a> {
 
         self.token_stream.consume(TokenKind::For)?;
 
-        let init = self.parse_expression()?;
+        let start = self.parse_expression()?;
 
-        self.token_stream.consume(TokenKind::To)?;
+        let down_to = match self.token_stream.token_kind() {
+            TokenKind::To => false,
+            TokenKind::DownTo => true,
+            _ => {
+                return Err(kaori_error!(
+                    span,
+                    "expected {} or {} and found {}",
+                    TokenKind::To,
+                    TokenKind::DownTo,
+                    self.token_stream.token_kind(),
+                ));
+            }
+        };
+
+        self.token_stream.advance();
 
         let end = self.parse_expression()?;
 
-        self.token_stream.consume(TokenKind::By)?;
-
-        let step = self.parse_expression()?;
-
         let block = self.parse_block()?;
 
-        Ok(Expr::for_loop(init, end, step, block, span))
+        Ok(Expr::for_loop(start, end, block, span))
     }
 
     fn parse_function(&mut self) -> Result<Expr, KaoriError> {

@@ -88,6 +88,9 @@ impl Lexer {
             "and" => TokenKind::And,
             "or" => TokenKind::Or,
             "not" => TokenKind::Not,
+            "by" => TokenKind::By,
+            "to" => TokenKind::To,
+            "downto" => TokenKind::DownTo,
             "unchecked" => TokenKind::Unchecked,
             _ => TokenKind::Identifier,
         };
@@ -224,6 +227,7 @@ impl Lexer {
                 }
             }
             '.' => TokenKind::Dot,
+            '|' => TokenKind::Pipe,
             _ => TokenKind::Invalid,
         };
 

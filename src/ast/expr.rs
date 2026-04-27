@@ -56,6 +56,7 @@ pub enum ExprKind {
     Function {
         name: String,
         parameters: Vec<(String, Span)>,
+        captures: Vec<(String, Span)>,
         body: Vec<Expr>,
     },
     Block {
@@ -72,9 +73,8 @@ pub enum ExprKind {
         block: Box<Expr>,
     },
     ForLoop {
-        init: Box<Expr>,
+        start: Box<Expr>,
         end: Box<Expr>,
-        step: Box<Expr>,
         block: Box<Expr>,
     },
     UncheckedBlock {
@@ -88,9 +88,9 @@ pub enum ExprKind {
 }
 
 impl Expr {
-    pub fn binary(operator: BinaryOp, left: Expr, right: Expr) -> Expr {
+    pub fn binary(operator: BinaryOp, left: Expr, right: Expr) -> Self {
         let span = Span::merge(left.span, right.span);
-        Expr {
+        Self {
             span,
             kind: ExprKind::Binary {
                 operator,
@@ -100,9 +100,9 @@ impl Expr {
         }
     }
 
-    pub fn logical_and(left: Expr, right: Expr) -> Expr {
+    pub fn logical_and(left: Expr, right: Expr) -> Self {
         let span = Span::merge(left.span, right.span);
-        Expr {
+        Self {
             span,
             kind: ExprKind::LogicalAnd {
                 left: Box::new(left),
@@ -111,9 +111,9 @@ impl Expr {
         }
     }
 
-    pub fn logical_or(left: Expr, right: Expr) -> Expr {
+    pub fn logical_or(left: Expr, right: Expr) -> Self {
         let span = Span::merge(left.span, right.span);
-        Expr {
+        Self {
             span,
             kind: ExprKind::LogicalOr {
                 left: Box::new(left),
@@ -122,16 +122,16 @@ impl Expr {
         }
     }
 
-    pub fn logical_not(expression: Expr) -> Expr {
-        Expr {
+    pub fn logical_not(expression: Expr) -> Self {
+        Self {
             span: expression.span,
             kind: ExprKind::LogicalNot(Box::new(expression)),
         }
     }
 
-    pub fn unary(operator: UnaryOp, right: Expr) -> Expr {
+    pub fn unary(operator: UnaryOp, right: Expr) -> Self {
         let span = right.span;
-        Expr {
+        Self {
             span,
             kind: ExprKind::Unary {
                 operator,
@@ -140,9 +140,9 @@ impl Expr {
         }
     }
 
-    pub fn assign(operator: AssignOp, left: Expr, right: Expr) -> Expr {
+    pub fn assign(operator: AssignOp, left: Expr, right: Expr) -> Self {
         let span = Span::merge(left.span, right.span);
-        Expr {
+        Self {
             span,
             kind: ExprKind::Assign {
                 operator,
@@ -152,9 +152,9 @@ impl Expr {
         }
     }
 
-    pub fn declare_assign(left: Expr, right: Expr) -> Expr {
+    pub fn declare_assign(left: Expr, right: Expr) -> Self {
         let span = Span::merge(left.span, right.span);
-        Expr {
+        Self {
             span,
             kind: ExprKind::DeclareAssign {
                 left: Box::new(left),
@@ -163,16 +163,16 @@ impl Expr {
         }
     }
 
-    pub fn identifier(name: String, span: Span) -> Expr {
-        Expr {
+    pub fn identifier(name: String, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::Identifier(name),
         }
     }
 
-    pub fn function_call(callee: Expr, arguments: Vec<Expr>, span: Span) -> Expr {
+    pub fn function_call(callee: Expr, arguments: Vec<Expr>, span: Span) -> Self {
         let span = Span::merge(callee.span, span);
-        Expr {
+        Self {
             span,
             kind: ExprKind::FunctionCall {
                 callee: Box::new(callee),
@@ -181,9 +181,9 @@ impl Expr {
         }
     }
 
-    pub fn member_access(object: Expr, property: Expr) -> Expr {
+    pub fn member_access(object: Expr, property: Expr) -> Self {
         let span = Span::merge(object.span, property.span);
-        Expr {
+        Self {
             span,
             kind: ExprKind::MemberAccess {
                 object: Box::new(object),
@@ -192,29 +192,29 @@ impl Expr {
         }
     }
 
-    pub fn string_literal(value: String, span: Span) -> Expr {
-        Expr {
+    pub fn string_literal(value: String, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::StringLiteral(value),
         }
     }
 
-    pub fn number_literal(value: f64, span: Span) -> Expr {
-        Expr {
+    pub fn number_literal(value: f64, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::NumberLiteral(value),
         }
     }
 
-    pub fn boolean_literal(value: bool, span: Span) -> Expr {
-        Expr {
+    pub fn boolean_literal(value: bool, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::BooleanLiteral(value),
         }
     }
 
-    pub fn dict_literal(fields: Vec<(Expr, Option<Expr>)>, span: Span) -> Expr {
-        Expr {
+    pub fn dict_literal(fields: Vec<(Expr, Option<Expr>)>, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::DictLiteral { fields },
         }
@@ -223,21 +223,23 @@ impl Expr {
     pub fn function(
         name: String,
         parameters: Vec<(String, Span)>,
+        captures: Vec<(String, Span)>,
         body: Vec<Expr>,
         span: Span,
-    ) -> Expr {
-        Expr {
+    ) -> Self {
+        Self {
             span,
             kind: ExprKind::Function {
                 name,
                 parameters,
+                captures,
                 body,
             },
         }
     }
 
-    pub fn block(expressions: Vec<Expr>, tail: Option<Expr>, span: Span) -> Expr {
-        Expr {
+    pub fn block(expressions: Vec<Expr>, tail: Option<Expr>, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::Block {
                 expressions,
@@ -246,8 +248,8 @@ impl Expr {
         }
     }
 
-    pub fn if_(condition: Expr, then_branch: Expr, else_branch: Option<Expr>, span: Span) -> Expr {
-        Expr {
+    pub fn if_(condition: Expr, then_branch: Expr, else_branch: Option<Expr>, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::If {
                 condition: Box::new(condition),
@@ -257,8 +259,8 @@ impl Expr {
         }
     }
 
-    pub fn while_loop(condition: Expr, block: Expr, span: Span) -> Expr {
-        Expr {
+    pub fn while_loop(condition: Expr, block: Expr, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::WhileLoop {
                 condition: Box::new(condition),
@@ -267,20 +269,19 @@ impl Expr {
         }
     }
 
-    pub fn for_loop(init: Expr, end: Expr, step: Expr, block: Expr, span: Span) -> Expr {
-        Expr {
+    pub fn for_loop(start: Expr, end: Expr, block: Expr, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::ForLoop {
-                init: Box::new(init),
+                start: Box::new(start),
                 end: Box::new(end),
-                step: Box::new(step),
                 block: Box::new(block),
             },
         }
     }
 
-    pub fn unchecked_block(expressions: Vec<Expr>, tail: Option<Expr>, span: Span) -> Expr {
-        Expr {
+    pub fn unchecked_block(expressions: Vec<Expr>, tail: Option<Expr>, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::UncheckedBlock {
                 expressions,
@@ -289,29 +290,29 @@ impl Expr {
         }
     }
 
-    pub fn return_(expression: Option<Expr>, span: Span) -> Expr {
-        Expr {
+    pub fn return_(expression: Option<Expr>, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::Return(expression.map(Box::new)),
         }
     }
 
-    pub fn break_(span: Span) -> Expr {
-        Expr {
+    pub fn break_(span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::Break,
         }
     }
 
-    pub fn continue_(span: Span) -> Expr {
-        Expr {
+    pub fn continue_(span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::Continue,
         }
     }
 
-    pub fn print(expression: Expr, span: Span) -> Expr {
-        Expr {
+    pub fn print(expression: Expr, span: Span) -> Self {
+        Self {
             span,
             kind: ExprKind::Print(Box::new(expression)),
         }

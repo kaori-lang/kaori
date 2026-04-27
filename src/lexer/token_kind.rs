@@ -26,6 +26,7 @@ pub enum TokenKind {
     Colon,
     ThinArrow,
     Dot,
+    Pipe,
 
     LeftParen,
     RightParen,
@@ -48,6 +49,7 @@ pub enum TokenKind {
     False,
     Unchecked,
     To,
+    DownTo,
     By,
 
     Identifier,
@@ -110,6 +112,7 @@ impl fmt::Display for TokenKind {
             TokenKind::False => "false",
             TokenKind::Unchecked => "unchecked",
             TokenKind::To => "to",
+            TokenKind::DownTo => "downto",
             TokenKind::By => "by",
 
             TokenKind::Identifier => "identifier",
