@@ -55,8 +55,8 @@ pub enum ExprKind {
     },
     Function {
         name: String,
-        parameters: Vec<(String, Span)>,
-        captures: Vec<(String, Span)>,
+        parameters: Vec<Expr>,
+        captures: Vec<Expr>,
         body: Vec<Expr>,
     },
     Block {
@@ -222,8 +222,8 @@ impl Expr {
 
     pub fn function(
         name: String,
-        parameters: Vec<(String, Span)>,
-        captures: Vec<(String, Span)>,
+        parameters: Vec<Expr>,
+        captures: Vec<Expr>,
         body: Vec<Expr>,
         span: Span,
     ) -> Self {

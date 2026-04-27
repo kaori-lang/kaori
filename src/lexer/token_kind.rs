@@ -20,6 +20,7 @@ pub enum TokenKind {
     GreaterEqual,
     Less,
     LessEqual,
+
     Dollar,
     Comma,
     Semicolon,
@@ -93,7 +94,7 @@ impl fmt::Display for TokenKind {
             TokenKind::Colon => ":",
             TokenKind::ThinArrow => "->",
             TokenKind::Dot => ".",
-
+            TokenKind::Pipe => "|",
             TokenKind::LeftParen => "(",
             TokenKind::RightParen => ")",
             TokenKind::LeftBrace => "{",

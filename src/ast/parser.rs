@@ -245,9 +245,17 @@ impl<'a> Parser<'a> {
         self.token_stream.consume(TokenKind::LeftParen)?;
 
         let parameters =
-            self.parse_comma_separator(Parser::parse_function_parameter, TokenKind::RightParen)?;
+            self.parse_comma_separator(Self::parse_identifier, TokenKind::RightParen)?;
 
         self.token_stream.consume(TokenKind::RightParen)?;
+
+        let captures = if self.token_stream.token_kind() == TokenKind::Pipe {
+            let captures = self.parse_comma_separator(Self::parse_identifier, TokenKind::Pipe)?;
+            self.token_stream.consume(TokenKind::Pipe);
+            captures
+        } else {
+            Vec::new()
+        };
 
         let mut body = Vec::new();
 
@@ -261,16 +269,7 @@ impl<'a> Parser<'a> {
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
-        Ok(Expr::function(name, parameters, body, span))
-    }
-
-    fn parse_function_parameter(&mut self) -> Result<(String, Span), KaoriError> {
-        let name = self.token_stream.lexeme().to_owned();
-        let span = self.token_stream.span();
-
-        self.token_stream.consume(TokenKind::Identifier)?;
-
-        Ok((name, span))
+        Ok(Expr::function(name, parameters, captures, body, span))
     }
 
     fn build_binary_operator(&mut self) -> BinaryOp {
@@ -577,7 +576,7 @@ impl<'a> Parser<'a> {
         self.token_stream.consume(TokenKind::LeftBrace)?;
 
         let fields =
-            self.parse_comma_separator(Parser::parse_dict_literal_field, TokenKind::RightBrace)?;
+            self.parse_comma_separator(Self::parse_dict_literal_field, TokenKind::RightBrace)?;
 
         self.token_stream.consume(TokenKind::RightBrace)?;
 
@@ -598,7 +597,7 @@ impl<'a> Parser<'a> {
         self.token_stream.consume(TokenKind::LeftParen)?;
 
         let arguments =
-            self.parse_comma_separator(Parser::parse_expression, TokenKind::RightParen)?;
+            self.parse_comma_separator(Self::parse_expression, TokenKind::RightParen)?;
 
         let span = self.token_stream.span();
 
