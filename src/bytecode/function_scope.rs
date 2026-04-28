@@ -4,8 +4,9 @@ use crate::bytecode::{instruction::Instruction, operand::Operand};
 
 #[derive(Clone, Copy)]
 pub enum Symbol {
-    Function { register: u8, index: usize },
+    Function { index: usize },
     Variable { register: u8 },
+    Closure { register: u8, index: usize },
 }
 
 pub struct FunctionScope {
@@ -37,27 +38,19 @@ impl FunctionScope {
     }
 
     pub fn exit_scope(&mut self) {
-        let registers = self
-            .block_scopes
-            .last()
-            .unwrap()
-            .values()
-            .map(|symbol| match symbol {
-                Symbol::Function { register, .. } => register,
-                Symbol::Variable { register, .. } => register,
-            })
-            .copied()
-            .collect::<Vec<u8>>();
+        let scope = self.block_scopes.pop().unwrap();
 
-        for register in registers {
-            self.free_register(register);
+        for symbol in scope.values().copied() {
+            match symbol {
+                Symbol::Variable { register } => self.free_register(register),
+                Symbol::Closure { register, index } => self.free_register(register),
+                _ => {}
+            }
         }
-
-        self.block_scopes.pop();
     }
 
-    pub fn insert_function_symbol(&mut self, name: &str, register: u8, index: usize) {
-        let symbol = Symbol::Function { register, index };
+    pub fn insert_function_symbol(&mut self, name: &str, index: usize) {
+        let symbol = Symbol::Function { index };
 
         self.block_scopes
             .last_mut()
@@ -67,6 +60,15 @@ impl FunctionScope {
 
     pub fn insert_variable_symbol(&mut self, name: &str, register: u8) {
         let symbol = Symbol::Variable { register };
+
+        self.block_scopes
+            .last_mut()
+            .unwrap()
+            .insert(name.to_owned(), symbol);
+    }
+
+    pub fn insert_closure_symbol(&mut self, name: &str, register: u8, index: usize) {
+        let symbol = Symbol::Closure { register, index };
 
         self.block_scopes
             .last_mut()

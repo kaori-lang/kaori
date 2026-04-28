@@ -54,7 +54,7 @@ pub enum ExprKind {
         fields: Vec<(Expr, Option<Expr>)>,
     },
     Function {
-        name: String,
+        name: Option<Box<Expr>>,
         parameters: Vec<Expr>,
         captures: Vec<Expr>,
         body: Vec<Expr>,
@@ -221,7 +221,7 @@ impl Expr {
     }
 
     pub fn function(
-        name: String,
+        name: Option<Expr>,
         parameters: Vec<Expr>,
         captures: Vec<Expr>,
         body: Vec<Expr>,
@@ -230,7 +230,7 @@ impl Expr {
         Self {
             span,
             kind: ExprKind::Function {
-                name,
+                name: name.map(Box::new),
                 parameters,
                 captures,
                 body,

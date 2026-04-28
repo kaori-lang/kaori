@@ -100,7 +100,7 @@ impl fmt::Display for TokenKind {
             TokenKind::LeftBrace => "{",
             TokenKind::RightBrace => "}",
 
-            TokenKind::Function => "fun",
+            TokenKind::Function => "fn",
             TokenKind::For => "for",
             TokenKind::While => "while",
             TokenKind::Break => "break",

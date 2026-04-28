@@ -81,7 +81,7 @@ impl Lexer {
             "break" => TokenKind::Break,
             "continue" => TokenKind::Continue,
             "return" => TokenKind::Return,
-            "fun" => TokenKind::Function,
+            "fn" => TokenKind::Function,
             "print" => TokenKind::Print,
             "true" => TokenKind::True,
             "false" => TokenKind::False,

@@ -4,8 +4,11 @@ use crate::{
         ops::{AssignOp, BinaryOp, UnaryOp},
     },
     bytecode::{
-        function::Function, function_scope::FunctionScope, immediate::Imm,
-        instruction::Instruction, operand::Operand,
+        function::Function,
+        function_scope::{FunctionScope, Symbol},
+        immediate::Imm,
+        instruction::Instruction,
+        operand::Operand,
     },
     error::kaori_error::KaoriError,
 };
@@ -35,10 +38,18 @@ impl Compiler {
         static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
         for expression in expressions {
-            if let ExprKind::Function { name, .. } = &expression.kind {
-                let register = scope.allocate_register();
+            if let ExprKind::Function { name, captures, .. } = &expression.kind
+                && let Some(name) = name
+                && let ExprKind::Identifier(name) = &name.kind
+            {
                 let index = COUNTER.fetch_add(1, Ordering::Relaxed);
-                scope.insert_function_symbol(name, register, index);
+
+                if captures.is_empty() {
+                    scope.insert_function_symbol(name, index);
+                } else {
+                    let register = scope.allocate_register();
+                    scope.insert_closure_symbol(name, register, index);
+                }
             }
         }
 
@@ -53,8 +64,28 @@ impl Compiler {
                 parameters,
                 captures,
                 body,
-                ..
+                name,
             } => {
+                let index = self.functions.len();
+
+                if let Some(name) = name
+                    && !captures.is_empty()
+                {
+                    let dest = self.compile_expression(scope, name).unwrap_register();
+                    let src = scope.push_function_index(index).unwrap_constant();
+
+                    scope.emit_instruction(Instruction::CreateClosure {
+                        dest,
+                        src,
+                        captures: captures.len() as u8,
+                    });
+
+                    for capture in captures {
+                        let src = self.compile_expression(scope, capture).unwrap_register();
+                        scope.emit_instruction(Instruction::CaptureValue { src });
+                    }
+                }
+
                 let mut scope = FunctionScope::new();
 
                 scope.enter_scope();
@@ -63,6 +94,7 @@ impl Compiler {
                     let ExprKind::Identifier(param_name) = &parameter.kind else {
                         panic!("Expected a valid parameter")
                     };
+
                     let dest = scope.allocate_register();
                     scope.insert_variable_symbol(param_name, dest);
                 }
@@ -239,11 +271,11 @@ impl Compiler {
                 let callee_src = self.compile_expression(scope, callee);
 
                 for (index, argument) in arguments.iter().enumerate() {
-                    let arg = self.compile_expression(scope, argument);
-                    let arg = materialize(scope, arg);
+                    let argument = self.compile_expression(scope, argument);
+                    let argument = materialize(scope, argument);
                     scope.emit_instruction(Instruction::MoveArg {
                         dest: index as u8,
-                        src: arg.unwrap_register(),
+                        src: argument.unwrap_register(),
                     });
                 }
 
@@ -406,15 +438,22 @@ impl Compiler {
             ExprKind::Break => todo!(),
             ExprKind::Continue => todo!(),
 
-            ExprKind::Identifier(name) => todo!(),
-
+            ExprKind::Identifier(name) => {
+                if let Some(symbol) = scope.lookup_symbol(name) {
+                    match symbol {
+                        Symbol::Closure { register, .. } => Operand::Register(register),
+                        Symbol::Function { index } => scope.push_function_index(index),
+                        Symbol::Variable { register } => Operand::Register(register),
+                    }
+                } else {
+                    panic!("not declared")
+                }
+            }
             ExprKind::BooleanLiteral(value) => {
                 let numeric = if *value { 1.0 } else { 0.0 };
                 Operand::Immediate(Imm::try_to_encode(numeric).unwrap())
             }
-
             ExprKind::StringLiteral(value) => scope.push_string(value.clone()),
-
             ExprKind::NumberLiteral(value) => {
                 let value = *value;
                 if let Some(imm) = Imm::try_to_encode(value) {

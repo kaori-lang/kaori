@@ -26,13 +26,7 @@ impl<'a> Parser<'a> {
             body.push(statement);
         }
 
-        let entry = Expr::function(
-            String::from("main"),
-            Vec::new(),
-            Vec::new(),
-            body,
-            Span::default(),
-        );
+        let entry = Expr::function(None, Vec::new(), Vec::new(), body, Span::default());
 
         Ok(entry)
     }
@@ -247,9 +241,11 @@ impl<'a> Parser<'a> {
 
         self.token_stream.consume(TokenKind::Function)?;
 
-        let name = self.token_stream.lexeme().to_owned();
-
-        self.token_stream.consume(TokenKind::Identifier)?;
+        let name = if self.token_stream.token_kind() == TokenKind::Identifier {
+            Some(self.parse_identifier()?)
+        } else {
+            None
+        };
 
         self.token_stream.consume(TokenKind::LeftParen)?;
 
@@ -259,6 +255,7 @@ impl<'a> Parser<'a> {
         self.token_stream.consume(TokenKind::RightParen)?;
 
         let captures = if self.token_stream.token_kind() == TokenKind::Pipe {
+            self.token_stream.consume(TokenKind::Pipe)?;
             let captures = self.parse_comma_separator(Self::parse_identifier, TokenKind::Pipe)?;
             self.token_stream.consume(TokenKind::Pipe)?;
 
