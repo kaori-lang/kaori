@@ -1,219 +1,109 @@
-use std::collections::HashMap;
-
 use crate::{
     ast::{
         expr::{Expr, ExprKind},
         ops::{AssignOp, BinaryOp, UnaryOp},
     },
     bytecode::{
-        constants::Constants, function::Function, immediate::Imm, instruction::Instruction,
-        operand::Operand, register_allocator::RegisterAllocator,
+        function::Function, function_scope::FunctionScope, immediate::Imm,
+        instruction::Instruction, operand::Operand,
     },
     error::kaori_error::KaoriError,
 };
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub fn emit_bytecode_from_ast(expressions: &[Expr]) -> Result<Vec<Function>, KaoriError> {
-    let mut global_functions: HashMap<String, usize> = HashMap::new();
+pub fn compile(ast: &Expr) -> Result<Vec<Function>, KaoriError> {
+    let mut compiler = Compiler::new();
+    let mut entry = FunctionScope::new();
 
-    for (index, expression) in expressions.iter().enumerate() {
-        match &expression.kind {
-            ExprKind::Function { name, .. } => {
-                global_functions.insert(name.to_owned(), index);
-            }
-            _ => unreachable!("Only Function expressions are allowed at the top level"),
-        }
-    }
+    compiler.compile_expression(&mut entry, ast);
 
-    let mut functions = Vec::new();
-
-    for expression in expressions {
-        match &expression.kind {
-            ExprKind::Function { .. } => {
-                let mut ctx = FunctionContext::new(&global_functions);
-
-                ctx.visit_function(expression)?;
-                functions.push(Function::new(
-                    ctx.instructions,
-                    ctx.registers_allocator.get_highest_register(),
-                    ctx.constants.0,
-                ));
-            }
-            _ => unreachable!("Only Function expressions are allowed at the top level"),
-        }
-    }
-
-    Ok(functions)
+    Ok(compiler.functions)
 }
 
-pub struct FunctionContext<'a> {
-    symbols: Vec<HashMap<String, u8>>,
-    registers_allocator: RegisterAllocator,
-    constants: Constants,
-    instructions: Vec<Instruction>,
-    global_functions: &'a HashMap<String, usize>,
+struct Compiler {
+    functions: Vec<Function>,
 }
 
-impl<'a> FunctionContext<'a> {
-    pub fn new(global_functions: &'a HashMap<String, usize>) -> Self {
+impl Compiler {
+    fn new() -> Self {
         Self {
-            symbols: Vec::new(),
-            registers_allocator: RegisterAllocator::new(),
-            constants: Constants::default(),
-            instructions: Vec::new(),
-            global_functions,
+            functions: Vec::new(),
         }
     }
 
-    fn enter_scope(&mut self) {
-        self.symbols.push(HashMap::new());
-    }
+    fn compile_block(&mut self, scope: &mut FunctionScope, expressions: &[Expr]) {
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-    fn exit_scope(&mut self) {
-        for register in self.symbols.last().unwrap().values().copied() {
-            self.registers_allocator.free_register(register);
-        }
-
-        self.symbols.pop();
-    }
-
-    fn insert_symbol(&mut self, name: &str, register: u8) {
-        self.symbols
-            .last_mut()
-            .unwrap()
-            .insert(name.to_owned(), register);
-    }
-
-    fn lookup_symbol(&self, name: &str) -> Option<u8> {
-        self.symbols
-            .iter()
-            .rev()
-            .find_map(|table| table.get(name).copied())
-    }
-
-    fn materialize(&mut self, src: Operand) -> Operand {
-        match src {
-            Operand::Register(_) => src,
-            Operand::Constant(src) => {
-                let dest = self.registers_allocator.allocate_register();
-
-                self.emit_instruction(Instruction::LoadK { dest, src });
-
-                Operand::Register(dest)
-            }
-            Operand::Immediate(src) => {
-                let dest = self.registers_allocator.allocate_register();
-                self.emit_instruction(Instruction::LoadImm { dest, src });
-
-                Operand::Register(dest)
+        for expression in expressions {
+            if let ExprKind::Function { name, .. } = &expression.kind {
+                let register = scope.allocate_register();
+                let index = COUNTER.fetch_add(1, Ordering::Relaxed);
+                scope.insert_function_symbol(name, register, index);
             }
         }
-    }
 
-    fn unit() -> Operand {
-        Operand::Immediate(Imm::try_to_encode(0.0).unwrap())
-    }
-
-    fn block_returns(&self, expressions: &[Expr]) -> bool {
-        expressions
-            .iter()
-            .any(|expression| self.expression_returns(expression))
-    }
-
-    fn patch_function_arguments(&mut self) {
-        for instruction in self.instructions.iter_mut() {
-            if let Instruction::MoveArg { dest, .. } = instruction {
-                *dest += self.registers_allocator.get_highest_register();
-            }
+        for expression in expressions {
+            self.compile_expression(scope, expression);
         }
     }
 
-    fn expression_returns(&self, expression: &Expr) -> bool {
+    fn compile_expression(&mut self, scope: &mut FunctionScope, expression: &Expr) -> Operand {
         match &expression.kind {
-            ExprKind::Return(..) => true,
-            ExprKind::Block { expressions, tail }
-            | ExprKind::UncheckedBlock { expressions, tail } => {
-                self.block_returns(expressions)
-                    || tail
-                        .as_deref()
-                        .is_some_and(|expression| self.expression_returns(expression))
-            }
-            ExprKind::If {
-                then_branch,
-                else_branch: Some(else_branch),
+            ExprKind::Function {
+                parameters,
+                captures,
+                body,
                 ..
-            } => self.expression_returns(then_branch) && self.expression_returns(else_branch),
+            } => {
+                let mut scope = FunctionScope::new();
 
-            ExprKind::If {
-                else_branch: None, ..
-            } => false,
-            _ => false,
-        }
-    }
+                scope.enter_scope();
 
-    fn emit_instruction(&mut self, instruction: Instruction) -> usize {
-        let index = self.instructions.len();
-        self.instructions.push(instruction);
+                for parameter in parameters {
+                    let ExprKind::Identifier(param_name) = &parameter.kind else {
+                        panic!("Expected a valid parameter")
+                    };
+                    let dest = scope.allocate_register();
+                    scope.insert_variable_symbol(param_name, dest);
+                }
 
-        index
-    }
+                for capture in captures {
+                    let ExprKind::Identifier(capture_name) = &capture.kind else {
+                        panic!("Expected a valid capture")
+                    };
+                    let dest = scope.allocate_register();
+                    scope.insert_variable_symbol(capture_name, dest);
+                }
 
-    fn patch_jump(&mut self, index: usize, new_offset: i32) {
-        match &mut self.instructions[index] {
-            Instruction::Jump { offset }
-            | Instruction::JumpIfTrue { offset, .. }
-            | Instruction::JumpIfFalse { offset, .. } => *offset = new_offset,
-            _ => panic!("tried to patch a non-jump instruction at index {index}"),
-        }
-    }
+                self.compile_block(&mut scope, body);
 
-    fn visit_function(&mut self, expression: &Expr) -> Result<(), KaoriError> {
-        self.enter_scope();
+                if !block_returns(body) {
+                    let src = materialize(&mut scope, unit());
+                    scope.emit_instruction(Instruction::Return {
+                        src: src.unwrap_register(),
+                    });
+                }
 
-        let ExprKind::Function {
-            parameters, body, ..
-        } = &expression.kind
-        else {
-            unreachable!("visit_function called on non-Function expression");
-        };
+                scope.exit_scope();
+                //patch_function_arguments(&mut scope);
 
-        for (name, _span) in parameters {
-            let dest = self.registers_allocator.allocate_register();
-            self.insert_symbol(name, dest);
-        }
+                self.functions
+                    .push(Function::new(scope.instructions, 0, scope.constants));
 
-        for expression in body {
-            self.visit_expression(expression);
-        }
-
-        if !self.block_returns(body) {
-            let src = self.materialize(Self::unit());
-            self.emit_instruction(Instruction::Return {
-                src: src.unwrap_register(),
-            });
-        }
-
-        self.exit_scope();
-
-        self.patch_function_arguments();
-
-        Ok(())
-    }
-
-    fn visit_expression(&mut self, expression: &Expr) -> Operand {
-        match &expression.kind {
+                unit()
+            }
             ExprKind::DeclareAssign { left, right } => {
                 let name = match &left.kind {
                     ExprKind::Identifier(name) => name.clone(),
                     _ => panic!("DeclareAssign left-hand side must be an Identifier"),
                 };
 
-                let dest = self.registers_allocator.allocate_register();
-                let src = self.visit_expression(right);
-                let src = self.materialize(src);
+                let src = self.compile_expression(scope, right);
+                let src = materialize(scope, src);
+                let dest = scope.allocate_register();
 
-                self.insert_symbol(&name, dest);
-
-                self.emit_instruction(Instruction::Move {
+                scope.insert_variable_symbol(&name, dest);
+                scope.emit_instruction(Instruction::Move {
                     dest,
                     src: src.unwrap_register(),
                 });
@@ -225,23 +115,29 @@ impl<'a> FunctionContext<'a> {
                 left,
                 right,
             } => {
-                let dest = self.visit_expression(left);
+                let dest = self.compile_expression(scope, left);
 
                 let src = match operator {
-                    AssignOp::Assign => self.visit_expression(right),
-                    AssignOp::AddAssign => self.visit_binary_op(BinaryOp::Add, left, right),
+                    AssignOp::Assign => self.compile_expression(scope, right),
+                    AssignOp::AddAssign => {
+                        self.compile_binary_op(scope, BinaryOp::Add, left, right)
+                    }
                     AssignOp::SubtractAssign => {
-                        self.visit_binary_op(BinaryOp::Subtract, left, right)
+                        self.compile_binary_op(scope, BinaryOp::Subtract, left, right)
                     }
                     AssignOp::MultiplyAssign => {
-                        self.visit_binary_op(BinaryOp::Multiply, left, right)
+                        self.compile_binary_op(scope, BinaryOp::Multiply, left, right)
                     }
-                    AssignOp::DivideAssign => self.visit_binary_op(BinaryOp::Divide, left, right),
-                    AssignOp::ModuloAssign => self.visit_binary_op(BinaryOp::Modulo, left, right),
+                    AssignOp::DivideAssign => {
+                        self.compile_binary_op(scope, BinaryOp::Divide, left, right)
+                    }
+                    AssignOp::ModuloAssign => {
+                        self.compile_binary_op(scope, BinaryOp::Modulo, left, right)
+                    }
                 };
-                let src = self.materialize(src);
+                let src = materialize(scope, src);
 
-                self.emit_instruction(Instruction::Move {
+                scope.emit_instruction(Instruction::Move {
                     dest: dest.unwrap_register(),
                     src: src.unwrap_register(),
                 });
@@ -249,88 +145,84 @@ impl<'a> FunctionContext<'a> {
                 dest
             }
             ExprKind::LogicalAnd { left, right } => {
-                let dest = self.registers_allocator.allocate_register();
+                let dest = scope.allocate_register();
 
-                let src = self.visit_expression(left);
-                let src = self.materialize(src);
-
-                self.emit_instruction(Instruction::Move {
+                let src = self.compile_expression(scope, left);
+                let src = materialize(scope, src);
+                scope.emit_instruction(Instruction::Move {
                     dest,
                     src: src.unwrap_register(),
                 });
 
-                let jump_if_false = self.emit_instruction(Instruction::JumpIfFalse {
+                let jump_if_false = scope.emit_instruction(Instruction::JumpIfFalse {
                     src: dest,
                     offset: 0,
                 });
 
-                let src = self.visit_expression(right);
-                let src = self.materialize(src);
-
-                self.emit_instruction(Instruction::Move {
+                let src = self.compile_expression(scope, right);
+                let src = materialize(scope, src);
+                scope.emit_instruction(Instruction::Move {
                     dest,
                     src: src.unwrap_register(),
                 });
 
-                self.patch_jump(
+                patch_jump(
+                    scope,
                     jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
+                    scope.instructions.len() as i32 - jump_if_false as i32,
                 );
 
                 Operand::Register(dest)
             }
             ExprKind::LogicalOr { left, right } => {
-                let dest = self.registers_allocator.allocate_register();
+                let dest = scope.allocate_register();
 
-                let src = self.visit_expression(left);
-                let src = self.materialize(src);
-
-                self.emit_instruction(Instruction::Move {
+                let src = self.compile_expression(scope, left);
+                let src = materialize(scope, src);
+                scope.emit_instruction(Instruction::Move {
                     dest,
                     src: src.unwrap_register(),
                 });
 
-                let jump_if_true = self.emit_instruction(Instruction::JumpIfTrue {
+                let jump_if_true = scope.emit_instruction(Instruction::JumpIfTrue {
                     src: dest,
                     offset: 0,
                 });
 
-                let src = self.visit_expression(right);
-                let src = self.materialize(src);
-
-                self.emit_instruction(Instruction::Move {
+                let src = self.compile_expression(scope, right);
+                let src = materialize(scope, src);
+                scope.emit_instruction(Instruction::Move {
                     dest,
                     src: src.unwrap_register(),
                 });
 
-                self.patch_jump(
+                patch_jump(
+                    scope,
                     jump_if_true,
-                    self.instructions.len() as i32 - jump_if_true as i32,
+                    scope.instructions.len() as i32 - jump_if_true as i32,
                 );
 
                 Operand::Register(dest)
             }
             ExprKind::LogicalNot(expression) => {
-                let dest = self.registers_allocator.allocate_register();
-                let src = self.visit_expression(expression);
-                let src = self.materialize(src);
-
-                self.emit_instruction(Instruction::Not {
+                let src = self.compile_expression(scope, expression);
+                let src = materialize(scope, src);
+                let dest = scope.allocate_register();
+                scope.emit_instruction(Instruction::Not {
                     dest,
                     src: src.unwrap_register(),
                 });
-
                 Operand::Register(dest)
             }
             ExprKind::Binary {
                 operator,
                 left,
                 right,
-            } => self.visit_binary_op(*operator, left, right),
+            } => self.compile_binary_op(scope, *operator, left, right),
             ExprKind::Unary { operator, right } => {
-                let src = self.visit_expression(right);
-                let src = self.materialize(src);
-                let dest = self.registers_allocator.allocate_register();
+                let src = self.compile_expression(scope, right);
+                let src = materialize(scope, src);
+                let dest = scope.allocate_register();
 
                 let instruction = match operator {
                     UnaryOp::Negate => Instruction::Negate {
@@ -339,44 +231,40 @@ impl<'a> FunctionContext<'a> {
                     },
                 };
 
-                self.emit_instruction(instruction);
-
+                scope.emit_instruction(instruction);
                 Operand::Register(dest)
             }
             ExprKind::FunctionCall { callee, arguments } => {
-                let dest = self.registers_allocator.allocate_register();
-
-                let callee_src = self.visit_expression(callee);
+                let dest = scope.allocate_register();
+                let callee_src = self.compile_expression(scope, callee);
 
                 for (index, argument) in arguments.iter().enumerate() {
-                    let argument = self.visit_expression(argument);
-                    let argument = self.materialize(argument);
-
-                    self.emit_instruction(Instruction::MoveArg {
+                    let arg = self.compile_expression(scope, argument);
+                    let arg = materialize(scope, arg);
+                    scope.emit_instruction(Instruction::MoveArg {
                         dest: index as u8,
-                        src: argument.unwrap_register(),
+                        src: arg.unwrap_register(),
                     });
                 }
 
                 let instruction = match callee_src {
                     Operand::Constant(src) => Instruction::CallK { dest, src },
                     Operand::Register(src) => Instruction::Call { dest, src },
-                    _ => panic!("Function should be either coming from a constant or a register"),
+                    _ => panic!("callee must be a constant or register"),
                 };
 
-                self.emit_instruction(instruction);
-
+                scope.emit_instruction(instruction);
                 Operand::Register(dest)
             }
             ExprKind::MemberAccess { object, property } => {
-                let dest = self.registers_allocator.allocate_register();
+                let dest = scope.allocate_register();
 
-                let object = self.visit_expression(object);
-                let object = self.materialize(object);
-                let key = self.visit_expression(property);
-                let key = self.materialize(key);
+                let object = self.compile_expression(scope, object);
+                let object = materialize(scope, object);
+                let key = self.compile_expression(scope, property);
+                let key = materialize(scope, key);
 
-                self.emit_instruction(Instruction::GetField {
+                scope.emit_instruction(Instruction::GetField {
                     dest,
                     object: object.unwrap_register(),
                     key: key.unwrap_register(),
@@ -385,191 +273,177 @@ impl<'a> FunctionContext<'a> {
                 Operand::Register(dest)
             }
             ExprKind::Block { expressions, tail } => {
-                self.enter_scope();
+                scope.enter_scope();
 
-                for expression in expressions {
-                    self.visit_expression(expression);
-                }
+                self.compile_block(scope, expressions);
 
                 let tail = match tail {
-                    Some(tail) => self.visit_expression(tail),
-                    None => Self::unit(),
+                    Some(tail) => self.compile_expression(scope, tail),
+                    None => unit(),
                 };
-
-                self.exit_scope();
-
+                scope.exit_scope();
                 tail
             }
             ExprKind::UncheckedBlock { expressions, tail } => {
-                self.emit_instruction(Instruction::EnterUncheckedBlock);
+                scope.emit_instruction(Instruction::EnterUncheckedBlock);
+                scope.enter_scope();
 
-                self.enter_scope();
-
-                for expression in expressions {
-                    self.visit_expression(expression);
-                }
+                self.compile_block(scope, expressions);
 
                 let tail = match tail {
-                    Some(tail) => self.visit_expression(tail),
-                    None => Self::unit(),
+                    Some(tail) => self.compile_expression(scope, tail),
+                    None => unit(),
                 };
-
-                self.exit_scope();
-
-                self.emit_instruction(Instruction::ExitUncheckedBlock);
-
+                scope.exit_scope();
+                scope.emit_instruction(Instruction::ExitUncheckedBlock);
                 tail
             }
+
             ExprKind::If {
                 condition,
                 then_branch,
                 else_branch,
             } => {
-                let dest = self.registers_allocator.allocate_register();
+                let dest = scope.allocate_register();
 
-                let src = self.visit_expression(condition);
-                let src = self.materialize(src);
+                let src = self.compile_expression(scope, condition);
+                let src = materialize(scope, src);
 
-                let jump_if_false = self.emit_instruction(Instruction::JumpIfFalse {
+                let jump_if_false = scope.emit_instruction(Instruction::JumpIfFalse {
                     src: src.unwrap_register(),
                     offset: 0,
                 });
 
-                let src = self.visit_expression(then_branch);
-                let src = self.materialize(src);
-
-                self.emit_instruction(Instruction::Move {
+                let src = self.compile_expression(scope, then_branch);
+                let src = materialize(scope, src);
+                scope.emit_instruction(Instruction::Move {
                     dest,
                     src: src.unwrap_register(),
                 });
 
-                let jump_end = self.emit_instruction(Instruction::Jump { offset: 0 });
+                let jump_end = scope.emit_instruction(Instruction::Jump { offset: 0 });
 
-                self.patch_jump(
+                patch_jump(
+                    scope,
                     jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
+                    scope.instructions.len() as i32 - jump_if_false as i32,
                 );
 
                 let src = if let Some(else_branch) = else_branch {
-                    self.visit_expression(else_branch)
+                    self.compile_expression(scope, else_branch)
                 } else {
-                    Self::unit()
+                    unit()
                 };
-                let src = self.materialize(src);
-
-                self.emit_instruction(Instruction::Move {
+                let src = materialize(scope, src);
+                scope.emit_instruction(Instruction::Move {
                     dest,
                     src: src.unwrap_register(),
                 });
 
-                self.patch_jump(jump_end, self.instructions.len() as i32 - jump_end as i32);
+                patch_jump(
+                    scope,
+                    jump_end,
+                    scope.instructions.len() as i32 - jump_end as i32,
+                );
 
                 Operand::Register(dest)
             }
-            ExprKind::ForLoop { start, end, block } => Self::unit(),
+
+            ExprKind::ForLoop { .. } => unit(),
+
             ExprKind::WhileLoop { condition, block } => {
-                let src = self.visit_expression(condition);
-                let src = self.materialize(src);
+                let src = self.compile_expression(scope, condition);
+                let src = materialize(scope, src);
 
-                let jump_if_false = self.emit_instruction(Instruction::JumpIfFalse {
+                let jump_if_false = scope.emit_instruction(Instruction::JumpIfFalse {
                     src: src.unwrap_register(),
                     offset: 0,
                 });
 
-                let loop_body = self.instructions.len();
+                let loop_body = scope.instructions.len();
 
-                self.visit_expression(block);
+                self.compile_expression(scope, block);
 
-                let src = self.visit_expression(condition);
-                let src = self.materialize(src);
+                let src = self.compile_expression(scope, condition);
+                let src = materialize(scope, src);
 
-                let jump_if_true = self.emit_instruction(Instruction::JumpIfTrue {
+                let jump_if_true = scope.emit_instruction(Instruction::JumpIfTrue {
                     src: src.unwrap_register(),
                     offset: 0,
                 });
 
-                self.patch_jump(jump_if_true, loop_body as i32 - jump_if_true as i32);
-
-                self.patch_jump(
+                patch_jump(scope, jump_if_true, loop_body as i32 - jump_if_true as i32);
+                patch_jump(
+                    scope,
                     jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
+                    scope.instructions.len() as i32 - jump_if_false as i32,
                 );
 
-                Self::unit()
+                unit()
             }
+
             ExprKind::Return(expression) => {
                 let src = match expression {
-                    Some(expression) => self.visit_expression(expression),
-                    None => Self::unit(),
+                    Some(expr) => self.compile_expression(scope, expr),
+                    None => unit(),
                 };
-                let src = self.materialize(src);
-
-                self.emit_instruction(Instruction::Return {
+                let src = materialize(scope, src);
+                scope.emit_instruction(Instruction::Return {
                     src: src.unwrap_register(),
                 });
-
-                Self::unit()
+                unit()
             }
+
             ExprKind::Print(expression) => {
-                let src = self.visit_expression(expression);
-                let src = self.materialize(src);
-                self.emit_instruction(Instruction::Print {
+                let src = self.compile_expression(scope, expression);
+                let src = materialize(scope, src);
+                scope.emit_instruction(Instruction::Print {
                     src: src.unwrap_register(),
                 });
+                unit()
+            }
 
-                Self::unit()
-            }
-            ExprKind::Break => {
-                todo!()
-            }
-            ExprKind::Continue => {
-                todo!()
-            }
-            ExprKind::Identifier(name) => {
-                if let Some(register) = self.lookup_symbol(name) {
-                    Operand::Register(register)
-                } else if let Some(&index) = self.global_functions.get(name) {
-                    self.constants.push_function_index(index)
-                } else {
-                    panic!("Unknown identifier: {name}")
-                }
-            }
+            ExprKind::Break => todo!(),
+            ExprKind::Continue => todo!(),
+
+            ExprKind::Identifier(name) => todo!(),
+
             ExprKind::BooleanLiteral(value) => {
                 let numeric = if *value { 1.0 } else { 0.0 };
-
                 Operand::Immediate(Imm::try_to_encode(numeric).unwrap())
             }
-            ExprKind::StringLiteral(value) => self.constants.push_string(value.clone()),
+
+            ExprKind::StringLiteral(value) => scope.push_string(value.clone()),
+
             ExprKind::NumberLiteral(value) => {
                 let value = *value;
-
                 if let Some(imm) = Imm::try_to_encode(value) {
                     Operand::Immediate(imm)
                 } else {
-                    self.constants.push_number(value)
+                    scope.push_number(value)
                 }
             }
-            ExprKind::DictLiteral { fields } => {
-                let dest = self.registers_allocator.allocate_register();
 
-                self.emit_instruction(Instruction::CreateDict { dest });
+            ExprKind::DictLiteral { fields } => {
+                let dest = scope.allocate_register();
+                scope.emit_instruction(Instruction::CreateDict { dest });
 
                 for (key, value) in fields {
-                    let key_op = self.visit_expression(key);
-                    let key_op = self.materialize(key_op);
+                    let key_op = self.compile_expression(scope, key);
+                    let key_op = materialize(scope, key_op);
 
                     let value_op = match value {
                         Some(v) => {
-                            let v = self.visit_expression(v);
-                            self.materialize(v)
+                            let v = self.compile_expression(scope, v);
+                            materialize(scope, v)
                         }
                         None => {
-                            let v = self.visit_expression(key);
-                            self.materialize(v)
+                            let v = self.compile_expression(scope, key);
+                            materialize(scope, v)
                         }
                     };
 
-                    self.emit_instruction(Instruction::SetField {
+                    scope.emit_instruction(Instruction::SetField {
                         object: dest,
                         key: key_op.unwrap_register(),
                         value: value_op.unwrap_register(),
@@ -578,16 +452,19 @@ impl<'a> FunctionContext<'a> {
 
                 Operand::Register(dest)
             }
-            ExprKind::Function { .. } => {
-                unreachable!("Nested Function expression must be referenced via Identifier")
-            }
         }
     }
 
-    fn visit_binary_op(&mut self, operator: BinaryOp, left: &Expr, right: &Expr) -> Operand {
-        let src1 = self.visit_expression(left);
-        let src2 = self.visit_expression(right);
-        let dest = self.registers_allocator.allocate_register();
+    fn compile_binary_op(
+        &mut self,
+        scope: &mut FunctionScope,
+        operator: BinaryOp,
+        left: &Expr,
+        right: &Expr,
+    ) -> Operand {
+        let src1 = self.compile_expression(scope, left);
+        let src2 = self.compile_expression(scope, right);
+        let dest = scope.allocate_register();
 
         let instruction = match (src1, src2) {
             (Operand::Register(src1), Operand::Register(src2)) => match operator {
@@ -662,7 +539,7 @@ impl<'a> FunctionContext<'a> {
                 },
             },
             (Operand::Constant(src1), Operand::Register(src2)) => {
-                let src1 = self.materialize(Operand::Constant(src1)).unwrap_register();
+                let src1 = materialize(scope, Operand::Constant(src1)).unwrap_register();
                 match operator {
                     BinaryOp::Add => Instruction::Add { dest, src1, src2 },
                     BinaryOp::Subtract => Instruction::Subtract { dest, src1, src2 },
@@ -678,7 +555,7 @@ impl<'a> FunctionContext<'a> {
                 }
             }
             (Operand::Register(src1), Operand::Constant(src2)) => {
-                let src2 = self.materialize(Operand::Constant(src2)).unwrap_register();
+                let src2 = materialize(scope, Operand::Constant(src2)).unwrap_register();
                 match operator {
                     BinaryOp::Add => Instruction::Add { dest, src1, src2 },
                     BinaryOp::Subtract => Instruction::Subtract { dest, src1, src2 },
@@ -701,52 +578,105 @@ impl<'a> FunctionContext<'a> {
             }
         };
 
-        self.emit_instruction(instruction);
+        scope.emit_instruction(instruction);
         Operand::Register(dest)
     }
 
-    fn visit_loop(
+    fn compile_loop(
         &mut self,
+        scope: &mut FunctionScope,
         init: Option<&Expr>,
         condition: &Expr,
         block: &Expr,
         increment: Option<&Expr>,
     ) -> Operand {
         if let Some(init) = init {
-            self.visit_expression(init);
+            self.compile_expression(scope, init);
         }
 
-        let src = self.visit_expression(condition);
-        let src = self.materialize(src);
+        let src = self.compile_expression(scope, condition);
+        let src = materialize(scope, src);
 
-        let jump_if_false = self.emit_instruction(Instruction::JumpIfFalse {
+        let jump_if_false = scope.emit_instruction(Instruction::JumpIfFalse {
             src: src.unwrap_register(),
             offset: 0,
         });
 
-        let loop_body = self.instructions.len();
+        let loop_body = scope.instructions.len();
 
-        self.visit_expression(block);
+        self.compile_expression(scope, block);
 
         if let Some(increment) = increment {
-            self.visit_expression(increment);
+            self.compile_expression(scope, increment);
         }
 
-        let src = self.visit_expression(condition);
-        let src = self.materialize(src);
+        let src = self.compile_expression(scope, condition);
+        let src = materialize(scope, src);
 
-        let jump_if_true = self.emit_instruction(Instruction::JumpIfTrue {
+        let jump_if_true = scope.emit_instruction(Instruction::JumpIfTrue {
             src: src.unwrap_register(),
             offset: 0,
         });
 
-        self.patch_jump(jump_if_true, loop_body as i32 - jump_if_true as i32);
-
-        self.patch_jump(
+        patch_jump(scope, jump_if_true, loop_body as i32 - jump_if_true as i32);
+        patch_jump(
+            scope,
             jump_if_false,
-            self.instructions.len() as i32 - jump_if_false as i32,
+            scope.instructions.len() as i32 - jump_if_false as i32,
         );
 
-        Self::unit()
+        unit()
     }
+}
+
+fn materialize(scope: &mut FunctionScope, src: Operand) -> Operand {
+    match src {
+        Operand::Register(_) => src,
+        Operand::Constant(src) => {
+            let dest = scope.allocate_register();
+            scope.emit_instruction(Instruction::LoadK { dest, src });
+            Operand::Register(dest)
+        }
+        Operand::Immediate(src) => {
+            let dest = scope.allocate_register();
+            scope.emit_instruction(Instruction::LoadImm { dest, src });
+            Operand::Register(dest)
+        }
+    }
+}
+
+fn unit() -> Operand {
+    Operand::Immediate(Imm::try_to_encode(0.0).unwrap())
+}
+
+fn block_returns(expressions: &[Expr]) -> bool {
+    expressions.iter().any(expression_returns)
+}
+
+fn expression_returns(expression: &Expr) -> bool {
+    match &expression.kind {
+        ExprKind::Return(..) => true,
+        ExprKind::Block { expressions, tail } | ExprKind::UncheckedBlock { expressions, tail } => {
+            block_returns(expressions) || tail.as_deref().is_some_and(expression_returns)
+        }
+        ExprKind::If {
+            then_branch,
+            else_branch: Some(else_branch),
+            ..
+        } => expression_returns(then_branch) && expression_returns(else_branch),
+        _ => false,
+    }
+}
+
+fn patch_jump(scope: &mut FunctionScope, index: usize, new_offset: i32) {
+    match &mut scope.instructions[index] {
+        Instruction::Jump { offset }
+        | Instruction::JumpIfTrue { offset, .. }
+        | Instruction::JumpIfFalse { offset, .. } => *offset = new_offset,
+        _ => panic!("tried to patch a non-jump instruction at index {index}"),
+    }
+}
+
+fn patch_function_arguments(scope: &mut FunctionScope) {
+    todo!()
 }

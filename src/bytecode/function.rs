@@ -1,6 +1,8 @@
 use std::fmt::{self, Display, Formatter};
 
-use super::{constants::Constant, instruction::Instruction};
+use crate::bytecode::function_scope::Constant;
+
+use super::instruction::Instruction;
 
 pub struct Function {
     pub instructions: Vec<Instruction>,

@@ -4,9 +4,7 @@ pub mod instruction;
 pub mod operand;
 pub use function::Function;
 
-pub use constants::Constant;
-pub mod constants;
 pub mod emit_bytecode;
+pub mod function_scope;
 pub mod immediate;
 pub mod optimize_bytecode;
-pub mod register_allocator;

@@ -17,22 +17,31 @@ impl<'a> Parser<'a> {
         Self { token_stream }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Expr>, KaoriError> {
-        let mut functions = Vec::new();
+    pub fn parse(&mut self) -> Result<Expr, KaoriError> {
+        let mut body = Vec::new();
 
         while !self.token_stream.at_end() {
-            let function = self.parse_function()?;
+            let statement = self.parse_expression_statement()?;
 
-            functions.push(function);
+            body.push(statement);
         }
 
-        Ok(functions)
+        let entry = Expr::function(
+            String::from("main"),
+            Vec::new(),
+            Vec::new(),
+            body,
+            Span::default(),
+        );
+
+        Ok(entry)
     }
 
     fn parse_expression_statement(&mut self) -> Result<Expr, KaoriError> {
         let token_kind = self.token_stream.token_kind();
 
         let expression = match token_kind {
+            TokenKind::Function => self.parse_function(),
             TokenKind::Print => self.parse_print(),
             TokenKind::If => self.parse_if(),
             TokenKind::While => self.parse_while_loop(),
@@ -251,7 +260,8 @@ impl<'a> Parser<'a> {
 
         let captures = if self.token_stream.token_kind() == TokenKind::Pipe {
             let captures = self.parse_comma_separator(Self::parse_identifier, TokenKind::Pipe)?;
-            self.token_stream.consume(TokenKind::Pipe);
+            self.token_stream.consume(TokenKind::Pipe)?;
+
             captures
         } else {
             Vec::new()

@@ -1,14 +1,10 @@
-fun fib(n) {
-    if n < 2 {
-        return n;
-    } else {
-        return fib(n - 1) + fib(n - 2);
-    }   
+fn main() {
+    x := 0;
+    y := 1;
+
+    fn foo() |y| {
+        print(y);
+    }
+
 }
-
-fun main()  {
-    fib(30);
-}
-
-
 

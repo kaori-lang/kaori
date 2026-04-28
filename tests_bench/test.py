@@ -1,11 +1,16 @@
-import time
-
-def foo():
-
-    for i in range(10):
-        yield i
 
 
+def foo(n):
+    if n < 0:
+        return
 
-print(foo().__next__())
-print(foo().__next__())
+    bar(n - 1)
+
+x = 5  # ...
+
+def bar(n):
+    if n < 0:
+        return
+
+    foo(n - 1)
+
