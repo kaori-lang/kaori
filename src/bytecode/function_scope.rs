@@ -16,16 +16,18 @@ pub struct FunctionScope {
     pub registers: [bool; 256],
 }
 
-impl FunctionScope {
-    pub fn new() -> Self {
+impl Default for FunctionScope {
+    fn default() -> Self {
         Self {
+            block_scopes: Vec::new(),
             constants: Vec::new(),
             instructions: Vec::new(),
-            block_scopes: Vec::new(),
             registers: [false; 256],
         }
     }
+}
 
+impl FunctionScope {
     pub fn emit_instruction(&mut self, instruction: Instruction) -> usize {
         let index = self.instructions.len();
         self.instructions.push(instruction);

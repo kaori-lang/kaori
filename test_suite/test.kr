@@ -2,11 +2,21 @@
 x := 0;
 y := 2;
 
-fun bar(n) |x, y| {
-    return n + x + y;
+fn foo(n)  {
+    fn bar(n) {
+        return 2;
+    }
+
+    fn foo_bar() {
+        return 3;
+    }
+
+    return 1;
 }
 
-bar();
+foo();
+
+
 
 /*
 CONSTANTS: [Number(1000000.0)]

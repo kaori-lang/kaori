@@ -12,19 +12,23 @@ use crate::{
     },
     error::kaori_error::KaoriError,
 };
-use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub fn compile(ast: &Expr) -> Result<Vec<Function>, KaoriError> {
+pub fn compile(ast: &[Expr]) -> Result<Vec<Function>, KaoriError> {
     let mut compiler = Compiler::new();
-    let mut entry = FunctionScope::new();
 
-    compiler.compile_expression(&mut entry, ast);
+    compiler.compile_toplevel(ast);
 
-    Ok(compiler.functions)
+    let functions = compiler
+        .functions
+        .into_iter()
+        .map(|f| f.unwrap())
+        .collect::<Vec<Function>>();
+
+    Ok(functions)
 }
 
 struct Compiler {
-    functions: Vec<Function>,
+    functions: Vec<Option<Function>>,
 }
 
 impl Compiler {
@@ -34,15 +38,35 @@ impl Compiler {
         }
     }
 
-    fn compile_block(&mut self, scope: &mut FunctionScope, expressions: &[Expr]) {
-        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+    fn compile_toplevel(&mut self, expressions: &[Expr]) {
+        let index = self.functions.len();
+        let function = None;
+        self.functions.push(function);
 
+        let mut scope = FunctionScope::default();
+        scope.enter_scope();
+        self.compile_block(&mut scope, expressions);
+
+        if !block_returns(expressions) {
+            let src = materialize(&mut scope, unit());
+            scope.emit_instruction(Instruction::Return {
+                src: src.unwrap_register(),
+            });
+        }
+
+        scope.exit_scope();
+
+        let function = Function::new(scope.instructions, 0, scope.constants);
+        self.functions[index] = Some(function);
+    }
+
+    fn compile_block(&mut self, scope: &mut FunctionScope, expressions: &[Expr]) {
         for expression in expressions {
             if let ExprKind::Function { name, captures, .. } = &expression.kind
                 && let Some(name) = name
                 && let ExprKind::Identifier(name) = &name.kind
             {
-                let index = COUNTER.fetch_add(1, Ordering::Relaxed);
+                let index = self.functions.len();
 
                 if captures.is_empty() {
                     scope.insert_function_symbol(name, index);
@@ -67,26 +91,33 @@ impl Compiler {
                 name,
             } => {
                 let index = self.functions.len();
+                let function = None;
+                self.functions.push(function);
 
-                if let Some(name) = name
-                    && !captures.is_empty()
-                {
-                    let dest = self.compile_expression(scope, name).unwrap_register();
-                    let src = scope.push_function_index(index).unwrap_constant();
+                let src = scope.push_function_index(index);
 
-                    scope.emit_instruction(Instruction::CreateClosure {
-                        dest,
-                        src,
-                        captures: captures.len() as u8,
-                    });
+                let dest = if let Some(name) = name {
+                    let dest = self.compile_expression(scope, name);
 
-                    for capture in captures {
-                        let src = self.compile_expression(scope, capture).unwrap_register();
-                        scope.emit_instruction(Instruction::CaptureValue { src });
+                    if !captures.is_empty() {
+                        scope.emit_instruction(Instruction::CreateClosure {
+                            dest: dest.unwrap_register(),
+                            src: src.unwrap_constant(),
+                            captures: captures.len() as u8,
+                        });
+
+                        for capture in captures {
+                            let src = self.compile_expression(scope, capture).unwrap_register();
+                            scope.emit_instruction(Instruction::CaptureValue { src });
+                        }
                     }
-                }
 
-                let mut scope = FunctionScope::new();
+                    dest
+                } else {
+                    src
+                };
+
+                let mut scope = FunctionScope::default();
 
                 scope.enter_scope();
 
@@ -119,10 +150,10 @@ impl Compiler {
                 scope.exit_scope();
                 //patch_function_arguments(&mut scope);
 
-                self.functions
-                    .push(Function::new(scope.instructions, 0, scope.constants));
+                let function = Function::new(scope.instructions, 0, scope.constants);
+                self.functions[index] = Some(function);
 
-                unit()
+                dest
             }
             ExprKind::DeclareAssign { left, right } => {
                 let name = match &left.kind {

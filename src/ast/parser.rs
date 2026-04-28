@@ -5,7 +5,7 @@ use crate::{
     },
     error::kaori_error::KaoriError,
     kaori_error,
-    lexer::{span::Span, token_kind::TokenKind, token_stream::TokenStream},
+    lexer::{token_kind::TokenKind, token_stream::TokenStream},
 };
 
 pub struct Parser<'a> {
@@ -17,18 +17,16 @@ impl<'a> Parser<'a> {
         Self { token_stream }
     }
 
-    pub fn parse(&mut self) -> Result<Expr, KaoriError> {
-        let mut body = Vec::new();
+    pub fn parse(&mut self) -> Result<Vec<Expr>, KaoriError> {
+        let mut statements = Vec::new();
 
         while !self.token_stream.at_end() {
             let statement = self.parse_expression_statement()?;
 
-            body.push(statement);
+            statements.push(statement);
         }
 
-        let entry = Expr::function(None, Vec::new(), Vec::new(), body, Span::default());
-
-        Ok(entry)
+        Ok(statements)
     }
 
     fn parse_expression_statement(&mut self) -> Result<Expr, KaoriError> {

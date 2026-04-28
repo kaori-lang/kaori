@@ -16,7 +16,7 @@ pub fn compile_source_code(source: &str) -> Result<Vec<Function>, KaoriError> {
 
     let mut bytecode = compile(&ast)?;
 
-    optimize_bytecode(&mut bytecode);
+    //optimize_bytecode(&mut bytecode);
 
     Ok(bytecode)
 }
