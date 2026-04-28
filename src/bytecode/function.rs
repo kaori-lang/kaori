@@ -8,20 +8,8 @@ pub struct Function {
     pub instructions: Vec<Instruction>,
     pub registers_count: u8,
     pub constants: Vec<Constant>,
-}
-
-impl Function {
-    pub fn new(
-        instructions: Vec<Instruction>,
-        registers_count: u8,
-        constants: Vec<Constant>,
-    ) -> Self {
-        Self {
-            instructions,
-            registers_count,
-            constants,
-        }
-    }
+    pub parameters: u8,
+    pub captures: u8,
 }
 
 impl Display for Function {

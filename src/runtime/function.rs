@@ -11,6 +11,11 @@ pub struct Function {
     pub constants: Box<[Value]>,
 }
 
+pub struct Closure {
+    pub function: *const Function,
+    pub captures: Vec<Value>,
+}
+
 use std::fmt::{self, Display, Formatter};
 
 impl Display for Function {
@@ -31,6 +36,8 @@ pub fn from_compiled(functions: Vec<bytecode::Function>, gc: &mut Gc) -> Vec<Fun
             instructions,
             constants,
             registers_count,
+            parameters,
+            captures,
         } = function;
 
         let constants = constants

@@ -256,7 +256,6 @@ impl<'a> Parser<'a> {
             self.token_stream.consume(TokenKind::Pipe)?;
             let captures = self.parse_comma_separator(Self::parse_identifier, TokenKind::Pipe)?;
             self.token_stream.consume(TokenKind::Pipe)?;
-
             captures
         } else {
             Vec::new()

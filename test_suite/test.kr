@@ -1,23 +1,13 @@
 
-x := 0;
-y := 2;
 
-fn foo(n)  {
-    fn bar(n) {
-        return 2;
-    }
 
-    fn foo_bar() {
-        return 3;
-    }
+x := 7;
 
-    return 1;
+fn foo(n) {
+    print(n);
 }
 
-foo();
-
-
-
+foo(5);
 /*
 CONSTANTS: [Number(1000000.0)]
 0001  MOV r0 r1

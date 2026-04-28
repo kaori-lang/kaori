@@ -5,6 +5,7 @@ use crate::{
     bytecode::{Function, emit_bytecode::compile, optimize_bytecode::optimize_bytecode},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
+    runtime::{function::from_compiled, gc::Gc, vm::Vm},
 };
 
 pub fn compile_source_code(source: &str) -> Result<Vec<Function>, KaoriError> {
@@ -16,7 +17,7 @@ pub fn compile_source_code(source: &str) -> Result<Vec<Function>, KaoriError> {
 
     let mut bytecode = compile(&ast)?;
 
-    //optimize_bytecode(&mut bytecode);
+    optimize_bytecode(&mut bytecode);
 
     Ok(bytecode)
 }
@@ -27,7 +28,7 @@ pub fn run_program(source: &str) -> Result<(), KaoriError> {
     for function in bytecode.iter() {
         println!("{}", function);
     }
-    /*
+
     let mut gc = Gc::default();
     let functions = from_compiled(bytecode, &mut gc);
 
@@ -39,7 +40,7 @@ pub fn run_program(source: &str) -> Result<(), KaoriError> {
 
     let elapsed = start.elapsed();
 
-    println!("{}", elapsed.as_secs_f64() * 1000.0); */
+    println!("{}", elapsed.as_secs_f64() * 1000.0);
 
     Ok(())
 }

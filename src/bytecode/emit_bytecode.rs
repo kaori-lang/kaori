@@ -44,7 +44,9 @@ impl Compiler {
         self.functions.push(function);
 
         let mut scope = FunctionScope::default();
+
         scope.enter_scope();
+
         self.compile_block(&mut scope, expressions);
 
         if !block_returns(expressions) {
@@ -56,7 +58,14 @@ impl Compiler {
 
         scope.exit_scope();
 
-        let function = Function::new(scope.instructions, 0, scope.constants);
+        let function = Function {
+            instructions: scope.instructions,
+            registers_count: scope.size,
+            constants: scope.constants,
+            parameters: 0,
+            captures: 0,
+        };
+
         self.functions[index] = Some(function);
     }
 
@@ -122,20 +131,20 @@ impl Compiler {
                 scope.enter_scope();
 
                 for parameter in parameters {
-                    let ExprKind::Identifier(param_name) = &parameter.kind else {
+                    let ExprKind::Identifier(name) = &parameter.kind else {
                         panic!("Expected a valid parameter")
                     };
 
                     let dest = scope.allocate_register();
-                    scope.insert_variable_symbol(param_name, dest);
+                    scope.insert_variable_symbol(name, dest);
                 }
 
                 for capture in captures {
-                    let ExprKind::Identifier(capture_name) = &capture.kind else {
+                    let ExprKind::Identifier(name) = &capture.kind else {
                         panic!("Expected a valid capture")
                     };
                     let dest = scope.allocate_register();
-                    scope.insert_variable_symbol(capture_name, dest);
+                    scope.insert_variable_symbol(name, dest);
                 }
 
                 self.compile_block(&mut scope, body);
@@ -147,10 +156,16 @@ impl Compiler {
                     });
                 }
 
+                patch_function_arguments(&mut scope);
                 scope.exit_scope();
-                //patch_function_arguments(&mut scope);
 
-                let function = Function::new(scope.instructions, 0, scope.constants);
+                let function = Function {
+                    instructions: scope.instructions,
+                    registers_count: scope.size,
+                    constants: scope.constants,
+                    parameters: parameters.len() as u8,
+                    captures: captures.len() as u8,
+                };
                 self.functions[index] = Some(function);
 
                 dest
@@ -361,7 +376,6 @@ impl Compiler {
                 scope.emit_instruction(Instruction::ExitUncheckedBlock);
                 tail
             }
-
             ExprKind::If {
                 condition,
                 then_branch,
@@ -411,9 +425,7 @@ impl Compiler {
 
                 Operand::Register(dest)
             }
-
             ExprKind::ForLoop { .. } => unit(),
-
             ExprKind::WhileLoop { condition, block } => {
                 let src = self.compile_expression(scope, condition);
                 let src = materialize(scope, src);
@@ -444,7 +456,6 @@ impl Compiler {
 
                 unit()
             }
-
             ExprKind::Return(expression) => {
                 let src = match expression {
                     Some(expr) => self.compile_expression(scope, expr),
@@ -456,7 +467,6 @@ impl Compiler {
                 });
                 unit()
             }
-
             ExprKind::Print(expression) => {
                 let src = self.compile_expression(scope, expression);
                 let src = materialize(scope, src);
@@ -465,10 +475,8 @@ impl Compiler {
                 });
                 unit()
             }
-
             ExprKind::Break => todo!(),
             ExprKind::Continue => todo!(),
-
             ExprKind::Identifier(name) => {
                 if let Some(symbol) = scope.lookup_symbol(name) {
                     match symbol {
@@ -493,7 +501,6 @@ impl Compiler {
                     scope.push_number(value)
                 }
             }
-
             ExprKind::DictLiteral { fields } => {
                 let dest = scope.allocate_register();
                 scope.emit_instruction(Instruction::CreateDict { dest });
@@ -748,5 +755,9 @@ fn patch_jump(scope: &mut FunctionScope, index: usize, new_offset: i32) {
 }
 
 fn patch_function_arguments(scope: &mut FunctionScope) {
-    todo!()
+    for instruction in &mut scope.instructions {
+        if let Instruction::MoveArg { dest, src } = instruction {
+            *dest += scope.size;
+        }
+    }
 }

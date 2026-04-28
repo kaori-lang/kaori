@@ -3,13 +3,13 @@ use crate::{
     lexer::span::Span,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expr {
     pub span: Span,
     pub kind: ExprKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ExprKind {
     Binary {
         operator: BinaryOp,

@@ -14,6 +14,7 @@ pub struct FunctionScope {
     pub constants: Vec<Constant>,
     pub instructions: Vec<Instruction>,
     pub registers: [bool; 256],
+    pub size: u8,
 }
 
 impl Default for FunctionScope {
@@ -23,6 +24,7 @@ impl Default for FunctionScope {
             constants: Vec::new(),
             instructions: Vec::new(),
             registers: [false; 256],
+            size: 0,
         }
     }
 }
@@ -115,6 +117,7 @@ impl FunctionScope {
     pub fn allocate_register(&mut self) -> u8 {
         for index in 0..self.registers.len() {
             if !self.registers[index] {
+                self.size = u8::max(index as u8, self.size);
                 self.registers[index] = true;
                 return index as u8;
             }

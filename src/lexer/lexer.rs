@@ -71,6 +71,7 @@ impl Lexer {
         {
             self.index += 1;
         }
+
         let sub: String = self.source[start..self.index].iter().collect();
 
         let kind = match sub.as_str() {

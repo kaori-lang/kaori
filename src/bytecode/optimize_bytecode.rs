@@ -60,7 +60,7 @@ fn remove_redundant_moves(instructions: &mut [Instruction], leaders: &[bool]) {
 
     for index in 0..instructions.len() {
         let (move_dest, src) = match instructions[index] {
-            Instruction::Move { dest, src } | Instruction::MoveArg { dest, src } => (dest, src),
+            Instruction::Move { dest, src } => (dest, src),
             _ => continue,
         };
 
