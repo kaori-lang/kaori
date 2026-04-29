@@ -1,5 +1,4 @@
 
 a := 5;
-b := "hello world
-c := true;
-d :=  3.14159
+b := "hello world";
+b = if true { 1; } else { 7; } y;

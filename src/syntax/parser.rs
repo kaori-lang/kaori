@@ -3,7 +3,7 @@ use std::ops::Range;
 use logos::SpannedIter;
 
 use crate::{
-    error::error::Error,
+    diagnostics::diagnostics::Error,
     report_error,
     syntax::{
         ast::{Ast, ExprId},
@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(report_error!(
                 span,
-                "expected {:?}, but found : {:?}",
+                "expected {}, but found: {}",
                 expected,
                 token
             ))
@@ -97,7 +97,11 @@ impl<'a> Parser<'a> {
 
                     Ok((token, span))
                 }
-                Err(_) => Err(report_error!(span, "invalid token")),
+                Err(_) => Err(report_error!(
+                    span,
+                    "`{}` is not a valid token",
+                    self.tokens.slice()
+                )),
             }
         } else {
             self.peeked = Some((Token::Eof, 0..0));
@@ -193,14 +197,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_print(&mut self) -> Result<ExprId, Error> {
-        let span = self.peek_span()?;
-
         self.consume(Token::Print)?;
         self.consume(Token::LeftParen)?;
         let expression = self.parse_expression()?;
         self.consume(Token::RightParen)?;
 
-        Ok(self.ast.print(expression, span))
+        Ok(self.ast.print(expression))
     }
 
     fn parse_block(&mut self) -> Result<ExprId, Error> {

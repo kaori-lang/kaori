@@ -6,7 +6,7 @@ use crate::{
         instruction::Instruction,
         operand::Operand,
     },
-    error::error::Error,
+    diagnostics::diagnostics::Error,
     syntax::{
         ast::{Ast, Expr, ExprId},
         ops::{AssignOp, BinaryOp, UnaryOp},

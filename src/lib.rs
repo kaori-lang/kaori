@@ -5,7 +5,7 @@
 #![feature(rust_preserve_none_cc)]
 
 pub mod bytecode;
-pub mod error;
+pub mod diagnostics;
 pub mod syntax;
 
 pub mod program;

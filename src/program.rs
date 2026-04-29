@@ -4,7 +4,7 @@ use logos::Logos;
 
 use crate::{
     bytecode::{Function, emit_bytecode::compile, optimize_bytecode::optimize_bytecode},
-    error::error::Error,
+    diagnostics::diagnostics::Error,
     syntax::{parser::Parser, token::Token},
 };
 

@@ -27,16 +27,11 @@ impl Error {
         let file_id = "source";
         let span = self.span.clone().unwrap_or(0..0);
 
-        let mut report =
-            Report::build(ReportKind::Error, (file_id, span.clone())).with_message(&self.message);
-
-        if let Some(span) = &self.span {
-            report = report.with_label(
-                Label::new((file_id, span.clone()))
-                    .with_message(&self.message)
-                    .with_color(Color::Red),
-            );
-        }
+        let report = Report::build(ReportKind::Error, (file_id, span.clone())).with_label(
+            Label::new((file_id, span.clone()))
+                .with_message(&self.message)
+                .with_color(Color::Red),
+        );
 
         report
             .finish()

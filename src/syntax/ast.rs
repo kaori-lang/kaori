@@ -266,7 +266,7 @@ impl Ast {
         self.insert(Expr::Continue, Some(span))
     }
 
-    pub fn print(&mut self, expression: ExprId, span: Range<usize>) -> ExprId {
-        self.insert(Expr::Print(expression), Some(span))
+    pub fn print(&mut self, expression: ExprId) -> ExprId {
+        self.insert(Expr::Print(expression), None)
     }
 }

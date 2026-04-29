@@ -1,5 +1,5 @@
 use logos::Logos;
-
+use std::fmt;
 #[derive(Logos, Debug, PartialEq, Copy, Clone)]
 #[logos(skip r"[ \t\r\n\f]+")]
 pub enum Token {
@@ -39,7 +39,6 @@ pub enum Token {
     Greater,
     #[token("<")]
     Less,
-
     #[token(",")]
     Comma,
     #[token(";")]
@@ -58,8 +57,6 @@ pub enum Token {
     LeftBrace,
     #[token("}")]
     RightBrace,
-
-    // Keywords
     #[token("and")]
     And,
     #[token("or")]
@@ -96,22 +93,71 @@ pub enum Token {
     DownTo,
     #[token("by")]
     By,
-
-    // Literals & Identifier
-    // Number: integer or float (e.g. 42, 3.14)
     #[regex(r"[0-9]+(\.[0-9]+)?")]
     NumberLiteral,
-
-    // String: "hello world"
     #[regex(r#""([^"\\]|\\.)*""#)]
     StringLiteral,
-
     #[regex(r#""([^"\\]|\\.)*"#)]
     UnterminatedStringLiteral,
-
-    // Identifier: must come AFTER all keywords
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
     Identifier,
-
     Eof,
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Token::DeclareAssign => "`:=`",
+            Token::Assign => "`=`",
+            Token::AddAssign => "`+=`",
+            Token::SubtractAssign => "`-=`",
+            Token::MultiplyAssign => "`*=`",
+            Token::DivideAssign => "`/=`",
+            Token::ModuloAssign => "`%=`",
+            Token::Plus => "`+`",
+            Token::Minus => "`-`",
+            Token::Multiply => "`*`",
+            Token::Divide => "`/`",
+            Token::Modulo => "`%`",
+            Token::NotEqual => "`!=`",
+            Token::Equal => "`==`",
+            Token::GreaterEqual => "`>=`",
+            Token::LessEqual => "`<=`",
+            Token::Greater => "`>`",
+            Token::Less => "`<`",
+            Token::Comma => "`,`",
+            Token::Semicolon => "`;`",
+            Token::Colon => "`:`",
+            Token::Dot => "`.`",
+            Token::Pipe => "`|`",
+            Token::LeftParen => "`(`",
+            Token::RightParen => "`)`",
+            Token::LeftBrace => "`{`",
+            Token::RightBrace => "`}`",
+            Token::And => "`and`",
+            Token::Or => "`or`",
+            Token::Not => "`not`",
+            Token::Function => "`fn`",
+            Token::For => "`for`",
+            Token::While => "`while`",
+            Token::Break => "`break`",
+            Token::Continue => "`continue`",
+            Token::If => "`if`",
+            Token::Else => "`else`",
+            Token::Return => "`return`",
+            Token::Print => "`print`",
+            Token::True => "`true`",
+            Token::False => "`false`",
+            Token::Unchecked => "`unchecked`",
+            Token::To => "`to`",
+            Token::DownTo => "`downto`",
+            Token::By => "`by`",
+            Token::NumberLiteral => "<number literal>",
+            Token::StringLiteral => "<string literal>",
+            Token::UnterminatedStringLiteral => "<unterminated string>",
+            Token::Identifier => "<identifier>",
+            Token::Eof => "<end of file>",
+        };
+        write!(f, "{}", s)
+    }
 }
