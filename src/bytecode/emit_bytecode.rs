@@ -1,8 +1,4 @@
 use crate::{
-    ast::{
-        ast::{Ast, Expr, ExprId},
-        ops::{AssignOp, BinaryOp, UnaryOp},
-    },
     bytecode::{
         function::Function,
         function_scope::{FunctionScope, Symbol},
@@ -11,6 +7,10 @@ use crate::{
         operand::Operand,
     },
     error::error::Error,
+    syntax::{
+        ast::{Ast, Expr, ExprId},
+        ops::{AssignOp, BinaryOp, UnaryOp},
+    },
 };
 
 pub fn compile(ast: &Ast) -> Result<Vec<Function>, Error> {
@@ -62,7 +62,12 @@ impl Compiler {
         self.functions[index] = Some(function);
     }
 
-    fn compile_block(&mut self, ast: &Ast, scope: &mut FunctionScope, expressions: &[ExprId]) {
+    fn compile_block(
+        &mut self,
+        ast: &Ast,
+        scope: &mut FunctionScope,
+        expressions: &[ExprId],
+    ) -> Operand {
         for expression in expressions.iter().copied() {
             let expression = ast.get(expression);
 
@@ -81,9 +86,13 @@ impl Compiler {
             }
         }
 
+        let mut dest = unit();
+
         for expression in expressions.iter().copied() {
-            self.compile_expression(ast, scope, expression);
+            dest = self.compile_expression(ast, scope, expression);
         }
+
+        dest
     }
 
     fn compile_expression(
@@ -363,37 +372,23 @@ impl Compiler {
 
                 Operand::Register(dest)
             }
-            Expr::Block {
-                ref expressions,
-                tail,
-            } => {
+            Expr::Block(ref expressions) => {
                 scope.enter_scope();
-
-                self.compile_block(ast, scope, expressions);
-
-                let tail = match tail {
-                    Some(tail) => self.compile_expression(ast, scope, tail),
-                    None => unit(),
-                };
+                let dest = self.compile_block(ast, scope, expressions);
                 scope.exit_scope();
-                tail
+
+                dest
             }
-            Expr::UncheckedBlock {
-                ref expressions,
-                tail,
-            } => {
+            Expr::UncheckedBlock(ref expressions) => {
                 scope.emit_instruction(Instruction::EnterUncheckedBlock);
+
                 scope.enter_scope();
-
-                self.compile_block(ast, scope, expressions);
-
-                let tail = match tail {
-                    Some(tail) => self.compile_expression(ast, scope, tail),
-                    None => unit(),
-                };
+                let dest = self.compile_block(ast, scope, expressions);
                 scope.exit_scope();
+
                 scope.emit_instruction(Instruction::ExitUncheckedBlock);
-                tail
+
+                dest
             }
             Expr::If {
                 condition,
@@ -741,23 +736,8 @@ impl Compiler {
 
         match *expression {
             Expr::Return(..) => true,
-            Expr::Block {
-                ref expressions,
-                tail,
-            }
-            | Expr::UncheckedBlock {
-                ref expressions,
-                tail,
-            } => {
-                if self.block_returns(ast, expressions) {
-                    true
-                } else if let Some(tail) = tail
-                    && self.expression_returns(ast, tail)
-                {
-                    true
-                } else {
-                    false
-                }
+            Expr::Block(ref expressions) | Expr::UncheckedBlock(ref expressions) => {
+                self.block_returns(ast, expressions)
             }
             Expr::If {
                 then_branch,

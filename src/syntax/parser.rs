@@ -3,13 +3,13 @@ use std::ops::Range;
 use logos::SpannedIter;
 
 use crate::{
-    ast::{
+    error::error::Error,
+    report_error,
+    syntax::{
         ast::{Ast, ExprId},
         ops::{AssignOp, BinaryOp, UnaryOp},
         token::Token,
     },
-    error::error::Error,
-    report_error,
 };
 
 pub struct Parser<'a> {
@@ -23,7 +23,7 @@ impl<'a> Parser<'a> {
         Self {
             tokens,
             peeked: None,
-            ast: Ast::new(),
+            ast: Ast::default(),
         }
     }
 
@@ -36,7 +36,7 @@ impl<'a> Parser<'a> {
             statements.push(statement);
         }
 
-        self.ast.top_level(statements);
+        self.ast.block(statements);
 
         Ok(self.ast)
     }
@@ -214,11 +214,9 @@ impl<'a> Parser<'a> {
             expressions.push(expression);
         }
 
-        let tail = expressions.pop();
-
         self.consume(Token::RightBrace)?;
 
-        Ok(self.ast.block(expressions, tail))
+        Ok(self.ast.block(expressions))
     }
 
     fn parse_unchecked_block(&mut self) -> Result<ExprId, Error> {
@@ -233,11 +231,9 @@ impl<'a> Parser<'a> {
             expressions.push(expression);
         }
 
-        let tail = expressions.pop();
-
         self.consume(Token::RightBrace)?;
 
-        Ok(self.ast.unchecked_block(expressions, tail))
+        Ok(self.ast.unchecked_block(expressions))
     }
 
     fn parse_if(&mut self) -> Result<ExprId, Error> {

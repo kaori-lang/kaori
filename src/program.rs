@@ -3,9 +3,9 @@ use std::time::Instant;
 use logos::Logos;
 
 use crate::{
-    ast::{parser::Parser, token::Token},
     bytecode::{Function, emit_bytecode::compile, optimize_bytecode::optimize_bytecode},
     error::error::Error,
+    syntax::{parser::Parser, token::Token},
 };
 
 pub fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {

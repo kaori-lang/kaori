@@ -4,9 +4,9 @@
 #![feature(likely_unlikely)]
 #![feature(rust_preserve_none_cc)]
 
-pub mod ast;
 pub mod bytecode;
 pub mod error;
+pub mod syntax;
 
 pub mod program;
 pub mod runtime;

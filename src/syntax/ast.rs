@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::ops::Range;
 
-use crate::ast::ops::{AssignOp, BinaryOp, UnaryOp};
+use crate::syntax::ops::{AssignOp, BinaryOp, UnaryOp};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ExprId(u32);
 
+#[derive(Default)]
 pub struct Ast {
     expressions: Vec<Expr>,
     spans: HashMap<ExprId, Range<usize>>,
@@ -61,10 +62,7 @@ pub enum Expr {
         captures: Box<[ExprId]>,
         body: Box<[ExprId]>,
     },
-    Block {
-        expressions: Box<[ExprId]>,
-        tail: Option<ExprId>,
-    },
+    Block(Box<[ExprId]>),
     If {
         condition: ExprId,
         then_branch: ExprId,
@@ -79,10 +77,7 @@ pub enum Expr {
         end: ExprId,
         block: ExprId,
     },
-    UncheckedBlock {
-        expressions: Box<[ExprId]>,
-        tail: Option<ExprId>,
-    },
+    UncheckedBlock(Box<[ExprId]>),
     Return(Option<ExprId>),
     Break,
     Continue,
@@ -90,13 +85,6 @@ pub enum Expr {
 }
 
 impl Ast {
-    pub fn new() -> Self {
-        Self {
-            expressions: Vec::new(),
-            spans: HashMap::new(),
-        }
-    }
-
     fn insert(&mut self, expr: Expr, span: Option<Range<usize>>) -> ExprId {
         let id = ExprId(self.expressions.len() as u32);
 
@@ -121,16 +109,6 @@ impl Ast {
 
     pub fn span(&self, id: ExprId) -> Option<&Range<usize>> {
         self.spans.get(&id)
-    }
-
-    pub fn top_level(&mut self, expressions: Vec<ExprId>) {
-        self.insert(
-            Expr::Block {
-                expressions: expressions.into_boxed_slice(),
-                tail: None,
-            },
-            None,
-        );
     }
 
     pub fn binary(
@@ -244,14 +222,8 @@ impl Ast {
         )
     }
 
-    pub fn block(&mut self, expressions: Vec<ExprId>, tail: Option<ExprId>) -> ExprId {
-        self.insert(
-            Expr::Block {
-                expressions: expressions.into_boxed_slice(),
-                tail,
-            },
-            None,
-        )
+    pub fn block(&mut self, expressions: Vec<ExprId>) -> ExprId {
+        self.insert(Expr::Block(expressions.into_boxed_slice()), None)
     }
 
     pub fn if_(
@@ -278,14 +250,8 @@ impl Ast {
         self.insert(Expr::ForLoop { start, end, block }, None)
     }
 
-    pub fn unchecked_block(&mut self, expressions: Vec<ExprId>, tail: Option<ExprId>) -> ExprId {
-        self.insert(
-            Expr::UncheckedBlock {
-                expressions: expressions.into_boxed_slice(),
-                tail,
-            },
-            None,
-        )
+    pub fn unchecked_block(&mut self, expressions: Vec<ExprId>) -> ExprId {
+        self.insert(Expr::UncheckedBlock(expressions.into_boxed_slice()), None)
     }
 
     pub fn return_(&mut self, expression: Option<ExprId>, span: Range<usize>) -> ExprId {
