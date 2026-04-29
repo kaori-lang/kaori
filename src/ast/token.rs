@@ -112,4 +112,6 @@ pub enum Token {
     // Identifier: must come AFTER all keywords
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
     Identifier,
+
+    EndOfFile,
 }

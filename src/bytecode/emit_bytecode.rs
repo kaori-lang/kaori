@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        expr::{Expr, ExprKind},
+        expr::Expr,
         ops::{AssignOp, BinaryOp, UnaryOp},
     },
     bytecode::{
