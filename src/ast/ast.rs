@@ -7,6 +7,7 @@ use crate::ast::ops::{AssignOp, BinaryOp, UnaryOp};
 pub struct ExprId(u32);
 
 pub struct Ast {
+    pub top_level: Vec<ExprId>,
     expressions: Vec<Expr>,
     spans: HashMap<ExprId, Range<usize>>,
 }
@@ -92,6 +93,7 @@ pub enum Expr {
 impl Ast {
     pub fn new() -> Self {
         Self {
+            top_level: Vec::new(),
             expressions: Vec::new(),
             spans: HashMap::new(),
         }
