@@ -1,7 +1,9 @@
 use std::time::Instant;
 
+use logos::Logos;
+
 use crate::{
-    ast::parser::Parser,
+    ast::{parser::Parser, token::Token},
     bytecode::{Function, emit_bytecode::compile, optimize_bytecode::optimize_bytecode},
     error::kaori_error::KaoriError,
     lexer::{lexer::Lexer, token_stream::TokenStream},
@@ -10,6 +12,8 @@ use crate::{
 
 pub fn compile_source_code(source: &str) -> Result<Vec<Function>, KaoriError> {
     let lexer = Lexer::new(source);
+    let mut tokens = Token::lexer(source).spanned().peekable();
+
     let tokens = lexer.tokenize()?;
     let token_stream = TokenStream::new(source, tokens);
     let mut parser = Parser::new(token_stream);
@@ -29,7 +33,7 @@ pub fn run_program(source: &str) -> Result<(), KaoriError> {
         println!("{}", function);
     }
 
-    let mut gc = Gc::default();
+    /*  let mut gc = Gc::default();
     let functions = from_compiled(bytecode, &mut gc);
 
     let start = Instant::now();
@@ -40,7 +44,7 @@ pub fn run_program(source: &str) -> Result<(), KaoriError> {
 
     let elapsed = start.elapsed();
 
-    println!("{}", elapsed.as_secs_f64() * 1000.0);
+    println!("{}", elapsed.as_secs_f64() * 1000.0); */
 
     Ok(())
 }

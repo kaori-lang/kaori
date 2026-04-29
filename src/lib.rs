@@ -7,6 +7,6 @@
 pub mod ast;
 pub mod bytecode;
 pub mod error;
-pub mod lexer;
+
 pub mod program;
 pub mod runtime;

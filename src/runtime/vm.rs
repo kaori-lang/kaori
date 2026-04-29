@@ -3,7 +3,6 @@ use std::hint::unreachable_unchecked;
 use super::{function::Function, gc::Gc};
 use crate::error::kaori_error::KaoriError;
 use crate::kaori_error;
-use crate::lexer::span::Span;
 use crate::{bytecode::instruction::Instruction, runtime::value::Value};
 
 type Handler = fn(
@@ -49,7 +48,7 @@ macro_rules! dispatch_offset_unchecked {
 macro_rules! type_check {
     ($unchecked:expr, $cond:expr, $($arg:tt)*) => {
         if !$unchecked && std::hint::unlikely(!$cond) {
-            return Err(Box::new(kaori_error!(Span::default(), $($arg)*)));
+            return Err(Box::new(kaori_error!($($arg)*)));
         }
     };
 }
@@ -1135,7 +1134,7 @@ fn opcode_call<const SRC: u8, const UNCHECKED: bool>(
                 registers.add(registers_count as usize)
                     > vm.registers.as_mut_ptr().add(vm.registers.len()),
             ) {
-                return Err(Box::new(kaori_error!(Span::default(), "stack overflow")));
+                return Err(Box::new(kaori_error!("stack overflow")));
             }
 
             let constants = constants.as_ptr();

@@ -1,27 +1,3 @@
 
 
-
-x := 7;
-
-fn foo(n) {
-    print(n);
-}
-
-foo(5);
-/*
-CONSTANTS: [Number(1000000.0)]
-0001  MOV r0 r1
-0002  LOAD_IMM r3 2
-0003  MOV r2 r3
-0004  JMP_IF_GTE r0 r2 4
-0005  LOAD_IMM r7 3
-0006  MOV r5 r7
-0007  JMP 3
-0008  LOAD_IMM r8 4
-0009  MOV r5 r8
-0010  MOV r4 r5
-0011  PRINT r4
-0012  LOAD_IMM r9 0
-0013  RET r9
-*/
-
+"abcd";
