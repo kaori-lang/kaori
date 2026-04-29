@@ -7,7 +7,6 @@ use crate::ast::ops::{AssignOp, BinaryOp, UnaryOp};
 pub struct ExprId(u32);
 
 pub struct Ast {
-    pub top_level: Vec<ExprId>,
     expressions: Vec<Expr>,
     spans: HashMap<ExprId, Range<usize>>,
 }
@@ -47,23 +46,23 @@ pub enum Expr {
     BooleanLiteral(bool),
     FunctionCall {
         callee: ExprId,
-        arguments: Vec<ExprId>,
+        arguments: Box<[ExprId]>,
     },
     MemberAccess {
         object: ExprId,
         property: ExprId,
     },
     DictLiteral {
-        fields: Vec<(ExprId, Option<ExprId>)>,
+        fields: Box<[(ExprId, Option<ExprId>)]>,
     },
     Function {
         name: Option<ExprId>,
-        parameters: Vec<ExprId>,
-        captures: Vec<ExprId>,
-        body: Vec<ExprId>,
+        parameters: Box<[ExprId]>,
+        captures: Box<[ExprId]>,
+        body: Box<[ExprId]>,
     },
     Block {
-        expressions: Vec<ExprId>,
+        expressions: Box<[ExprId]>,
         tail: Option<ExprId>,
     },
     If {
@@ -81,7 +80,7 @@ pub enum Expr {
         block: ExprId,
     },
     UncheckedBlock {
-        expressions: Vec<ExprId>,
+        expressions: Box<[ExprId]>,
         tail: Option<ExprId>,
     },
     Return(Option<ExprId>),
@@ -93,7 +92,6 @@ pub enum Expr {
 impl Ast {
     pub fn new() -> Self {
         Self {
-            top_level: Vec::new(),
             expressions: Vec::new(),
             spans: HashMap::new(),
         }
@@ -111,6 +109,12 @@ impl Ast {
         id
     }
 
+    pub fn entry(&self) -> ExprId {
+        let last = self.expressions.len() - 1;
+
+        ExprId(last as u32)
+    }
+
     pub fn get(&self, id: ExprId) -> &Expr {
         &self.expressions[id.0 as usize]
     }
@@ -119,46 +123,68 @@ impl Ast {
         self.spans.get(&id)
     }
 
-    pub fn binary(&mut self, operator: BinaryOp, left: ExprId, right: ExprId) -> ExprId {
+    pub fn top_level(&mut self, expressions: Vec<ExprId>) {
+        self.insert(
+            Expr::Block {
+                expressions: expressions.into_boxed_slice(),
+                tail: None,
+            },
+            None,
+        );
+    }
+
+    pub fn binary(
+        &mut self,
+        operator: BinaryOp,
+        left: ExprId,
+        right: ExprId,
+        span: Range<usize>,
+    ) -> ExprId {
         self.insert(
             Expr::Binary {
                 operator,
                 left,
                 right,
             },
-            None,
+            Some(span),
         )
     }
 
-    pub fn logical_and(&mut self, left: ExprId, right: ExprId) -> ExprId {
-        self.insert(Expr::LogicalAnd { left, right }, None)
+    pub fn logical_and(&mut self, left: ExprId, right: ExprId, span: Range<usize>) -> ExprId {
+        self.insert(Expr::LogicalAnd { left, right }, Some(span))
     }
 
-    pub fn logical_or(&mut self, left: ExprId, right: ExprId) -> ExprId {
-        self.insert(Expr::LogicalOr { left, right }, None)
+    pub fn logical_or(&mut self, left: ExprId, right: ExprId, span: Range<usize>) -> ExprId {
+        self.insert(Expr::LogicalOr { left, right }, Some(span))
     }
 
-    pub fn logical_not(&mut self, expression: ExprId) -> ExprId {
-        self.insert(Expr::LogicalNot(expression), None)
+    pub fn logical_not(&mut self, expression: ExprId, span: Range<usize>) -> ExprId {
+        self.insert(Expr::LogicalNot(expression), Some(span))
     }
 
-    pub fn unary(&mut self, operator: UnaryOp, right: ExprId) -> ExprId {
-        self.insert(Expr::Unary { operator, right }, None)
+    pub fn unary(&mut self, operator: UnaryOp, right: ExprId, span: Range<usize>) -> ExprId {
+        self.insert(Expr::Unary { operator, right }, Some(span))
     }
 
-    pub fn assign(&mut self, operator: AssignOp, left: ExprId, right: ExprId) -> ExprId {
+    pub fn assign(
+        &mut self,
+        operator: AssignOp,
+        left: ExprId,
+        right: ExprId,
+        span: Range<usize>,
+    ) -> ExprId {
         self.insert(
             Expr::Assign {
                 operator,
                 left,
                 right,
             },
-            None,
+            Some(span),
         )
     }
 
-    pub fn declare_assign(&mut self, left: ExprId, right: ExprId) -> ExprId {
-        self.insert(Expr::DeclareAssign { left, right }, None)
+    pub fn declare_assign(&mut self, left: ExprId, right: ExprId, span: Range<usize>) -> ExprId {
+        self.insert(Expr::DeclareAssign { left, right }, Some(span))
     }
 
     pub fn identifier(&mut self, name: String, span: Range<usize>) -> ExprId {
@@ -177,25 +203,27 @@ impl Ast {
         self.insert(Expr::BooleanLiteral(value), Some(span))
     }
 
-    pub fn function_call(
-        &mut self,
-        callee: ExprId,
-        arguments: Vec<ExprId>,
-        span: Range<usize>,
-    ) -> ExprId {
-        self.insert(Expr::FunctionCall { callee, arguments }, Some(span))
+    pub fn function_call(&mut self, callee: ExprId, arguments: Vec<ExprId>) -> ExprId {
+        self.insert(
+            Expr::FunctionCall {
+                callee,
+                arguments: arguments.into_boxed_slice(),
+            },
+            None,
+        )
     }
 
     pub fn member_access(&mut self, object: ExprId, property: ExprId) -> ExprId {
         self.insert(Expr::MemberAccess { object, property }, None)
     }
 
-    pub fn dict_literal(
-        &mut self,
-        fields: Vec<(ExprId, Option<ExprId>)>,
-        span: Range<usize>,
-    ) -> ExprId {
-        self.insert(Expr::DictLiteral { fields }, Some(span))
+    pub fn dict_literal(&mut self, fields: Vec<(ExprId, Option<ExprId>)>) -> ExprId {
+        self.insert(
+            Expr::DictLiteral {
+                fields: fields.into_boxed_slice(),
+            },
+            None,
+        )
     }
 
     pub fn function(
@@ -204,26 +232,26 @@ impl Ast {
         parameters: Vec<ExprId>,
         captures: Vec<ExprId>,
         body: Vec<ExprId>,
-        span: Range<usize>,
     ) -> ExprId {
         self.insert(
             Expr::Function {
                 name,
-                parameters,
-                captures,
-                body,
+                parameters: parameters.into_boxed_slice(),
+                captures: captures.into_boxed_slice(),
+                body: body.into_boxed_slice(),
             },
-            Some(span),
+            None,
         )
     }
 
-    pub fn block(
-        &mut self,
-        expressions: Vec<ExprId>,
-        tail: Option<ExprId>,
-        span: Range<usize>,
-    ) -> ExprId {
-        self.insert(Expr::Block { expressions, tail }, Some(span))
+    pub fn block(&mut self, expressions: Vec<ExprId>, tail: Option<ExprId>) -> ExprId {
+        self.insert(
+            Expr::Block {
+                expressions: expressions.into_boxed_slice(),
+                tail,
+            },
+            None,
+        )
     }
 
     pub fn if_(
@@ -231,7 +259,6 @@ impl Ast {
         condition: ExprId,
         then_branch: ExprId,
         else_branch: Option<ExprId>,
-        span: Range<usize>,
     ) -> ExprId {
         self.insert(
             Expr::If {
@@ -239,31 +266,26 @@ impl Ast {
                 then_branch,
                 else_branch,
             },
-            Some(span),
+            None,
         )
     }
 
-    pub fn while_loop(&mut self, condition: ExprId, block: ExprId, span: Range<usize>) -> ExprId {
-        self.insert(Expr::WhileLoop { condition, block }, Some(span))
+    pub fn while_loop(&mut self, condition: ExprId, block: ExprId) -> ExprId {
+        self.insert(Expr::WhileLoop { condition, block }, None)
     }
 
-    pub fn for_loop(
-        &mut self,
-        start: ExprId,
-        end: ExprId,
-        block: ExprId,
-        span: Range<usize>,
-    ) -> ExprId {
-        self.insert(Expr::ForLoop { start, end, block }, Some(span))
+    pub fn for_loop(&mut self, start: ExprId, end: ExprId, block: ExprId) -> ExprId {
+        self.insert(Expr::ForLoop { start, end, block }, None)
     }
 
-    pub fn unchecked_block(
-        &mut self,
-        expressions: Vec<ExprId>,
-        tail: Option<ExprId>,
-        span: Range<usize>,
-    ) -> ExprId {
-        self.insert(Expr::UncheckedBlock { expressions, tail }, Some(span))
+    pub fn unchecked_block(&mut self, expressions: Vec<ExprId>, tail: Option<ExprId>) -> ExprId {
+        self.insert(
+            Expr::UncheckedBlock {
+                expressions: expressions.into_boxed_slice(),
+                tail,
+            },
+            None,
+        )
     }
 
     pub fn return_(&mut self, expression: Option<ExprId>, span: Range<usize>) -> ExprId {

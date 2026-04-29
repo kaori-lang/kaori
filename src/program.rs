@@ -5,18 +5,13 @@ use logos::Logos;
 use crate::{
     ast::{parser::Parser, token::Token},
     bytecode::{Function, emit_bytecode::compile, optimize_bytecode::optimize_bytecode},
-    error::kaori_error::KaoriError,
-    lexer::{lexer::Lexer, token_stream::TokenStream},
-    runtime::{function::from_compiled, gc::Gc, vm::Vm},
+    error::error::Error,
 };
 
-pub fn compile_source_code(source: &str) -> Result<Vec<Function>, KaoriError> {
-    let lexer = Lexer::new(source);
-    let mut tokens = Token::lexer(source).spanned().peekable();
+pub fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {
+    let tokens = Token::lexer(source).spanned();
 
-    let tokens = lexer.tokenize()?;
-    let token_stream = TokenStream::new(source, tokens);
-    let mut parser = Parser::new(token_stream);
+    let parser = Parser::new(tokens);
     let ast = parser.parse()?;
 
     let mut bytecode = compile(&ast)?;
@@ -26,7 +21,7 @@ pub fn compile_source_code(source: &str) -> Result<Vec<Function>, KaoriError> {
     Ok(bytecode)
 }
 
-pub fn run_program(source: &str) -> Result<(), KaoriError> {
+pub fn run_program(source: &str) -> Result<(), Error> {
     let bytecode = compile_source_code(source)?;
 
     for function in bytecode.iter() {

@@ -1,3 +1,5 @@
 
-
-"abcd";
+a := 5;
+b := "hello world
+c := true;
+d :=  3.14159

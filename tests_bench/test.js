@@ -4,4 +4,3 @@ function foo() {
 	b = 7;
 	return 10;
 }
-console.log(a);

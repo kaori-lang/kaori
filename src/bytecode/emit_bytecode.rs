@@ -10,10 +10,10 @@ use crate::{
         instruction::Instruction,
         operand::Operand,
     },
-    error::kaori_error::KaoriError,
+    error::error::Error,
 };
 
-pub fn compile(ast: &Ast) -> Result<Vec<Function>, KaoriError> {
+pub fn compile(ast: &Ast) -> Result<Vec<Function>, Error> {
     let mut compiler = Compiler::default();
 
     compiler.compile(ast);
@@ -34,7 +34,7 @@ struct Compiler {
 
 impl Compiler {
     fn compile(&mut self, ast: &Ast) {
-        let expressions = &ast.top_level;
+        let entry = ast.entry();
 
         let index = self.functions.len();
         let function = None;
@@ -42,18 +42,14 @@ impl Compiler {
 
         let mut scope = FunctionScope::default();
 
-        scope.enter_scope();
+        self.compile_expression(ast, &mut scope, entry);
 
-        self.compile_block(ast, &mut scope, expressions);
-
-        if !self.block_returns(ast, expressions) {
+        if !self.expression_returns(ast, entry) {
             let src = materialize(&mut scope, unit());
             scope.emit_instruction(Instruction::Return {
                 src: src.unwrap_register(),
             });
         }
-
-        scope.exit_scope();
 
         let function = Function {
             instructions: scope.instructions,
@@ -806,7 +802,7 @@ fn patch_jump(scope: &mut FunctionScope, index: usize, new_offset: i32) {
 
 fn patch_function_arguments(scope: &mut FunctionScope) {
     for instruction in &mut scope.instructions {
-        if let Instruction::MoveArg { dest, src } = instruction {
+        if let Instruction::MoveArg { dest, .. } = instruction {
             *dest += scope.size;
         }
     }

@@ -1,23 +1,25 @@
+use std::ops::Range;
+
 use ariadne::{Color, Label, Report, ReportKind, Source};
 
 #[macro_export]
-macro_rules! kaori_error {
+macro_rules! report_error {
     ($span:expr, $msg:literal $(, $arg:expr)* $(,)?) => {
-        KaoriError::new(Some($span), format!($msg $(, $arg)*))
+        Error::new(Some($span), format!($msg $(, $arg)*))
     };
     ($msg:literal $(, $arg:expr)* $(,)?) => {
-        KaoriError::new(None, format!($msg $(, $arg)*))
+        Error::new(None, format!($msg $(, $arg)*))
     };
 }
 
 #[derive(Clone)]
-pub struct KaoriError {
-    pub span: Option<std::ops::Range<usize>>,
+pub struct Error {
+    pub span: Option<Range<usize>>,
     pub message: String,
 }
 
-impl KaoriError {
-    pub fn new(span: Option<std::ops::Range<usize>>, message: String) -> Self {
+impl Error {
+    pub fn new(span: Option<Range<usize>>, message: String) -> Self {
         Self { span, message }
     }
 
