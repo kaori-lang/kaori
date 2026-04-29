@@ -41,8 +41,8 @@ pub enum Expr {
         left: ExprId,
         right: ExprId,
     },
-    Identifier(String),
-    StringLiteral(String),
+    Identifier(usize),
+    StringLiteral(usize),
     NumberLiteral(f64),
     BooleanLiteral(bool),
     FunctionCall {
@@ -165,12 +165,12 @@ impl Ast {
         self.insert(Expr::DeclareAssign { left, right }, Some(span))
     }
 
-    pub fn identifier(&mut self, name: String, span: Range<usize>) -> ExprId {
-        self.insert(Expr::Identifier(name), Some(span))
+    pub fn identifier(&mut self, index: usize, span: Range<usize>) -> ExprId {
+        self.insert(Expr::Identifier(index), Some(span))
     }
 
-    pub fn string_literal(&mut self, value: String, span: Range<usize>) -> ExprId {
-        self.insert(Expr::StringLiteral(value), Some(span))
+    pub fn string_literal(&mut self, index: usize, span: Range<usize>) -> ExprId {
+        self.insert(Expr::StringLiteral(index), Some(span))
     }
 
     pub fn number_literal(&mut self, value: f64, span: Range<usize>) -> ExprId {

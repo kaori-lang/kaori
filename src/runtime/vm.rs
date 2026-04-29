@@ -1,7 +1,7 @@
 use std::hint::unreachable_unchecked;
 
 use super::{function::Function, gc::Gc};
-use crate::diagnostics::diagnostics::Error;
+use crate::diagnostics::error::Error;
 use crate::report_error;
 use crate::{bytecode::instruction::Instruction, runtime::value::Value};
 
