@@ -6,17 +6,16 @@ use crate::bytecode::instruction::Instruction;
 
 use super::value::Value;
 
-pub enum Object {
+pub struct Closure {
+    pub instructions: *const Instruction,
+    pub parameters: u8,
+    pub size: u8,
+    pub captured: Box<[Value]>,
+}
+enum Object {
     Vec(Vec<Value>),
     Dict(HashMap<Value, Value>),
-    Closure {
-        instructions: *const Instruction,
-        constants: *const Value,
-        parameters: u8,
-        size: u8,
-        captured: Box<[Value]>,
-    },
-    None,
+    Closure(Closure),
 }
 
 #[derive(Default)]
@@ -52,16 +51,19 @@ impl Gc {
         Value::vec(index)
     }
 
-    pub fn allocate_closure(&mut self, object: Object) -> Value {
-        let index = self.alloc(object);
+    pub fn allocate_closure(&mut self, object: Closure) -> Value {
+        let index = self.alloc(Object::Closure(object));
 
         Value::function(index)
     }
 
-    pub fn get_mut_closure(&mut self, value: Value) -> &mut Object {
+    pub fn get_mut_closure(&mut self, value: Value) -> &mut Closure {
         let index = value.as_index();
 
-        &mut self.objects[index]
+        match &mut self.objects[index] {
+            Object::Closure(object) => object,
+            _ => unsafe { unreachable_unchecked() },
+        }
     }
 
     pub fn get_mut_vec(&mut self, value: Value) -> &mut Vec<Value> {
@@ -96,6 +98,15 @@ impl Gc {
 
         match &self.objects[index] {
             Object::Dict(d) => d,
+            _ => unsafe { unreachable_unchecked() },
+        }
+    }
+
+    pub fn get_closure(&mut self, value: Value) -> &Closure {
+        let index = value.as_index();
+
+        match &self.objects[index] {
+            Object::Closure(object) => object,
             _ => unsafe { unreachable_unchecked() },
         }
     }

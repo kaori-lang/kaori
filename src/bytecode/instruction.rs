@@ -4,6 +4,7 @@ use std::fmt;
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum Instruction {
+    // --- Arithmetic ---
     Add { dest: u8, src1: u8, src2: u8 },
     AddI { dest: u8, src1: u8, src2: Imm },
     Subtract { dest: u8, src1: u8, src2: u8 },
@@ -17,6 +18,7 @@ pub enum Instruction {
     Modulo { dest: u8, src1: u8, src2: u8 },
     ModuloRI { dest: u8, src1: u8, src2: Imm },
     ModuloIR { dest: u8, src1: Imm, src2: u8 },
+    // --- Comparison ---
     Equal { dest: u8, src1: u8, src2: u8 },
     EqualI { dest: u8, src1: u8, src2: Imm },
     NotEqual { dest: u8, src1: u8, src2: u8 },
@@ -29,18 +31,26 @@ pub enum Instruction {
     GreaterI { dest: u8, src1: u8, src2: Imm },
     GreaterEqual { dest: u8, src1: u8, src2: u8 },
     GreaterEqualI { dest: u8, src1: u8, src2: Imm },
+    // --- Unary ---
     Not { dest: u8, src: u8 },
     Negate { dest: u8, src: u8 },
+    // --- Move / Load ---
     Move { dest: u8, src: u8 },
     MoveArg { dest: u8, src: u8 },
-    LoadK { dest: u8, src: u8 },
+    LoadK { dest: u8, src: u32 },
     LoadImm { dest: u8, src: Imm },
+    // --- Objects ---
     CreateDict { dest: u8 },
     SetField { object: u8, key: u8, value: u8 },
     SetFieldI { object: u8, key: u8, src: Imm },
     GetField { dest: u8, object: u8, key: u8 },
+    // --- Closures ---
+    CreateClosure { dest: u8, captures: u8, src: u32 },
+    CaptureValue { src: u8 },
+    // --- Calls ---
     Call { dest: u8, src: u8 },
     Return { src: u8 },
+    // --- Control Flow ---
     Jump { offset: i32 },
     JumpIfFalse { src: u8, offset: i32 },
     JumpIfTrue { src: u8, offset: i32 },
@@ -56,9 +66,8 @@ pub enum Instruction {
     JumpIfEqualI { src1: u8, src2: Imm, offset: i32 },
     JumpIfNotEqual { src1: u8, src2: u8, offset: i32 },
     JumpIfNotEqualI { src1: u8, src2: Imm, offset: i32 },
+    // --- Misc ---
     Print { src: u8 },
-    CreateClosure { dest: u8, captures: u8, src: u32 },
-    CaptureValue { src: u8 },
     EnterUncheckedBlock,
     ExitUncheckedBlock,
     Nop,

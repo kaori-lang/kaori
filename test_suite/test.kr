@@ -1,3 +1,4 @@
+
 fn fib(n) |fib| {
     if n < 2 {
         return n;

@@ -2,7 +2,7 @@ use crate::bytecode::immediate::Imm;
 
 #[derive(Clone, Copy)]
 pub enum Operand {
-    Constant(u8),
+    Constant(usize),
     Register(u8),
     Immediate(Imm),
 }
@@ -16,9 +16,9 @@ impl Operand {
         }
     }
 
-    pub fn unwrap_constant(self) -> u8 {
+    pub fn unwrap_constant(self) -> u32 {
         if let Operand::Constant(value) = self {
-            value
+            value as u32
         } else {
             unreachable!("Expected a constant to be unwrapped")
         }

@@ -3,34 +3,40 @@ use crate::{
         function::Function, function_scope::FunctionScope, immediate::Imm,
         instruction::Instruction, operand::Operand,
     },
-    diagnostics::error::Error,
+    runtime::value::Value,
     syntax::{
         ast::{Ast, Expr, ExprId},
         ops::{AssignOp, BinaryOp, UnaryOp},
     },
 };
 
-pub fn compile(ast: &Ast) -> Result<Vec<Function>, Error> {
-    let mut compiler = Compiler::default();
-
-    compiler.compile(ast);
-
-    let functions = compiler
-        .functions
-        .into_iter()
-        .map(|f| f.unwrap())
-        .collect::<Vec<Function>>();
-
-    Ok(functions)
-}
-
 #[derive(Default)]
-struct Compiler {
+pub struct Compiler {
     functions: Vec<Option<Function>>,
+    constants: Vec<Value>,
 }
 
 impl Compiler {
-    fn compile(&mut self, ast: &Ast) {
+    fn get_or_insert(&mut self, value: Value) -> usize {
+        if let Some(index) = self.constants.iter().copied().position(|c| c == value) {
+            return index;
+        }
+
+        let index = self.constants.len();
+        self.constants.push(value);
+
+        index
+    }
+
+    pub fn push_string(&mut self, value: usize) -> usize {
+        self.get_or_insert(Value::string(value))
+    }
+
+    pub fn push_number(&mut self, value: f64) -> usize {
+        self.get_or_insert(Value::number(value))
+    }
+
+    pub fn compile(mut self, ast: &Ast) -> (Vec<Function>, Vec<Value>) {
         let entry = ast.entry();
 
         let index = self.functions.len();
@@ -52,11 +58,19 @@ impl Compiler {
         let function = Function {
             instructions: scope.instructions,
             registers_count: scope.last_register + 1,
-            constants: scope.constants.into_boxed_slice(),
+
             parameters: 0,
         };
 
         self.functions[index] = Some(function);
+
+        let functions = self
+            .functions
+            .into_iter()
+            .map(|f| f.unwrap())
+            .collect::<Vec<Function>>();
+
+        (functions, self.constants)
     }
 
     fn compile_block(
@@ -158,7 +172,6 @@ impl Compiler {
                 let function = Function {
                     instructions: scope.instructions,
                     registers_count: scope.last_register + 1,
-                    constants: scope.constants.into_boxed_slice(),
                     parameters: parameters.len() as u8,
                 };
 
@@ -479,12 +492,18 @@ impl Compiler {
                 let numeric = if value { 1.0 } else { 0.0 };
                 Operand::Immediate(Imm::try_to_encode(numeric).unwrap())
             }
-            Expr::StringLiteral(value) => scope.push_string(value),
+            Expr::StringLiteral(value) => {
+                let index = self.push_string(value);
+
+                Operand::Constant(index)
+            }
             Expr::NumberLiteral(value) => {
                 if let Some(imm) = Imm::try_to_encode(value) {
                     Operand::Immediate(imm)
                 } else {
-                    scope.push_number(value)
+                    let index = self.push_number(value);
+
+                    Operand::Constant(index)
                 }
             }
             Expr::DictLiteral { ref fields } => {
@@ -729,7 +748,10 @@ fn materialize(scope: &mut FunctionScope, src: Operand) -> Operand {
         Operand::Register(_) => src,
         Operand::Constant(src) => {
             let dest = scope.allocate_register();
-            scope.emit_instruction(Instruction::LoadK { dest, src });
+            scope.emit_instruction(Instruction::LoadK {
+                dest,
+                src: src as u32,
+            });
             Operand::Register(dest)
         }
         Operand::Immediate(src) => {

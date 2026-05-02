@@ -1,17 +1,16 @@
 
 
-def foo(): 
-    return 10
+a = 5
 
 def foo():
-    def foo(): 
-        return 10
-    
-    def foo(): 
-        return 11
-    
 
-    foo()
-    return 1
+    a = a + 1
+    print(a)
 
-print(foo())
+def bar():
+
+    a = a + 1
+    print(a)
+
+foo()
+bar()

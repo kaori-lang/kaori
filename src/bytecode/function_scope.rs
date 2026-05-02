@@ -1,15 +1,11 @@
 use std::collections::HashMap;
 
-use crate::{
-    bytecode::{instruction::Instruction, operand::Operand},
-    runtime::value::Value,
-};
+use crate::bytecode::{instruction::Instruction, operand::Operand};
 
 type InternedString = usize;
 
 pub struct FunctionScope {
     pub block_scopes: Vec<HashMap<InternedString, Operand>>,
-    pub constants: Vec<Value>,
     pub instructions: Vec<Instruction>,
     pub registers: [bool; 256],
     pub last_register: u8,
@@ -19,7 +15,6 @@ impl Default for FunctionScope {
     fn default() -> Self {
         Self {
             block_scopes: Vec::new(),
-            constants: Vec::new(),
             instructions: Vec::new(),
             registers: [false; 256],
             last_register: 0,
@@ -62,29 +57,6 @@ impl FunctionScope {
             .iter()
             .rev()
             .find_map(|table| table.get(&name).copied())
-    }
-
-    fn push_constant(&mut self, constant: Value) -> Operand {
-        let index = if let Some(index) = self.constants.iter().position(|c| *c == constant) {
-            index
-        } else {
-            let index = self.constants.len();
-            assert!(index < 256, "constant pool overflow (u8)");
-
-            self.constants.push(constant);
-
-            index
-        };
-
-        Operand::Constant(index as u8)
-    }
-
-    pub fn push_string(&mut self, index: usize) -> Operand {
-        self.push_constant(Value::string(index))
-    }
-
-    pub fn push_number(&mut self, value: f64) -> Operand {
-        self.push_constant(Value::number(value))
     }
 
     pub fn allocate_register(&mut self) -> u8 {
