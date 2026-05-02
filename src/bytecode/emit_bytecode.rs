@@ -369,17 +369,6 @@ impl Compiler {
 
                 dest
             }
-            Expr::UncheckedBlock(ref expressions) => {
-                scope.emit_instruction(Instruction::EnterUncheckedBlock);
-
-                scope.enter_scope();
-                let dest = self.compile_block(ast, scope, expressions);
-                scope.exit_scope();
-
-                scope.emit_instruction(Instruction::ExitUncheckedBlock);
-
-                dest
-            }
             Expr::If {
                 condition,
                 then_branch,
@@ -728,9 +717,7 @@ impl Compiler {
 
         match *expression {
             Expr::Return(..) => true,
-            Expr::Block(ref expressions) | Expr::UncheckedBlock(ref expressions) => {
-                self.block_returns(ast, expressions)
-            }
+            Expr::Block(ref expressions) => self.block_returns(ast, expressions),
             Expr::If {
                 then_branch,
                 else_branch: Some(else_branch),

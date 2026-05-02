@@ -79,7 +79,6 @@ pub enum Expr {
         end: ExprId,
         block: ExprId,
     },
-    UncheckedBlock(Box<[ExprId]>),
     Return(Option<ExprId>),
     Break,
     Continue,
@@ -250,10 +249,6 @@ impl Ast {
 
     pub fn for_loop(&mut self, start: ExprId, end: ExprId, block: ExprId) -> ExprId {
         self.insert(Expr::ForLoop { start, end, block }, None)
-    }
-
-    pub fn unchecked_block(&mut self, expressions: Vec<ExprId>) -> ExprId {
-        self.insert(Expr::UncheckedBlock(expressions.into()), None)
     }
 
     pub fn return_(&mut self, expression: Option<ExprId>, span: Range<usize>) -> ExprId {

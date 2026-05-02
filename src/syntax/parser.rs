@@ -119,7 +119,6 @@ impl<'a> Parser<'a> {
             Token::Break => self.parse_break(),
             Token::Continue => self.parse_continue(),
             Token::Return => self.parse_return(),
-            Token::Unchecked => self.parse_unchecked_block(),
             _ => {
                 let expression = self.parse_expression();
 
@@ -216,23 +215,6 @@ impl<'a> Parser<'a> {
         self.consume(Token::RightBrace)?;
 
         Ok(self.ast.block(expressions))
-    }
-
-    fn parse_unchecked_block(&mut self) -> Result<ExprId, Error> {
-        self.consume(Token::Unchecked)?;
-        self.consume(Token::LeftBrace)?;
-
-        let mut expressions = Vec::new();
-
-        while !self.at_end()? && self.peek_token()? != Token::RightBrace {
-            let expression = self.parse_expression_statement()?;
-
-            expressions.push(expression);
-        }
-
-        self.consume(Token::RightBrace)?;
-
-        Ok(self.ast.unchecked_block(expressions))
     }
 
     fn parse_if(&mut self) -> Result<ExprId, Error> {

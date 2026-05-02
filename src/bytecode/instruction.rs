@@ -68,8 +68,6 @@ pub enum Instruction {
     JumpIfNotEqualI { src1: u8, src2: Imm, offset: i32 },
     // --- Misc ---
     Print { src: u8 },
-    EnterUncheckedBlock,
-    ExitUncheckedBlock,
     Nop,
 }
 
@@ -82,8 +80,6 @@ impl Instruction {
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Instruction::EnterUncheckedBlock => write!(f, "ENTER_UNCHECKED_BLOCK"),
-            Instruction::ExitUncheckedBlock => write!(f, "EXIT_UNCHECKED_BLOCK"),
             Instruction::Add { dest, src1, src2 } => {
                 write!(f, "ADD r{} r{} r{}", dest, src1, src2)
             }

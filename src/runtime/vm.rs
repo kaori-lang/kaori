@@ -25,14 +25,6 @@ macro_rules! dispatch_next {
     }};
 }
 
-macro_rules! dispatch_next_unchecked {
-    ($ip:expr, $registers:expr, $gc:expr, $size:expr) => {{
-        let ip: *const Instruction = $ip.add(1);
-        let index = (*ip).discriminant();
-        become HANDLERS[index + HANDLERS_UNCHECKED_OFFSET](ip, $registers, $gc, $size);
-    }};
-}
-
 macro_rules! dispatch_offset {
     ($ip:expr, $registers:expr, $gc:expr, $offset:expr, $size:expr) => {{
         let ip: *const Instruction = $ip.offset($offset as isize);
@@ -41,17 +33,9 @@ macro_rules! dispatch_offset {
     }};
 }
 
-macro_rules! dispatch_offset_unchecked {
-    ($ip:expr, $registers:expr, $gc:expr, $offset:expr, $size:expr) => {{
-        let ip: *const Instruction = $ip.offset($offset as isize);
-        let index = (*ip).discriminant();
-        become HANDLERS[index + HANDLERS_UNCHECKED_OFFSET](ip, $registers, $gc, $size);
-    }};
-}
-
 macro_rules! type_check {
-    ($unchecked:expr, $cond:expr, $($arg:tt)*) => {
-        if !$unchecked && std::hint::unlikely(!$cond) {
+    ($cond:expr, $($arg:tt)*) => {
+        if  std::hint::unlikely(!$cond) {
             return Err(Box::new(report_error!($($arg)*)));
         }
     };
@@ -59,125 +43,63 @@ macro_rules! type_check {
 
 const REGISTER: u8 = 0;
 const IMMEDIATE: u8 = 1;
-const HANDLERS_UNCHECKED_OFFSET: usize = HANDLERS.len() / 2;
-
-const HANDLERS: [Handler; 116] = [
-    opcode_add::<REGISTER, REGISTER, false>,
-    opcode_add::<REGISTER, IMMEDIATE, false>,
-    opcode_subtract::<REGISTER, REGISTER, false>,
-    opcode_subtract::<REGISTER, IMMEDIATE, false>,
-    opcode_subtract::<IMMEDIATE, REGISTER, false>,
-    opcode_multiply::<REGISTER, REGISTER, false>,
-    opcode_multiply::<REGISTER, IMMEDIATE, false>,
-    opcode_divide::<REGISTER, REGISTER, false>,
-    opcode_divide::<REGISTER, IMMEDIATE, false>,
-    opcode_divide::<IMMEDIATE, REGISTER, false>,
-    opcode_modulo::<REGISTER, REGISTER, false>,
-    opcode_modulo::<REGISTER, IMMEDIATE, false>,
-    opcode_modulo::<IMMEDIATE, REGISTER, false>,
-    opcode_equal::<REGISTER, REGISTER, false>,
-    opcode_equal::<REGISTER, IMMEDIATE, false>,
-    opcode_not_equal::<REGISTER, REGISTER, false>,
-    opcode_not_equal::<REGISTER, IMMEDIATE, false>,
-    opcode_less::<REGISTER, REGISTER, false>,
-    opcode_less::<REGISTER, IMMEDIATE, false>,
-    opcode_less_equal::<REGISTER, REGISTER, false>,
-    opcode_less_equal::<REGISTER, IMMEDIATE, false>,
-    opcode_greater::<REGISTER, REGISTER, false>,
-    opcode_greater::<REGISTER, IMMEDIATE, false>,
-    opcode_greater_equal::<REGISTER, REGISTER, false>,
-    opcode_greater_equal::<REGISTER, IMMEDIATE, false>,
-    opcode_not::<false>,
-    opcode_negate::<false>,
-    opcode_move::<false>,
-    opcode_move_arg::<false>,
-    opcode_load_k::<false>,
-    opcode_load_imm::<false>,
-    opcode_create_dict::<false>,
-    opcode_set_field::<REGISTER, false>,
-    opcode_set_field::<IMMEDIATE, false>,
-    opcode_get_field::<false>,
-    opcode_create_closure::<false>,
-    opcode_nop::<false>,
-    opcode_call::<false>,
+const HANDLERS: [Handler; 56] = [
+    opcode_add::<REGISTER, REGISTER>,
+    opcode_add::<REGISTER, IMMEDIATE>,
+    opcode_subtract::<REGISTER, REGISTER>,
+    opcode_subtract::<REGISTER, IMMEDIATE>,
+    opcode_subtract::<IMMEDIATE, REGISTER>,
+    opcode_multiply::<REGISTER, REGISTER>,
+    opcode_multiply::<REGISTER, IMMEDIATE>,
+    opcode_divide::<REGISTER, REGISTER>,
+    opcode_divide::<REGISTER, IMMEDIATE>,
+    opcode_divide::<IMMEDIATE, REGISTER>,
+    opcode_modulo::<REGISTER, REGISTER>,
+    opcode_modulo::<REGISTER, IMMEDIATE>,
+    opcode_modulo::<IMMEDIATE, REGISTER>,
+    opcode_equal::<REGISTER, REGISTER>,
+    opcode_equal::<REGISTER, IMMEDIATE>,
+    opcode_not_equal::<REGISTER, REGISTER>,
+    opcode_not_equal::<REGISTER, IMMEDIATE>,
+    opcode_less::<REGISTER, REGISTER>,
+    opcode_less::<REGISTER, IMMEDIATE>,
+    opcode_less_equal::<REGISTER, REGISTER>,
+    opcode_less_equal::<REGISTER, IMMEDIATE>,
+    opcode_greater::<REGISTER, REGISTER>,
+    opcode_greater::<REGISTER, IMMEDIATE>,
+    opcode_greater_equal::<REGISTER, REGISTER>,
+    opcode_greater_equal::<REGISTER, IMMEDIATE>,
+    opcode_not,
+    opcode_negate,
+    opcode_move,
+    opcode_move_arg,
+    opcode_load_k,
+    opcode_load_imm,
+    opcode_create_dict,
+    opcode_set_field::<REGISTER>,
+    opcode_set_field::<IMMEDIATE>,
+    opcode_get_field,
+    opcode_create_closure,
+    opcode_nop,
+    opcode_call,
     opcode_return,
-    opcode_jump::<false>,
-    opcode_jump_if_false::<false>,
-    opcode_jump_if_true::<false>,
-    opcode_jump_if_less::<REGISTER, REGISTER, false>,
-    opcode_jump_if_less::<REGISTER, IMMEDIATE, false>,
-    opcode_jump_if_less_equal::<REGISTER, REGISTER, false>,
-    opcode_jump_if_less_equal::<REGISTER, IMMEDIATE, false>,
-    opcode_jump_if_greater::<REGISTER, REGISTER, false>,
-    opcode_jump_if_greater::<REGISTER, IMMEDIATE, false>,
-    opcode_jump_if_greater_equal::<REGISTER, REGISTER, false>,
-    opcode_jump_if_greater_equal::<REGISTER, IMMEDIATE, false>,
-    opcode_jump_if_equal::<REGISTER, REGISTER, false>,
-    opcode_jump_if_equal::<REGISTER, IMMEDIATE, false>,
-    opcode_jump_if_not_equal::<REGISTER, REGISTER, false>,
-    opcode_jump_if_not_equal::<REGISTER, IMMEDIATE, false>,
-    opcode_print::<false>,
-    opcode_enter_unchecked_block,
-    opcode_exit_unchecked_block,
-    opcode_nop::<false>,
-    opcode_add::<REGISTER, REGISTER, true>,
-    opcode_add::<REGISTER, IMMEDIATE, true>,
-    opcode_subtract::<REGISTER, REGISTER, true>,
-    opcode_subtract::<REGISTER, IMMEDIATE, true>,
-    opcode_subtract::<IMMEDIATE, REGISTER, true>,
-    opcode_multiply::<REGISTER, REGISTER, true>,
-    opcode_multiply::<REGISTER, IMMEDIATE, true>,
-    opcode_divide::<REGISTER, REGISTER, true>,
-    opcode_divide::<REGISTER, IMMEDIATE, true>,
-    opcode_divide::<IMMEDIATE, REGISTER, true>,
-    opcode_modulo::<REGISTER, REGISTER, true>,
-    opcode_modulo::<REGISTER, IMMEDIATE, true>,
-    opcode_modulo::<IMMEDIATE, REGISTER, true>,
-    opcode_equal::<REGISTER, REGISTER, true>,
-    opcode_equal::<REGISTER, IMMEDIATE, true>,
-    opcode_not_equal::<REGISTER, REGISTER, true>,
-    opcode_not_equal::<REGISTER, IMMEDIATE, true>,
-    opcode_less::<REGISTER, REGISTER, true>,
-    opcode_less::<REGISTER, IMMEDIATE, true>,
-    opcode_less_equal::<REGISTER, REGISTER, true>,
-    opcode_less_equal::<REGISTER, IMMEDIATE, true>,
-    opcode_greater::<REGISTER, REGISTER, true>,
-    opcode_greater::<REGISTER, IMMEDIATE, true>,
-    opcode_greater_equal::<REGISTER, REGISTER, true>,
-    opcode_greater_equal::<REGISTER, IMMEDIATE, true>,
-    opcode_not::<true>,
-    opcode_negate::<true>,
-    opcode_move::<true>,
-    opcode_move_arg::<true>,
-    opcode_load_k::<true>,
-    opcode_load_imm::<true>,
-    opcode_create_dict::<true>,
-    opcode_set_field::<REGISTER, true>,
-    opcode_set_field::<IMMEDIATE, true>,
-    opcode_get_field::<true>,
-    opcode_create_closure::<true>,
-    opcode_nop::<true>,
-    opcode_call::<true>,
-    opcode_return,
-    opcode_jump::<true>,
-    opcode_jump_if_false::<true>,
-    opcode_jump_if_true::<true>,
-    opcode_jump_if_less::<REGISTER, REGISTER, true>,
-    opcode_jump_if_less::<REGISTER, IMMEDIATE, true>,
-    opcode_jump_if_less_equal::<REGISTER, REGISTER, true>,
-    opcode_jump_if_less_equal::<REGISTER, IMMEDIATE, true>,
-    opcode_jump_if_greater::<REGISTER, REGISTER, true>,
-    opcode_jump_if_greater::<REGISTER, IMMEDIATE, true>,
-    opcode_jump_if_greater_equal::<REGISTER, REGISTER, true>,
-    opcode_jump_if_greater_equal::<REGISTER, IMMEDIATE, true>,
-    opcode_jump_if_equal::<REGISTER, REGISTER, true>,
-    opcode_jump_if_equal::<REGISTER, IMMEDIATE, true>,
-    opcode_jump_if_not_equal::<REGISTER, REGISTER, true>,
-    opcode_jump_if_not_equal::<REGISTER, IMMEDIATE, true>,
-    opcode_print::<true>,
-    opcode_enter_unchecked_block,
-    opcode_exit_unchecked_block,
-    opcode_nop::<true>,
+    opcode_jump,
+    opcode_jump_if_false,
+    opcode_jump_if_true,
+    opcode_jump_if_less::<REGISTER, REGISTER>,
+    opcode_jump_if_less::<REGISTER, IMMEDIATE>,
+    opcode_jump_if_less_equal::<REGISTER, REGISTER>,
+    opcode_jump_if_less_equal::<REGISTER, IMMEDIATE>,
+    opcode_jump_if_greater::<REGISTER, REGISTER>,
+    opcode_jump_if_greater::<REGISTER, IMMEDIATE>,
+    opcode_jump_if_greater_equal::<REGISTER, REGISTER>,
+    opcode_jump_if_greater_equal::<REGISTER, IMMEDIATE>,
+    opcode_jump_if_equal::<REGISTER, REGISTER>,
+    opcode_jump_if_equal::<REGISTER, IMMEDIATE>,
+    opcode_jump_if_not_equal::<REGISTER, REGISTER>,
+    opcode_jump_if_not_equal::<REGISTER, IMMEDIATE>,
+    opcode_print,
+    opcode_nop,
 ];
 
 pub fn run_vm() -> Result<Value, Error> {
@@ -205,27 +127,7 @@ unsafe fn set_value(dest: u8, value: Value, registers: *mut Value) {
 }
 
 #[inline(never)]
-fn opcode_enter_unchecked_block(
-    ip: *const Instruction,
-    registers: *mut Value,
-    gc: &mut Gc,
-    size: u8,
-) -> Result<Value, Box<Error>> {
-    unsafe { dispatch_next_unchecked!(ip, registers, gc, size) }
-}
-
-#[inline(never)]
-fn opcode_exit_unchecked_block(
-    ip: *const Instruction,
-    registers: *mut Value,
-    gc: &mut Gc,
-    size: u8,
-) -> Result<Value, Box<Error>> {
-    unsafe { dispatch_next!(ip, registers, gc, size) }
-}
-
-#[inline(never)]
-fn opcode_add<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_add<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -253,7 +155,6 @@ fn opcode_add<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot add, both operands must be numbers",
         );
@@ -264,16 +165,12 @@ fn opcode_add<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
             registers,
         );
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_subtract<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_subtract<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -309,7 +206,6 @@ fn opcode_subtract<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot subtract, both operands must be numbers",
         );
@@ -320,16 +216,12 @@ fn opcode_subtract<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
             registers,
         );
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_multiply<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_multiply<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -357,7 +249,6 @@ fn opcode_multiply<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot multiply, both operands must be numbers",
         );
@@ -368,16 +259,12 @@ fn opcode_multiply<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
             registers,
         );
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_divide<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_divide<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -413,7 +300,6 @@ fn opcode_divide<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot divide, both operands must be numbers",
         );
@@ -424,16 +310,12 @@ fn opcode_divide<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
             registers,
         );
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_modulo<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_modulo<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -469,7 +351,6 @@ fn opcode_modulo<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compute, both operands must be numbers",
         );
@@ -480,16 +361,12 @@ fn opcode_modulo<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
             registers,
         );
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_equal<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -518,16 +395,12 @@ fn opcode_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
 
         set_value(dest, Value::number((src1 == src2) as u8 as f64), registers);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_not_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_not_equal<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -556,16 +429,12 @@ fn opcode_not_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
 
         set_value(dest, Value::number((src1 != src2) as u8 as f64), registers);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_less<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_less<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -593,7 +462,6 @@ fn opcode_less<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare, both operands must be numbers",
         );
@@ -604,16 +472,12 @@ fn opcode_less<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
             registers,
         );
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_less_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_less_equal<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -641,7 +505,6 @@ fn opcode_less_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare, both operands must be numbers",
         );
@@ -652,16 +515,12 @@ fn opcode_less_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
             registers,
         );
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_greater<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_greater<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -689,7 +548,6 @@ fn opcode_greater<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare, both operands must be numbers",
         );
@@ -700,16 +558,12 @@ fn opcode_greater<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
             registers,
         );
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_greater_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_greater_equal<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -737,7 +591,6 @@ fn opcode_greater_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare, both operands must be numbers",
         );
@@ -748,16 +601,12 @@ fn opcode_greater_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
             registers,
         );
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_not<const UNCHECKED: bool>(
+fn opcode_not(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -770,7 +619,6 @@ fn opcode_not<const UNCHECKED: bool>(
         let src = *registers.add(src as usize);
 
         type_check!(
-            UNCHECKED,
             src.is_number(),
             "cannot apply not, operand must be a boolean",
         );
@@ -781,16 +629,12 @@ fn opcode_not<const UNCHECKED: bool>(
             registers,
         );
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_negate<const UNCHECKED: bool>(
+fn opcode_negate(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -802,24 +646,16 @@ fn opcode_negate<const UNCHECKED: bool>(
         };
         let src = *registers.add(src as usize);
 
-        type_check!(
-            UNCHECKED,
-            src.is_number(),
-            "cannot negate, operand must be a number",
-        );
+        type_check!(src.is_number(), "cannot negate, operand must be a number",);
 
         set_value(dest, Value::number(-src.as_number()), registers);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_move<const UNCHECKED: bool>(
+fn opcode_move(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -833,16 +669,12 @@ fn opcode_move<const UNCHECKED: bool>(
         let src = *registers.add(src as usize);
         set_value(dest, src, registers);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_move_arg<const UNCHECKED: bool>(
+fn opcode_move_arg(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -856,16 +688,12 @@ fn opcode_move_arg<const UNCHECKED: bool>(
         let src = *registers.add(src as usize);
         set_value(dest, src, registers);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_load_k<const UNCHECKED: bool>(
+fn opcode_load_k(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -879,16 +707,12 @@ fn opcode_load_k<const UNCHECKED: bool>(
         let constant = CONSTANT_POOL.get().unwrap_unchecked()[src as usize];
         set_value(dest, constant, registers);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_load_imm<const UNCHECKED: bool>(
+fn opcode_load_imm(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -900,16 +724,12 @@ fn opcode_load_imm<const UNCHECKED: bool>(
         };
         set_value(dest, Value::number(src.decode()), registers);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_create_dict<const UNCHECKED: bool>(
+fn opcode_create_dict(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -922,16 +742,12 @@ fn opcode_create_dict<const UNCHECKED: bool>(
         let value = gc.allocate_dict();
         set_value(dest, value, registers);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_set_field<const VALUE: u8, const UNCHECKED: bool>(
+fn opcode_set_field<const VALUE: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -960,24 +776,16 @@ fn opcode_set_field<const VALUE: u8, const UNCHECKED: bool>(
             _ => unreachable_unchecked(),
         };
 
-        type_check!(
-            false,
-            object.is_dict(),
-            "cannot set field, value is not a dict",
-        );
+        type_check!(object.is_dict(), "cannot set field, value is not a dict",);
 
         gc.get_mut_dict(object).insert(key, value);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_get_field<const UNCHECKED: bool>(
+fn opcode_get_field(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -990,25 +798,17 @@ fn opcode_get_field<const UNCHECKED: bool>(
         let object = *registers.add(object as usize);
         let key = *registers.add(key as usize);
 
-        type_check!(
-            false,
-            object.is_dict(),
-            "cannot get field, value is not a dict",
-        );
+        type_check!(object.is_dict(), "cannot get field, value is not a dict",);
 
         let value = gc.get_dict(object).get(&key).copied().unwrap_or_default();
         set_value(dest, value, registers);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_create_closure<const UNCHECKED: bool>(
+fn opcode_create_closure(
     mut ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1059,16 +859,12 @@ fn opcode_create_closure<const UNCHECKED: bool>(
             closure.captured = captured_values.into_boxed_slice();
         }
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_call<const UNCHECKED: bool>(
+fn opcode_call(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1081,11 +877,7 @@ fn opcode_call<const UNCHECKED: bool>(
 
         let src = *registers.add(src as usize);
 
-        type_check!(
-            false,
-            src.is_function(),
-            "cannot call, value is not a function",
-        );
+        type_check!(src.is_function(), "cannot call, value is not a function",);
 
         let return_value = {
             let Closure {
@@ -1106,11 +898,7 @@ fn opcode_call<const UNCHECKED: bool>(
 
         set_value(dest, return_value, registers);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
@@ -1131,7 +919,7 @@ fn opcode_return(
 }
 
 #[inline(never)]
-fn opcode_jump<const UNCHECKED: bool>(
+fn opcode_jump(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1142,16 +930,12 @@ fn opcode_jump<const UNCHECKED: bool>(
             unreachable_unchecked()
         };
 
-        if UNCHECKED {
-            dispatch_offset_unchecked!(ip, registers, gc, offset, size)
-        } else {
-            dispatch_offset!(ip, registers, gc, offset, size)
-        }
+        dispatch_offset!(ip, registers, gc, offset, size)
     }
 }
 
 #[inline(never)]
-fn opcode_jump_if_false<const UNCHECKED: bool>(
+fn opcode_jump_if_false(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1165,19 +949,12 @@ fn opcode_jump_if_false<const UNCHECKED: bool>(
         let src = *registers.add(src as usize);
 
         type_check!(
-            UNCHECKED,
             src.is_number(),
             "cannot use this as a condition, value must be a boolean",
         );
 
         if src.is_truthy() {
-            if UNCHECKED {
-                dispatch_next_unchecked!(ip, registers, gc, size)
-            } else {
-                dispatch_next!(ip, registers, gc, size)
-            }
-        } else if UNCHECKED {
-            dispatch_offset_unchecked!(ip, registers, gc, offset, size)
+            dispatch_next!(ip, registers, gc, size)
         } else {
             dispatch_offset!(ip, registers, gc, offset, size)
         }
@@ -1185,7 +962,7 @@ fn opcode_jump_if_false<const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_jump_if_true<const UNCHECKED: bool>(
+fn opcode_jump_if_true(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1199,19 +976,12 @@ fn opcode_jump_if_true<const UNCHECKED: bool>(
         let src = *registers.add(src as usize);
 
         type_check!(
-            UNCHECKED,
             src.is_number(),
             "cannot use this as a condition, value must be a boolean",
         );
 
         if src.is_truthy() {
-            if UNCHECKED {
-                dispatch_offset_unchecked!(ip, registers, gc, offset, size)
-            } else {
-                dispatch_offset!(ip, registers, gc, offset, size)
-            }
-        } else if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
+            dispatch_offset!(ip, registers, gc, offset, size)
         } else {
             dispatch_next!(ip, registers, gc, size)
         }
@@ -1219,7 +989,7 @@ fn opcode_jump_if_true<const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_jump_if_less<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_jump_if_less<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1247,19 +1017,12 @@ fn opcode_jump_if_less<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare, both operands must be numbers",
         );
 
         if src1.as_number() < src2.as_number() {
-            if UNCHECKED {
-                dispatch_offset_unchecked!(ip, registers, gc, offset, size)
-            } else {
-                dispatch_offset!(ip, registers, gc, offset, size)
-            }
-        } else if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
+            dispatch_offset!(ip, registers, gc, offset, size)
         } else {
             dispatch_next!(ip, registers, gc, size)
         }
@@ -1267,7 +1030,7 @@ fn opcode_jump_if_less<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_jump_if_less_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_jump_if_less_equal<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1295,19 +1058,12 @@ fn opcode_jump_if_less_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bo
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare, both operands must be numbers",
         );
 
         if src1.as_number() <= src2.as_number() {
-            if UNCHECKED {
-                dispatch_offset_unchecked!(ip, registers, gc, offset, size)
-            } else {
-                dispatch_offset!(ip, registers, gc, offset, size)
-            }
-        } else if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
+            dispatch_offset!(ip, registers, gc, offset, size)
         } else {
             dispatch_next!(ip, registers, gc, size)
         }
@@ -1315,7 +1071,7 @@ fn opcode_jump_if_less_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bo
 }
 
 #[inline(never)]
-fn opcode_jump_if_greater<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_jump_if_greater<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1343,19 +1099,12 @@ fn opcode_jump_if_greater<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare, both operands must be numbers",
         );
 
         if src1.as_number() > src2.as_number() {
-            if UNCHECKED {
-                dispatch_offset_unchecked!(ip, registers, gc, offset, size)
-            } else {
-                dispatch_offset!(ip, registers, gc, offset, size)
-            }
-        } else if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
+            dispatch_offset!(ip, registers, gc, offset, size)
         } else {
             dispatch_next!(ip, registers, gc, size)
         }
@@ -1363,7 +1112,7 @@ fn opcode_jump_if_greater<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>
 }
 
 #[inline(never)]
-fn opcode_jump_if_greater_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_jump_if_greater_equal<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1391,19 +1140,12 @@ fn opcode_jump_if_greater_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED:
         };
 
         type_check!(
-            UNCHECKED,
             src1.is_number() && src2.is_number(),
             "cannot compare, both operands must be numbers",
         );
 
         if src1.as_number() >= src2.as_number() {
-            if UNCHECKED {
-                dispatch_offset_unchecked!(ip, registers, gc, offset, size)
-            } else {
-                dispatch_offset!(ip, registers, gc, offset, size)
-            }
-        } else if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
+            dispatch_offset!(ip, registers, gc, offset, size)
         } else {
             dispatch_next!(ip, registers, gc, size)
         }
@@ -1411,7 +1153,7 @@ fn opcode_jump_if_greater_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED:
 }
 
 #[inline(never)]
-fn opcode_jump_if_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_jump_if_equal<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1439,13 +1181,7 @@ fn opcode_jump_if_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
         };
 
         if src1 == src2 {
-            if UNCHECKED {
-                dispatch_offset_unchecked!(ip, registers, gc, offset, size)
-            } else {
-                dispatch_offset!(ip, registers, gc, offset, size)
-            }
-        } else if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
+            dispatch_offset!(ip, registers, gc, offset, size)
         } else {
             dispatch_next!(ip, registers, gc, size)
         }
@@ -1453,7 +1189,7 @@ fn opcode_jump_if_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_jump_if_not_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: bool>(
+fn opcode_jump_if_not_equal<const SRC1: u8, const SRC2: u8>(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1481,13 +1217,7 @@ fn opcode_jump_if_not_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: boo
         };
 
         if src1 != src2 {
-            if UNCHECKED {
-                dispatch_offset_unchecked!(ip, registers, gc, offset, size)
-            } else {
-                dispatch_offset!(ip, registers, gc, offset, size)
-            }
-        } else if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
+            dispatch_offset!(ip, registers, gc, offset, size)
         } else {
             dispatch_next!(ip, registers, gc, size)
         }
@@ -1495,7 +1225,7 @@ fn opcode_jump_if_not_equal<const SRC1: u8, const SRC2: u8, const UNCHECKED: boo
 }
 
 #[inline(never)]
-fn opcode_print<const UNCHECKED: bool>(
+fn opcode_print(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
@@ -1509,26 +1239,16 @@ fn opcode_print<const UNCHECKED: bool>(
         let debug = DebugValue::new(src, gc);
         println!("{:?}", debug);
 
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
+        dispatch_next!(ip, registers, gc, size)
     }
 }
 
 #[inline(never)]
-fn opcode_nop<const UNCHECKED: bool>(
+fn opcode_nop(
     ip: *const Instruction,
     registers: *mut Value,
     gc: &mut Gc,
     size: u8,
 ) -> Result<Value, Box<Error>> {
-    unsafe {
-        if UNCHECKED {
-            dispatch_next_unchecked!(ip, registers, gc, size)
-        } else {
-            dispatch_next!(ip, registers, gc, size)
-        }
-    }
+    unsafe { dispatch_next!(ip, registers, gc, size) }
 }

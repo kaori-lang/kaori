@@ -16,7 +16,7 @@ use crate::{
 pub static INTERNER: LazyLock<Mutex<StringInterner>> =
     LazyLock::new(|| Mutex::new(StringInterner::default()));
 pub static CONSTANT_POOL: OnceLock<Box<[Value]>> = OnceLock::new();
-pub static FUNCTIONS: OnceLock<Vec<Function>> = OnceLock::new();
+pub static FUNCTIONS: OnceLock<Box<[Function]>> = OnceLock::new();
 
 pub fn compile_source_code(source: &str) -> Result<(Vec<Function>, Vec<Value>), Error> {
     let tokens = Token::lexer(source).spanned();
@@ -38,7 +38,7 @@ pub fn compile_source_code(source: &str) -> Result<(Vec<Function>, Vec<Value>), 
 pub fn run_program(source: &str) -> Result<(), Error> {
     let (bytecode, constants) = compile_source_code(source)?;
 
-    FUNCTIONS.set(bytecode).unwrap();
+    FUNCTIONS.set(bytecode.into_boxed_slice()).unwrap();
     CONSTANT_POOL.set(constants.into_boxed_slice()).unwrap();
 
     let start = Instant::now();

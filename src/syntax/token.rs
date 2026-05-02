@@ -85,8 +85,6 @@ pub enum Token {
     True,
     #[token("false")]
     False,
-    #[token("unchecked")]
-    Unchecked,
     #[token("to")]
     To,
     #[token("downto")]
@@ -148,7 +146,6 @@ impl fmt::Display for Token {
             Token::Print => "`print`",
             Token::True => "`true`",
             Token::False => "`false`",
-            Token::Unchecked => "`unchecked`",
             Token::To => "`to`",
             Token::DownTo => "`downto`",
             Token::By => "`by`",
