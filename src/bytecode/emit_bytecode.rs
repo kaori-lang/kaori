@@ -326,13 +326,11 @@ impl Compiler {
                     });
                 }
 
-                let instruction = match callee_src {
-                    Operand::Constant(src) => Instruction::CallK { dest, src },
-                    Operand::Register(src) => Instruction::Call { dest, src },
-                    _ => panic!("callee must be a constant or register"),
-                };
+                scope.emit_instruction(Instruction::Call {
+                    dest,
+                    src: callee_src.unwrap_register(),
+                });
 
-                scope.emit_instruction(instruction);
                 Operand::Register(dest)
             }
             Expr::MemberAccess { object, property } => {

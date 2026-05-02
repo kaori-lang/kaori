@@ -6,7 +6,7 @@ use crate::bytecode::instruction::Instruction;
 
 use super::value::Value;
 
-enum Object {
+pub enum Object {
     Vec(Vec<Value>),
     Dict(HashMap<Value, Value>),
     Closure {
@@ -16,6 +16,7 @@ enum Object {
         size: u8,
         captured: Box<[Value]>,
     },
+    None,
 }
 
 #[derive(Default)]
@@ -49,6 +50,18 @@ impl Gc {
         let index = self.alloc(object);
 
         Value::vec(index)
+    }
+
+    pub fn allocate_closure(&mut self, object: Object) -> Value {
+        let index = self.alloc(object);
+
+        Value::function(index)
+    }
+
+    pub fn get_mut_closure(&mut self, value: Value) -> &mut Object {
+        let index = value.as_index();
+
+        &mut self.objects[index]
     }
 
     pub fn get_mut_vec(&mut self, value: Value) -> &mut Vec<Value> {

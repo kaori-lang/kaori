@@ -108,7 +108,6 @@ fn remove_redundant_moves(instructions: &mut [Instruction], leaders: &[bool]) {
                 | Instruction::CreateDict { dest }
                 | Instruction::GetField { dest, .. }
                 | Instruction::Call { dest, .. }
-                | Instruction::CallK { dest, .. }
                     if *dest == src =>
                 {
                     *dest = move_dest;

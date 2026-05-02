@@ -40,7 +40,6 @@ pub enum Instruction {
     SetFieldI { object: u8, key: u8, src: Imm },
     GetField { dest: u8, object: u8, key: u8 },
     Call { dest: u8, src: u8 },
-    CallK { dest: u8, src: u8 },
     Return { src: u8 },
     Jump { offset: i32 },
     JumpIfFalse { src: u8, offset: i32 },
@@ -183,9 +182,6 @@ impl fmt::Display for Instruction {
             }
             Instruction::Call { dest, src } => {
                 write!(f, "CALL r{} r{}", dest, src)
-            }
-            Instruction::CallK { dest, src } => {
-                write!(f, "CALL r{} k{}", dest, src)
             }
             Instruction::Return { src } => {
                 write!(f, "RET r{}", src)

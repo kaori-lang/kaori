@@ -7,6 +7,7 @@ use crate::diagnostics::error::Error;
 use crate::program::FUNCTIONS;
 use crate::report_error;
 use crate::runtime::debug_value::DebugValue;
+use crate::runtime::gc::Object;
 use crate::{bytecode::instruction::Instruction, runtime::value::Value};
 
 type Handler = fn(
@@ -57,16 +58,12 @@ macro_rules! type_check {
     };
 }
 
-fn get_function(index: usize) -> &'static Function {
-    unsafe { &FUNCTIONS.get().unwrap_unchecked()[index] }
-}
-
 const REGISTER: u8 = 0;
 const IMMEDIATE: u8 = 1;
 const CONSTANT: u8 = 2;
 const HANDLERS_UNCHECKED_OFFSET: usize = HANDLERS.len() / 2;
 
-const HANDLERS: [Handler; 114] = [
+const HANDLERS: [Handler; 112] = [
     // CHECKED HANDLERS (false)
     opcode_add::<REGISTER, REGISTER, false>,       // Add
     opcode_add::<REGISTER, IMMEDIATE, false>,      // AddI
@@ -108,8 +105,7 @@ const HANDLERS: [Handler; 114] = [
     opcode_set_field::<IMMEDIATE, false>, // SetFieldI
     opcode_get_field::<false>,
     // --- Calls ---
-    opcode_call::<REGISTER, false>, // Call
-    opcode_call::<CONSTANT, false>, // CallK
+    opcode_call::<false>, // Call
     opcode_return,
     // --- Control Flow ---
     opcode_jump::<false>,
@@ -170,8 +166,7 @@ const HANDLERS: [Handler; 114] = [
     opcode_set_field::<REGISTER, true>,
     opcode_set_field::<IMMEDIATE, true>,
     opcode_get_field::<true>,
-    opcode_call::<REGISTER, true>,
-    opcode_call::<CONSTANT, true>,
+    opcode_call::<true>,
     opcode_return,
     opcode_jump::<true>,
     opcode_jump_if_false::<true>,
@@ -976,7 +971,74 @@ fn opcode_load_imm<const UNCHECKED: bool>(
 }
 
 #[inline(never)]
-fn opcode_call<const SRC: u8, const UNCHECKED: bool>(
+fn opcode_create_closure<const UNCHECKED: bool>(
+    mut ip: *const Instruction,
+    vm: &mut Vm,
+    registers: *mut Value,
+    constants: *const Value,
+    size: u8,
+) -> Result<Value, Box<Error>> {
+    unsafe {
+        let Instruction::CreateClosure {
+            dest,
+            captures: captures_count,
+            src,
+        } = *ip
+        else {
+            unreachable_unchecked()
+        };
+
+        {
+            let Function {
+                ref instructions,
+                registers_count,
+                ref constants,
+                parameters,
+            } = FUNCTIONS.get().unwrap_unchecked()[src as usize];
+
+            let closure = Object::Closure {
+                instructions: instructions.as_ptr(),
+                constants: constants.as_ptr(),
+                parameters,
+                size: registers_count,
+                captured: vec![Value::default(); captures_count as usize].into_boxed_slice(),
+            };
+
+            let closure = vm.gc.allocate_closure(closure);
+
+            set_value(dest, closure, registers);
+
+            let mut captured_values = Vec::new();
+
+            for _ in 0..captures_count {
+                ip = ip.add(1);
+
+                let Instruction::CaptureValue { src } = *ip else {
+                    unreachable_unchecked()
+                };
+
+                let capture = *registers.add(src as usize);
+
+                captured_values.push(capture);
+            }
+
+            if let Object::Closure { captured, .. } = vm.gc.get_mut_closure(closure) {
+                *captured = captured_values.into_boxed_slice();
+            }
+        }
+
+        // set captures
+
+        if UNCHECKED {
+            dispatch_next_unchecked!(ip, vm, registers, constants, size)
+        } else {
+            dispatch_next!(ip, vm, registers, constants, size)
+        }
+    }
+}
+
+#[inline(never)]
+fn opcode_call<const UNCHECKED: bool>(
     ip: *const Instruction,
     vm: &mut Vm,
     registers: *mut Value,
@@ -984,23 +1046,11 @@ fn opcode_call<const SRC: u8, const UNCHECKED: bool>(
     size: u8,
 ) -> Result<Value, Box<Error>> {
     unsafe {
-        let (dest, src) = match SRC {
-            REGISTER => {
-                let Instruction::Call { dest, src } = *ip else {
-                    unreachable_unchecked()
-                };
-
-                (dest, *registers.add(src as usize))
-            }
-            CONSTANT => {
-                let Instruction::CallK { dest, src } = *ip else {
-                    unreachable_unchecked()
-                };
-
-                (dest, *constants.add(src as usize))
-            }
-            _ => unreachable_unchecked(),
+        let Instruction::Call { dest, src } = *ip else {
+            unreachable_unchecked()
         };
+
+        let src = *registers.add(src as usize);
 
         type_check!(
             false,
