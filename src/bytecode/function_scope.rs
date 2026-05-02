@@ -7,14 +7,8 @@ use crate::{
 
 type InternedString = usize;
 
-#[derive(Clone, Copy)]
-pub enum Symbol {
-    Variable { register: u8 },
-    Closure { register: u8, index: usize },
-}
-
 pub struct FunctionScope {
-    pub block_scopes: Vec<HashMap<InternedString, Symbol>>,
+    pub block_scopes: Vec<HashMap<InternedString, Operand>>,
     pub constants: Vec<Value>,
     pub instructions: Vec<Instruction>,
     pub registers: [bool; 256],
@@ -49,16 +43,13 @@ impl FunctionScope {
         let scope = self.block_scopes.pop().unwrap();
 
         for symbol in scope.values().copied() {
-            match symbol {
-                Symbol::Variable { register } => self.free_register(register),
-                Symbol::Closure { register, .. } => self.free_register(register),
-                _ => {}
-            }
+            let register = symbol.unwrap_register();
+            self.free_register(register);
         }
     }
 
-    pub fn insert_variable_symbol(&mut self, name: InternedString, register: u8) {
-        let symbol = Symbol::Variable { register };
+    pub fn insert_symbol(&mut self, name: InternedString, register: u8) {
+        let symbol = Operand::Register(register);
 
         self.block_scopes
             .last_mut()
@@ -66,16 +57,7 @@ impl FunctionScope {
             .insert(name.to_owned(), symbol);
     }
 
-    pub fn insert_closure_symbol(&mut self, name: InternedString, register: u8, index: usize) {
-        let symbol = Symbol::Closure { register, index };
-
-        self.block_scopes
-            .last_mut()
-            .unwrap()
-            .insert(name.to_owned(), symbol);
-    }
-
-    pub fn lookup_symbol(&self, name: InternedString) -> Option<Symbol> {
+    pub fn lookup_symbol(&self, name: InternedString) -> Option<Operand> {
         self.block_scopes
             .iter()
             .rev()

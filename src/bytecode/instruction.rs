@@ -58,7 +58,7 @@ pub enum Instruction {
     JumpIfNotEqual { src1: u8, src2: u8, offset: i32 },
     JumpIfNotEqualI { src1: u8, src2: Imm, offset: i32 },
     Print { src: u8 },
-    CreateClosure { dest: u8, src: u16, captures: u8 },
+    CreateClosure { dest: u8, captures: u8, src: u32 },
     CaptureValue { src: u8 },
     EnterUncheckedBlock,
     ExitUncheckedBlock,

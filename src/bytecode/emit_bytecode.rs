@@ -1,10 +1,7 @@
 use crate::{
     bytecode::{
-        function::Function,
-        function_scope::{FunctionScope, Symbol},
-        immediate::Imm,
-        instruction::Instruction,
-        operand::Operand,
+        function::Function, function_scope::FunctionScope, immediate::Imm,
+        instruction::Instruction, operand::Operand,
     },
     diagnostics::error::Error,
     syntax::{
@@ -75,10 +72,8 @@ impl Compiler {
                 && let Some(name) = name
                 && let Expr::Identifier(name) = ast.get(*name)
             {
-                let index = self.functions.len();
-
                 let register = scope.allocate_register();
-                scope.insert_closure_symbol(*name, register, index);
+                scope.insert_symbol(*name, register);
             }
         }
 
@@ -114,7 +109,7 @@ impl Compiler {
 
                 scope.emit_instruction(Instruction::CreateClosure {
                     dest: dest.unwrap_register(),
-                    src: index as u16,
+                    src: index as u32,
                     captures: captures.len() as u8,
                 });
 
@@ -135,7 +130,7 @@ impl Compiler {
                     };
 
                     let dest = scope.allocate_register();
-                    scope.insert_variable_symbol(*name, dest);
+                    scope.insert_symbol(*name, dest);
                 }
 
                 for capture in captures.iter().copied() {
@@ -144,7 +139,7 @@ impl Compiler {
                     };
 
                     let dest = scope.allocate_register();
-                    scope.insert_variable_symbol(*name, dest);
+                    scope.insert_symbol(*name, dest);
                 }
 
                 self.compile_block(ast, &mut scope, body);
@@ -183,7 +178,7 @@ impl Compiler {
                 let src = materialize(scope, src);
                 let dest = scope.allocate_register();
 
-                scope.insert_variable_symbol(*name, dest);
+                scope.insert_symbol(*name, dest);
                 scope.emit_instruction(Instruction::Move {
                     dest,
                     src: src.unwrap_register(),
@@ -476,11 +471,8 @@ impl Compiler {
             Expr::Break => todo!(),
             Expr::Continue => todo!(),
             Expr::Identifier(name) => {
-                if let Some(symbol) = scope.lookup_symbol(name) {
-                    match symbol {
-                        Symbol::Closure { register, .. } => Operand::Register(register),
-                        Symbol::Variable { register } => Operand::Register(register),
-                    }
+                if let Some(register) = scope.lookup_symbol(name) {
+                    register
                 } else {
                     panic!("not declared")
                 }
