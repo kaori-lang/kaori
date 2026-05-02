@@ -41,8 +41,8 @@ pub fn run_program(source: &str) -> Result<(), Error> {
 
     let start = Instant::now();
 
-    let mut vm = Vm::new();
-    vm.run()?;
+    //let mut vm = Vm::new();
+    //vm.run()?;
 
     let elapsed = start.elapsed();
 

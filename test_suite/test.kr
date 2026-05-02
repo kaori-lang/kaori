@@ -1,15 +1,12 @@
+fn fib(n) |fib| {
+    if n < 2 {
+        return n;
+    } else {
+        return fib(n - 1) + fib(n - 2);
+    }   
+}
 
+fib(30);
 
-cat := {"name": "meow", "age": 5, "color": "black"};
-
-sum := 0;
-i := 0;
-
-while i < 100000000 {
-    sum += cat.age;
-    i += 1;
-}  
-
-print(sum);
 
 

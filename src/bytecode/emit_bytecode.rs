@@ -71,18 +71,14 @@ impl Compiler {
         for expression in expressions.iter().copied() {
             let expression = ast.get(expression);
 
-            if let Expr::Function { name, captures, .. } = &expression
+            if let Expr::Function { name, .. } = &expression
                 && let Some(name) = name
                 && let Expr::Identifier(name) = ast.get(*name)
             {
                 let index = self.functions.len();
 
-                if captures.is_empty() {
-                    scope.insert_function_symbol(*name, index);
-                } else {
-                    let register = scope.allocate_register();
-                    scope.insert_closure_symbol(*name, register, index);
-                }
+                let register = scope.allocate_register();
+                scope.insert_closure_symbol(*name, register, index);
             }
         }
 
@@ -114,30 +110,20 @@ impl Compiler {
                 let function = None;
                 self.functions.push(function);
 
-                let src = scope.push_function_index(index);
+                let dest = self.compile_expression(ast, scope, name.unwrap());
 
-                let dest = if let Some(name) = name {
-                    let dest = self.compile_expression(ast, scope, name);
+                scope.emit_instruction(Instruction::CreateClosure {
+                    dest: dest.unwrap_register(),
+                    src: index as u16,
+                    captures: captures.len() as u8,
+                });
 
-                    if !captures.is_empty() {
-                        /*  scope.emit_instruction(Instruction::CreateClosure {
-                            dest: dest.unwrap_register(),
-                            src: src.unwrap_constant(),
-                            captures: captures.len() as u8,
-                        });
-
-                        for capture in captures.iter().copied() {
-                            let src = self
-                                .compile_expression(ast, scope, capture)
-                                .unwrap_register();
-                            scope.emit_instruction(Instruction::CaptureValue { src });
-                        } */
-                    }
-
-                    dest
-                } else {
-                    src
-                };
+                for capture in captures.iter().copied() {
+                    let src = self
+                        .compile_expression(ast, scope, capture)
+                        .unwrap_register();
+                    scope.emit_instruction(Instruction::CaptureValue { src });
+                }
 
                 let mut scope = FunctionScope::default();
 
@@ -159,13 +145,6 @@ impl Compiler {
 
                     let dest = scope.allocate_register();
                     scope.insert_variable_symbol(*name, dest);
-                }
-
-                if captures.is_empty() {
-                    let Expr::Identifier(name) = ast.get(name.unwrap()) else {
-                        unreachable!("Function name should be parsed as identifier!")
-                    };
-                    scope.insert_function_symbol(*name, index);
                 }
 
                 self.compile_block(ast, &mut scope, body);
@@ -500,7 +479,6 @@ impl Compiler {
                 if let Some(symbol) = scope.lookup_symbol(name) {
                     match symbol {
                         Symbol::Closure { register, .. } => Operand::Register(register),
-                        Symbol::Function { index } => scope.push_function_index(index),
                         Symbol::Variable { register } => Operand::Register(register),
                     }
                 } else {

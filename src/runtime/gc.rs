@@ -2,14 +2,19 @@ use std::hint::unreachable_unchecked;
 
 use foldhash::HashMap;
 
+use crate::bytecode::instruction::Instruction;
+
 use super::value::Value;
 
 enum Object {
     Vec(Vec<Value>),
     Dict(HashMap<Value, Value>),
     Closure {
-        function: usize,
-        captured: Vec<Value>,
+        instructions: *const Instruction,
+        constants: *const Value,
+        parameters: u8,
+        size: u8,
+        captured: Box<[Value]>,
     },
 }
 

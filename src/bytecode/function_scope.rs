@@ -9,7 +9,6 @@ type InternedString = usize;
 
 #[derive(Clone, Copy)]
 pub enum Symbol {
-    Function { index: usize },
     Variable { register: u8 },
     Closure { register: u8, index: usize },
 }
@@ -58,15 +57,6 @@ impl FunctionScope {
         }
     }
 
-    pub fn insert_function_symbol(&mut self, name: InternedString, index: usize) {
-        let symbol = Symbol::Function { index };
-
-        self.block_scopes
-            .last_mut()
-            .unwrap()
-            .insert(name.to_owned(), symbol);
-    }
-
     pub fn insert_variable_symbol(&mut self, name: InternedString, register: u8) {
         let symbol = Symbol::Variable { register };
 
@@ -105,10 +95,6 @@ impl FunctionScope {
         };
 
         Operand::Constant(index as u8)
-    }
-
-    pub fn push_function_index(&mut self, index: usize) -> Operand {
-        self.push_constant(Value::function(index))
     }
 
     pub fn push_string(&mut self, index: usize) -> Operand {

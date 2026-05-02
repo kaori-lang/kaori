@@ -58,8 +58,8 @@ pub enum Instruction {
     JumpIfNotEqual { src1: u8, src2: u8, offset: i32 },
     JumpIfNotEqualI { src1: u8, src2: Imm, offset: i32 },
     Print { src: u8 },
-    /*     CreateClosure { dest: u8, src: u8, captures: u8 },
-    CaptureValue { src: u8 }, */
+    CreateClosure { dest: u8, src: u16, captures: u8 },
+    CaptureValue { src: u8 },
     EnterUncheckedBlock,
     ExitUncheckedBlock,
     Nop,
@@ -237,16 +237,20 @@ impl fmt::Display for Instruction {
             Instruction::Print { src } => {
                 write!(f, "PRINT r{}", src)
             }
-            /*   Instruction::CreateClosure {
+            Instruction::CreateClosure {
                 dest,
                 src,
                 captures,
             } => {
-                write!(f, "CREATE_CLOSURE r{} k{} {}", dest, src, captures)
+                write!(
+                    f,
+                    "CREATE_CLOSURE r{} Function({}) CAPTURES: {}",
+                    dest, src, captures
+                )
             }
             Instruction::CaptureValue { src } => {
                 write!(f, "CAPTURE_VALUE r{}", src)
-            } */
+            }
             Instruction::Nop => {
                 write!(f, "NOP")
             }
