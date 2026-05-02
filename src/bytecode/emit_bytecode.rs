@@ -1,7 +1,7 @@
 use crate::{
     bytecode::{
         function::Function,
-        function_scope::{Constant, FunctionScope, Symbol},
+        function_scope::{FunctionScope, Symbol},
         immediate::Imm,
         instruction::Instruction,
         operand::Operand,
@@ -13,7 +13,7 @@ use crate::{
     },
 };
 
-pub fn compile(ast: &Ast) -> Result<Vec<Function<Constant>>, Error> {
+pub fn compile(ast: &Ast) -> Result<Vec<Function>, Error> {
     let mut compiler = Compiler::default();
 
     compiler.compile(ast);
@@ -22,14 +22,14 @@ pub fn compile(ast: &Ast) -> Result<Vec<Function<Constant>>, Error> {
         .functions
         .into_iter()
         .map(|f| f.unwrap())
-        .collect::<Vec<Function<Constant>>>();
+        .collect::<Vec<Function>>();
 
     Ok(functions)
 }
 
 #[derive(Default)]
 struct Compiler {
-    functions: Vec<Option<Function<Constant>>>,
+    functions: Vec<Option<Function>>,
 }
 
 impl Compiler {
@@ -55,9 +55,8 @@ impl Compiler {
         let function = Function {
             instructions: scope.instructions,
             registers_count: scope.last_register + 1,
-            constants: scope.constants,
+            constants: scope.constants.into_boxed_slice(),
             parameters: 0,
-            captures: 0,
         };
 
         self.functions[index] = Some(function);
@@ -185,10 +184,10 @@ impl Compiler {
                 let function = Function {
                     instructions: scope.instructions,
                     registers_count: scope.last_register + 1,
-                    constants: scope.constants,
+                    constants: scope.constants.into_boxed_slice(),
                     parameters: parameters.len() as u8,
-                    captures: captures.len() as u8,
                 };
+
                 self.functions[index] = Some(function);
 
                 dest

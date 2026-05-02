@@ -57,7 +57,7 @@ macro_rules! type_check {
     };
 }
 
-fn get_function(index: usize) -> &'static Function<Value> {
+fn get_function(index: usize) -> &'static Function {
     unsafe { &FUNCTIONS.get().unwrap_unchecked()[index] }
 }
 
@@ -212,8 +212,7 @@ impl Vm {
             instructions,
             registers_count,
             constants,
-            parameters,
-            captures,
+            ..
         } = get_function(0);
 
         let registers = self.registers.as_mut_ptr();
@@ -1015,7 +1014,6 @@ fn opcode_call<const SRC: u8, const UNCHECKED: bool>(
                 registers_count,
                 ref constants,
                 parameters,
-                captures,
             } = *get_function(src.as_index());
 
             let registers = registers.add(size as usize);

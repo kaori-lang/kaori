@@ -1,35 +1,11 @@
+cat := {"name": "meow", "age": 5, "color": "black"};
 
-fun Cat(name) {
-    this = { name };
+sum := 0;
+i := 0;
 
+while i < 100000000 {
+    sum += cat.age;
+    i += 1;
+}  
 
-    fun get_name() {
-        return this.name;
-    }
-
-    return {   
-        get_name
-    };
-}
-
-
-
-fun Cat(name, age, color) {
-    return {   
-        name,
-        age,
-        color,
-    };
-}
-
-fun main() {
-    cat := Cat("meow", 5, "black");
-
-    sum := 0;
-
-    for i := 0; i < 100000000; i += 1 {
-        sum += cat.age;
-    }
-
-    print(sum);
-}
+print(sum);

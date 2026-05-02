@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::bytecode::{instruction::Instruction, operand::Operand};
+use crate::{
+    bytecode::{instruction::Instruction, operand::Operand},
+    runtime::value::Value,
+};
 
 type InternedString = usize;
 
@@ -13,7 +16,7 @@ pub enum Symbol {
 
 pub struct FunctionScope {
     pub block_scopes: Vec<HashMap<InternedString, Symbol>>,
-    pub constants: Vec<Constant>,
+    pub constants: Vec<Value>,
     pub instructions: Vec<Instruction>,
     pub registers: [bool; 256],
     pub last_register: u8,
@@ -89,7 +92,7 @@ impl FunctionScope {
             .find_map(|table| table.get(&name).copied())
     }
 
-    fn push_constant(&mut self, constant: Constant) -> Operand {
+    fn push_constant(&mut self, constant: Value) -> Operand {
         let index = if let Some(index) = self.constants.iter().position(|c| *c == constant) {
             index
         } else {
@@ -104,16 +107,16 @@ impl FunctionScope {
         Operand::Constant(index as u8)
     }
 
-    pub fn push_function_index(&mut self, value: usize) -> Operand {
-        self.push_constant(Constant::FunctionIndex(value))
+    pub fn push_function_index(&mut self, index: usize) -> Operand {
+        self.push_constant(Value::function(index))
     }
 
-    pub fn push_string(&mut self, value: usize) -> Operand {
-        self.push_constant(Constant::String(value))
+    pub fn push_string(&mut self, index: usize) -> Operand {
+        self.push_constant(Value::string(index))
     }
 
     pub fn push_number(&mut self, value: f64) -> Operand {
-        self.push_constant(Constant::Number(value))
+        self.push_constant(Value::number(value))
     }
 
     pub fn allocate_register(&mut self) -> u8 {
@@ -131,11 +134,4 @@ impl FunctionScope {
     pub fn free_register(&mut self, index: u8) {
         self.registers[index as usize] = false;
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Constant {
-    String(usize),
-    Number(f64),
-    FunctionIndex(usize),
 }
