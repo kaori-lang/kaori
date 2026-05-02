@@ -4,6 +4,7 @@ use logos::SpannedIter;
 
 use crate::{
     diagnostics::error::Error,
+    program::INTERNER,
     report_error,
     syntax::{
         ast::{Ast, ExprId},
@@ -540,11 +541,15 @@ impl<'a> Parser<'a> {
                 self.ast.boolean_literal(false, span)
             }
             Token::StringLiteral => {
-                let value = self.tokens.slice().to_owned();
+                let value = self.tokens.slice();
                 self.next()?;
 
-                self.ast
-                    .string_literal(value[1..value.len() - 1].to_owned(), span)
+                let index = INTERNER
+                    .lock()
+                    .unwrap()
+                    .get_or_intern(&value[1..value.len() - 1]);
+
+                self.ast.string_literal(index, span)
             }
             Token::Identifier => {
                 let identifier = self.parse_identifier()?;
@@ -567,12 +572,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_identifier(&mut self) -> Result<ExprId, Error> {
-        let name = self.tokens.slice().to_owned();
+        let name = self.tokens.slice();
         let span = self.peek_span()?;
+        let index = INTERNER.lock().unwrap().get_or_intern(name);
 
         self.consume(Token::Identifier)?;
 
-        Ok(self.ast.identifier(name, span))
+        Ok(self.ast.identifier(index, span))
     }
 
     fn parse_dict_literal_field(&mut self) -> Result<(ExprId, Option<ExprId>), Error> {
@@ -626,9 +632,9 @@ impl<'a> Parser<'a> {
 
         let span = self.peek_span()?;
 
-        let property = self
-            .ast
-            .string_literal(self.tokens.slice().to_owned(), span);
+        let index = INTERNER.lock().unwrap().get_or_intern(self.tokens.slice());
+
+        let property = self.ast.string_literal(index, span);
 
         self.consume(Token::Identifier)?;
 

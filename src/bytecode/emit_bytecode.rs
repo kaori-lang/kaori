@@ -1,7 +1,7 @@
 use crate::{
     bytecode::{
         function::Function,
-        function_scope::{FunctionScope, Symbol},
+        function_scope::{Constant, FunctionScope, Symbol},
         immediate::Imm,
         instruction::Instruction,
         operand::Operand,
@@ -13,7 +13,7 @@ use crate::{
     },
 };
 
-pub fn compile(ast: &Ast) -> Result<Vec<Function>, Error> {
+pub fn compile(ast: &Ast) -> Result<Vec<Function<Constant>>, Error> {
     let mut compiler = Compiler::default();
 
     compiler.compile(ast);
@@ -22,14 +22,14 @@ pub fn compile(ast: &Ast) -> Result<Vec<Function>, Error> {
         .functions
         .into_iter()
         .map(|f| f.unwrap())
-        .collect::<Vec<Function>>();
+        .collect::<Vec<Function<Constant>>>();
 
     Ok(functions)
 }
 
 #[derive(Default)]
 struct Compiler {
-    functions: Vec<Option<Function>>,
+    functions: Vec<Option<Function<Constant>>>,
 }
 
 impl Compiler {
@@ -41,7 +41,6 @@ impl Compiler {
         self.functions.push(function);
 
         let mut scope = FunctionScope::default();
-
         self.compile_expression(ast, &mut scope, entry);
 
         if !self.expression_returns(ast, entry) {
@@ -51,9 +50,11 @@ impl Compiler {
             });
         }
 
+        patch_function_arguments(&mut scope);
+
         let function = Function {
             instructions: scope.instructions,
-            registers_count: scope.size,
+            registers_count: scope.last_register + 1,
             constants: scope.constants,
             parameters: 0,
             captures: 0,
@@ -78,10 +79,10 @@ impl Compiler {
                 let index = self.functions.len();
 
                 if captures.is_empty() {
-                    scope.insert_function_symbol(name, index);
+                    scope.insert_function_symbol(*name, index);
                 } else {
                     let register = scope.allocate_register();
-                    scope.insert_closure_symbol(name, register, index);
+                    scope.insert_closure_symbol(*name, register, index);
                 }
             }
         }
@@ -120,7 +121,7 @@ impl Compiler {
                     let dest = self.compile_expression(ast, scope, name);
 
                     if !captures.is_empty() {
-                        scope.emit_instruction(Instruction::CreateClosure {
+                        /*  scope.emit_instruction(Instruction::CreateClosure {
                             dest: dest.unwrap_register(),
                             src: src.unwrap_constant(),
                             captures: captures.len() as u8,
@@ -131,7 +132,7 @@ impl Compiler {
                                 .compile_expression(ast, scope, capture)
                                 .unwrap_register();
                             scope.emit_instruction(Instruction::CaptureValue { src });
-                        }
+                        } */
                     }
 
                     dest
@@ -144,24 +145,28 @@ impl Compiler {
                 scope.enter_scope();
 
                 for parameter in parameters.iter().copied() {
-                    let parameter = ast.get(parameter);
-
-                    let Expr::Identifier(name) = parameter else {
-                        panic!("Expected a valid parameter")
+                    let Expr::Identifier(name) = ast.get(parameter) else {
+                        unreachable!("Should parse identifier for parameters!")
                     };
 
                     let dest = scope.allocate_register();
-                    scope.insert_variable_symbol(name, dest);
+                    scope.insert_variable_symbol(*name, dest);
                 }
 
                 for capture in captures.iter().copied() {
-                    let capture = ast.get(capture);
-
-                    let Expr::Identifier(name) = capture else {
-                        panic!("Expected a valid capture")
+                    let Expr::Identifier(name) = ast.get(capture) else {
+                        unreachable!("Should parse identifier for captures!")
                     };
+
                     let dest = scope.allocate_register();
-                    scope.insert_variable_symbol(name, dest);
+                    scope.insert_variable_symbol(*name, dest);
+                }
+
+                if captures.is_empty() {
+                    let Expr::Identifier(name) = ast.get(name.unwrap()) else {
+                        unreachable!("Function name should be parsed as identifier!")
+                    };
+                    scope.insert_function_symbol(*name, index);
                 }
 
                 self.compile_block(ast, &mut scope, body);
@@ -174,11 +179,12 @@ impl Compiler {
                 }
 
                 patch_function_arguments(&mut scope);
+
                 scope.exit_scope();
 
                 let function = Function {
                     instructions: scope.instructions,
-                    registers_count: scope.size,
+                    registers_count: scope.last_register + 1,
                     constants: scope.constants,
                     parameters: parameters.len() as u8,
                     captures: captures.len() as u8,
@@ -191,7 +197,7 @@ impl Compiler {
                 let left = ast.get(left);
 
                 let name = match left {
-                    Expr::Identifier(name) => name.clone(),
+                    Expr::Identifier(name) => name,
                     _ => panic!("DeclareAssign left-hand side must be an Identifier"),
                 };
 
@@ -199,7 +205,7 @@ impl Compiler {
                 let src = materialize(scope, src);
                 let dest = scope.allocate_register();
 
-                scope.insert_variable_symbol(&name, dest);
+                scope.insert_variable_symbol(*name, dest);
                 scope.emit_instruction(Instruction::Move {
                     dest,
                     src: src.unwrap_register(),
@@ -491,7 +497,7 @@ impl Compiler {
             }
             Expr::Break => todo!(),
             Expr::Continue => todo!(),
-            Expr::Identifier(ref name) => {
+            Expr::Identifier(name) => {
                 if let Some(symbol) = scope.lookup_symbol(name) {
                     match symbol {
                         Symbol::Closure { register, .. } => Operand::Register(register),
@@ -506,7 +512,7 @@ impl Compiler {
                 let numeric = if value { 1.0 } else { 0.0 };
                 Operand::Immediate(Imm::try_to_encode(numeric).unwrap())
             }
-            Expr::StringLiteral(ref value) => scope.push_string(value.clone()),
+            Expr::StringLiteral(value) => scope.push_string(value),
             Expr::NumberLiteral(value) => {
                 if let Some(imm) = Imm::try_to_encode(value) {
                     Operand::Immediate(imm)
@@ -783,7 +789,7 @@ fn patch_jump(scope: &mut FunctionScope, index: usize, new_offset: i32) {
 fn patch_function_arguments(scope: &mut FunctionScope) {
     for instruction in &mut scope.instructions {
         if let Instruction::MoveArg { dest, .. } = instruction {
-            *dest += scope.size;
+            *dest += scope.last_register + 1;
         }
     }
 }

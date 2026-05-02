@@ -1,6 +1,6 @@
-use crate::bytecode::{function::Function, instruction::Instruction};
+use crate::bytecode::{function::Function, function_scope::Constant, instruction::Instruction};
 
-pub fn optimize_bytecode(functions: &mut [Function]) {
+pub fn optimize_bytecode(functions: &mut [Function<Constant>]) {
     for function in functions {
         let (reachable, leaders) = reachable_and_leaders(&function.instructions);
         eliminate_dead_code(&mut function.instructions, &reachable);

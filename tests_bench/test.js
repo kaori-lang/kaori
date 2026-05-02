@@ -1,6 +1,9 @@
-let a = foo();
-let b = 5;
-function foo() {
-	b = 7;
-	return 10;
+function foo(a, b) {
+	return a + b + 5;
 }
+
+function foo(a, b) {
+	return a + b + 7;
+}
+
+console.log(foo(1, 2));

@@ -1,4 +1,14 @@
 
-a := 5;
-b := "hello world";
-b = if true { 1; } else { 7; } y;
+
+
+cat := {"name": "meow", "age": 5, "color": "black"};
+
+sum := 0;
+i := 0;
+
+while i < 100000000 {
+    sum += cat.age;
+    i += 1;
+}  
+
+print(sum);

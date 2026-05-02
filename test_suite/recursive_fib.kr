@@ -1,4 +1,4 @@
-fun fib(n) {
+fn fib(n) {
     if n < 2 {
         return n;
     } else {
@@ -6,9 +6,8 @@ fun fib(n) {
     }   
 }
 
-fun main()  {
-    fib(30);
-}
+fib(30);
+
 
 
 

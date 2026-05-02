@@ -1,86 +1,84 @@
+use std::hint::unreachable_unchecked;
+
+use foldhash::HashMap;
+
 use super::value::Value;
-use ahash::AHashMap;
-use std::alloc::{Layout, alloc, dealloc};
-use std::ptr;
 
-#[repr(C)]
-pub struct GcObject<T> {
-    marked: bool,
-    drop_and_dealloc: unsafe fn(*mut GcObject<()>),
-    object: T,
-}
-
-#[repr(C)]
-struct GcHeader {
-    marked: bool,
-    drop_and_dealloc: unsafe fn(*mut GcObject<()>),
-}
-
-impl<T> GcObject<T> {
-    pub fn get(&self) -> &T {
-        &self.object
-    }
-
-    pub fn get_mut(&mut self) -> &mut T {
-        &mut self.object
-    }
-
-    unsafe fn drop_and_dealloc(ptr: *mut GcObject<()>) {
-        unsafe {
-            let typed = ptr as *mut GcObject<T>;
-            ptr::drop_in_place(&mut (*typed).object);
-            dealloc(ptr as *mut u8, Layout::new::<GcObject<T>>());
-        }
-    }
+enum Object {
+    Vec(Vec<Value>),
+    Dict(HashMap<Value, Value>),
+    Closure {
+        function: usize,
+        captured: Vec<Value>,
+    },
 }
 
 #[derive(Default)]
 pub struct Gc {
-    heap: Vec<*mut GcObject<()>>,
-    strings_interned: AHashMap<String, *mut GcObject<String>>,
+    objects: Vec<Object>,
+    free_list: Vec<usize>,
 }
 
 impl Gc {
+    fn alloc(&mut self, object: Object) -> usize {
+        if let Some(index) = self.free_list.pop() {
+            self.objects[index] = object;
+
+            index
+        } else {
+            let index = self.objects.len();
+            self.objects.push(object);
+            index
+        }
+    }
+
     pub fn allocate_dict(&mut self) -> Value {
-        Value::dict(self.alloc(AHashMap::default()))
+        let object = Object::Dict(HashMap::default());
+        let index = self.alloc(object);
+
+        Value::dict(index)
     }
 
     pub fn allocate_vec(&mut self) -> Value {
-        Value::vec(self.alloc(Vec::default()))
+        let object = Object::Vec(Vec::new());
+        let index = self.alloc(object);
+
+        Value::vec(index)
     }
 
-    pub fn allocate_string(&mut self, s: &str) -> Value {
-        if let Some(&ptr) = self.strings_interned.get(s) {
-            return Value::string(ptr);
-        }
-        let ptr = self.alloc(s.to_owned());
-        self.strings_interned.insert(s.to_owned(), ptr);
-        Value::string(ptr)
-    }
+    pub fn get_mut_vec(&mut self, value: Value) -> &mut Vec<Value> {
+        let index = value.as_index();
 
-    fn alloc<T>(&mut self, object: T) -> *mut GcObject<T> {
-        unsafe {
-            let layout = Layout::new::<GcObject<T>>();
-            let raw = alloc(layout) as *mut GcObject<T>;
-            assert!(!raw.is_null(), "allocation failed");
-            raw.write(GcObject {
-                marked: false,
-                drop_and_dealloc: GcObject::<T>::drop_and_dealloc,
-                object,
-            });
-            self.heap.push(raw as *mut GcObject<()>);
-            raw
+        match &mut self.objects[index] {
+            Object::Vec(v) => v,
+            _ => unsafe { unreachable_unchecked() },
         }
     }
-}
 
-impl Drop for Gc {
-    fn drop(&mut self) {
-        unsafe {
-            for &ptr in &self.heap {
-                let header = &*(ptr as *mut GcHeader);
-                (header.drop_and_dealloc)(ptr);
-            }
+    pub fn get_mut_dict(&mut self, value: Value) -> &mut HashMap<Value, Value> {
+        let index = value.as_index();
+
+        match &mut self.objects[index] {
+            Object::Dict(d) => d,
+            _ => unsafe { unreachable_unchecked() },
+        }
+    }
+
+    pub fn get_vec(&self, value: Value) -> &Vec<Value> {
+        let index = value.as_index();
+
+        match &self.objects[index] {
+            Object::Vec(v) => v,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn get_dict(&self, value: Value) -> &HashMap<Value, Value> {
+        let index = value.as_index();
+
+        match &self.objects[index] {
+            Object::Dict(d) => d,
+            _ => unsafe { unreachable_unchecked() },
         }
     }
 }

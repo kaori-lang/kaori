@@ -1,18 +1,13 @@
-use ahash::AHashMap;
-use std::fmt;
-
-use super::function::Function;
-use super::gc::GcObject;
+use crate::program::INTERNER;
 
 const QNAN: u64 = 0x7FFC_0000_0000_0000;
 const PTR_MASK: u64 = 0x0000_FFFF_FFFF_FFFF;
+const TAG_FUNCTION: u64 = QNAN | 0x0003_0000_0000_0000;
+const TAG_STRING: u64 = QNAN | 0x0004_0000_0000_0000;
+const TAG_DICT: u64 = QNAN | 0x0005_0000_0000_0000;
+const TAG_VEC: u64 = QNAN | 0x0006_0000_0000_0000;
 
-pub const TAG_FUNCTION: u64 = QNAN | 0x0003_0000_0000_0000;
-pub const TAG_STRING: u64 = QNAN | 0x0004_0000_0000_0000;
-pub const TAG_DICT: u64 = QNAN | 0x0005_0000_0000_0000;
-pub const TAG_VEC: u64 = QNAN | 0x0006_0000_0000_0000;
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[repr(transparent)]
 pub struct Value(u64);
 
@@ -74,63 +69,33 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn function(ptr: *const Function) -> Self {
-        Self(TAG_FUNCTION | (ptr as u64 & PTR_MASK))
+    pub fn string(index: usize) -> Self {
+        Self(TAG_STRING | (index as u64))
     }
 
     #[inline(always)]
-    pub fn string(ptr: *mut GcObject<String>) -> Self {
-        Self(TAG_STRING | (ptr as u64 & PTR_MASK))
+    pub fn function(index: usize) -> Self {
+        Self(TAG_FUNCTION | (index as u64))
     }
 
     #[inline(always)]
-    pub fn dict(ptr: *mut GcObject<AHashMap<Value, Value>>) -> Self {
-        Self(TAG_DICT | (ptr as u64 & PTR_MASK))
+    pub fn dict(index: usize) -> Self {
+        Self(TAG_DICT | (index as u64))
     }
 
     #[inline(always)]
-    pub fn vec(ptr: *mut GcObject<Vec<Value>>) -> Self {
-        Self(TAG_VEC | (ptr as u64 & PTR_MASK))
+    pub fn vec(index: usize) -> Self {
+        Self(TAG_VEC | (index as u64))
     }
 
-    #[inline(always)]
-    pub fn as_function(self) -> *const Function {
-        (self.0 & PTR_MASK) as *const Function
+    pub fn as_string(self) -> &'static str {
+        INTERNER
+            .lock()
+            .unwrap()
+            .resolve((self.0 & PTR_MASK) as usize)
     }
 
-    #[inline(always)]
-    pub fn as_string<'a>(self) -> &'a String {
-        unsafe { (*((self.0 & PTR_MASK) as *mut GcObject<String>)).get() }
-    }
-
-    #[inline(always)]
-    pub fn as_vec<'a>(self) -> &'a mut Vec<Value> {
-        unsafe { (*((self.0 & PTR_MASK) as *mut GcObject<Vec<Value>>)).get_mut() }
-    }
-
-    #[inline(always)]
-    pub fn as_dict<'a>(self) -> &'a mut AHashMap<Value, Value> {
-        unsafe { (*((self.0 & PTR_MASK) as *mut GcObject<AHashMap<Value, Value>>)).get_mut() }
-    }
-}
-
-impl fmt::Debug for Value {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_number() {
-            return write!(f, "{}", self.as_number());
-        }
-        if self.is_function() {
-            return write!(f, "Function({:p})", self.as_function());
-        }
-        if self.is_string() {
-            return write!(f, "{:?}", self.as_string());
-        }
-        if self.is_vec() {
-            return write!(f, "{:?}", self.as_vec());
-        }
-        if self.is_dict() {
-            return write!(f, "{:?}", self.as_dict());
-        }
-        unsafe { std::hint::unreachable_unchecked() }
+    pub fn as_index(self) -> usize {
+        (self.0 & PTR_MASK) as usize
     }
 }

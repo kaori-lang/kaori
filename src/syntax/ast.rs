@@ -3,6 +3,8 @@ use std::ops::Range;
 
 use crate::syntax::ops::{AssignOp, BinaryOp, UnaryOp};
 
+type InternedString = usize;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ExprId(u32);
 
@@ -41,8 +43,8 @@ pub enum Expr {
         left: ExprId,
         right: ExprId,
     },
-    Identifier(usize),
-    StringLiteral(usize),
+    Identifier(InternedString),
+    StringLiteral(InternedString),
     NumberLiteral(f64),
     BooleanLiteral(bool),
     FunctionCall {
@@ -185,7 +187,7 @@ impl Ast {
         self.insert(
             Expr::FunctionCall {
                 callee,
-                arguments: arguments.into_boxed_slice(),
+                arguments: arguments.into(),
             },
             None,
         )
@@ -198,7 +200,7 @@ impl Ast {
     pub fn dict_literal(&mut self, fields: Vec<(ExprId, Option<ExprId>)>) -> ExprId {
         self.insert(
             Expr::DictLiteral {
-                fields: fields.into_boxed_slice(),
+                fields: fields.into(),
             },
             None,
         )
@@ -214,16 +216,16 @@ impl Ast {
         self.insert(
             Expr::Function {
                 name,
-                parameters: parameters.into_boxed_slice(),
-                captures: captures.into_boxed_slice(),
-                body: body.into_boxed_slice(),
+                parameters: parameters.into(),
+                captures: captures.into(),
+                body: body.into(),
             },
             None,
         )
     }
 
     pub fn block(&mut self, expressions: Vec<ExprId>) -> ExprId {
-        self.insert(Expr::Block(expressions.into_boxed_slice()), None)
+        self.insert(Expr::Block(expressions.into()), None)
     }
 
     pub fn if_(
@@ -251,7 +253,7 @@ impl Ast {
     }
 
     pub fn unchecked_block(&mut self, expressions: Vec<ExprId>) -> ExprId {
-        self.insert(Expr::UncheckedBlock(expressions.into_boxed_slice()), None)
+        self.insert(Expr::UncheckedBlock(expressions.into()), None)
     }
 
     pub fn return_(&mut self, expression: Option<ExprId>, span: Range<usize>) -> ExprId {

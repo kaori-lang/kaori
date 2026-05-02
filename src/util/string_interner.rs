@@ -1,23 +1,26 @@
-use ahash::HashMap;
+use foldhash::HashMap;
 
+#[derive(Default, Debug)]
 pub struct StringInterner {
-    map: HashMap<String, usize>,
-    strings: Vec<String>,
+    map: HashMap<&'static str, usize>,
+    strings: Vec<&'static str>,
 }
 
 impl StringInterner {
-    pub fn intern(&mut self, s: &str) -> usize {
-        if let Some(&key) = self.map.get(s) {
-            return key;
+    pub fn get_or_intern(&mut self, s: &str) -> usize {
+        if let Some(&index) = self.map.get(s) {
+            return index;
         }
 
-        let key = self.strings.len() as usize;
-        self.strings.push(s.to_owned());
-        self.map.insert(s.to_owned(), key);
-        key
+        let s = s.to_owned().leak();
+        let index = self.strings.len();
+        self.strings.push(s);
+        self.map.insert(s, index);
+
+        index
     }
 
-    pub fn resolve(&self, key: usize) -> &str {
-        &self.strings[key as usize]
+    pub fn resolve(&self, index: usize) -> &'static str {
+        self.strings[index]
     }
 }

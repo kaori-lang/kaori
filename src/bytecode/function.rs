@@ -4,17 +4,19 @@ use crate::bytecode::function_scope::Constant;
 
 use super::instruction::Instruction;
 
-pub struct Function {
+#[derive(Debug)]
+pub struct Function<T> {
     pub instructions: Vec<Instruction>,
     pub registers_count: u8,
-    pub constants: Vec<Constant>,
+    pub constants: Vec<T>,
     pub parameters: u8,
     pub captures: u8,
 }
 
-impl Display for Function {
+impl Display for Function<Constant> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         writeln!(f, "CONSTANTS: {:?}", self.constants)?;
+        writeln!(f, "SIZE: {:?}", self.registers_count)?;
         for (ip, instr) in self.instructions.iter().enumerate() {
             writeln!(f, "{:04}  {}", ip, instr)?;
         }

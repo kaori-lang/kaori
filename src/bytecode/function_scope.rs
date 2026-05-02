@@ -1,6 +1,8 @@
-use ahash::{HashMap, HashMapExt};
+use std::collections::HashMap;
 
 use crate::bytecode::{instruction::Instruction, operand::Operand};
+
+type InternedString = usize;
 
 #[derive(Clone, Copy)]
 pub enum Symbol {
@@ -10,11 +12,11 @@ pub enum Symbol {
 }
 
 pub struct FunctionScope {
-    pub block_scopes: Vec<HashMap<String, Symbol>>,
+    pub block_scopes: Vec<HashMap<InternedString, Symbol>>,
     pub constants: Vec<Constant>,
     pub instructions: Vec<Instruction>,
     pub registers: [bool; 256],
-    pub size: u8,
+    pub last_register: u8,
 }
 
 impl Default for FunctionScope {
@@ -24,7 +26,7 @@ impl Default for FunctionScope {
             constants: Vec::new(),
             instructions: Vec::new(),
             registers: [false; 256],
-            size: 0,
+            last_register: 0,
         }
     }
 }
@@ -47,13 +49,13 @@ impl FunctionScope {
         for symbol in scope.values().copied() {
             match symbol {
                 Symbol::Variable { register } => self.free_register(register),
-                Symbol::Closure { register, index } => self.free_register(register),
+                Symbol::Closure { register, .. } => self.free_register(register),
                 _ => {}
             }
         }
     }
 
-    pub fn insert_function_symbol(&mut self, name: &str, index: usize) {
+    pub fn insert_function_symbol(&mut self, name: InternedString, index: usize) {
         let symbol = Symbol::Function { index };
 
         self.block_scopes
@@ -62,7 +64,7 @@ impl FunctionScope {
             .insert(name.to_owned(), symbol);
     }
 
-    pub fn insert_variable_symbol(&mut self, name: &str, register: u8) {
+    pub fn insert_variable_symbol(&mut self, name: InternedString, register: u8) {
         let symbol = Symbol::Variable { register };
 
         self.block_scopes
@@ -71,7 +73,7 @@ impl FunctionScope {
             .insert(name.to_owned(), symbol);
     }
 
-    pub fn insert_closure_symbol(&mut self, name: &str, register: u8, index: usize) {
+    pub fn insert_closure_symbol(&mut self, name: InternedString, register: u8, index: usize) {
         let symbol = Symbol::Closure { register, index };
 
         self.block_scopes
@@ -80,11 +82,11 @@ impl FunctionScope {
             .insert(name.to_owned(), symbol);
     }
 
-    pub fn lookup_symbol(&self, name: &str) -> Option<Symbol> {
+    pub fn lookup_symbol(&self, name: InternedString) -> Option<Symbol> {
         self.block_scopes
             .iter()
             .rev()
-            .find_map(|table| table.get(name).copied())
+            .find_map(|table| table.get(&name).copied())
     }
 
     fn push_constant(&mut self, constant: Constant) -> Operand {
@@ -106,7 +108,7 @@ impl FunctionScope {
         self.push_constant(Constant::FunctionIndex(value))
     }
 
-    pub fn push_string(&mut self, value: String) -> Operand {
+    pub fn push_string(&mut self, value: usize) -> Operand {
         self.push_constant(Constant::String(value))
     }
 
@@ -117,7 +119,7 @@ impl FunctionScope {
     pub fn allocate_register(&mut self) -> u8 {
         for index in 0..self.registers.len() {
             if !self.registers[index] {
-                self.size = u8::max(index as u8, self.size);
+                self.last_register = u8::max(index as u8, self.last_register);
                 self.registers[index] = true;
                 return index as u8;
             }
@@ -133,7 +135,7 @@ impl FunctionScope {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Constant {
-    String(String),
+    String(usize),
     Number(f64),
     FunctionIndex(usize),
 }
