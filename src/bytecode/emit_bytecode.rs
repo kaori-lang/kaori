@@ -44,10 +44,11 @@ impl Compiler {
         self.functions.push(function);
 
         let mut scope = FunctionScope::default();
-        self.compile_expression(ast, &mut scope, entry);
+        let src = self.compile_expression(ast, &mut scope, entry);
 
         if !self.expression_returns(ast, entry) {
-            let src = materialize(&mut scope, unit());
+            let src = materialize(&mut scope, src);
+
             scope.emit_instruction(Instruction::Return {
                 src: src.unwrap_register(),
             });
@@ -156,10 +157,10 @@ impl Compiler {
                     scope.insert_symbol(*name, dest);
                 }
 
-                self.compile_block(ast, &mut scope, body);
+                let src = self.compile_block(ast, &mut scope, body);
 
                 if !self.block_returns(ast, body) {
-                    let src = materialize(&mut scope, unit());
+                    let src = materialize(&mut scope, src);
                     scope.emit_instruction(Instruction::Return {
                         src: src.unwrap_register(),
                     });
