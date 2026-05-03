@@ -85,20 +85,19 @@ impl Compiler {
 
             if let Expr::Function { name, .. } = &expression
                 && let Some(name) = name
-                && let Expr::Identifier(name) = ast.get(*name)
             {
+                let Expr::Identifier(name) = ast.get(*name) else {
+                    unreachable!("Should parse identifier for function name")
+                };
+
                 let register = scope.allocate_register();
                 scope.insert_symbol(*name, register);
             }
         }
 
-        let mut dest = unit();
-
-        for expression in expressions.iter().copied() {
-            dest = self.compile_expression(ast, scope, expression);
-        }
-
-        dest
+        expressions.iter().copied().fold(unit(), |_, expression| {
+            self.compile_expression(ast, scope, expression)
+        })
     }
 
     fn compile_expression(
@@ -141,7 +140,7 @@ impl Compiler {
 
                 for parameter in parameters.iter().copied() {
                     let Expr::Identifier(name) = ast.get(parameter) else {
-                        unreachable!("Should parse identifier for parameters!")
+                        unreachable!("Should parse identifier for parameters")
                     };
 
                     let dest = scope.allocate_register();
@@ -150,7 +149,7 @@ impl Compiler {
 
                 for capture in captures.iter().copied() {
                     let Expr::Identifier(name) = ast.get(capture) else {
-                        unreachable!("Should parse identifier for captures!")
+                        unreachable!("Should parse identifier for captures")
                     };
 
                     let dest = scope.allocate_register();
