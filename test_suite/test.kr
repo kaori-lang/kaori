@@ -1,6 +1,14 @@
 
-a := 5 
-b := 1
--a
 
-print(b)
+fn fib(n) |fib| {
+    if n < 2 { 
+        n
+    } else { 
+        fib(n - 1) + fib(n - 2) 
+    }  
+}
+
+fib(30);
+
+
+

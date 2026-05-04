@@ -1,13 +1,12 @@
 fn fib(n) |fib| {
-    if n < 2 {
-        return n;
-    } else {
-        return fib(n - 1) + fib(n - 2);
-    }   
+    if n < 2 { 
+        return n; 
+    } 
+    
+    fib(n - 1) + fib(n - 2)   
 }
 
-fib(30);
-
+fib(30)
 
 
 

@@ -6,6 +6,7 @@ use crate::diagnostics::error::Error;
 
 use crate::program::{CONSTANT_POOL, FUNCTIONS};
 use crate::report_error;
+use crate::runtime::debug_value::DebugValue;
 use crate::runtime::gc::Closure;
 use crate::{bytecode::instruction::Instruction, runtime::value::Value};
 
@@ -116,7 +117,11 @@ pub fn run_vm() -> Result<Value, Error> {
     let ip = instructions.as_ptr();
     let index = unsafe { (*ip).discriminant() };
 
-    HANDLERS[index](ip, registers, &mut gc, registers_count).map_err(|e| *e)
+    let value = HANDLERS[index](ip, registers, &mut gc, registers_count).map_err(|e| *e)?;
+
+    println!("{:?}", DebugValue::new(value, &gc));
+
+    Ok(value)
 }
 
 unsafe fn set_value(dest: u8, value: Value, registers: *mut Value) {

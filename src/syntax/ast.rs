@@ -46,7 +46,6 @@ pub enum Expr {
     Identifier(InternedString),
     StringLiteral(InternedString),
     NumberLiteral(f64),
-    BooleanLiteral(bool),
     FunctionCall {
         callee: ExprId,
         arguments: Box<[ExprId]>,
@@ -57,6 +56,10 @@ pub enum Expr {
     },
     DictLiteral {
         fields: Box<[(ExprId, Option<ExprId>)]>,
+    },
+    NativeFunction {
+        name: ExprId,
+        parameters: Box<[ExprId]>,
     },
     Function {
         name: Option<ExprId>,
@@ -177,10 +180,6 @@ impl Ast {
         self.insert(Expr::NumberLiteral(value), Some(span))
     }
 
-    pub fn boolean_literal(&mut self, value: bool, span: Range<usize>) -> ExprId {
-        self.insert(Expr::BooleanLiteral(value), Some(span))
-    }
-
     pub fn function_call(&mut self, callee: ExprId, arguments: Vec<ExprId>) -> ExprId {
         self.insert(
             Expr::FunctionCall {
@@ -199,6 +198,16 @@ impl Ast {
         self.insert(
             Expr::DictLiteral {
                 fields: fields.into(),
+            },
+            None,
+        )
+    }
+
+    pub fn native_function(&mut self, name: ExprId, parameters: Vec<ExprId>) -> ExprId {
+        self.insert(
+            Expr::NativeFunction {
+                name,
+                parameters: parameters.into(),
             },
             None,
         )

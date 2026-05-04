@@ -32,8 +32,12 @@ impl<'a> Parser<'a> {
         let mut expressions = Vec::new();
 
         while !self.at_end()? {
-            let expression = self.parse_expression()?;
+            let (expression, require_semicolon) = self.parse_expression_statement()?;
             expressions.push(expression);
+
+            if require_semicolon {
+                self.consume(Token::Semicolon)?;
+            }
         }
 
         self.ast.block(expressions);
@@ -127,29 +131,31 @@ impl<'a> Parser<'a> {
         Ok(items)
     }
 
-    fn parse_expression_statement(&mut self) -> Result<ExprId, Error> {
+    fn parse_expression_statement(&mut self) -> Result<(ExprId, bool), Error> {
         let token = self.peek_token()?;
+
+        let require_semicolon = !matches!(
+            token,
+            Token::Function | Token::While | Token::For | Token::If
+        );
 
         let expression = match token {
             Token::Function => self.parse_function()?,
+            Token::Native => self.parse_native_function()?,
             Token::While => self.parse_while_loop()?,
             Token::For => self.parse_for_loop()?,
             Token::Break => self.parse_break()?,
             Token::Continue => self.parse_continue()?,
             Token::Return => self.parse_return()?,
             Token::If => self.parse_if()?,
-            _ => todo!(),
+            _ => self.parse_expression()?,
         };
 
-        expression
+        Ok((expression, require_semicolon))
     }
 
     fn parse_expression(&mut self) -> Result<ExprId, Error> {
         let assign = self.parse_assign()?;
-
-        if self.peek_token()? == Token::Semicolon {
-            self.next()?;
-        }
 
         Ok(assign)
     }
@@ -186,8 +192,12 @@ impl<'a> Parser<'a> {
         let mut expressions = Vec::new();
 
         while !self.at_end()? && self.peek_token()? != Token::RightBrace {
-            let expression = self.parse_expression()?;
+            let (expression, requires_semicolon) = self.parse_expression_statement()?;
             expressions.push(expression);
+
+            if self.peek_token()? != Token::RightBrace && requires_semicolon {
+                self.consume(Token::Semicolon)?;
+            }
         }
 
         self.consume(Token::RightBrace)?;
@@ -229,6 +239,21 @@ impl<'a> Parser<'a> {
 
     fn parse_for_loop(&mut self) -> Result<ExprId, Error> {
         todo!()
+    }
+
+    fn parse_native_function(&mut self) -> Result<ExprId, Error> {
+        self.consume(Token::Native)?;
+        self.consume(Token::Function)?;
+
+        let name = self.parse_identifier()?;
+
+        self.consume(Token::LeftParen)?;
+
+        let parameters = self.parse_comma_separator(Self::parse_identifier, Token::RightParen)?;
+
+        self.consume(Token::RightParen)?;
+
+        Ok(self.ast.native_function(name, parameters))
     }
 
     fn parse_function(&mut self) -> Result<ExprId, Error> {
@@ -455,12 +480,6 @@ impl<'a> Parser<'a> {
 
         let primary = match token {
             Token::Function => self.parse_function()?,
-            Token::Print => self.parse_print()?,
-            Token::While => self.parse_while_loop()?,
-            Token::For => self.parse_for_loop()?,
-            Token::Break => self.parse_break()?,
-            Token::Continue => self.parse_continue()?,
-            Token::Return => self.parse_return()?,
             Token::If => self.parse_if()?,
             Token::LeftParen => {
                 self.consume(Token::LeftParen)?;
@@ -485,12 +504,12 @@ impl<'a> Parser<'a> {
             Token::True => {
                 self.next()?;
 
-                self.ast.boolean_literal(true, span)
+                self.ast.number_literal(1.0, span)
             }
             Token::False => {
                 self.next()?;
 
-                self.ast.boolean_literal(false, span)
+                self.ast.number_literal(0.0, span)
             }
             Token::StringLiteral => {
                 let value = self.tokens.slice();

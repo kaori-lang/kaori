@@ -109,6 +109,12 @@ impl Compiler {
         let expression = ast.get(expression);
 
         match *expression {
+            Expr::NativeFunction {
+                name,
+                ref parameters,
+            } => {
+                todo!()
+            }
             Expr::Function {
                 ref parameters,
                 ref captures,
@@ -468,10 +474,6 @@ impl Compiler {
                 } else {
                     panic!("not declared")
                 }
-            }
-            Expr::BooleanLiteral(value) => {
-                let numeric = if value { 1.0 } else { 0.0 };
-                Operand::Immediate(Imm::try_to_encode(numeric).unwrap())
             }
             Expr::StringLiteral(value) => {
                 let index = self.push_string(value);
