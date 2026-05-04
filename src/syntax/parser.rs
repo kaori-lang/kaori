@@ -132,7 +132,6 @@ impl<'a> Parser<'a> {
 
         let expression = match token {
             Token::Function => self.parse_function()?,
-            Token::Print => self.parse_print()?,
             Token::While => self.parse_while_loop()?,
             Token::For => self.parse_for_loop()?,
             Token::Break => self.parse_break()?,
@@ -179,15 +178,6 @@ impl<'a> Parser<'a> {
         self.consume(Token::Break)?;
 
         Ok(self.ast.break_(span))
-    }
-
-    fn parse_print(&mut self) -> Result<ExprId, Error> {
-        self.consume(Token::Print)?;
-        self.consume(Token::LeftParen)?;
-        let expression = self.parse_expression()?;
-        self.consume(Token::RightParen)?;
-
-        Ok(self.ast.print(expression))
     }
 
     fn parse_block(&mut self) -> Result<ExprId, Error> {

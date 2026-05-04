@@ -79,8 +79,6 @@ pub enum Token {
     Else,
     #[token("return")]
     Return,
-    #[token("print")]
-    Print,
     #[token("true")]
     True,
     #[token("false")]
@@ -146,7 +144,6 @@ impl fmt::Display for Token {
             Self::If => "`if`",
             Self::Else => "`else`",
             Self::Return => "`return`",
-            Self::Print => "`print`",
             Self::True => "`true`",
             Self::False => "`false`",
             Self::To => "`to`",

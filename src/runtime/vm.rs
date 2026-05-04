@@ -6,7 +6,6 @@ use crate::diagnostics::error::Error;
 
 use crate::program::{CONSTANT_POOL, FUNCTIONS};
 use crate::report_error;
-use crate::runtime::debug_value::DebugValue;
 use crate::runtime::gc::Closure;
 use crate::{bytecode::instruction::Instruction, runtime::value::Value};
 
@@ -43,7 +42,8 @@ macro_rules! type_check {
 
 const REGISTER: u8 = 0;
 const IMMEDIATE: u8 = 1;
-const HANDLERS: [Handler; 56] = [
+
+const HANDLERS: [Handler; 55] = [
     opcode_add::<REGISTER, REGISTER>,
     opcode_add::<REGISTER, IMMEDIATE>,
     opcode_subtract::<REGISTER, REGISTER>,
@@ -98,7 +98,6 @@ const HANDLERS: [Handler; 56] = [
     opcode_jump_if_equal::<REGISTER, IMMEDIATE>,
     opcode_jump_if_not_equal::<REGISTER, REGISTER>,
     opcode_jump_if_not_equal::<REGISTER, IMMEDIATE>,
-    opcode_print,
     opcode_nop,
 ];
 
@@ -1221,25 +1220,6 @@ fn opcode_jump_if_not_equal<const SRC1: u8, const SRC2: u8>(
         } else {
             dispatch_next!(ip, registers, gc, size)
         }
-    }
-}
-
-#[inline(never)]
-fn opcode_print(
-    ip: *const Instruction,
-    registers: *mut Value,
-    gc: &mut Gc,
-    size: u8,
-) -> Result<Value, Box<Error>> {
-    unsafe {
-        let Instruction::Print { src } = *ip else {
-            unreachable_unchecked()
-        };
-        let src = *registers.add(src as usize);
-        let debug = DebugValue::new(src, gc);
-        println!("{:?}", debug);
-
-        dispatch_next!(ip, registers, gc, size)
     }
 }
 

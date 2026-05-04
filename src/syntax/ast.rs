@@ -82,7 +82,6 @@ pub enum Expr {
     Return(Option<ExprId>),
     Break,
     Continue,
-    Print(ExprId),
 }
 
 impl Ast {
@@ -261,9 +260,5 @@ impl Ast {
 
     pub fn continue_(&mut self, span: Range<usize>) -> ExprId {
         self.insert(Expr::Continue, Some(span))
-    }
-
-    pub fn print(&mut self, expression: ExprId) -> ExprId {
-        self.insert(Expr::Print(expression), None)
     }
 }

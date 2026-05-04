@@ -460,14 +460,6 @@ impl Compiler {
                 });
                 unit()
             }
-            Expr::Print(expression) => {
-                let src = self.compile_expression(ast, scope, expression);
-                let src = materialize(scope, src);
-                scope.emit_instruction(Instruction::Print {
-                    src: src.unwrap_register(),
-                });
-                unit()
-            }
             Expr::Break => todo!(),
             Expr::Continue => todo!(),
             Expr::Identifier(name) => {

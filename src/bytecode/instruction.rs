@@ -58,7 +58,6 @@ pub enum Instruction {
     JumpIfEqualI { src1: u8, src2: Imm, offset: i32 },
     JumpIfNotEqual { src1: u8, src2: u8, offset: i32 },
     JumpIfNotEqualI { src1: u8, src2: Imm, offset: i32 },
-    Print { src: u8 },
     Nop,
 }
 
@@ -225,9 +224,6 @@ impl fmt::Display for Instruction {
             }
             Self::JumpIfNotEqualI { src1, src2, offset } => {
                 write!(f, "JMP_IF_NEQ r{} {} {}", src1, src2, offset)
-            }
-            Self::Print { src } => {
-                write!(f, "PRINT r{}", src)
             }
             Self::CreateClosure {
                 dest,
