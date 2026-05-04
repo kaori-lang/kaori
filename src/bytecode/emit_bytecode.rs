@@ -112,7 +112,7 @@ impl Compiler {
             Expr::Function {
                 ref parameters,
                 ref captures,
-                ref body,
+                block,
                 name,
             } => {
                 let index = self.functions.len();
@@ -156,9 +156,9 @@ impl Compiler {
                     scope.insert_symbol(*name, dest);
                 }
 
-                let src = self.compile_block(ast, &mut scope, body);
+                let src = self.compile_expression(ast, &mut scope, block);
 
-                if !self.block_returns(ast, body) {
+                if !self.expression_returns(ast, block) {
                     let src = materialize(&mut scope, src);
                     scope.emit_instruction(Instruction::Return {
                         src: src.unwrap_register(),

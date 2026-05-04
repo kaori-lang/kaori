@@ -62,7 +62,7 @@ pub enum Expr {
         name: Option<ExprId>,
         parameters: Box<[ExprId]>,
         captures: Box<[ExprId]>,
-        body: Box<[ExprId]>,
+        block: ExprId,
     },
     Block(Box<[ExprId]>),
     If {
@@ -210,14 +210,14 @@ impl Ast {
         name: Option<ExprId>,
         parameters: Vec<ExprId>,
         captures: Vec<ExprId>,
-        body: Vec<ExprId>,
+        block: ExprId,
     ) -> ExprId {
         self.insert(
             Expr::Function {
                 name,
                 parameters: parameters.into(),
                 captures: captures.into(),
-                body: body.into(),
+                block,
             },
             None,
         )

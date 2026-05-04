@@ -1,7 +1,7 @@
 use logos::Logos;
 use std::fmt;
 #[derive(Logos, Debug, PartialEq, Copy, Clone)]
-#[logos(skip r"[ \t\f]+")]
+#[logos(skip r"[ \t\f\r\n]+")]
 pub enum Token {
     #[token(":=")]
     DeclareAssign,
@@ -61,6 +61,8 @@ pub enum Token {
     Or,
     #[token("not")]
     Not,
+    #[token("native")]
+    Native,
     #[token("fn")]
     Function,
     #[token("for")]
@@ -91,8 +93,8 @@ pub enum Token {
     By,
     #[regex(r"[0-9]+(\.[0-9]+)?")]
     NumberLiteral,
-    #[regex(r"\r?\n")]
-    Newline,
+    #[token(";")]
+    Semicolon,
     #[regex(r#""([^"\\]|\\.)*""#)]
     StringLiteral,
     #[regex(r#""([^"\\]|\\.)*"#)]
@@ -124,8 +126,8 @@ impl fmt::Display for Token {
             Self::Greater => "`>`",
             Self::Less => "`<`",
             Self::Comma => "`,`",
-            Self::Semicolon => "`;`",
             Self::Colon => "`:`",
+            Self::Semicolon => "`;`",
             Self::Dot => "`.`",
             Self::Pipe => "`|`",
             Self::LeftParen => "`(`",
@@ -135,6 +137,7 @@ impl fmt::Display for Token {
             Self::And => "`and`",
             Self::Or => "`or`",
             Self::Not => "`not`",
+            Self::Native => "`native`",
             Self::Function => "`fn`",
             Self::For => "`for`",
             Self::While => "`while`",
@@ -151,7 +154,6 @@ impl fmt::Display for Token {
             Self::By => "`by`",
             Self::NumberLiteral => "<number literal>",
             Self::StringLiteral => "<string literal>",
-            Self::Newline => "<new line>",
             Self::UnterminatedStringLiteral => "<unterminated string>",
             Self::Identifier => "<identifier>",
             Self::Eof => "<end of file>",
