@@ -10,4 +10,5 @@ pub mod syntax;
 
 pub mod program;
 pub mod runtime;
+pub mod std;
 pub mod util;
