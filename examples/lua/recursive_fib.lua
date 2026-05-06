@@ -7,5 +7,5 @@ local function fib(n)
 end
 
 
-fib(30)
+fib(35)
 

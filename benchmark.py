@@ -1,15 +1,15 @@
 import subprocess
-import platform
 import statistics
+import time
 from pathlib import Path
 
-folder = Path("tests")
+folder = Path("examples")
 
 scripts = [
-    ("Kaori",           "1.0.0",  folder / "kaori/iterative_fib.kr",        folder / "kaori/recursive_fib.kr",        ["kaori"],        ["kaori"]),
-    ("Lua",             "5.5.0",  folder / "lua/iterative_fib.lua",         folder / "lua/recursive_fib.lua",         ["lua"],          ["lua"]),
-    ("Python",          "3.14.4", folder / "python/iterative_fib.py",       folder / "python/recursive_fib.py",       ["python"],       ["python"]),
-    ("PyPy",            "7.3.20", folder / "python/iterative_fib.py",       folder / "python/recursive_fib.py",       ["pypy"],         ["pypy"]),
+    ("Kaori",   "1.0.0",  folder / "kaori/iterative_fib.kr",  folder / "kaori/recursive_fib.kr",  ["kaori"],   ["kaori"]),
+    ("Lua",     "5.5.0",  folder / "lua/iterative_fib.lua",   folder / "lua/recursive_fib.lua",   ["lua"],     ["lua"]),
+    ("Python",  "3.14.4", folder / "python/iterative_fib.py", folder / "python/recursive_fib.py", ["python"],  ["python"]),
+    ("PyPy",    "7.3.20", folder / "python/iterative_fib.py", folder / "python/recursive_fib.py", ["pypy"],    ["pypy"]),
 ]
 
 
@@ -21,9 +21,10 @@ def run_script(path, cmd_list, runs=20, warmups=5):
 
     times = []
     for _ in range(runs):
-        output = subprocess.check_output(full_cmd, stderr=subprocess.DEVNULL)
-        ms = float(output.strip())
-        times.append(ms)
+        start = time.perf_counter()
+        subprocess.run(full_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        end = time.perf_counter()
+        times.append((end - start) * 1000)
 
     mean = statistics.mean(times)
     stdev = statistics.stdev(times)

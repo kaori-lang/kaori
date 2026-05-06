@@ -1,7 +1,7 @@
 
 
-local iterations = 1000000
-local max_fib = 30
+local iterations = 10000000
+local max_fib = 35
 
 
 for i = 1, iterations do

@@ -1,4 +1,4 @@
-cat := {"name": "meow", "age": 5, "color": "black"};
+cat := {"age": 5};
 
 sum := 0;
 i := 0;

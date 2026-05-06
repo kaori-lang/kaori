@@ -1,6 +1,3 @@
-
-iterations := 1000000;
-max_fib := 30;
 fn fib(n) |fib| {
     if n < 2 { 
         return n; 
@@ -9,7 +6,7 @@ fn fib(n) |fib| {
     fib(n - 1) + fib(n - 2)   
 }
 
-fib(30);
+fib(35);
 
 
 

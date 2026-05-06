@@ -12,7 +12,7 @@ macro_rules! report_error {
     };
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Error {
     pub span: Option<Range<usize>>,
     pub message: String,

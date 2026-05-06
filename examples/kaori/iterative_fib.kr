@@ -1,6 +1,7 @@
 
 iterations := 1000000;
 max_fib := 30;
+
 i := 0;
 
 while i < iterations {
@@ -16,5 +17,4 @@ while i < iterations {
     }
 
     i += 1;
-
 }

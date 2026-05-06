@@ -18,7 +18,7 @@ pub static INTERNER: LazyLock<Mutex<StringInterner>> =
 pub static CONSTANT_POOL: OnceLock<Vec<Value>> = OnceLock::new();
 pub static FUNCTIONS: OnceLock<Vec<Function>> = OnceLock::new();
 
-pub fn compile_source_code(source: &str) -> Result<(Vec<Function>, Vec<Value>), Error> {
+pub fn compile_source_code(source: &str) -> Result<(), Error> {
     let tokens = Token::lexer(source).spanned();
     let parser = Parser::new(tokens);
     let ast = parser.parse()?;
@@ -28,21 +28,26 @@ pub fn compile_source_code(source: &str) -> Result<(Vec<Function>, Vec<Value>), 
 
     optimize_bytecode(&mut bytecode);
 
-    for function in bytecode.iter() {
+    /*  for function in bytecode.iter() {
         println!("{}", function);
-    }
-
-    Ok((bytecode, constants))
-}
-
-pub fn run_program(source: &str) -> Result<(), Error> {
-    let (bytecode, constants) = compile_source_code(source)?;
+    } */
 
     FUNCTIONS.set(bytecode).unwrap();
     CONSTANT_POOL.set(constants).unwrap();
 
+    Ok(())
+}
+
+pub fn run_program(source: &str) -> Result<(), Error> {
+    compile_source_code(source)?;
+
     let mut vm = Vm::new();
+
+    let start = Instant::now();
     vm.run()?;
+    let elapsed = start.elapsed();
+
+    println!("Execution time: {:?}", elapsed);
 
     Ok(())
 }

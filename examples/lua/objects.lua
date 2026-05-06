@@ -1,8 +1,6 @@
 
 local cat = {
-    name = "meow",
     age = 5,
-    color = "black"
 }
 
 local sum = 0
