@@ -1,4 +1,3 @@
-local start = os.clock()
 
 local cat = {
     name = "meow",
@@ -14,7 +13,3 @@ for i = 1, N do
     sum = sum + cat.age
 end
 
-local elapsed = os.clock() - start
-
-print("sum:", sum)
-print("time:", elapsed)

@@ -12,6 +12,7 @@ pub struct Closure {
     pub size: u8,
     pub captured: Box<[Value]>,
 }
+
 enum Object {
     Vec(Vec<Value>),
     Dict(HashMap<Value, Value>),
@@ -49,6 +50,15 @@ impl Gc {
         let index = self.alloc(object);
 
         Value::vec(index)
+    }
+
+    pub fn get_mut_safe_closure(&mut self, value: Value) -> &mut Closure {
+        let index = value.as_index();
+
+        match &mut self.objects[index] {
+            Object::Closure(object) => object,
+            _ => unsafe { unreachable_unchecked() },
+        }
     }
 
     pub fn allocate_closure(&mut self, object: Closure) -> Value {

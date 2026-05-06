@@ -3,19 +3,13 @@ import platform
 import statistics
 from pathlib import Path
 
-folder = Path("tests_bench")
-kaori_folder = Path("test_suite")
-rust_exe = Path("target/release/kaori")
-
-if platform.system() == "Windows":
-    rust_exe = rust_exe.with_suffix(".exe")
+folder = Path("tests")
 
 scripts = [
-    ("Kaori",        "1.0.0",  kaori_folder / "iterative_fib.kr",        kaori_folder / "recursive_fib.kr",        [str(rust_exe)], [str(rust_exe)]),
-    ("Kaori Unchecked", "1.0.0",  kaori_folder / "unsafe_iterative_fib.kr", kaori_folder / "unsafe_recursive_fib.kr", [str(rust_exe)], [str(rust_exe)]),
-    ("Lua",          "5.5.0",  folder / "iterative_fib.lua",             folder / "recursive_fib.lua",             ["lua"],         ["lua"]),
-    ("Python",       "3.14.4", folder / "iterative_fib.py",              folder / "recursive_fib.py",              ["python"],      ["python"]),
-    ("PyPy",         "7.3.20", folder / "iterative_fib.py",              folder / "recursive_fib.py",              ["pypy"],        ["pypy"]),
+    ("Kaori",           "1.0.0",  folder / "kaori/iterative_fib.kr",        folder / "kaori/recursive_fib.kr",        ["kaori"],        ["kaori"]),
+    ("Lua",             "5.5.0",  folder / "lua/iterative_fib.lua",         folder / "lua/recursive_fib.lua",         ["lua"],          ["lua"]),
+    ("Python",          "3.14.4", folder / "python/iterative_fib.py",       folder / "python/recursive_fib.py",       ["python"],       ["python"]),
+    ("PyPy",            "7.3.20", folder / "python/iterative_fib.py",       folder / "python/recursive_fib.py",       ["pypy"],         ["pypy"]),
 ]
 
 

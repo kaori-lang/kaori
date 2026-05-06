@@ -8,6 +8,7 @@ ariadne = "0.5.1"
 ordered-float = "5.1.0"
 logos = "0.16.1"
 foldhash = "0.2.0"
+clap = "4.6.1"
 
 [profile.release]
 opt-level = 3

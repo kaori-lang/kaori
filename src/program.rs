@@ -8,7 +8,7 @@ use logos::Logos;
 use crate::{
     bytecode::{Function, emit_bytecode::Compiler, optimize_bytecode::optimize_bytecode},
     diagnostics::error::Error,
-    runtime::{value::Value, vm::run_vm},
+    runtime::{value::Value, vm::Vm},
     syntax::{parser::Parser, token::Token},
     util::string_interner::StringInterner,
 };
@@ -41,13 +41,8 @@ pub fn run_program(source: &str) -> Result<(), Error> {
     FUNCTIONS.set(bytecode).unwrap();
     CONSTANT_POOL.set(constants).unwrap();
 
-    let start = Instant::now();
-
-    run_vm()?;
-
-    let elapsed = start.elapsed();
-
-    println!("{}", elapsed.as_secs_f64() * 1000.0);
+    let mut vm = Vm::new();
+    vm.run()?;
 
     Ok(())
 }
