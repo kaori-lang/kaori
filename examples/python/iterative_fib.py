@@ -1,5 +1,3 @@
-import time
-
 iterations = 1_000_000
 max_fib = 30
 

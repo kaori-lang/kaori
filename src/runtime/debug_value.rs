@@ -1,9 +1,6 @@
 use std::fmt;
 
-use crate::{
-    program::FUNCTIONS,
-    runtime::{gc::Gc, value::Value},
-};
+use crate::runtime::{gc::Gc, value::Value};
 
 pub struct DebugValue<'a> {
     value: Value,
@@ -22,7 +19,7 @@ impl<'a> fmt::Debug for DebugValue<'a> {
             return write!(f, "{}", self.value.as_number());
         }
         if self.value.is_closure() {
-            return write!(f, "Closure({:p})", &self.gc.get_closure(self.value));
+            return write!(f, "Closure({:p})", self.gc.get_closure(self.value));
         }
         if self.value.is_string() {
             return write!(f, "{}", self.value.as_string());

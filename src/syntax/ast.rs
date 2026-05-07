@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::ops::Range;
 
-use crate::syntax::ops::{AssignOp, BinaryOp, UnaryOp};
-
-type InternedString = usize;
+use crate::{
+    syntax::ops::{AssignOp, BinaryOp, UnaryOp},
+    util::string_interner::StringIndex,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ExprId(u32);
@@ -14,7 +15,6 @@ pub struct Ast {
     spans: HashMap<ExprId, Range<usize>>,
 }
 
-#[derive(Debug, Clone)]
 pub enum Expr {
     Binary {
         operator: BinaryOp,
@@ -43,8 +43,8 @@ pub enum Expr {
         left: ExprId,
         right: ExprId,
     },
-    Identifier(InternedString),
-    StringLiteral(InternedString),
+    Identifier(StringIndex),
+    StringLiteral(StringIndex),
     NumberLiteral(f64),
     FunctionCall {
         callee: ExprId,
@@ -168,11 +168,11 @@ impl Ast {
         self.insert(Expr::DeclareAssign { left, right }, Some(span))
     }
 
-    pub fn identifier(&mut self, index: usize, span: Range<usize>) -> ExprId {
+    pub fn identifier(&mut self, index: StringIndex, span: Range<usize>) -> ExprId {
         self.insert(Expr::Identifier(index), Some(span))
     }
 
-    pub fn string_literal(&mut self, index: usize, span: Range<usize>) -> ExprId {
+    pub fn string_literal(&mut self, index: StringIndex, span: Range<usize>) -> ExprId {
         self.insert(Expr::StringLiteral(index), Some(span))
     }
 

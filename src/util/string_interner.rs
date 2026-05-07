@@ -1,5 +1,8 @@
 use foldhash::HashMap;
 
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+pub struct StringIndex(pub u32);
+
 #[derive(Default, Debug)]
 pub struct StringInterner {
     map: HashMap<&'static str, usize>,
@@ -7,9 +10,9 @@ pub struct StringInterner {
 }
 
 impl StringInterner {
-    pub fn get_or_intern(&mut self, s: &str) -> usize {
+    pub fn get_or_intern(&mut self, s: &str) -> StringIndex {
         if let Some(&index) = self.map.get(s) {
-            return index;
+            return StringIndex(index as u32);
         }
 
         let s = s.to_owned().leak();
@@ -17,10 +20,10 @@ impl StringInterner {
         self.strings.push(s);
         self.map.insert(s, index);
 
-        index
+        StringIndex(index as u32)
     }
 
-    pub fn resolve(&self, index: usize) -> &'static str {
-        self.strings[index]
+    pub fn resolve(&self, index: StringIndex) -> &'static str {
+        self.strings[index.0 as usize]
     }
 }

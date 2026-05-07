@@ -62,8 +62,7 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    #[inline(always)]
-    pub const fn discriminant(&self) -> usize {
+    pub fn discriminant(&self) -> usize {
         unsafe { *(self as *const Instruction as *const u8) as usize }
     }
 }

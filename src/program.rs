@@ -1,7 +1,4 @@
-use std::{
-    sync::{LazyLock, Mutex, OnceLock},
-    time::Instant,
-};
+use std::sync::{LazyLock, Mutex, OnceLock};
 
 use logos::Logos;
 
@@ -43,12 +40,7 @@ pub fn run_program(source: &str) -> Result<(), Error> {
 
     let mut vm = Vm::new();
 
-    let start = Instant::now();
-    let value = vm.run()?;
-    let elapsed = start.elapsed();
-
-    println!("Execution time: {:?}", elapsed);
-    println!("{:?}", value);
+    vm.run()?;
 
     Ok(())
 }

@@ -8,6 +8,7 @@ use crate::{
         ast::{Ast, Expr, ExprId},
         ops::{AssignOp, BinaryOp, UnaryOp},
     },
+    util::string_interner::StringIndex,
 };
 
 #[derive(Default)]
@@ -28,7 +29,7 @@ impl Compiler {
         index
     }
 
-    pub fn push_string(&mut self, value: usize) -> usize {
+    pub fn push_string(&mut self, value: StringIndex) -> usize {
         self.get_or_insert(Value::string(value))
     }
 

@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
-use crate::bytecode::{instruction::Instruction, operand::Operand};
-
-type InternedString = usize;
+use crate::{
+    bytecode::{instruction::Instruction, operand::Operand},
+    util::string_interner::StringIndex,
+};
 
 pub struct FunctionScope {
-    pub block_scopes: Vec<HashMap<InternedString, Operand>>,
+    pub block_scopes: Vec<HashMap<StringIndex, Operand>>,
     pub instructions: Vec<Instruction>,
     pub registers: [bool; 256],
     pub last_register: u8,
@@ -43,16 +44,13 @@ impl FunctionScope {
         }
     }
 
-    pub fn insert_symbol(&mut self, name: InternedString, register: u8) {
+    pub fn insert_symbol(&mut self, name: StringIndex, register: u8) {
         let symbol = Operand::Register(register);
 
-        self.block_scopes
-            .last_mut()
-            .unwrap()
-            .insert(name.to_owned(), symbol);
+        self.block_scopes.last_mut().unwrap().insert(name, symbol);
     }
 
-    pub fn lookup_symbol(&self, name: InternedString) -> Option<Operand> {
+    pub fn lookup_symbol(&self, name: StringIndex) -> Option<Operand> {
         self.block_scopes
             .iter()
             .rev()

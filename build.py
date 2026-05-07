@@ -10,3 +10,4 @@ def run(cmd):
 
 run(["cargo", "build", "--release"])
 run(["cargo", "install", "--path", "."])
+

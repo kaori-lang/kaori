@@ -1,4 +1,4 @@
-use crate::program::INTERNER;
+use crate::{program::INTERNER, util::string_interner::StringIndex};
 
 const QNAN: u64 = 0x7FFC_0000_0000_0000;
 const PTR_MASK: u64 = 0x0000_FFFF_FFFF_FFFF;
@@ -18,81 +18,66 @@ impl Default for Value {
 }
 
 impl Value {
-    #[inline(always)]
     pub fn is_number(self) -> bool {
         (self.0 & QNAN) != QNAN
     }
 
-    #[inline(always)]
     fn is_tag(self, tag: u64) -> bool {
         (self.0 & !PTR_MASK) == tag
     }
 
-    #[inline(always)]
     pub fn is_closure(self) -> bool {
         self.is_tag(TAG_CLOSURE)
     }
 
-    #[inline(always)]
     pub fn is_string(self) -> bool {
         self.is_tag(TAG_STRING)
     }
 
-    #[inline(always)]
     pub fn is_vec(self) -> bool {
         self.is_tag(TAG_VEC)
     }
 
-    #[inline(always)]
     pub fn is_dict(self) -> bool {
         self.is_tag(TAG_DICT)
     }
 
-    #[inline(always)]
     pub fn tag(self) -> u64 {
         self.0 & !PTR_MASK
     }
 
-    #[inline(always)]
     pub fn number(value: f64) -> Self {
         Self(value.to_bits())
     }
 
-    #[inline(always)]
     pub fn as_number(self) -> f64 {
         f64::from_bits(self.0)
     }
 
-    #[inline(always)]
     pub fn is_truthy(self) -> bool {
         self.is_number() && self.as_number() != 0.0
     }
 
-    #[inline(always)]
-    pub fn string(index: usize) -> Self {
-        Self(TAG_STRING | (index as u64))
+    pub fn string(index: StringIndex) -> Self {
+        Self(TAG_STRING | (index.0 as u64))
     }
 
-    #[inline(always)]
     pub fn closure(index: usize) -> Self {
         Self(TAG_CLOSURE | (index as u64))
     }
 
-    #[inline(always)]
     pub fn dict(index: usize) -> Self {
         Self(TAG_DICT | (index as u64))
     }
 
-    #[inline(always)]
     pub fn vec(index: usize) -> Self {
         Self(TAG_VEC | (index as u64))
     }
 
     pub fn as_string(self) -> &'static str {
-        INTERNER
-            .lock()
-            .unwrap()
-            .resolve((self.0 & PTR_MASK) as usize)
+        let index = StringIndex(self.as_index() as u32);
+
+        INTERNER.lock().unwrap().resolve(index)
     }
 
     pub fn as_index(self) -> usize {
