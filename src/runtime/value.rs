@@ -2,7 +2,7 @@ use crate::program::INTERNER;
 
 const QNAN: u64 = 0x7FFC_0000_0000_0000;
 const PTR_MASK: u64 = 0x0000_FFFF_FFFF_FFFF;
-const TAG_FUNCTION: u64 = QNAN | 0x0003_0000_0000_0000;
+const TAG_CLOSURE: u64 = QNAN | 0x0003_0000_0000_0000;
 const TAG_STRING: u64 = QNAN | 0x0004_0000_0000_0000;
 const TAG_DICT: u64 = QNAN | 0x0005_0000_0000_0000;
 const TAG_VEC: u64 = QNAN | 0x0006_0000_0000_0000;
@@ -29,8 +29,8 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn is_function(self) -> bool {
-        self.is_tag(TAG_FUNCTION)
+    pub fn is_closure(self) -> bool {
+        self.is_tag(TAG_CLOSURE)
     }
 
     #[inline(always)]
@@ -74,8 +74,8 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn function(index: usize) -> Self {
-        Self(TAG_FUNCTION | (index as u64))
+    pub fn closure(index: usize) -> Self {
+        Self(TAG_CLOSURE | (index as u64))
     }
 
     #[inline(always)]

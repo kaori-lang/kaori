@@ -52,19 +52,10 @@ impl Gc {
         Value::vec(index)
     }
 
-    pub fn get_mut_safe_closure(&mut self, value: Value) -> &mut Closure {
-        let index = value.as_index();
-
-        match &mut self.objects[index] {
-            Object::Closure(object) => object,
-            _ => unsafe { unreachable_unchecked() },
-        }
-    }
-
     pub fn allocate_closure(&mut self, object: Closure) -> Value {
         let index = self.alloc(Object::Closure(object));
 
-        Value::function(index)
+        Value::closure(index)
     }
 
     pub fn get_mut_closure(&mut self, value: Value) -> &mut Closure {
@@ -112,7 +103,7 @@ impl Gc {
         }
     }
 
-    pub fn get_closure(&mut self, value: Value) -> &Closure {
+    pub fn get_closure(&self, value: Value) -> &Closure {
         let index = value.as_index();
 
         match &self.objects[index] {

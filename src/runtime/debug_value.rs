@@ -21,12 +21,8 @@ impl<'a> fmt::Debug for DebugValue<'a> {
         if self.value.is_number() {
             return write!(f, "{}", self.value.as_number());
         }
-        if self.value.is_function() {
-            return write!(
-                f,
-                "Function({:p})",
-                &FUNCTIONS.get().unwrap()[self.value.as_index()]
-            );
+        if self.value.is_closure() {
+            return write!(f, "Closure({:p})", &self.gc.get_closure(self.value));
         }
         if self.value.is_string() {
             return write!(f, "{}", self.value.as_string());
