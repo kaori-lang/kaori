@@ -44,10 +44,11 @@ pub fn run_program(source: &str) -> Result<(), Error> {
     let mut vm = Vm::new();
 
     let start = Instant::now();
-    vm.run()?;
+    let value = vm.run()?;
     let elapsed = start.elapsed();
 
     println!("Execution time: {:?}", elapsed);
+    println!("{:?}", value);
 
     Ok(())
 }

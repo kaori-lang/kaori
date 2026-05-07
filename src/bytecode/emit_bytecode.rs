@@ -109,10 +109,7 @@ impl Compiler {
         let expression = ast.get(expression);
 
         match *expression {
-            Expr::NativeFunction {
-                name,
-                ref parameters,
-            } => {
+            Expr::NativeFunction { .. } => {
                 todo!()
             }
             Expr::Function {

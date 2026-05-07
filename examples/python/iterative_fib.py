@@ -1,7 +1,7 @@
 import time
 
-iterations = 10_000_000
-max_fib = 35
+iterations = 1_000_000
+max_fib = 30
 
 for i in range(iterations):
     a, b = 0, 1
