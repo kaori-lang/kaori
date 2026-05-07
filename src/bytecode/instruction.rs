@@ -41,7 +41,7 @@ pub enum Instruction {
     GetField { dest: u8, object: u8, key: u8 },
     CreateClosure { dest: u8, captures: u8, src: u32 },
     CaptureValue { src: u8 },
-    Call { dest: u8, src: u8 },
+    Call { dest: u8, src: u8, arity: u8 },
     Return { src: u8 },
     Jump { offset: i32 },
     JumpIfFalse { src: u8, offset: i32 },
@@ -176,8 +176,8 @@ impl fmt::Display for Instruction {
             Self::GetField { dest, object, key } => {
                 write!(f, "GET r{} r{} r{}", dest, object, key)
             }
-            Self::Call { dest, src } => {
-                write!(f, "CALL r{} r{}", dest, src)
+            Self::Call { dest, src, arity } => {
+                write!(f, "CALL r{} r{} ARITY: {}", dest, src, arity)
             }
             Self::Return { src } => {
                 write!(f, "RET r{}", src)

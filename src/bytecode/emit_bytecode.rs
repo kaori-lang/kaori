@@ -59,8 +59,7 @@ impl Compiler {
         let function = Function {
             instructions: scope.instructions,
             registers_count: scope.last_register + 1,
-
-            parameters: 0,
+            arity: 0,
         };
 
         self.functions[index] = Some(function);
@@ -175,7 +174,7 @@ impl Compiler {
                 let function = Function {
                     instructions: scope.instructions,
                     registers_count: scope.last_register + 1,
-                    parameters: parameters.len() as u8,
+                    arity: parameters.len() as u8,
                 };
 
                 self.functions[index] = Some(function);
@@ -345,6 +344,7 @@ impl Compiler {
                 scope.emit_instruction(Instruction::Call {
                     dest,
                     src: callee_src.unwrap_register(),
+                    arity: arguments.len() as u8,
                 });
 
                 Operand::Register(dest)

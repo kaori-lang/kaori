@@ -5,7 +5,7 @@ use std::fmt::{self, Display, Formatter};
 pub struct Function {
     pub instructions: Vec<Instruction>,
     pub registers_count: u8,
-    pub parameters: u8,
+    pub arity: u8,
 }
 
 impl Display for Function {

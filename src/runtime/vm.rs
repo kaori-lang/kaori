@@ -1103,12 +1103,12 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
     let Function {
         ref instructions,
         registers_count,
-        parameters,
+        arity,
     } = FUNCTIONS.get().unwrap()[src as usize];
 
     let closure = Closure {
         instructions: instructions.as_ptr(),
-        parameters,
+        arity,
         size: registers_count,
         captured: vec![Value::default(); captures_count as usize].into_boxed_slice(),
     };
@@ -1145,12 +1145,12 @@ unsafe extern "rust-preserve-none" fn opcode_call(
     vm: &mut Vm,
     frame_size: u8,
 ) -> Result<Value, Box<Error>> {
-    let (dest, src) = unsafe {
-        let Instruction::Call { dest, src } = *ip else {
+    let (dest, src, call_arity) = unsafe {
+        let Instruction::Call { dest, src, arity } = *ip else {
             unreachable_unchecked()
         };
 
-        (dest, src)
+        (dest, src, arity)
     };
 
     let src = unsafe { registers.get_value(src) };
@@ -1160,23 +1160,27 @@ unsafe extern "rust-preserve-none" fn opcode_call(
     let return_value = {
         let Closure {
             instructions,
-            parameters,
+            arity: closure_arity,
             size,
             ref captured,
         } = *vm.gc.get_closure(src);
 
-        let slice = match registers.0.get_mut(frame_size as usize..) {
-            Some(registers) if registers.len() < size as usize => {
-                return Err(Box::new(report_error!("the call stack ran out of memory")));
-            }
-            None => return Err(Box::new(report_error!("the call stack ran out of memory"))),
-            Some(registers) => registers,
+        if call_arity != closure_arity {
+            return Err(Box::new(report_error!(
+                "the number of arguments must match the number of parameters in a function call"
+            )));
+        }
+
+        const MIN_REGISTERS: isize = u8::MAX as isize;
+
+        if (registers.0.len() as isize - frame_size as isize) < MIN_REGISTERS {
+            return Err(Box::new(report_error!("the call stack ran out of memory")));
         };
 
-        let mut registers = Registers(slice);
+        let mut registers = Registers(&mut registers.0[frame_size as usize..]);
 
         for (i, value) in captured.iter().copied().enumerate() {
-            registers.set_value(parameters + i as u8, value);
+            registers.set_value(closure_arity + i as u8, value);
         }
 
         let index = unsafe { (*instructions).discriminant() };
