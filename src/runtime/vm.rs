@@ -193,7 +193,7 @@ unsafe extern "rust-preserve-none" fn opcode_add_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot add, both operands must be numbers",
     );
 
@@ -248,7 +248,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot subtract, both operands must be numbers",
     );
 
@@ -275,7 +275,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_ir(
     let src2 = unsafe { registers.get_value(src2) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src2.is_number(),
         "cannot subtract, both operands must be numbers",
     );
 
@@ -330,7 +330,7 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot multiply, both operands must be numbers",
     );
 
@@ -385,7 +385,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot divide, both operands must be numbers",
     );
 
@@ -412,7 +412,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_ir(
     let src2 = unsafe { registers.get_value(src2) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src2.is_number(),
         "cannot divide, both operands must be numbers",
     );
 
@@ -467,7 +467,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot compute modulo, both operands must be numbers",
     );
 
@@ -494,7 +494,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_ir(
     let src2 = unsafe { registers.get_value(src2) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src2.is_number(),
         "cannot compute modulo, both operands must be numbers",
     );
 
@@ -642,7 +642,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
@@ -703,7 +703,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
@@ -764,7 +764,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
@@ -825,7 +825,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
@@ -1336,7 +1336,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
@@ -1395,7 +1395,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
@@ -1454,7 +1454,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
@@ -1513,7 +1513,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_ri(
     let src1 = unsafe { registers.get_value(src1) };
 
     type_check!(
-        src1.is_number() && src2.is_number(),
+        src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
