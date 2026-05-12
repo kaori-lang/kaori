@@ -1,16 +1,9 @@
-
-
-a := 5;
-
 fn fib(n) {
-    a;
     if n < 2 { 
-        n
+        return n; 
     } else {
-        fib(n - 1) + fib(n - 2)  
+        fib(n - 1) + fib(n - 2) 
     }
 }
 
 fib(30);
-
-

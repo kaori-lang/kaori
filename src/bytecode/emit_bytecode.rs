@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     bytecode::{
         function::Function, function_scope::FunctionScope, immediate::Imm,
@@ -37,7 +39,11 @@ impl Compiler {
         self.get_or_insert(Value::number(value))
     }
 
-    pub fn compile(mut self, ast: &Ast) -> (Vec<Function>, Vec<Value>) {
+    pub fn compile(
+        mut self,
+        ast: &Ast,
+        captures: HashMap<ExprId, Vec<StringIndex>>,
+    ) -> (Vec<Function>, Vec<Value>) {
         let entry = ast.entry();
 
         let index = self.functions.len();
@@ -45,7 +51,7 @@ impl Compiler {
         self.functions.push(function);
 
         let mut scope = FunctionScope::default();
-        let src = self.compile_expression(ast, &mut scope, entry);
+        let src = self.compile_expression(ast, &mut scope, &captures, entry);
 
         if !self.expression_returns(ast, entry) {
             let src = materialize(&mut scope, src);
@@ -78,6 +84,7 @@ impl Compiler {
         &mut self,
         ast: &Ast,
         scope: &mut FunctionScope,
+        captures: &HashMap<ExprId, Vec<StringIndex>>,
         expressions: &[ExprId],
     ) -> Operand {
         for expression in expressions.iter().copied() {
@@ -86,12 +93,12 @@ impl Compiler {
             if let Expr::Function { name, .. } = &expression
                 && let Some(name) = name
             {
-                self.compile_expression(ast, scope, *name);
+                self.compile_expression(ast, scope, captures, *name);
             }
         }
 
         expressions.iter().copied().fold(unit(), |_, expression| {
-            self.compile_expression(ast, scope, expression)
+            self.compile_expression(ast, scope, captures, expression)
         })
     }
 
@@ -99,11 +106,10 @@ impl Compiler {
         &mut self,
         ast: &Ast,
         scope: &mut FunctionScope,
+        captures: &HashMap<ExprId, Vec<StringIndex>>,
         expression: ExprId,
     ) -> Operand {
-        let expression = ast.get(expression);
-
-        match *expression {
+        match *ast.get(expression) {
             Expr::NativeFunction { .. } => {
                 todo!()
             }
@@ -116,22 +122,38 @@ impl Compiler {
                 let function = None;
                 self.functions.push(function);
 
-                let dest = self.compile_expression(ast, scope, name.unwrap());
+                let dest = match name {
+                    Some(name) => self.compile_expression(ast, scope, captures, name),
+                    None => Operand::Register(scope.allocate_register()),
+                };
 
                 scope.emit_instruction(Instruction::CreateClosure {
                     dest: dest.unwrap_register(),
                     src: index as u32,
                 });
 
+                for capture in captures.get(&expression).unwrap().iter().copied() {
+                    let src = scope.lookup_or_declare(capture);
+
+                    scope.emit_instruction(Instruction::CaptureValue {
+                        dest: dest.unwrap_register(),
+                        src,
+                    });
+                }
+
                 let mut scope = FunctionScope::default();
 
                 scope.enter_scope();
 
                 for parameter in parameters.iter().copied() {
-                    self.compile_expression(ast, &mut scope, parameter);
+                    self.compile_expression(ast, &mut scope, captures, parameter);
                 }
 
-                let src = self.compile_expression(ast, &mut scope, block);
+                for capture in captures.get(&expression).unwrap().iter().copied() {
+                    scope.lookup_or_declare(capture);
+                }
+
+                let src = self.compile_expression(ast, &mut scope, captures, block);
 
                 if !self.expression_returns(ast, block) {
                     let src = materialize(&mut scope, src);
@@ -155,10 +177,10 @@ impl Compiler {
                 dest
             }
             Expr::DeclareAssign { left, right } => {
-                let src = self.compile_expression(ast, scope, right);
+                let src = self.compile_expression(ast, scope, captures, right);
                 let src = materialize(scope, src);
 
-                let dest = self.compile_expression(ast, scope, left);
+                let dest = self.compile_expression(ast, scope, captures, left);
 
                 scope.emit_instruction(Instruction::Move {
                     dest: dest.unwrap_register(),
@@ -172,24 +194,34 @@ impl Compiler {
                 left,
                 right,
             } => {
-                let dest = self.compile_expression(ast, scope, left);
+                let dest = self.compile_expression(ast, scope, captures, left);
 
                 let src = match operator {
-                    AssignOp::Assign => self.compile_expression(ast, scope, right),
+                    AssignOp::Assign => self.compile_expression(ast, scope, captures, right),
                     AssignOp::AddAssign => {
-                        self.compile_binary_op(ast, scope, BinaryOp::Add, left, right)
+                        self.compile_binary_op(ast, scope, captures, BinaryOp::Add, left, right)
                     }
-                    AssignOp::SubtractAssign => {
-                        self.compile_binary_op(ast, scope, BinaryOp::Subtract, left, right)
-                    }
-                    AssignOp::MultiplyAssign => {
-                        self.compile_binary_op(ast, scope, BinaryOp::Multiply, left, right)
-                    }
+                    AssignOp::SubtractAssign => self.compile_binary_op(
+                        ast,
+                        scope,
+                        captures,
+                        BinaryOp::Subtract,
+                        left,
+                        right,
+                    ),
+                    AssignOp::MultiplyAssign => self.compile_binary_op(
+                        ast,
+                        scope,
+                        captures,
+                        BinaryOp::Multiply,
+                        left,
+                        right,
+                    ),
                     AssignOp::DivideAssign => {
-                        self.compile_binary_op(ast, scope, BinaryOp::Divide, left, right)
+                        self.compile_binary_op(ast, scope, captures, BinaryOp::Divide, left, right)
                     }
                     AssignOp::ModuloAssign => {
-                        self.compile_binary_op(ast, scope, BinaryOp::Modulo, left, right)
+                        self.compile_binary_op(ast, scope, captures, BinaryOp::Modulo, left, right)
                     }
                 };
                 let src = materialize(scope, src);
@@ -204,7 +236,7 @@ impl Compiler {
             Expr::LogicalAnd { left, right } => {
                 let dest = scope.allocate_register();
 
-                let src = self.compile_expression(ast, scope, left);
+                let src = self.compile_expression(ast, scope, captures, left);
                 let src = materialize(scope, src);
                 scope.emit_instruction(Instruction::Move {
                     dest,
@@ -216,7 +248,7 @@ impl Compiler {
                     offset: 0,
                 });
 
-                let src = self.compile_expression(ast, scope, right);
+                let src = self.compile_expression(ast, scope, captures, right);
                 let src = materialize(scope, src);
                 scope.emit_instruction(Instruction::Move {
                     dest,
@@ -234,7 +266,7 @@ impl Compiler {
             Expr::LogicalOr { left, right } => {
                 let dest = scope.allocate_register();
 
-                let src = self.compile_expression(ast, scope, left);
+                let src = self.compile_expression(ast, scope, captures, left);
                 let src = materialize(scope, src);
                 scope.emit_instruction(Instruction::Move {
                     dest,
@@ -246,7 +278,7 @@ impl Compiler {
                     offset: 0,
                 });
 
-                let src = self.compile_expression(ast, scope, right);
+                let src = self.compile_expression(ast, scope, captures, right);
                 let src = materialize(scope, src);
                 scope.emit_instruction(Instruction::Move {
                     dest,
@@ -262,7 +294,7 @@ impl Compiler {
                 Operand::Register(dest)
             }
             Expr::LogicalNot(expression) => {
-                let src = self.compile_expression(ast, scope, expression);
+                let src = self.compile_expression(ast, scope, captures, expression);
                 let src = materialize(scope, src);
                 let dest = scope.allocate_register();
                 scope.emit_instruction(Instruction::Not {
@@ -275,9 +307,9 @@ impl Compiler {
                 operator,
                 left,
                 right,
-            } => self.compile_binary_op(ast, scope, operator, left, right),
+            } => self.compile_binary_op(ast, scope, captures, operator, left, right),
             Expr::Unary { operator, right } => {
-                let src = self.compile_expression(ast, scope, right);
+                let src = self.compile_expression(ast, scope, captures, right);
                 let src = materialize(scope, src);
                 let dest = scope.allocate_register();
 
@@ -296,10 +328,10 @@ impl Compiler {
                 ref arguments,
             } => {
                 let dest = scope.allocate_register();
-                let callee_src = self.compile_expression(ast, scope, callee);
+                let callee_src = self.compile_expression(ast, scope, captures, callee);
 
                 for (index, argument) in arguments.iter().enumerate() {
-                    let argument = self.compile_expression(ast, scope, *argument);
+                    let argument = self.compile_expression(ast, scope, captures, *argument);
                     let argument = materialize(scope, argument);
                     scope.emit_instruction(Instruction::MoveArg {
                         dest: index as u8,
@@ -318,9 +350,9 @@ impl Compiler {
             Expr::MemberAccess { object, property } => {
                 let dest = scope.allocate_register();
 
-                let object = self.compile_expression(ast, scope, object);
+                let object = self.compile_expression(ast, scope, captures, object);
                 let object = materialize(scope, object);
-                let key = self.compile_expression(ast, scope, property);
+                let key = self.compile_expression(ast, scope, captures, property);
                 let key = materialize(scope, key);
 
                 scope.emit_instruction(Instruction::GetField {
@@ -333,7 +365,7 @@ impl Compiler {
             }
             Expr::Block(ref expressions) => {
                 scope.enter_scope();
-                let dest = self.compile_block(ast, scope, expressions);
+                let dest = self.compile_block(ast, scope, captures, expressions);
                 scope.exit_scope();
 
                 dest
@@ -345,7 +377,7 @@ impl Compiler {
             } => {
                 let dest = scope.allocate_register();
 
-                let src = self.compile_expression(ast, scope, condition);
+                let src = self.compile_expression(ast, scope, captures, condition);
                 let src = materialize(scope, src);
 
                 let jump_if_false = scope.emit_instruction(Instruction::JumpIfFalse {
@@ -353,7 +385,7 @@ impl Compiler {
                     offset: 0,
                 });
 
-                let src = self.compile_expression(ast, scope, then_branch);
+                let src = self.compile_expression(ast, scope, captures, then_branch);
                 let src = materialize(scope, src);
                 scope.emit_instruction(Instruction::Move {
                     dest,
@@ -369,7 +401,7 @@ impl Compiler {
                 );
 
                 let src = if let Some(else_branch) = else_branch {
-                    self.compile_expression(ast, scope, else_branch)
+                    self.compile_expression(ast, scope, captures, else_branch)
                 } else {
                     unit()
                 };
@@ -389,7 +421,7 @@ impl Compiler {
             }
             Expr::ForLoop { .. } => unit(),
             Expr::WhileLoop { condition, block } => {
-                let src = self.compile_expression(ast, scope, condition);
+                let src = self.compile_expression(ast, scope, captures, condition);
                 let src = materialize(scope, src);
 
                 let jump_if_false = scope.emit_instruction(Instruction::JumpIfFalse {
@@ -399,9 +431,9 @@ impl Compiler {
 
                 let loop_body = scope.instructions.len();
 
-                self.compile_expression(ast, scope, block);
+                self.compile_expression(ast, scope, captures, block);
 
-                let src = self.compile_expression(ast, scope, condition);
+                let src = self.compile_expression(ast, scope, captures, condition);
                 let src = materialize(scope, src);
 
                 let jump_if_true = scope.emit_instruction(Instruction::JumpIfTrue {
@@ -420,7 +452,7 @@ impl Compiler {
             }
             Expr::Return(expression) => {
                 let src = match expression {
-                    Some(expr) => self.compile_expression(ast, scope, expr),
+                    Some(expr) => self.compile_expression(ast, scope, captures, expr),
                     None => unit(),
                 };
                 let src = materialize(scope, src);
@@ -455,16 +487,16 @@ impl Compiler {
                 scope.emit_instruction(Instruction::CreateDict { dest });
 
                 for (key, value) in fields.iter().copied() {
-                    let key_op = self.compile_expression(ast, scope, key);
+                    let key_op = self.compile_expression(ast, scope, captures, key);
                     let key_op = materialize(scope, key_op);
 
                     let value_op = match value {
                         Some(v) => {
-                            let v = self.compile_expression(ast, scope, v);
+                            let v = self.compile_expression(ast, scope, captures, v);
                             materialize(scope, v)
                         }
                         None => {
-                            let v = self.compile_expression(ast, scope, key);
+                            let v = self.compile_expression(ast, scope, captures, key);
                             materialize(scope, v)
                         }
                     };
@@ -485,12 +517,13 @@ impl Compiler {
         &mut self,
         ast: &Ast,
         scope: &mut FunctionScope,
+        captures: &HashMap<ExprId, Vec<StringIndex>>,
         operator: BinaryOp,
         left: ExprId,
         right: ExprId,
     ) -> Operand {
-        let src1 = self.compile_expression(ast, scope, left);
-        let src2 = self.compile_expression(ast, scope, right);
+        let src1 = self.compile_expression(ast, scope, captures, left);
+        let src2 = self.compile_expression(ast, scope, captures, right);
         let dest = scope.allocate_register();
 
         let instruction = match (src1, src2) {
@@ -618,10 +651,10 @@ impl Compiler {
            increment: Option<&Expr>,
        ) -> Operand {
            if let Some(init) = init {
-               self.compile_expression(ast, scope, init);
+               self.compile_expression(ast, scope, captures, init);
            }
 
-           let src = self.compile_expression(ast, scope, condition);
+           let src = self.compile_expression(ast, scope, captures, condition);
            let src = materialize(scope, src);
 
            let jump_if_false = scope.emit_instruction(Instruction::JumpIfFalse {
@@ -631,13 +664,13 @@ impl Compiler {
 
            let loop_body = scope.instructions.len();
 
-           self.compile_expression(ast, scope, block);
+           self.compile_expression(ast, scope, captures, block);
 
            if let Some(increment) = increment {
-               self.compile_expression(ast, scope, increment);
+               self.compile_expression(ast, scope, captures, increment);
            }
 
-           let src = self.compile_expression(ast, scope, condition);
+           let src = self.compile_expression(ast, scope, captures, condition);
            let src = materialize(scope, src);
 
            let jump_if_true = scope.emit_instruction(Instruction::JumpIfTrue {

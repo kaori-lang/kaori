@@ -55,7 +55,7 @@ static HANDLERS: [Handler; 55] = [
     opcode_set_field_i,
     opcode_get_field,
     opcode_create_closure,
-    opcode_nop,
+    opcode_capture_value,
     opcode_call,
     opcode_return,
     opcode_jump,
@@ -1118,6 +1118,31 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
     let closure = vm.gc.allocate_closure(closure);
 
     registers.set_value(dest, closure);
+
+    dispatch_next!(ip, registers, vm, frame_size)
+}
+
+#[inline(never)]
+unsafe extern "rust-preserve-none" fn opcode_capture_value(
+    ip: *const Instruction,
+    registers: Registers,
+    vm: &mut Vm,
+    frame_size: u8,
+) -> Result<Value, Box<Error>> {
+    let (dest, src) = unsafe {
+        let Instruction::CaptureValue { dest, src } = *ip else {
+            unreachable_unchecked()
+        };
+
+        (dest, src)
+    };
+
+    let value = unsafe { registers.get_value(src) };
+
+    let index = unsafe { registers.get_value(dest) };
+    let closure = vm.gc.get_mut_closure(index);
+
+    closure.captured.push(value);
 
     dispatch_next!(ip, registers, vm, frame_size)
 }

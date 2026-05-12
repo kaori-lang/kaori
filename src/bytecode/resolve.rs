@@ -3,6 +3,9 @@ use std::{collections::HashMap, vec};
 use foldhash::{HashSet, HashSetExt};
 
 use crate::{
+    diagnostics::error::Error,
+    program::INTERNER,
+    report_error,
     syntax::ast::{Ast, Expr, ExprId},
     util::string_interner::StringIndex,
 };
@@ -36,7 +39,11 @@ impl Environment {
     }
 
     pub fn pop_scope(&mut self) {
-        assert!(self.scopes.len() > 1, "cannot pop the last scope");
+        assert!(
+            self.scopes.len() > 1,
+            "tried to pop a scope with empty array"
+        );
+
         self.scopes.pop();
     }
 
@@ -70,13 +77,13 @@ impl Environment {
     }
 }
 
-pub fn resolve(ast: &Ast) -> HashMap<ExprId, Vec<StringIndex>> {
+pub fn resolve(ast: &Ast) -> Result<HashMap<ExprId, Vec<StringIndex>>, Error> {
     let mut environment = Environment::new();
     let mut captures = HashMap::new();
 
-    resolve_expression(ast, ast.entry(), &mut environment, &mut captures);
+    resolve_expression(ast, ast.entry(), &mut environment, &mut captures)?;
 
-    captures
+    Ok(captures)
 }
 
 fn resolve_block(
@@ -84,7 +91,7 @@ fn resolve_block(
     expressions: &[ExprId],
     environment: &mut Environment,
     captures: &mut HashMap<ExprId, Vec<StringIndex>>,
-) {
+) -> Result<(), Error> {
     for expression in expressions.iter().copied() {
         if let Expr::Function {
             name: Some(identifier),
@@ -92,7 +99,7 @@ fn resolve_block(
         } = *ast.get(expression)
         {
             let Expr::Identifier(name) = *ast.get(identifier) else {
-                unreachable!("function name must be an identifier");
+                unreachable!("function name must be parsed as identifier");
             };
 
             environment.insert(name);
@@ -100,8 +107,10 @@ fn resolve_block(
     }
 
     for &expression in expressions {
-        resolve_expression(ast, expression, environment, captures);
+        resolve_expression(ast, expression, environment, captures)?;
     }
+
+    Ok(())
 }
 
 fn resolve_expression(
@@ -109,7 +118,7 @@ fn resolve_expression(
     expression: ExprId,
     environment: &mut Environment,
     captures: &mut HashMap<ExprId, Vec<StringIndex>>,
-) {
+) -> Result<(), Error> {
     match *ast.get(expression) {
         Expr::NativeFunction { .. } => {}
 
@@ -123,12 +132,13 @@ fn resolve_expression(
 
             for identifier in parameters.iter().copied() {
                 let Expr::Identifier(name) = *ast.get(identifier) else {
-                    unreachable!("parameter must be an identifier");
+                    unreachable!("parameter must be parsed as identifier");
                 };
+
                 inner.insert(name);
             }
 
-            resolve_expression(ast, block, &mut inner, captures);
+            resolve_expression(ast, block, &mut inner, captures)?;
 
             captures.insert(expression, inner.captures);
 
@@ -136,10 +146,10 @@ fn resolve_expression(
         }
 
         Expr::DeclareAssign { left, right } => {
-            resolve_expression(ast, right, environment, captures);
+            resolve_expression(ast, right, environment, captures)?;
 
             let Expr::Identifier(name) = *ast.get(left) else {
-                unreachable!("DeclareAssign left must be an identifier");
+                unreachable!("declare_assign lhs must be parsed as identifier");
             };
 
             environment.insert(name);
@@ -148,32 +158,36 @@ fn resolve_expression(
         | Expr::LogicalAnd { left, right }
         | Expr::LogicalOr { left, right }
         | Expr::Binary { left, right, .. } => {
-            resolve_expression(ast, left, environment, captures);
-            resolve_expression(ast, right, environment, captures);
+            resolve_expression(ast, left, environment, captures)?;
+            resolve_expression(ast, right, environment, captures)?;
         }
-        Expr::LogicalNot(expr) => resolve_expression(ast, expr, environment, captures),
+        Expr::LogicalNot(expr) => {
+            resolve_expression(ast, expr, environment, captures)?;
+        }
         Expr::Return(expr) => {
             if let Some(expr) = expr {
-                resolve_expression(ast, expr, environment, captures);
+                resolve_expression(ast, expr, environment, captures)?;
             }
         }
-        Expr::Unary { right, .. } => resolve_expression(ast, right, environment, captures),
+        Expr::Unary { right, .. } => {
+            resolve_expression(ast, right, environment, captures)?;
+        }
         Expr::FunctionCall {
             callee,
             ref arguments,
         } => {
-            resolve_expression(ast, callee, environment, captures);
+            resolve_expression(ast, callee, environment, captures)?;
 
             for argument in arguments.iter().copied() {
-                resolve_expression(ast, argument, environment, captures);
+                resolve_expression(ast, argument, environment, captures)?;
             }
         }
         Expr::MemberAccess { object, .. } => {
-            resolve_expression(ast, object, environment, captures);
+            resolve_expression(ast, object, environment, captures)?;
         }
         Expr::Block(ref expressions) => {
             environment.push_scope();
-            resolve_block(ast, expressions, environment, captures);
+            resolve_block(ast, expressions, environment, captures)?;
             environment.pop_scope();
         }
         Expr::If {
@@ -181,26 +195,30 @@ fn resolve_expression(
             then_branch,
             else_branch,
         } => {
-            resolve_expression(ast, condition, environment, captures);
-            resolve_expression(ast, then_branch, environment, captures);
+            resolve_expression(ast, condition, environment, captures)?;
+            resolve_expression(ast, then_branch, environment, captures)?;
 
             if let Some(else_branch) = else_branch {
-                resolve_expression(ast, else_branch, environment, captures);
+                resolve_expression(ast, else_branch, environment, captures)?;
             }
         }
         Expr::ForLoop { .. } => {
             todo!("ForLoop")
         }
         Expr::WhileLoop { condition, block } => {
-            resolve_expression(ast, condition, environment, captures);
-            resolve_expression(ast, block, environment, captures);
+            resolve_expression(ast, condition, environment, captures)?;
+            resolve_expression(ast, block, environment, captures)?;
         }
         Expr::Break | Expr::Continue => {}
         Expr::Identifier(name) => {
             if !environment.lookup_local(name) {
-                panic!("Not declared")
+                let slice = INTERNER.lock().unwrap().resolve(name);
+                let span = ast.span(expression).unwrap().clone();
+                return Err(report_error!(span, "`{}` is not declared", slice));
             };
         }
         Expr::StringLiteral(_) | Expr::NumberLiteral(_) | Expr::DictLiteral { .. } => {}
-    }
+    };
+
+    Ok(())
 }

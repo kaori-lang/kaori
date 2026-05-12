@@ -21,20 +21,18 @@ pub fn compile_source_code(source: &str) -> Result<(), Error> {
     let tokens = Token::lexer(source).spanned();
     let parser = Parser::new(tokens);
     let ast = parser.parse()?;
-    let captures = resolve(&ast);
+    let captures = resolve(&ast)?;
 
-    println!("{:#?}", captures);
+    let (mut bytecode, constants) = Compiler::default().compile(&ast, captures);
 
-    //let (mut bytecode, constants) = Compiler::default().compile(&ast);
+    optimize_bytecode(&mut bytecode);
 
-    //optimize_bytecode(&mut bytecode);
-
-    /*  for function in bytecode.iter() {
+    for function in bytecode.iter() {
         println!("{}", function);
     }
 
     FUNCTIONS.set(bytecode).unwrap();
-    CONSTANT_POOL.set(constants).unwrap(); */
+    CONSTANT_POOL.set(constants).unwrap();
 
     Ok(())
 }
@@ -42,9 +40,9 @@ pub fn compile_source_code(source: &str) -> Result<(), Error> {
 pub fn run_program(source: &str) -> Result<(), Error> {
     compile_source_code(source)?;
 
-    /*     let mut vm = Vm::new();
+    let mut vm = Vm::new();
 
-       vm.run()?;
-    */
+    vm.run()?;
+
     Ok(())
 }
