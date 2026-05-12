@@ -1,20 +1,16 @@
 
-iterations := 1000000;
-max_fib := 30;
 
-i := 0;
+a := 5;
 
-while i < iterations {
-    a := 0;
-    b := 1;
-    j := 0;
-    
-    while j < max_fib {
-        temp := a + b;
-        a = b;
-        b = temp;
-        j += 1;
+fn fib(n) {
+    a;
+    if n < 2 { 
+        n
+    } else {
+        fib(n - 1) + fib(n - 2)  
     }
-
-    i += 1;
 }
+
+fib(30);
+
+

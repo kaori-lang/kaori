@@ -59,7 +59,7 @@ impl Compiler {
 
         let function = Function {
             instructions: scope.instructions,
-            registers_count: scope.last_register + 1,
+            registers_count: scope.next_register,
             arity: 0,
         };
 
@@ -86,12 +86,7 @@ impl Compiler {
             if let Expr::Function { name, .. } = &expression
                 && let Some(name) = name
             {
-                let Expr::Identifier(name) = ast.get(*name) else {
-                    unreachable!("Should parse identifier for function name")
-                };
-
-                let register = scope.allocate_register();
-                scope.insert_symbol(*name, register);
+                self.compile_expression(ast, scope, *name);
             }
         }
 
@@ -114,7 +109,6 @@ impl Compiler {
             }
             Expr::Function {
                 ref parameters,
-                ref captures,
                 block,
                 name,
             } => {
@@ -127,36 +121,14 @@ impl Compiler {
                 scope.emit_instruction(Instruction::CreateClosure {
                     dest: dest.unwrap_register(),
                     src: index as u32,
-                    captures: captures.len() as u8,
                 });
-
-                for capture in captures.iter().copied() {
-                    let src = self
-                        .compile_expression(ast, scope, capture)
-                        .unwrap_register();
-                    scope.emit_instruction(Instruction::CaptureValue { src });
-                }
 
                 let mut scope = FunctionScope::default();
 
                 scope.enter_scope();
 
                 for parameter in parameters.iter().copied() {
-                    let Expr::Identifier(name) = ast.get(parameter) else {
-                        unreachable!("Should parse identifier for parameters")
-                    };
-
-                    let dest = scope.allocate_register();
-                    scope.insert_symbol(*name, dest);
-                }
-
-                for capture in captures.iter().copied() {
-                    let Expr::Identifier(name) = ast.get(capture) else {
-                        unreachable!("Should parse identifier for captures")
-                    };
-
-                    let dest = scope.allocate_register();
-                    scope.insert_symbol(*name, dest);
+                    self.compile_expression(ast, &mut scope, parameter);
                 }
 
                 let src = self.compile_expression(ast, &mut scope, block);
@@ -174,7 +146,7 @@ impl Compiler {
 
                 let function = Function {
                     instructions: scope.instructions,
-                    registers_count: scope.last_register + 1,
+                    registers_count: scope.next_register,
                     arity: parameters.len() as u8,
                 };
 
@@ -183,24 +155,17 @@ impl Compiler {
                 dest
             }
             Expr::DeclareAssign { left, right } => {
-                let left = ast.get(left);
-
-                let name = match left {
-                    Expr::Identifier(name) => name,
-                    _ => panic!("DeclareAssign left-hand side must be an Identifier"),
-                };
-
                 let src = self.compile_expression(ast, scope, right);
                 let src = materialize(scope, src);
-                let dest = scope.allocate_register();
 
-                scope.insert_symbol(*name, dest);
+                let dest = self.compile_expression(ast, scope, left);
+
                 scope.emit_instruction(Instruction::Move {
-                    dest,
+                    dest: dest.unwrap_register(),
                     src: src.unwrap_register(),
                 });
 
-                Operand::Register(dest)
+                dest
             }
             Expr::Assign {
                 operator,
@@ -467,11 +432,9 @@ impl Compiler {
             Expr::Break => todo!(),
             Expr::Continue => todo!(),
             Expr::Identifier(name) => {
-                if let Some(register) = scope.lookup_symbol(name) {
-                    register
-                } else {
-                    panic!("not declared")
-                }
+                let found = scope.lookup_or_declare(name);
+
+                Operand::Register(found)
             }
             Expr::StringLiteral(value) => {
                 let index = self.push_string(value);
@@ -757,7 +720,7 @@ fn patch_jump(scope: &mut FunctionScope, index: usize, new_offset: i32) {
 fn patch_function_arguments(scope: &mut FunctionScope) {
     for instruction in &mut scope.instructions {
         if let Instruction::MoveArg { dest, .. } = instruction {
-            *dest += scope.last_register + 1;
+            *dest += scope.next_register;
         }
     }
 }

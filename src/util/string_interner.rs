@@ -1,6 +1,6 @@
 use foldhash::HashMap;
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub struct StringIndex(pub u32);
 
 #[derive(Default, Debug)]

@@ -1,26 +1,11 @@
-use std::collections::HashMap;
+use crate::{bytecode::instruction::Instruction, util::string_interner::StringIndex};
 
-use crate::{
-    bytecode::{instruction::Instruction, operand::Operand},
-    util::string_interner::StringIndex,
-};
-
+#[derive(Default)]
 pub struct FunctionScope {
-    pub block_scopes: Vec<HashMap<StringIndex, Operand>>,
+    names: Vec<(StringIndex, u8)>,
+    scopes: Vec<usize>,
     pub instructions: Vec<Instruction>,
-    pub registers: [bool; 256],
-    pub last_register: u8,
-}
-
-impl Default for FunctionScope {
-    fn default() -> Self {
-        Self {
-            block_scopes: Vec::new(),
-            instructions: Vec::new(),
-            registers: [false; 256],
-            last_register: 0,
-        }
-    }
+    pub next_register: u8,
 }
 
 impl FunctionScope {
@@ -32,44 +17,35 @@ impl FunctionScope {
     }
 
     pub fn enter_scope(&mut self) {
-        self.block_scopes.push(HashMap::new())
+        self.scopes.push(self.names.len());
     }
 
     pub fn exit_scope(&mut self) {
-        let scope = self.block_scopes.pop().unwrap();
-
-        for symbol in scope.values().copied() {
-            let register = symbol.unwrap_register();
-            self.free_register(register);
-        }
+        let size = self.scopes.pop().unwrap();
+        self.names.truncate(size);
     }
 
-    pub fn insert_symbol(&mut self, name: StringIndex, register: u8) {
-        let symbol = Operand::Register(register);
+    fn insert_symbol(&mut self, name: StringIndex) -> u8 {
+        let register = self.allocate_register();
 
-        self.block_scopes.last_mut().unwrap().insert(name, symbol);
+        self.names.push((name, register));
+
+        register
     }
 
-    pub fn lookup_symbol(&self, name: StringIndex) -> Option<Operand> {
-        self.block_scopes
-            .iter()
-            .rev()
-            .find_map(|table| table.get(&name).copied())
-    }
-
-    pub fn allocate_register(&mut self) -> u8 {
-        for index in 0..self.registers.len() {
-            if !self.registers[index] {
-                self.last_register = u8::max(index as u8, self.last_register);
-                self.registers[index] = true;
-                return index as u8;
+    pub fn lookup_or_declare(&mut self, name: StringIndex) -> u8 {
+        for (found_name, register) in self.names.iter().copied().rev() {
+            if found_name == name {
+                return register;
             }
         }
 
-        panic!("Exceed limited of registers")
+        self.insert_symbol(name)
     }
 
-    pub fn free_register(&mut self, index: u8) {
-        self.registers[index as usize] = false;
+    pub fn allocate_register(&mut self) -> u8 {
+        let register = self.next_register;
+        self.next_register += 1;
+        register
     }
 }

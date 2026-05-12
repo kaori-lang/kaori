@@ -271,18 +271,9 @@ impl<'a> Parser<'a> {
 
         self.consume(Token::RightParen)?;
 
-        let captures = if self.peek_token()? == Token::Pipe {
-            self.consume(Token::Pipe)?;
-            let captures = self.parse_comma_separator(Self::parse_identifier, Token::Pipe)?;
-            self.consume(Token::Pipe)?;
-            captures
-        } else {
-            Vec::new()
-        };
-
         let block = self.parse_block()?;
 
-        Ok(self.ast.function(name, parameters, captures, block))
+        Ok(self.ast.function(name, parameters, block))
     }
 
     fn parse_assign(&mut self) -> Result<ExprId, Error> {

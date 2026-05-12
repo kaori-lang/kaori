@@ -21,3 +21,6 @@ incremental = false
 overflow-checks = false
 
 
+[profile.profiling]
+inherits = "release"
+debug = true

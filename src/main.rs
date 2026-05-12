@@ -4,33 +4,11 @@ use std::{env::args, process::ExitCode};
 use std::{fs, time::Instant};
 
 use clap::{Arg, Command};
+
 use kaori::program::run_program;
 use std::path::PathBuf;
 
-/* fn main() -> ExitCode {
-    let source_to_run = args().nth(1);
-
-    if source_to_run.is_none() {
-        eprintln!("Error: No path was found for the program's source!");
-        return ExitCode::FAILURE;
-    }
-
-    let source_path = source_to_run.unwrap();
-
-    if let Ok(source) = fs::read_to_string(source_path) {
-        if let Err(err) = run_program(&source) {
-            err.report(&source);
-            return ExitCode::FAILURE;
-        }
-
-        return ExitCode::SUCCESS;
-    }
-
-    eprintln!("Error: Could not read the file by the given path.");
-    ExitCode::FAILURE
-} */
-
-fn main() {
+/* fn main() {
     let matches = Command::new("kaori")
         .arg(Arg::new("file").required(true))
         .get_matches();
@@ -45,4 +23,12 @@ fn main() {
         }
         Err(_) => eprintln!("Error: Could not read the file by the given path."),
     };
+}
+ */
+fn main() {
+    let source = fs::read_to_string("main.kr").expect("could not read main.kr");
+
+    if let Err(error) = run_program(&source) {
+        error.report(&source);
+    }
 }

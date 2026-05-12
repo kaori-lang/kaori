@@ -7,6 +7,7 @@ use crate::diagnostics::error::Error;
 use crate::program::{CONSTANT_POOL, FUNCTIONS};
 use crate::report_error;
 
+use crate::runtime::debug_value::DebugValue;
 use crate::runtime::gc::Closure;
 use crate::{bytecode::instruction::Instruction, runtime::value::Value};
 
@@ -119,6 +120,7 @@ impl Vm {
 
     pub fn run(&mut self) -> Result<Value, Error> {
         let mut registers = [Value::default(); 4096];
+        let registers = Registers(&mut registers);
 
         let Function {
             ref instructions,
@@ -126,12 +128,15 @@ impl Vm {
             ..
         } = FUNCTIONS.get().unwrap()[0];
 
-        let registers = Registers(&mut registers);
         let ip = instructions.as_ptr();
 
         let index = unsafe { (*ip).discriminant() };
 
-        Ok(unsafe { HANDLERS[index](ip, registers, self, registers_count).map_err(|e| *e)? })
+        let value =
+            unsafe { HANDLERS[index](ip, registers, self, registers_count).map_err(|e| *e)? };
+
+        println!("{:?}", DebugValue::new(value, &self.gc));
+        Ok(value)
     }
 }
 
@@ -187,17 +192,18 @@ unsafe extern "rust-preserve-none" fn opcode_add_ri(
             unreachable_unchecked()
         };
 
-        (dest, src1, Value::number(src2.decode()))
+        (dest, src1, src2)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot add, both operands must be numbers",
     );
 
-    registers.set_value(dest, Value::number(src1.as_number() + src2.as_number()));
+    registers.set_value(dest, Value::number(src1.as_number() + src2));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -242,17 +248,18 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_ri(
             unreachable_unchecked()
         };
 
-        (dest, src1, Value::number(src2.decode()))
+        (dest, src1, src2)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot subtract, both operands must be numbers",
     );
 
-    registers.set_value(dest, Value::number(src1.as_number() - src2.as_number()));
+    registers.set_value(dest, Value::number(src1.as_number() - src2));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -269,9 +276,10 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_ir(
             unreachable_unchecked()
         };
 
-        (dest, Value::number(src1.decode()), src2)
+        (dest, src1, src2)
     };
 
+    let src1 = src1.decode();
     let src2 = unsafe { registers.get_value(src2) };
 
     type_check!(
@@ -279,7 +287,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_ir(
         "cannot subtract, both operands must be numbers",
     );
 
-    registers.set_value(dest, Value::number(src1.as_number() - src2.as_number()));
+    registers.set_value(dest, Value::number(src1 - src2.as_number()));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -324,17 +332,18 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_ri(
             unreachable_unchecked()
         };
 
-        (dest, src1, Value::number(src2.decode()))
+        (dest, src1, src2)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot multiply, both operands must be numbers",
     );
 
-    registers.set_value(dest, Value::number(src1.as_number() * src2.as_number()));
+    registers.set_value(dest, Value::number(src1.as_number() * src2));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -379,17 +388,18 @@ unsafe extern "rust-preserve-none" fn opcode_divide_ri(
             unreachable_unchecked()
         };
 
-        (dest, src1, Value::number(src2.decode()))
+        (dest, src1, src2)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot divide, both operands must be numbers",
     );
 
-    registers.set_value(dest, Value::number(src1.as_number() / src2.as_number()));
+    registers.set_value(dest, Value::number(src1.as_number() / src2));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -406,9 +416,10 @@ unsafe extern "rust-preserve-none" fn opcode_divide_ir(
             unreachable_unchecked()
         };
 
-        (dest, Value::number(src1.decode()), src2)
+        (dest, src1, src2)
     };
 
+    let src1 = src1.decode();
     let src2 = unsafe { registers.get_value(src2) };
 
     type_check!(
@@ -416,7 +427,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_ir(
         "cannot divide, both operands must be numbers",
     );
 
-    registers.set_value(dest, Value::number(src1.as_number() / src2.as_number()));
+    registers.set_value(dest, Value::number(src1 / src2.as_number()));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -461,17 +472,18 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_ri(
             unreachable_unchecked()
         };
 
-        (dest, src1, Value::number(src2.decode()))
+        (dest, src1, src2)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot compute modulo, both operands must be numbers",
     );
 
-    registers.set_value(dest, Value::number(src1.as_number() % src2.as_number()));
+    registers.set_value(dest, Value::number(src1.as_number() % src2));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -488,9 +500,10 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_ir(
             unreachable_unchecked()
         };
 
-        (dest, Value::number(src1.decode()), src2)
+        (dest, src1, src2)
     };
 
+    let src1 = src1.decode();
     let src2 = unsafe { registers.get_value(src2) };
 
     type_check!(
@@ -498,7 +511,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_ir(
         "cannot compute modulo, both operands must be numbers",
     );
 
-    registers.set_value(dest, Value::number(src1.as_number() % src2.as_number()));
+    registers.set_value(dest, Value::number(src1 % src2.as_number()));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -538,12 +551,13 @@ unsafe extern "rust-preserve-none" fn opcode_equal_ri(
             unreachable_unchecked()
         };
 
-        (dest, src1, Value::number(src2.decode()))
+        (dest, src1, src2)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
-    registers.set_value(dest, Value::number((src1 == src2) as u8 as f64));
+    registers.set_value(dest, Value::number((src1.as_number() == src2) as u8 as f64));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -583,12 +597,13 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_ri(
             unreachable_unchecked()
         };
 
-        (dest, src1, Value::number(src2.decode()))
+        (dest, src1, src2)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
-    registers.set_value(dest, Value::number((src1 != src2) as u8 as f64));
+    registers.set_value(dest, Value::number((src1.as_number() != src2) as u8 as f64));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -636,20 +651,18 @@ unsafe extern "rust-preserve-none" fn opcode_less_ri(
             unreachable_unchecked()
         };
 
-        (dest, src1, Value::number(src2.decode()))
+        (dest, src1, src2)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() < src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::number((src1.as_number() < src2) as u8 as f64));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -697,20 +710,18 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_ri(
             unreachable_unchecked()
         };
 
-        (dest, src1, Value::number(src2.decode()))
+        (dest, src1, src2)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() <= src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::number((src1.as_number() <= src2) as u8 as f64));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -758,20 +769,18 @@ unsafe extern "rust-preserve-none" fn opcode_greater_ri(
             unreachable_unchecked()
         };
 
-        (dest, src1, Value::number(src2.decode()))
+        (dest, src1, src2)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() > src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::number((src1.as_number() > src2) as u8 as f64));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -819,20 +828,18 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_ri(
             unreachable_unchecked()
         };
 
-        (dest, src1, Value::number(src2.decode()))
+        (dest, src1, src2)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() >= src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::number((src1.as_number() >= src2) as u8 as f64));
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -1029,16 +1036,17 @@ unsafe extern "rust-preserve-none" fn opcode_set_field_i(
     vm: &mut Vm,
     frame_size: u8,
 ) -> Result<Value, Box<Error>> {
-    let (object, key, value) = unsafe {
+    let (object, key, src) = unsafe {
         let Instruction::SetFieldI { object, key, src } = *ip else {
             unreachable_unchecked()
         };
 
-        (object, key, Value::number(src.decode()))
+        (object, key, src)
     };
 
     let object = unsafe { registers.get_value(object) };
     let key = unsafe { registers.get_value(key) };
+    let value = Value::number(src.decode());
 
     type_check!(object.is_dict(), "cannot set field, value is not a dict",);
 
@@ -1081,22 +1089,17 @@ unsafe extern "rust-preserve-none" fn opcode_get_field(
 
 #[inline(never)]
 unsafe extern "rust-preserve-none" fn opcode_create_closure(
-    mut ip: *const Instruction,
+    ip: *const Instruction,
     mut registers: Registers,
     vm: &mut Vm,
     frame_size: u8,
 ) -> Result<Value, Box<Error>> {
-    let (dest, captures_count, src) = unsafe {
-        let Instruction::CreateClosure {
-            dest,
-            captures: captures_count,
-            src,
-        } = *ip
-        else {
+    let (dest, src) = unsafe {
+        let Instruction::CreateClosure { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
-        (dest, captures_count, src)
+        (dest, src)
     };
 
     let Function {
@@ -1109,30 +1112,12 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
         instructions: instructions.as_ptr(),
         arity,
         size: registers_count,
-        captured: vec![Value::default(); captures_count as usize].into_boxed_slice(),
+        captured: Vec::new(),
     };
 
     let closure = vm.gc.allocate_closure(closure);
 
     registers.set_value(dest, closure);
-
-    let mut captured_values = Vec::with_capacity(captures_count as usize);
-
-    for _ in 0..captures_count {
-        let capture = unsafe {
-            ip = ip.add(1);
-
-            let Instruction::CaptureValue { src } = *ip else {
-                unreachable_unchecked()
-            };
-
-            registers.get_value(src)
-        };
-
-        captured_values.push(capture);
-    }
-
-    vm.gc.get_mut_closure(closure).captured = captured_values.into_boxed_slice();
 
     dispatch_next!(ip, registers, vm, frame_size)
 }
@@ -1330,17 +1315,18 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_ri(
             unreachable_unchecked()
         };
 
-        (src1, Value::number(src2.decode()), offset)
+        (src1, src2, offset)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
-    if src1.as_number() < src2.as_number() {
+    if src1.as_number() < src2 {
         dispatch_offset!(ip, registers, vm, frame_size, offset)
     } else {
         dispatch_next!(ip, registers, vm, frame_size)
@@ -1389,17 +1375,18 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_ri(
             unreachable_unchecked()
         };
 
-        (src1, Value::number(src2.decode()), offset)
+        (src1, src2, offset)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
-    if src1.as_number() <= src2.as_number() {
+    if src1.as_number() <= src2 {
         dispatch_offset!(ip, registers, vm, frame_size, offset)
     } else {
         dispatch_next!(ip, registers, vm, frame_size)
@@ -1448,17 +1435,18 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_ri(
             unreachable_unchecked()
         };
 
-        (src1, Value::number(src2.decode()), offset)
+        (src1, src2, offset)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
-    if src1.as_number() > src2.as_number() {
+    if src1.as_number() > src2 {
         dispatch_offset!(ip, registers, vm, frame_size, offset)
     } else {
         dispatch_next!(ip, registers, vm, frame_size)
@@ -1507,17 +1495,18 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_ri(
             unreachable_unchecked()
         };
 
-        (src1, Value::number(src2.decode()), offset)
+        (src1, src2, offset)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
     type_check!(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
     );
 
-    if src1.as_number() >= src2.as_number() {
+    if src1.as_number() >= src2 {
         dispatch_offset!(ip, registers, vm, frame_size, offset)
     } else {
         dispatch_next!(ip, registers, vm, frame_size)
@@ -1561,12 +1550,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_ri(
             unreachable_unchecked()
         };
 
-        (src1, Value::number(src2.decode()), offset)
+        (src1, src2, offset)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
-    if src1 == src2 {
+    if src1.as_number() == src2 {
         dispatch_offset!(ip, registers, vm, frame_size, offset)
     } else {
         dispatch_next!(ip, registers, vm, frame_size)
@@ -1610,12 +1600,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_ri(
             unreachable_unchecked()
         };
 
-        (src1, Value::number(src2.decode()), offset)
+        (src1, src2, offset)
     };
 
     let src1 = unsafe { registers.get_value(src1) };
+    let src2 = src2.decode();
 
-    if src1 != src2 {
+    if src1.as_number() != src2 {
         dispatch_offset!(ip, registers, vm, frame_size, offset)
     } else {
         dispatch_next!(ip, registers, vm, frame_size)

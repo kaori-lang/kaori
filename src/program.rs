@@ -3,7 +3,9 @@ use std::sync::{LazyLock, Mutex, OnceLock};
 use logos::Logos;
 
 use crate::{
-    bytecode::{Function, emit_bytecode::Compiler, optimize_bytecode::optimize_bytecode},
+    bytecode::{
+        Function, emit_bytecode::Compiler, optimize_bytecode::optimize_bytecode, resolve::resolve,
+    },
     diagnostics::error::Error,
     runtime::{value::Value, vm::Vm},
     syntax::{parser::Parser, token::Token},
@@ -19,18 +21,20 @@ pub fn compile_source_code(source: &str) -> Result<(), Error> {
     let tokens = Token::lexer(source).spanned();
     let parser = Parser::new(tokens);
     let ast = parser.parse()?;
+    let captures = resolve(&ast);
 
-    let compiler = Compiler::default();
-    let (mut bytecode, constants) = compiler.compile(&ast);
+    println!("{:#?}", captures);
 
-    optimize_bytecode(&mut bytecode);
+    //let (mut bytecode, constants) = Compiler::default().compile(&ast);
+
+    //optimize_bytecode(&mut bytecode);
 
     /*  for function in bytecode.iter() {
         println!("{}", function);
-    } */
+    }
 
     FUNCTIONS.set(bytecode).unwrap();
-    CONSTANT_POOL.set(constants).unwrap();
+    CONSTANT_POOL.set(constants).unwrap(); */
 
     Ok(())
 }
@@ -38,9 +42,9 @@ pub fn compile_source_code(source: &str) -> Result<(), Error> {
 pub fn run_program(source: &str) -> Result<(), Error> {
     compile_source_code(source)?;
 
-    let mut vm = Vm::new();
+    /*     let mut vm = Vm::new();
 
-    vm.run()?;
-
+       vm.run()?;
+    */
     Ok(())
 }

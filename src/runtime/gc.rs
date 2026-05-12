@@ -10,7 +10,7 @@ pub struct Closure {
     pub instructions: *const Instruction,
     pub arity: u8,
     pub size: u8,
-    pub captured: Box<[Value]>,
+    pub captured: Vec<Value>,
 }
 
 enum Object {

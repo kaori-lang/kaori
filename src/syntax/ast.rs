@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-use std::ops::Range;
-
 use crate::{
     syntax::ops::{AssignOp, BinaryOp, UnaryOp},
     util::string_interner::StringIndex,
 };
+
+use std::collections::HashMap;
+use std::ops::Range;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ExprId(u32);
@@ -64,7 +64,6 @@ pub enum Expr {
     Function {
         name: Option<ExprId>,
         parameters: Box<[ExprId]>,
-        captures: Box<[ExprId]>,
         block: ExprId,
     },
     Block(Box<[ExprId]>),
@@ -217,14 +216,12 @@ impl Ast {
         &mut self,
         name: Option<ExprId>,
         parameters: Vec<ExprId>,
-        captures: Vec<ExprId>,
         block: ExprId,
     ) -> ExprId {
         self.insert(
             Expr::Function {
                 name,
                 parameters: parameters.into(),
-                captures: captures.into(),
                 block,
             },
             None,

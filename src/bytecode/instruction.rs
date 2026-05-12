@@ -39,8 +39,8 @@ pub enum Instruction {
     SetField { object: u8, key: u8, value: u8 },
     SetFieldI { object: u8, key: u8, src: Imm },
     GetField { dest: u8, object: u8, key: u8 },
-    CreateClosure { dest: u8, captures: u8, src: u32 },
-    CaptureValue { src: u8 },
+    CreateClosure { dest: u8, src: u32 },
+    CaptureValue { dest: u8, src: u8 },
     Call { dest: u8, src: u8, arity: u8 },
     Return { src: u8 },
     Jump { offset: i32 },
@@ -225,19 +225,11 @@ impl fmt::Display for Instruction {
             Self::JumpIfNotEqualI { src1, src2, offset } => {
                 write!(f, "JMP_IF_NEQ r{} {} {}", src1, src2, offset)
             }
-            Self::CreateClosure {
-                dest,
-                src,
-                captures,
-            } => {
-                write!(
-                    f,
-                    "CREATE_CLOSURE r{} Function({}) CAPTURES: {}",
-                    dest, src, captures
-                )
+            Self::CreateClosure { dest, src } => {
+                write!(f, "CREATE_CLOSURE r{} Function({})", dest, src)
             }
-            Self::CaptureValue { src } => {
-                write!(f, "CAPTURE_VALUE r{}", src)
+            Self::CaptureValue { dest, src } => {
+                write!(f, "CAPTURE_VALUE r{} r{}", dest, src)
             }
             Self::Nop => {
                 write!(f, "NOP")

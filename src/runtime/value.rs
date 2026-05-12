@@ -1,4 +1,4 @@
-use crate::{program::INTERNER, util::string_interner::StringIndex};
+use crate::util::string_interner::StringIndex;
 
 const QNAN: u64 = 0x7FFC_0000_0000_0000;
 const PTR_MASK: u64 = 0x0000_FFFF_FFFF_FFFF;
@@ -72,12 +72,6 @@ impl Value {
 
     pub fn vec(index: usize) -> Self {
         Self(TAG_VEC | (index as u64))
-    }
-
-    pub fn as_string(self) -> &'static str {
-        let index = StringIndex(self.as_index() as u32);
-
-        INTERNER.lock().unwrap().resolve(index)
     }
 
     pub fn as_index(self) -> usize {
