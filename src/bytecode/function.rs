@@ -10,7 +10,6 @@ pub struct Function {
 
 impl Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "SIZE:  {}", self.registers_count)?;
         for (ip, instr) in self.instructions.iter().enumerate() {
             writeln!(f, "{:04}  {}", ip, instr)?;
         }

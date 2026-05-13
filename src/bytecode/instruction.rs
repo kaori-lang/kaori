@@ -37,7 +37,6 @@ pub enum Instruction {
     LoadImm { dest: u8, src: Imm },
     CreateDict { dest: u8 },
     SetField { object: u8, key: u8, value: u8 },
-    SetFieldI { object: u8, key: u8, src: Imm },
     GetField { dest: u8, object: u8, key: u8 },
     CreateClosure { dest: u8, src: u32 },
     CaptureValue { dest: u8, src: u8 },
@@ -169,14 +168,11 @@ impl fmt::Display for Instruction {
             Self::SetField { object, key, value } => {
                 write!(f, "SET r{} r{} r{}", object, key, value)
             }
-            Self::SetFieldI { object, key, src } => {
-                write!(f, "SET r{} r{} {}", object, key, src)
-            }
             Self::GetField { dest, object, key } => {
                 write!(f, "GET r{} r{} r{}", dest, object, key)
             }
             Self::Call { dest, src, arity } => {
-                write!(f, "CALL r{} r{} ARITY: {}", dest, src, arity)
+                write!(f, "CALL r{} r{} ARITY({})", dest, src, arity)
             }
             Self::Return { src } => {
                 write!(f, "RET r{}", src)
@@ -226,7 +222,7 @@ impl fmt::Display for Instruction {
                 write!(f, "JMP_IF_NEQ r{} {} {}", src1, src2, offset)
             }
             Self::CreateClosure { dest, src } => {
-                write!(f, "CREATE_CLOSURE r{} Function({})", dest, src)
+                write!(f, "CREATE_CLOSURE r{} FUNCTIONS[{}]", dest, src)
             }
             Self::CaptureValue { dest, src } => {
                 write!(f, "CAPTURE_VALUE r{} r{}", dest, src)

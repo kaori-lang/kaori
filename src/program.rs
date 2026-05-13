@@ -27,9 +27,10 @@ pub fn compile_source_code(source: &str) -> Result<(), Error> {
 
     optimize_bytecode(&mut bytecode);
 
-    for function in bytecode.iter() {
+    /*  for (index, function) in bytecode.iter().enumerate() {
+        println!("FUNCTION {}", index);
         println!("{}", function);
-    }
+    } */
 
     FUNCTIONS.set(bytecode).unwrap();
     CONSTANT_POOL.set(constants).unwrap();

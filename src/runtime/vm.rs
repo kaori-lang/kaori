@@ -18,7 +18,7 @@ type Handler = unsafe extern "rust-preserve-none" fn(
     frame_size: u8,
 ) -> Result<Value, Box<Error>>;
 
-static HANDLERS: [Handler; 55] = [
+static HANDLERS: [Handler; 54] = [
     opcode_add_rr,
     opcode_add_ri,
     opcode_subtract_rr,
@@ -51,8 +51,7 @@ static HANDLERS: [Handler; 55] = [
     opcode_load_k,
     opcode_load_imm,
     opcode_create_dict,
-    opcode_set_field_r,
-    opcode_set_field_i,
+    opcode_set_field,
     opcode_get_field,
     opcode_create_closure,
     opcode_capture_value,
@@ -135,7 +134,7 @@ impl Vm {
         let value =
             unsafe { HANDLERS[index](ip, registers, self, registers_count).map_err(|e| *e)? };
 
-        println!("{:?}", DebugValue::new(value, &self.gc));
+        //println!("{:?}", DebugValue::new(value, &self.gc));
         Ok(value)
     }
 }
@@ -1004,7 +1003,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_dict(
 }
 
 #[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_set_field_r(
+unsafe extern "rust-preserve-none" fn opcode_set_field(
     ip: *const Instruction,
     registers: Registers,
     vm: &mut Vm,
@@ -1021,32 +1020,6 @@ unsafe extern "rust-preserve-none" fn opcode_set_field_r(
     let object = unsafe { registers.get_value(object) };
     let key = unsafe { registers.get_value(key) };
     let value = unsafe { registers.get_value(value) };
-
-    type_check!(object.is_dict(), "cannot set field, value is not a dict",);
-
-    vm.gc.get_mut_dict(object).insert(key, value);
-
-    dispatch_next!(ip, registers, vm, frame_size)
-}
-
-#[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_set_field_i(
-    ip: *const Instruction,
-    registers: Registers,
-    vm: &mut Vm,
-    frame_size: u8,
-) -> Result<Value, Box<Error>> {
-    let (object, key, src) = unsafe {
-        let Instruction::SetFieldI { object, key, src } = *ip else {
-            unreachable_unchecked()
-        };
-
-        (object, key, src)
-    };
-
-    let object = unsafe { registers.get_value(object) };
-    let key = unsafe { registers.get_value(key) };
-    let value = Value::number(src.decode());
 
     type_check!(object.is_dict(), "cannot set field, value is not a dict",);
 
@@ -1262,10 +1235,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_false(
         "cannot use this as a condition, value must be a boolean",
     );
 
-    if src.is_truthy() {
-        dispatch_next!(ip, registers, vm, frame_size)
-    } else {
+    if src.as_number() == 0.0 {
         dispatch_offset!(ip, registers, vm, frame_size, offset)
+    } else {
+        dispatch_next!(ip, registers, vm, frame_size)
     }
 }
 
@@ -1291,10 +1264,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_true(
         "cannot use this as a condition, value must be a boolean",
     );
 
-    if src.is_truthy() {
-        dispatch_offset!(ip, registers, vm, frame_size, offset)
-    } else {
+    if src.as_number() == 0.0 {
         dispatch_next!(ip, registers, vm, frame_size)
+    } else {
+        dispatch_offset!(ip, registers, vm, frame_size, offset)
     }
 }
 

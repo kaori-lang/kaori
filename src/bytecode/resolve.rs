@@ -1,6 +1,7 @@
-use std::{collections::HashMap, vec};
-
-use foldhash::{HashSet, HashSetExt};
+use std::{
+    collections::{HashMap, HashSet},
+    vec,
+};
 
 use crate::{
     diagnostics::error::Error,

@@ -54,10 +54,6 @@ impl Value {
         f64::from_bits(self.0)
     }
 
-    pub fn is_truthy(self) -> bool {
-        self.is_number() && self.as_number() != 0.0
-    }
-
     pub fn string(index: StringIndex) -> Self {
         Self(TAG_STRING | (index.0 as u64))
     }

@@ -8,7 +8,7 @@ use clap::{Arg, Command};
 use kaori::program::run_program;
 use std::path::PathBuf;
 
-/* fn main() {
+fn main() {
     let matches = Command::new("kaori")
         .arg(Arg::new("file").required(true))
         .get_matches();
@@ -24,11 +24,11 @@ use std::path::PathBuf;
         Err(_) => eprintln!("Error: Could not read the file by the given path."),
     };
 }
- */
-fn main() {
+
+/* fn main() {
     let source = fs::read_to_string("main.kr").expect("could not read main.kr");
 
     if let Err(error) = run_program(&source) {
         error.report(&source);
     }
-}
+} */
