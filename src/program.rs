@@ -1,16 +1,14 @@
-use std::sync::{LazyLock, Mutex, OnceLock};
+use std::sync::{LazyLock, Mutex};
 
 use logos::Logos;
 
 use crate::{
     bytecode::{
-        Function, emit_bytecode::Compiler, optimize_bytecode::optimize_bytecode, resolve::resolve,
+        Function, emit_bytecode::CompilerContext, optimize_bytecode::optimize_bytecode,
+        resolve::resolve,
     },
     diagnostics::error::Error,
-    runtime::{
-        value::Value,
-        vm::{VmState, run_vm},
-    },
+    runtime::vm::run_vm,
     syntax::{parser::Parser, token::Token},
     util::string_interner::StringInterner,
 };
@@ -24,14 +22,16 @@ pub fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {
     let ast = parser.parse()?;
     let captures = resolve(&ast)?;
 
-    let mut functions = Compiler::default().compile(&ast, captures);
+    let compiler = CompilerContext::new(ast, captures);
+
+    let mut functions = compiler.compile();
 
     optimize_bytecode(&mut functions);
 
-    /*     for (index, function) in bytecode.iter().enumerate() {
+    for (index, function) in functions.iter().enumerate() {
         println!("FUNCTION {}", index);
         println!("{}", function);
-    } */
+    }
 
     Ok(functions)
 }

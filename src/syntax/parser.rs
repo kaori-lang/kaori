@@ -282,12 +282,17 @@ impl<'a> Parser<'a> {
         let (token, span) = self.peek()?;
 
         let operator = match token {
-            Token::Assign => AssignOp::Assign,
             Token::AddAssign => AssignOp::AddAssign,
             Token::SubtractAssign => AssignOp::SubtractAssign,
             Token::MultiplyAssign => AssignOp::MultiplyAssign,
             Token::DivideAssign => AssignOp::DivideAssign,
             Token::ModuloAssign => AssignOp::ModuloAssign,
+            Token::Assign => {
+                self.next()?;
+                let right = self.parse_or()?;
+
+                return Ok(self.ast.assign(left, right, span));
+            }
             Token::DeclareAssign => {
                 self.next()?;
                 let right = self.parse_or()?;
@@ -301,7 +306,7 @@ impl<'a> Parser<'a> {
 
         let right = self.parse_or()?;
 
-        Ok(self.ast.assign(operator, left, right, span))
+        Ok(self.ast.compound_assign(operator, left, right, span))
     }
 
     fn parse_or(&mut self) -> Result<ExprId, Error> {

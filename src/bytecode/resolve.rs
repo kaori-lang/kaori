@@ -155,7 +155,8 @@ fn resolve_expression(
 
             environment.insert(name);
         }
-        Expr::Assign { left, right, .. }
+        Expr::CompoundAssign { left, right, .. }
+        | Expr::Assign { left, right, .. }
         | Expr::LogicalAnd { left, right }
         | Expr::LogicalOr { left, right }
         | Expr::Binary { left, right, .. } => {

@@ -35,6 +35,10 @@ pub enum Expr {
         right: ExprId,
     },
     Assign {
+        left: ExprId,
+        right: ExprId,
+    },
+    CompoundAssign {
         operator: AssignOp,
         left: ExprId,
         right: ExprId,
@@ -146,7 +150,11 @@ impl Ast {
         self.insert(Expr::Unary { operator, right }, Some(span))
     }
 
-    pub fn assign(
+    pub fn assign(&mut self, left: ExprId, right: ExprId, span: Range<usize>) -> ExprId {
+        self.insert(Expr::Assign { left, right }, Some(span))
+    }
+
+    pub fn compound_assign(
         &mut self,
         operator: AssignOp,
         left: ExprId,
@@ -154,7 +162,7 @@ impl Ast {
         span: Range<usize>,
     ) -> ExprId {
         self.insert(
-            Expr::Assign {
+            Expr::CompoundAssign {
                 operator,
                 left,
                 right,

@@ -1,4 +1,4 @@
-use crate::runtime::value::Value;
+use crate::{runtime::value::Value, util::string_interner::StringIndex};
 
 use super::instruction::Instruction;
 use std::fmt::{self, Display, Formatter};
@@ -18,5 +18,37 @@ impl Display for Function {
         }
         writeln!(f)?;
         Ok(())
+    }
+}
+
+impl Function {
+    pub fn emit_instruction(&mut self, instruction: Instruction) -> usize {
+        let index = self.instructions.len();
+        self.instructions.push(instruction);
+
+        index
+    }
+
+    fn get_or_insert(&mut self, value: Value) -> usize {
+        if let Some(index) = self.constants.iter().copied().position(|c| c == value) {
+            return index;
+        }
+
+        let index = self.constants.len();
+        self.constants.push(value);
+
+        index
+    }
+
+    pub fn push_string(&mut self, value: StringIndex) -> usize {
+        self.get_or_insert(Value::string(value))
+    }
+
+    pub fn push_number(&mut self, value: f64) -> usize {
+        self.get_or_insert(Value::number(value))
+    }
+
+    pub fn push_unit(&mut self) -> usize {
+        self.get_or_insert(Value::number(0.0))
     }
 }
