@@ -106,11 +106,12 @@ macro_rules! type_check {
     }};
 }
 
-pub fn run_vm(functions: Vec<Function>, constants: Vec<Value>) -> Result<Value, Error> {
+pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
     let Function {
         ref instructions,
+        ref constants,
         registers_count,
-        ..
+        arity,
     } = functions[0];
 
     let ip = instructions.as_ptr();
@@ -1115,18 +1116,21 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
 
         (dest, src)
     };
+    let closure = {
+        let Function {
+            ref instructions,
+            registers_count,
+            arity,
+            ref constants,
+        } = state.functions[src as usize];
 
-    let Function {
-        ref instructions,
-        registers_count,
-        arity,
-    } = state.functions[src as usize];
-
-    let closure = Closure {
-        instructions: instructions.as_ptr(),
-        arity,
-        size: registers_count,
-        captured: Vec::new(),
+        Closure {
+            instructions: instructions.as_ptr(),
+            constants: constants.as_ptr(),
+            arity,
+            size: registers_count,
+            captured: Vec::new(),
+        }
     };
 
     let closure = state.gc.allocate_closure(closure);
@@ -1185,6 +1189,7 @@ unsafe extern "rust-preserve-none" fn opcode_call(
     let return_value = {
         let Closure {
             instructions,
+            constants,
             arity: closure_arity,
             size,
             ref captured,
@@ -1203,6 +1208,7 @@ unsafe extern "rust-preserve-none" fn opcode_call(
         };
 
         let mut registers = Registers(&mut registers.0[frame_size as usize..]);
+        let constants = Constants(constants);
 
         for (i, value) in captured.iter().copied().enumerate() {
             registers.set_value(closure_arity + i as u8, value);

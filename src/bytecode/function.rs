@@ -1,9 +1,12 @@
+use crate::runtime::value::Value;
+
 use super::instruction::Instruction;
 use std::fmt::{self, Display, Formatter};
 
 #[derive(Debug, Default)]
 pub struct Function {
     pub instructions: Vec<Instruction>,
+    pub constants: Vec<Value>,
     pub registers_count: u8,
     pub arity: u8,
 }

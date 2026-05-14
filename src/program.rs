@@ -18,13 +18,13 @@ use crate::{
 pub static INTERNER: LazyLock<Mutex<StringInterner>> =
     LazyLock::new(|| Mutex::new(StringInterner::default()));
 
-pub fn compile_source_code(source: &str) -> Result<(Vec<Value>, Vec<Function>), Error> {
+pub fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {
     let tokens = Token::lexer(source).spanned();
     let parser = Parser::new(tokens);
     let ast = parser.parse()?;
     let captures = resolve(&ast)?;
 
-    let (mut functions, constants) = Compiler::default().compile(&ast, captures);
+    let mut functions = Compiler::default().compile(&ast, captures);
 
     optimize_bytecode(&mut functions);
 
@@ -33,13 +33,13 @@ pub fn compile_source_code(source: &str) -> Result<(Vec<Value>, Vec<Function>), 
         println!("{}", function);
     } */
 
-    Ok((constants, functions))
+    Ok(functions)
 }
 
 pub fn run_program(source: &str) -> Result<(), Error> {
-    let (constants, functions) = compile_source_code(source)?;
+    let functions = compile_source_code(source)?;
 
-    run_vm(functions, constants)?;
+    run_vm(functions)?;
 
     Ok(())
 }

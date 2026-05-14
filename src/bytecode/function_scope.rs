@@ -1,10 +1,15 @@
-use crate::{bytecode::instruction::Instruction, util::string_interner::StringIndex};
+use crate::{
+    bytecode::{instruction::Instruction, operand::Operand},
+    runtime::value::Value,
+    util::string_interner::StringIndex,
+};
 
 #[derive(Default)]
 pub struct FunctionScope {
     names: Vec<(StringIndex, u8)>,
     scopes: Vec<usize>,
     pub instructions: Vec<Instruction>,
+    pub constants: Vec<Value>,
     pub next_register: u8,
 }
 
@@ -14,6 +19,35 @@ impl FunctionScope {
         self.instructions.push(instruction);
 
         index
+    }
+
+    fn get_or_insert(&mut self, value: Value) -> usize {
+        if let Some(index) = self.constants.iter().copied().position(|c| c == value) {
+            return index;
+        }
+
+        let index = self.constants.len();
+        self.constants.push(value);
+
+        index
+    }
+
+    pub fn push_string(&mut self, value: StringIndex) -> Operand {
+        let index = self.get_or_insert(Value::string(value));
+
+        Operand::Constant(index as u16)
+    }
+
+    pub fn push_number(&mut self, value: f64) -> Operand {
+        let index = self.get_or_insert(Value::number(value));
+
+        Operand::Constant(index as u16)
+    }
+
+    pub fn push_unit(&mut self) -> Operand {
+        let index = self.get_or_insert(Value::number(0.0));
+
+        Operand::Constant(index as u16)
     }
 
     pub fn enter_scope(&mut self) {

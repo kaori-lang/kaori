@@ -16,34 +16,14 @@ use crate::{
 #[derive(Default)]
 pub struct Compiler {
     functions: Vec<Option<Function>>,
-    constants: Vec<Value>,
 }
 
 impl Compiler {
-    fn get_or_insert(&mut self, value: Value) -> usize {
-        if let Some(index) = self.constants.iter().copied().position(|c| c == value) {
-            return index;
-        }
-
-        let index = self.constants.len();
-        self.constants.push(value);
-
-        index
-    }
-
-    pub fn push_string(&mut self, value: StringIndex) -> usize {
-        self.get_or_insert(Value::string(value))
-    }
-
-    pub fn push_number(&mut self, value: f64) -> usize {
-        self.get_or_insert(Value::number(value))
-    }
-
     pub fn compile(
         mut self,
         ast: &Ast,
         captures: HashMap<ExprId, Vec<StringIndex>>,
-    ) -> (Vec<Function>, Vec<Value>) {
+    ) -> Vec<Function> {
         let entry = ast.entry();
 
         let index = self.functions.len();
@@ -65,6 +45,7 @@ impl Compiler {
 
         let function = Function {
             instructions: scope.instructions,
+            constants: scope.constants,
             registers_count: scope.next_register,
             arity: 0,
         };
@@ -77,7 +58,7 @@ impl Compiler {
             .map(|f| f.unwrap())
             .collect::<Vec<Function>>();
 
-        (functions, self.constants)
+        functions
     }
 
     fn compile_block(
@@ -100,7 +81,7 @@ impl Compiler {
         expressions
             .iter()
             .copied()
-            .fold(self.unit(), |_, expression| {
+            .fold(scope.push_unit(), |_, expression| {
                 self.compile_expression(ast, scope, captures, expression)
             })
     }
@@ -171,6 +152,7 @@ impl Compiler {
 
                 let function = Function {
                     instructions: scope.instructions,
+                    constants: scope.constants,
                     registers_count: scope.next_register,
                     arity: parameters.len() as u8,
                 };
@@ -406,7 +388,7 @@ impl Compiler {
                 let src = if let Some(else_branch) = else_branch {
                     self.compile_expression(ast, scope, captures, else_branch)
                 } else {
-                    self.unit()
+                    scope.push_unit()
                 };
                 let src = materialize(scope, src);
                 scope.emit_instruction(Instruction::Move {
@@ -422,7 +404,7 @@ impl Compiler {
 
                 Operand::Register(dest)
             }
-            Expr::ForLoop { .. } => self.unit(),
+            Expr::ForLoop { .. } => scope.push_unit(),
             Expr::WhileLoop { condition, block } => {
                 let src = self.compile_expression(ast, scope, captures, condition);
                 let src = materialize(scope, src);
@@ -451,19 +433,19 @@ impl Compiler {
                     scope.instructions.len() as i32 - jump_if_false as i32,
                 );
 
-                self.unit()
+                scope.push_unit()
             }
             Expr::Return(expression) => {
                 let src = match expression {
                     Some(expr) => self.compile_expression(ast, scope, captures, expr),
-                    None => self.unit(),
+                    None => scope.push_unit(),
                 };
 
                 let src = materialize(scope, src);
                 scope.emit_instruction(Instruction::Return {
                     src: src.unwrap_register(),
                 });
-                self.unit()
+                scope.push_unit()
             }
             Expr::Break => todo!(),
             Expr::Continue => todo!(),
@@ -472,16 +454,8 @@ impl Compiler {
 
                 Operand::Register(found)
             }
-            Expr::StringLiteral(value) => {
-                let index = self.push_string(value);
-
-                Operand::Constant(index as u16)
-            }
-            Expr::NumberLiteral(value) => {
-                let index = self.push_number(value);
-
-                Operand::Constant(index as u16)
-            }
+            Expr::StringLiteral(value) => scope.push_string(value),
+            Expr::NumberLiteral(value) => scope.push_number(value),
             Expr::DictLiteral { ref fields } => {
                 let dest = scope.allocate_register();
                 scope.emit_instruction(Instruction::CreateDict { dest });
@@ -683,7 +657,7 @@ impl Compiler {
                scope.instructions.len() as i32 - jump_if_false as i32,
            );
 
-           self.unit()
+           scope.push_unit()
        }
 
     */
@@ -714,10 +688,6 @@ impl Compiler {
             }
             _ => false,
         }
-    }
-
-    fn unit(&mut self) -> Operand {
-        Operand::Constant(self.push_number(0.0) as u16)
     }
 }
 fn materialize(scope: &mut FunctionScope, src: Operand) -> Operand {
