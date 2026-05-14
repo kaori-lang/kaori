@@ -1,10 +1,7 @@
-use crate::bytecode::immediate::Imm;
-
 #[derive(Clone, Copy)]
 pub enum Operand {
-    Constant(usize),
+    Constant(u16),
     Register(u8),
-    Immediate(Imm),
 }
 
 impl Operand {

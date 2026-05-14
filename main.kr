@@ -1,32 +1,9 @@
-width := 800;
-height := 800;
-max_iter := 1000;
-
-x_min := -2.5;
-x_max := 1.0;
-y_min := -1.25;
-y_max := 1.25;
-
-y := 0;
-while y < height {
-    x := 0;
-    while x < width {
-        cx := x_min + (x * (x_max - x_min) / width);
-        cy := y_min + (y * (y_max - y_min) / height);
-
-        zx := 0.0;
-        zy := 0.0;
-        iter := 0;
-
-        while (zx * zx + zy * zy < 4.0) and (iter < max_iter) {
-            xtemp := zx * zx - zy * zy + cx;
-            zy = 2.0 * zx * zy + cy;
-            zx = xtemp;
-            iter = iter + 1;
-        }
-
-        x = x + 1;
+fn fib(n) {
+    if n < 2 { 
+        n 
+    } else {
+        fib(n - 1) + fib(n - 2) 
     }
-    y = y + 1;
 }
 
+fib(30);

@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     bytecode::{
-        function::Function, function_scope::FunctionScope, immediate::Imm,
-        instruction::Instruction, operand::Operand,
+        function::Function, function_scope::FunctionScope, instruction::Instruction,
+        operand::Operand,
     },
     runtime::value::Value,
     syntax::{
@@ -97,9 +97,12 @@ impl Compiler {
             }
         }
 
-        expressions.iter().copied().fold(unit(), |_, expression| {
-            self.compile_expression(ast, scope, captures, expression)
-        })
+        expressions
+            .iter()
+            .copied()
+            .fold(self.unit(), |_, expression| {
+                self.compile_expression(ast, scope, captures, expression)
+            })
     }
 
     fn compile_expression(
@@ -403,7 +406,7 @@ impl Compiler {
                 let src = if let Some(else_branch) = else_branch {
                     self.compile_expression(ast, scope, captures, else_branch)
                 } else {
-                    unit()
+                    self.unit()
                 };
                 let src = materialize(scope, src);
                 scope.emit_instruction(Instruction::Move {
@@ -419,7 +422,7 @@ impl Compiler {
 
                 Operand::Register(dest)
             }
-            Expr::ForLoop { .. } => unit(),
+            Expr::ForLoop { .. } => self.unit(),
             Expr::WhileLoop { condition, block } => {
                 let src = self.compile_expression(ast, scope, captures, condition);
                 let src = materialize(scope, src);
@@ -448,18 +451,19 @@ impl Compiler {
                     scope.instructions.len() as i32 - jump_if_false as i32,
                 );
 
-                unit()
+                self.unit()
             }
             Expr::Return(expression) => {
                 let src = match expression {
                     Some(expr) => self.compile_expression(ast, scope, captures, expr),
-                    None => unit(),
+                    None => self.unit(),
                 };
+
                 let src = materialize(scope, src);
                 scope.emit_instruction(Instruction::Return {
                     src: src.unwrap_register(),
                 });
-                unit()
+                self.unit()
             }
             Expr::Break => todo!(),
             Expr::Continue => todo!(),
@@ -471,16 +475,12 @@ impl Compiler {
             Expr::StringLiteral(value) => {
                 let index = self.push_string(value);
 
-                Operand::Constant(index)
+                Operand::Constant(index as u16)
             }
             Expr::NumberLiteral(value) => {
-                if let Some(imm) = Imm::try_to_encode(value) {
-                    Operand::Immediate(imm)
-                } else {
-                    let index = self.push_number(value);
+                let index = self.push_number(value);
 
-                    Operand::Constant(index)
-                }
+                Operand::Constant(index as u16)
             }
             Expr::DictLiteral { ref fields } => {
                 let dest = scope.allocate_register();
@@ -529,111 +529,109 @@ impl Compiler {
         let instruction = match (src1, src2) {
             (Operand::Register(src1), Operand::Register(src2)) => match operator {
                 BinaryOp::Add => Instruction::Add { dest, src1, src2 },
+
                 BinaryOp::Subtract => Instruction::Subtract { dest, src1, src2 },
+
                 BinaryOp::Multiply => Instruction::Multiply { dest, src1, src2 },
+
                 BinaryOp::Divide => Instruction::Divide { dest, src1, src2 },
+
                 BinaryOp::Modulo => Instruction::Modulo { dest, src1, src2 },
+
                 BinaryOp::Equal => Instruction::Equal { dest, src1, src2 },
+
                 BinaryOp::NotEqual => Instruction::NotEqual { dest, src1, src2 },
+
                 BinaryOp::Less => Instruction::Less { dest, src1, src2 },
+
                 BinaryOp::LessEqual => Instruction::LessEqual { dest, src1, src2 },
+
                 BinaryOp::Greater => Instruction::Greater { dest, src1, src2 },
+
                 BinaryOp::GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
             },
-            (Operand::Register(src1), Operand::Immediate(src2)) => match operator {
-                BinaryOp::Add => Instruction::AddI { dest, src1, src2 },
-                BinaryOp::Subtract => Instruction::SubtractRI { dest, src1, src2 },
-                BinaryOp::Multiply => Instruction::MultiplyI { dest, src1, src2 },
-                BinaryOp::Divide => Instruction::DivideRI { dest, src1, src2 },
-                BinaryOp::Modulo => Instruction::ModuloRI { dest, src1, src2 },
-                BinaryOp::Equal => Instruction::EqualI { dest, src1, src2 },
-                BinaryOp::NotEqual => Instruction::NotEqualI { dest, src1, src2 },
-                BinaryOp::Less => Instruction::LessI { dest, src1, src2 },
-                BinaryOp::LessEqual => Instruction::LessEqualI { dest, src1, src2 },
-                BinaryOp::Greater => Instruction::GreaterI { dest, src1, src2 },
-                BinaryOp::GreaterEqual => Instruction::GreaterEqualI { dest, src1, src2 },
+
+            (Operand::Register(src1), Operand::Constant(src2)) => match operator {
+                BinaryOp::Add => Instruction::AddK { dest, src1, src2 },
+
+                BinaryOp::Subtract => Instruction::SubtractRK { dest, src1, src2 },
+
+                BinaryOp::Multiply => Instruction::MultiplyK { dest, src1, src2 },
+
+                BinaryOp::Divide => Instruction::DivideRK { dest, src1, src2 },
+
+                BinaryOp::Modulo => Instruction::ModuloRK { dest, src1, src2 },
+
+                BinaryOp::Equal => Instruction::EqualK { dest, src1, src2 },
+
+                BinaryOp::NotEqual => Instruction::NotEqualK { dest, src1, src2 },
+
+                BinaryOp::Less => Instruction::LessK { dest, src1, src2 },
+
+                BinaryOp::LessEqual => Instruction::LessEqualK { dest, src1, src2 },
+
+                BinaryOp::Greater => Instruction::GreaterK { dest, src1, src2 },
+
+                BinaryOp::GreaterEqual => Instruction::GreaterEqualK { dest, src1, src2 },
             },
-            (Operand::Immediate(src1), Operand::Register(src2)) => match operator {
-                BinaryOp::Add => Instruction::AddI {
+
+            (Operand::Constant(src1), Operand::Register(src2)) => match operator {
+                BinaryOp::Add => Instruction::AddK {
                     dest,
                     src1: src2,
                     src2: src1,
                 },
-                BinaryOp::Multiply => Instruction::MultiplyI {
+
+                BinaryOp::Multiply => Instruction::MultiplyK {
                     dest,
                     src1: src2,
                     src2: src1,
                 },
-                BinaryOp::Equal => Instruction::EqualI {
+
+                BinaryOp::Equal => Instruction::EqualK {
                     dest,
                     src1: src2,
                     src2: src1,
                 },
-                BinaryOp::NotEqual => Instruction::NotEqualI {
+
+                BinaryOp::NotEqual => Instruction::NotEqualK {
                     dest,
                     src1: src2,
                     src2: src1,
                 },
-                BinaryOp::Subtract => Instruction::SubtractIR { dest, src1, src2 },
-                BinaryOp::Divide => Instruction::DivideIR { dest, src1, src2 },
-                BinaryOp::Modulo => Instruction::ModuloIR { dest, src1, src2 },
-                BinaryOp::Less => Instruction::GreaterI {
+
+                BinaryOp::Subtract => Instruction::SubtractKR { dest, src1, src2 },
+
+                BinaryOp::Divide => Instruction::DivideKR { dest, src1, src2 },
+
+                BinaryOp::Modulo => Instruction::ModuloKR { dest, src1, src2 },
+
+                BinaryOp::Less => Instruction::GreaterK {
                     dest,
                     src1: src2,
                     src2: src1,
                 },
-                BinaryOp::LessEqual => Instruction::GreaterEqualI {
+
+                BinaryOp::LessEqual => Instruction::GreaterEqualK {
                     dest,
                     src1: src2,
                     src2: src1,
                 },
-                BinaryOp::Greater => Instruction::LessI {
+
+                BinaryOp::Greater => Instruction::LessK {
                     dest,
                     src1: src2,
                     src2: src1,
                 },
-                BinaryOp::GreaterEqual => Instruction::LessEqualI {
+
+                BinaryOp::GreaterEqual => Instruction::LessEqualK {
                     dest,
                     src1: src2,
                     src2: src1,
                 },
             },
-            (Operand::Constant(src1), Operand::Register(src2)) => {
-                let src1 = materialize(scope, Operand::Constant(src1)).unwrap_register();
-                match operator {
-                    BinaryOp::Add => Instruction::Add { dest, src1, src2 },
-                    BinaryOp::Subtract => Instruction::Subtract { dest, src1, src2 },
-                    BinaryOp::Multiply => Instruction::Multiply { dest, src1, src2 },
-                    BinaryOp::Divide => Instruction::Divide { dest, src1, src2 },
-                    BinaryOp::Modulo => Instruction::Modulo { dest, src1, src2 },
-                    BinaryOp::Equal => Instruction::Equal { dest, src1, src2 },
-                    BinaryOp::NotEqual => Instruction::NotEqual { dest, src1, src2 },
-                    BinaryOp::Less => Instruction::Less { dest, src1, src2 },
-                    BinaryOp::LessEqual => Instruction::LessEqual { dest, src1, src2 },
-                    BinaryOp::Greater => Instruction::Greater { dest, src1, src2 },
-                    BinaryOp::GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
-                }
-            }
-            (Operand::Register(src1), Operand::Constant(src2)) => {
-                let src2 = materialize(scope, Operand::Constant(src2)).unwrap_register();
-                match operator {
-                    BinaryOp::Add => Instruction::Add { dest, src1, src2 },
-                    BinaryOp::Subtract => Instruction::Subtract { dest, src1, src2 },
-                    BinaryOp::Multiply => Instruction::Multiply { dest, src1, src2 },
-                    BinaryOp::Divide => Instruction::Divide { dest, src1, src2 },
-                    BinaryOp::Modulo => Instruction::Modulo { dest, src1, src2 },
-                    BinaryOp::Equal => Instruction::Equal { dest, src1, src2 },
-                    BinaryOp::NotEqual => Instruction::NotEqual { dest, src1, src2 },
-                    BinaryOp::Less => Instruction::Less { dest, src1, src2 },
-                    BinaryOp::LessEqual => Instruction::LessEqual { dest, src1, src2 },
-                    BinaryOp::Greater => Instruction::Greater { dest, src1, src2 },
-                    BinaryOp::GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
-                }
-            }
-            (Operand::Constant(_), Operand::Constant(_))
-            | (Operand::Immediate(_), Operand::Immediate(_))
-            | (Operand::Constant(_), Operand::Immediate(_))
-            | (Operand::Immediate(_), Operand::Constant(_)) => {
+
+            (Operand::Constant(_), Operand::Constant(_)) => {
                 unreachable!("No constant fold done yet!")
             }
         };
@@ -685,7 +683,7 @@ impl Compiler {
                scope.instructions.len() as i32 - jump_if_false as i32,
            );
 
-           unit()
+           self.unit()
        }
 
     */
@@ -717,28 +715,20 @@ impl Compiler {
             _ => false,
         }
     }
+
+    fn unit(&mut self) -> Operand {
+        Operand::Constant(self.push_number(0.0) as u16)
+    }
 }
 fn materialize(scope: &mut FunctionScope, src: Operand) -> Operand {
     match src {
         Operand::Register(_) => src,
         Operand::Constant(src) => {
             let dest = scope.allocate_register();
-            scope.emit_instruction(Instruction::LoadK {
-                dest,
-                src: src as u32,
-            });
-            Operand::Register(dest)
-        }
-        Operand::Immediate(src) => {
-            let dest = scope.allocate_register();
-            scope.emit_instruction(Instruction::LoadImm { dest, src });
+            scope.emit_instruction(Instruction::LoadK { dest, src });
             Operand::Register(dest)
         }
     }
-}
-
-fn unit() -> Operand {
-    Operand::Immediate(Imm::try_to_encode(0.0).unwrap())
 }
 
 fn patch_jump(scope: &mut FunctionScope, index: usize, new_offset: i32) {

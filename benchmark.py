@@ -6,8 +6,8 @@ folder = Path("examples")
 scripts = [
     ("Kaori",  ["kaori"],      "kr",  "kaori"),
     ("Lua",    ["lua"],        "lua", "lua"),
-    ("Python", ["python"],     "py",  "python"),
     ("PyPy",   ["pypy"],       "py",  "python"),
+    ("Python", ["python"],     "py",  "python"),
 ]
 
 benchmarks = [

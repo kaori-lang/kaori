@@ -75,36 +75,35 @@ fn remove_redundant_moves(instructions: &mut [Instruction], leaders: &[bool]) {
 
             match &mut instructions[i] {
                 Instruction::Add { dest, .. }
-                | Instruction::AddI { dest, .. }
+                | Instruction::AddK { dest, .. }
                 | Instruction::Subtract { dest, .. }
-                | Instruction::SubtractRI { dest, .. }
-                | Instruction::SubtractIR { dest, .. }
+                | Instruction::SubtractRK { dest, .. }
+                | Instruction::SubtractKR { dest, .. }
                 | Instruction::Multiply { dest, .. }
-                | Instruction::MultiplyI { dest, .. }
+                | Instruction::MultiplyK { dest, .. }
                 | Instruction::Divide { dest, .. }
-                | Instruction::DivideRI { dest, .. }
-                | Instruction::DivideIR { dest, .. }
+                | Instruction::DivideRK { dest, .. }
+                | Instruction::DivideKR { dest, .. }
                 | Instruction::Modulo { dest, .. }
-                | Instruction::ModuloRI { dest, .. }
-                | Instruction::ModuloIR { dest, .. }
+                | Instruction::ModuloRK { dest, .. }
+                | Instruction::ModuloKR { dest, .. }
                 | Instruction::Equal { dest, .. }
-                | Instruction::EqualI { dest, .. }
+                | Instruction::EqualK { dest, .. }
                 | Instruction::NotEqual { dest, .. }
-                | Instruction::NotEqualI { dest, .. }
+                | Instruction::NotEqualK { dest, .. }
                 | Instruction::Less { dest, .. }
-                | Instruction::LessI { dest, .. }
+                | Instruction::LessK { dest, .. }
                 | Instruction::LessEqual { dest, .. }
-                | Instruction::LessEqualI { dest, .. }
+                | Instruction::LessEqualK { dest, .. }
                 | Instruction::Greater { dest, .. }
-                | Instruction::GreaterI { dest, .. }
+                | Instruction::GreaterK { dest, .. }
                 | Instruction::GreaterEqual { dest, .. }
-                | Instruction::GreaterEqualI { dest, .. }
+                | Instruction::GreaterEqualK { dest, .. }
                 | Instruction::Not { dest, .. }
                 | Instruction::Negate { dest, .. }
                 | Instruction::MoveArg { dest, .. }
                 | Instruction::Move { dest, .. }
                 | Instruction::LoadK { dest, .. }
-                | Instruction::LoadImm { dest, .. }
                 | Instruction::CreateDict { dest }
                 | Instruction::GetField { dest, .. }
                 | Instruction::Call { dest, .. }
@@ -132,93 +131,121 @@ fn merge_conditional_jumps(instructions: &mut [Instruction]) {
                     Instruction::Less { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfLess { src1, src2, offset })
                     }
-                    Instruction::LessI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfLessI { src1, src2, offset })
+
+                    Instruction::LessK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfLessK { src1, src2, offset })
                     }
+
                     Instruction::LessEqual { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfLessEqual { src1, src2, offset })
                     }
-                    Instruction::LessEqualI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfLessEqualI { src1, src2, offset })
+
+                    Instruction::LessEqualK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfLessEqualK { src1, src2, offset })
                     }
+
                     Instruction::Greater { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfGreater { src1, src2, offset })
                     }
-                    Instruction::GreaterI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfGreaterI { src1, src2, offset })
+
+                    Instruction::GreaterK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfGreaterK { src1, src2, offset })
                     }
+
                     Instruction::GreaterEqual { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfGreaterEqual { src1, src2, offset })
                     }
-                    Instruction::GreaterEqualI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfGreaterEqualI { src1, src2, offset })
+
+                    Instruction::GreaterEqualK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfGreaterEqualK { src1, src2, offset })
                     }
+
                     Instruction::Equal { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfEqual { src1, src2, offset })
                     }
-                    Instruction::EqualI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfEqualI { src1, src2, offset })
+
+                    Instruction::EqualK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfEqualK { src1, src2, offset })
                     }
+
                     Instruction::NotEqual { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfNotEqual { src1, src2, offset })
                     }
-                    Instruction::NotEqualI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfNotEqualI { src1, src2, offset })
+
+                    Instruction::NotEqualK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfNotEqualK { src1, src2, offset })
                     }
+
                     _ => None,
                 };
 
                 if let Some(instruction) = instruction {
                     instructions[index - 1] = Instruction::Nop;
+
                     instructions[index] = instruction;
                 }
             }
+
             Instruction::JumpIfFalse { src, offset } => {
                 let instruction = match instructions[index - 1] {
                     Instruction::Less { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfGreaterEqual { src1, src2, offset })
                     }
-                    Instruction::LessI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfGreaterEqualI { src1, src2, offset })
+
+                    Instruction::LessK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfGreaterEqualK { src1, src2, offset })
                     }
+
                     Instruction::LessEqual { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfGreater { src1, src2, offset })
                     }
-                    Instruction::LessEqualI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfGreaterI { src1, src2, offset })
+
+                    Instruction::LessEqualK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfGreaterK { src1, src2, offset })
                     }
+
                     Instruction::Greater { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfLessEqual { src1, src2, offset })
                     }
-                    Instruction::GreaterI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfLessEqualI { src1, src2, offset })
+
+                    Instruction::GreaterK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfLessEqualK { src1, src2, offset })
                     }
+
                     Instruction::GreaterEqual { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfLess { src1, src2, offset })
                     }
-                    Instruction::GreaterEqualI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfLessI { src1, src2, offset })
+
+                    Instruction::GreaterEqualK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfLessK { src1, src2, offset })
                     }
+
                     Instruction::Equal { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfNotEqual { src1, src2, offset })
                     }
-                    Instruction::EqualI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfNotEqualI { src1, src2, offset })
+
+                    Instruction::EqualK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfNotEqualK { src1, src2, offset })
                     }
+
                     Instruction::NotEqual { dest, src1, src2 } if dest == src => {
                         Some(Instruction::JumpIfEqual { src1, src2, offset })
                     }
-                    Instruction::NotEqualI { dest, src1, src2 } if dest == src => {
-                        Some(Instruction::JumpIfEqualI { src1, src2, offset })
+
+                    Instruction::NotEqualK { dest, src1, src2 } if dest == src => {
+                        Some(Instruction::JumpIfEqualK { src1, src2, offset })
                     }
+
                     _ => None,
                 };
 
                 if let Some(instruction) = instruction {
                     instructions[index - 1] = Instruction::Nop;
+
                     instructions[index] = instruction;
                 }
             }
+
             _ => {}
         }
     }
@@ -226,6 +253,7 @@ fn merge_conditional_jumps(instructions: &mut [Instruction]) {
 
 fn remove_nop(instructions: &mut Vec<Instruction>) {
     let mut instructions_map = vec![0usize; instructions.len()];
+
     let mut index = 0;
 
     for i in 0..instructions.len() {
@@ -245,26 +273,33 @@ fn remove_nop(instructions: &mut Vec<Instruction>) {
             | Instruction::JumpIfFalse { offset, .. }
             | Instruction::JumpIfTrue { offset, .. }
             | Instruction::JumpIfLess { offset, .. }
-            | Instruction::JumpIfLessI { offset, .. }
+            | Instruction::JumpIfLessK { offset, .. }
             | Instruction::JumpIfLessEqual { offset, .. }
-            | Instruction::JumpIfLessEqualI { offset, .. }
+            | Instruction::JumpIfLessEqualK { offset, .. }
             | Instruction::JumpIfGreater { offset, .. }
-            | Instruction::JumpIfGreaterI { offset, .. }
+            | Instruction::JumpIfGreaterK { offset, .. }
             | Instruction::JumpIfGreaterEqual { offset, .. }
-            | Instruction::JumpIfGreaterEqualI { offset, .. }
+            | Instruction::JumpIfGreaterEqualK { offset, .. }
             | Instruction::JumpIfEqual { offset, .. }
-            | Instruction::JumpIfEqualI { offset, .. }
+            | Instruction::JumpIfEqualK { offset, .. }
             | Instruction::JumpIfNotEqual { offset, .. }
-            | Instruction::JumpIfNotEqualI { offset, .. } => {
+            | Instruction::JumpIfNotEqualK { offset, .. } => {
                 let target = (i as i32 + *offset) as usize;
+
                 let target = instructions_map[target];
+
                 *offset = target as i32 - index as i32;
+
                 instructions[index] = instructions[i];
+
                 index += 1;
             }
+
             Instruction::Nop => {}
+
             _ => {
                 instructions[index] = instructions[i];
+
                 index += 1;
             }
         }
