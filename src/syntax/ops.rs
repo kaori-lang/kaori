@@ -20,7 +20,6 @@ pub enum UnaryOp {
 
 #[derive(Debug, Clone, Copy)]
 pub enum AssignOp {
-    Assign,
     AddAssign,
     SubtractAssign,
     MultiplyAssign,

@@ -7,7 +7,7 @@ use std::fmt::{self, Display, Formatter};
 pub struct Function {
     pub instructions: Vec<Instruction>,
     pub constants: Vec<Value>,
-    pub registers_count: u8,
+    pub registers: u8,
     pub arity: u8,
 }
 
@@ -22,11 +22,32 @@ impl Display for Function {
 }
 
 impl Function {
+    pub fn emit_nil(&mut self) -> u8 {
+        let dest = self.allocate_register();
+
+        let src = self.push_number(0.0);
+
+        self.instructions.push(Instruction::LoadK {
+            dest,
+            src: src as u16,
+        });
+
+        dest
+    }
+
     pub fn emit_instruction(&mut self, instruction: Instruction) -> usize {
         let index = self.instructions.len();
         self.instructions.push(instruction);
 
         index
+    }
+
+    pub fn allocate_register(&mut self) -> u8 {
+        let register = self.registers;
+
+        self.registers += 1;
+
+        register
     }
 
     fn get_or_insert(&mut self, value: Value) -> usize {

@@ -39,7 +39,7 @@ pub fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {
 pub fn run_program(source: &str) -> Result<(), Error> {
     let functions = compile_source_code(source)?;
 
-    run_vm(functions)?;
+    //run_vm(functions)?;
 
     Ok(())
 }

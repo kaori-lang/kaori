@@ -110,13 +110,13 @@ pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
     let Function {
         ref instructions,
         ref constants,
-        registers_count,
+        registers,
         arity,
     } = functions[0];
 
     let ip = instructions.as_ptr();
     let index = unsafe { (*ip).discriminant() };
-    let frame_size = registers_count;
+    let frame_size = registers;
 
     let mut registers = [Value::default(); 4096];
     let registers = Registers(&mut registers);
@@ -1119,7 +1119,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
     let closure = {
         let Function {
             ref instructions,
-            registers_count,
+            registers,
             arity,
             ref constants,
         } = state.functions[src as usize];
@@ -1128,7 +1128,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
             instructions: instructions.as_ptr(),
             constants: constants.as_ptr(),
             arity,
-            size: registers_count,
+            size: registers,
             captured: Vec::new(),
         }
     };

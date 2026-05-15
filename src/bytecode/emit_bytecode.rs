@@ -1,26 +1,13 @@
 use std::collections::HashMap;
 
 use crate::{
-    bytecode::{function::Function, function_scope::Scope, instruction::Instruction},
+    bytecode::{function::Function, instruction::Instruction},
     syntax::{
         ast::{Ast, Expr, ExprId},
         ops::{AssignOp, BinaryOp, UnaryOp},
     },
     util::string_interner::StringIndex,
 };
-
-#[derive(Default)]
-struct Registers(u8);
-
-impl Registers {
-    pub fn allocate_register(&mut self) -> Register {
-        let register = self.0;
-
-        self.0 += 1;
-
-        register
-    }
-}
 
 type Register = u8;
 
@@ -34,33 +21,22 @@ impl CompilerContext {
         Self { ast, captures }
     }
 
-    fn nil(function: &mut Function, registers: &mut Registers) -> Register {
-        let dest = registers.allocate_register();
-
-        let src = function.push_number(0.0);
-
-        function.instructions.push(Instruction::LoadK {
-            dest,
-            src: src as u16,
-        });
-
-        dest
-    }
-
     fn lookup_or_declare(
-        scopes: &mut Scope,
-        registers: &mut Registers,
+        names: &mut Vec<(StringIndex, Register)>,
+        function: &mut Function,
         name: StringIndex,
     ) -> Register {
-        if let Some(register) = scopes.lookup(name) {
-            register
-        } else {
-            let register = registers.allocate_register();
-
-            scopes.insert_symbol(name, register);
-
-            register
+        for (found_name, register) in names.iter().copied().rev() {
+            if found_name == name {
+                return register;
+            }
         }
+
+        let register = function.allocate_register();
+
+        names.push((name, register));
+
+        register
     }
 
     pub fn compile(&self) -> Vec<Function> {
@@ -70,16 +46,9 @@ impl CompilerContext {
         functions.push(None);
 
         let mut function = Function::default();
-        let mut scope = Scope::default();
-        let mut registers = Registers::default();
+        let mut names = Vec::new();
 
-        let src = self.compile_expression(
-            &mut functions,
-            &mut function,
-            &mut scope,
-            &mut registers,
-            entry,
-        );
+        let src = self.compile_expression(&mut functions, &mut function, &mut names, entry);
 
         if !self.expression_returns(entry) {
             function.emit_instruction(Instruction::Return { src });
@@ -99,8 +68,7 @@ impl CompilerContext {
         &self,
         functions: &mut Vec<Option<Function>>,
         function: &mut Function,
-        scope: &mut Scope,
-        registers: &mut Registers,
+        names: &mut Vec<(StringIndex, Register)>,
         expressions: &[ExprId],
     ) -> Register {
         for expression in expressions.iter().copied() {
@@ -109,15 +77,15 @@ impl CompilerContext {
             if let Expr::Function { name, .. } = &expression
                 && let Some(name) = name
             {
-                self.compile_expression(functions, function, scope, registers, *name);
+                self.compile_expression(functions, function, names, *name);
             }
         }
 
         expressions
             .iter()
             .copied()
-            .fold(Self::nil(function, registers), |_, expression| {
-                self.compile_expression(functions, function, scope, registers, expression)
+            .fold(function.emit_nil(), |_, expression| {
+                self.compile_expression(functions, function, names, expression)
             })
     }
 
@@ -125,8 +93,7 @@ impl CompilerContext {
         &self,
         functions: &mut Vec<Option<Function>>,
         function: &mut Function,
-        scope: &mut Scope,
-        registers: &mut Registers,
+        names: &mut Vec<(StringIndex, Register)>,
         expression: ExprId,
     ) -> Register {
         match *self.ast.get(expression) {
@@ -142,13 +109,9 @@ impl CompilerContext {
 
                 functions.push(None);
 
-                let mut function = Function::default();
-
                 let dest = match name {
-                    Some(name) => {
-                        self.compile_expression(functions, &mut function, scope, registers, name)
-                    }
-                    None => registers.allocate_register(),
+                    Some(name) => self.compile_expression(functions, function, names, name),
+                    None => function.allocate_register(),
                 };
 
                 function.emit_instruction(Instruction::CreateClosure {
@@ -157,31 +120,23 @@ impl CompilerContext {
                 });
 
                 for capture in self.captures.get(&expression).unwrap().iter().copied() {
-                    let src = Self::lookup_or_declare(scope, registers, capture);
+                    let src = Self::lookup_or_declare(names, function, capture);
 
                     function.emit_instruction(Instruction::CaptureValue { dest, src });
                 }
 
-                let mut scope = Scope::default();
-
-                scope.enter_scope();
+                let mut function = Function::default();
+                let mut names = Vec::new();
 
                 for parameter in parameters.iter().copied() {
-                    self.compile_expression(
-                        functions,
-                        &mut function,
-                        &mut scope,
-                        registers,
-                        parameter,
-                    );
+                    self.compile_expression(functions, &mut function, &mut names, parameter);
                 }
 
                 for capture in self.captures.get(&expression).unwrap().iter().copied() {
-                    Self::lookup_or_declare(&mut scope, registers, capture);
+                    Self::lookup_or_declare(&mut names, &mut function, capture);
                 }
 
-                let src =
-                    self.compile_expression(functions, &mut function, &mut scope, registers, block);
+                let src = self.compile_expression(functions, &mut function, &mut names, block);
 
                 if !self.expression_returns(block) {
                     function.emit_instruction(Instruction::Return { src });
@@ -191,84 +146,64 @@ impl CompilerContext {
 
                 functions[index] = Some(function);
 
-                scope.exit_scope();
-
                 dest
             }
             Expr::DeclareAssign { left, right } => {
-                let src = self.compile_expression(functions, function, scope, registers, right);
-                let dest = self.compile_expression(functions, function, scope, registers, left);
+                let src = self.compile_expression(functions, function, names, right);
+                let dest = self.compile_expression(functions, function, names, left);
 
                 function.emit_instruction(Instruction::Move { dest, src });
 
                 dest
             }
-            Expr::Assign {
+            Expr::Assign { left, right } => {
+                let dest = self.compile_expression(functions, function, names, left);
+                let src = self.compile_expression(functions, function, names, right);
+                function.emit_instruction(Instruction::Move { dest, src });
+
+                dest
+            }
+            Expr::CompoundAssign {
                 operator,
                 left,
                 right,
             } => {
-                let dest = self.compile_expression(functions, function, scope, registers, left);
+                let dest = self.compile_expression(functions, function, names, left);
+                let src2 = self.compile_expression(functions, function, names, right);
 
-                let src = match operator {
-                    AssignOp::Assign => {
-                        self.compile_expression(functions, function, scope, registers, right)
-                    }
-                    AssignOp::AddAssign => self.compile_binary_op(
-                        functions,
-                        function,
-                        scope,
-                        registers,
-                        BinaryOp::Add,
-                        left,
-                        right,
-                    ),
-                    AssignOp::SubtractAssign => self.compile_binary_op(
-                        functions,
-                        function,
-                        scope,
-                        registers,
-                        BinaryOp::Subtract,
-                        left,
-                        right,
-                    ),
-                    AssignOp::MultiplyAssign => self.compile_binary_op(
-                        functions,
-                        function,
-                        scope,
-                        registers,
-                        BinaryOp::Multiply,
-                        left,
-                        right,
-                    ),
-                    AssignOp::DivideAssign => self.compile_binary_op(
-                        functions,
-                        function,
-                        scope,
-                        registers,
-                        BinaryOp::Divide,
-                        left,
-                        right,
-                    ),
-                    AssignOp::ModuloAssign => self.compile_binary_op(
-                        functions,
-                        function,
-                        scope,
-                        registers,
-                        BinaryOp::Modulo,
-                        left,
-                        right,
-                    ),
-                };
-
-                function.emit_instruction(Instruction::Move { dest, src });
+                function.emit_instruction(match operator {
+                    AssignOp::AddAssign => Instruction::Add {
+                        dest,
+                        src1: dest,
+                        src2,
+                    },
+                    AssignOp::SubtractAssign => Instruction::Subtract {
+                        dest,
+                        src1: dest,
+                        src2,
+                    },
+                    AssignOp::MultiplyAssign => Instruction::Multiply {
+                        dest,
+                        src1: dest,
+                        src2,
+                    },
+                    AssignOp::DivideAssign => Instruction::Divide {
+                        dest,
+                        src1: dest,
+                        src2,
+                    },
+                    AssignOp::ModuloAssign => Instruction::Modulo {
+                        dest,
+                        src1: dest,
+                        src2,
+                    },
+                });
 
                 dest
             }
             Expr::LogicalAnd { left, right } => {
-                let dest = registers.allocate_register();
-
-                let src = self.compile_expression(functions, function, scope, registers, left);
+                let src = self.compile_expression(functions, function, names, left);
+                let dest = function.allocate_register();
 
                 function.emit_instruction(Instruction::Move { dest, src });
 
@@ -277,7 +212,7 @@ impl CompilerContext {
                     offset: 0,
                 });
 
-                let src = self.compile_expression(functions, function, scope, registers, right);
+                let src = self.compile_expression(functions, function, names, right);
 
                 function.emit_instruction(Instruction::Move { dest, src });
 
@@ -290,9 +225,8 @@ impl CompilerContext {
                 dest
             }
             Expr::LogicalOr { left, right } => {
-                let dest = registers.allocate_register();
-
-                let src = self.compile_expression(functions, function, scope, registers, left);
+                let src = self.compile_expression(functions, function, names, left);
+                let dest = function.allocate_register();
 
                 function.emit_instruction(Instruction::Move { dest, src });
 
@@ -301,7 +235,7 @@ impl CompilerContext {
                     offset: 0,
                 });
 
-                let src = self.compile_expression(functions, function, scope, registers, right);
+                let src = self.compile_expression(functions, function, names, right);
 
                 function.emit_instruction(Instruction::Move { dest, src });
 
@@ -314,9 +248,9 @@ impl CompilerContext {
                 dest
             }
             Expr::LogicalNot(expression) => {
-                let src =
-                    self.compile_expression(functions, function, scope, registers, expression);
-                let dest = registers.allocate_register();
+                let src = self.compile_expression(functions, function, names, expression);
+                let dest = function.allocate_register();
+
                 function.emit_instruction(Instruction::Not { dest, src });
 
                 dest
@@ -326,9 +260,9 @@ impl CompilerContext {
                 left,
                 right,
             } => {
-                let src1 = self.compile_expression(functions, function, scope, registers, left);
-                let src2 = self.compile_expression(functions, function, scope, registers, right);
-                let dest = registers.allocate_register();
+                let src1 = self.compile_expression(functions, function, names, left);
+                let src2 = self.compile_expression(functions, function, names, right);
+                let dest = function.allocate_register();
 
                 let instruction = match operator {
                     BinaryOp::Add => Instruction::Add { dest, src1, src2 },
@@ -348,8 +282,8 @@ impl CompilerContext {
                 dest
             }
             Expr::Unary { operator, right } => {
-                let src = self.compile_expression(functions, function, scope, registers, right);
-                let dest = registers.allocate_register();
+                let src = self.compile_expression(functions, function, names, right);
+                let dest = function.allocate_register();
 
                 let instruction = match operator {
                     UnaryOp::Negate => Instruction::Negate { dest, src },
@@ -363,18 +297,17 @@ impl CompilerContext {
                 callee,
                 ref arguments,
             } => {
-                let dest = registers.allocate_register();
-                let callee_src =
-                    self.compile_expression(functions, function, scope, registers, callee);
+                let callee_src = self.compile_expression(functions, function, names, callee);
 
                 for (index, argument) in arguments.iter().enumerate() {
-                    let argument =
-                        self.compile_expression(functions, function, scope, registers, *argument);
+                    let argument = self.compile_expression(functions, function, names, *argument);
                     function.emit_instruction(Instruction::MoveArg {
                         dest: index as Register,
                         src: argument,
                     });
                 }
+
+                let dest = function.allocate_register();
 
                 function.emit_instruction(Instruction::Call {
                     dest,
@@ -385,18 +318,20 @@ impl CompilerContext {
                 dest
             }
             Expr::MemberAccess { object, property } => {
-                let object = self.compile_expression(functions, function, scope, registers, object);
-                let key = self.compile_expression(functions, function, scope, registers, property);
-                let dest = registers.allocate_register();
+                let object = self.compile_expression(functions, function, names, object);
+                let key = self.compile_expression(functions, function, names, property);
+                let dest = function.allocate_register();
 
                 function.emit_instruction(Instruction::GetField { dest, object, key });
 
                 dest
             }
             Expr::Block(ref expressions) => {
-                scope.enter_scope();
-                let dest = self.compile_block(functions, function, scope, registers, expressions);
-                scope.exit_scope();
+                let size = names.len();
+
+                let dest = self.compile_block(functions, function, names, expressions);
+
+                names.truncate(size);
 
                 dest
             }
@@ -405,15 +340,14 @@ impl CompilerContext {
                 then_branch,
                 else_branch,
             } => {
-                let dest = registers.allocate_register();
-
-                let src = self.compile_expression(functions, function, scope, registers, condition);
+                let src = self.compile_expression(functions, function, names, condition);
 
                 let jump_if_false =
                     function.emit_instruction(Instruction::JumpIfFalse { src, offset: 0 });
 
-                let src =
-                    self.compile_expression(functions, function, scope, registers, then_branch);
+                let src = self.compile_expression(functions, function, names, then_branch);
+                let dest = function.allocate_register();
+
                 function.emit_instruction(Instruction::Move { dest, src });
 
                 let jump_end = function.emit_instruction(Instruction::Jump { offset: 0 });
@@ -425,9 +359,9 @@ impl CompilerContext {
                 );
 
                 let src = if let Some(else_branch) = else_branch {
-                    self.compile_expression(functions, function, scope, registers, else_branch)
+                    self.compile_expression(functions, function, names, else_branch)
                 } else {
-                    Self::nil(function, registers)
+                    function.emit_nil()
                 };
 
                 function.emit_instruction(Instruction::Move { dest, src });
@@ -442,16 +376,16 @@ impl CompilerContext {
             }
             Expr::ForLoop { .. } => todo!(),
             Expr::WhileLoop { condition, block } => {
-                let src = self.compile_expression(functions, function, scope, registers, condition);
+                let src = self.compile_expression(functions, function, names, condition);
 
                 let jump_if_false =
                     function.emit_instruction(Instruction::JumpIfFalse { src, offset: 0 });
 
                 let loop_body = function.instructions.len();
 
-                self.compile_expression(functions, function, scope, registers, block);
+                self.compile_expression(functions, function, names, block);
 
-                let src = self.compile_expression(functions, function, scope, registers, condition);
+                let src = self.compile_expression(functions, function, names, condition);
 
                 let jump_if_true =
                     function.emit_instruction(Instruction::JumpIfTrue { src, offset: 0 });
@@ -467,26 +401,24 @@ impl CompilerContext {
                     function.instructions.len() as i32 - jump_if_false as i32,
                 );
 
-                Self::nil(function, registers)
+                function.emit_nil()
             }
             Expr::Return(expression) => {
                 let src = match expression {
-                    Some(expr) => {
-                        self.compile_expression(functions, function, scope, registers, expr)
-                    }
-                    None => Self::nil(function, registers),
+                    Some(expr) => self.compile_expression(functions, function, names, expr),
+                    None => function.emit_nil(),
                 };
 
                 function.emit_instruction(Instruction::Return { src });
 
-                Self::nil(function, registers)
+                function.emit_nil()
             }
             Expr::Break => todo!(),
             Expr::Continue => todo!(),
-            Expr::Identifier(name) => Self::lookup_or_declare(scope, registers, name),
+            Expr::Identifier(name) => Self::lookup_or_declare(names, function, name),
             Expr::StringLiteral(value) => {
                 let src = function.push_string(value);
-                let dest = registers.allocate_register();
+                let dest = function.allocate_register();
                 function.emit_instruction(Instruction::LoadK {
                     dest,
                     src: src as u16,
@@ -496,7 +428,7 @@ impl CompilerContext {
             }
             Expr::NumberLiteral(value) => {
                 let src = function.push_number(value);
-                let dest = registers.allocate_register();
+                let dest = function.allocate_register();
 
                 function.emit_instruction(Instruction::LoadK {
                     dest,
@@ -506,7 +438,7 @@ impl CompilerContext {
                 dest
             }
             Expr::DictLiteral { ref fields } => {
-                let dest = registers.allocate_register();
+                let dest = function.allocate_register();
                 function.emit_instruction(Instruction::CreateDict { dest });
 
                 for (key, value) in fields.iter().copied() {
@@ -518,52 +450,20 @@ impl CompilerContext {
         }
     }
 
-    fn compile_binary_op(
-        &self,
-        functions: &mut Vec<Option<Function>>,
-        function: &mut Function,
-        scope: &mut Scope,
-        registers: &mut Registers,
-        operator: BinaryOp,
-        left: ExprId,
-        right: ExprId,
-    ) -> Register {
-        let src1 = self.compile_expression(functions, function, scope, registers, left);
-        let src2 = self.compile_expression(functions, function, scope, registers, right);
-        let dest = registers.allocate_register();
-
-        let instruction = match operator {
-            BinaryOp::Add => Instruction::Add { dest, src1, src2 },
-            BinaryOp::Subtract => Instruction::Subtract { dest, src1, src2 },
-            BinaryOp::Multiply => Instruction::Multiply { dest, src1, src2 },
-            BinaryOp::Divide => Instruction::Divide { dest, src1, src2 },
-            BinaryOp::Modulo => Instruction::Modulo { dest, src1, src2 },
-            BinaryOp::Equal => Instruction::Equal { dest, src1, src2 },
-            BinaryOp::NotEqual => Instruction::NotEqual { dest, src1, src2 },
-            BinaryOp::Less => Instruction::Less { dest, src1, src2 },
-            BinaryOp::LessEqual => Instruction::LessEqual { dest, src1, src2 },
-            BinaryOp::Greater => Instruction::Greater { dest, src1, src2 },
-            BinaryOp::GreaterEqual => Instruction::GreaterEqual { dest, src1, src2 },
-        };
-
-        function.emit_instruction(instruction);
-        dest
-    }
-
     /*     fn compile_loop(
            &mut self,
-           scope: &mut Scope,
+           scope: &mut names,
            init: Option<ExprId>,
            condition: &Expr,
            block: &Expr,
            increment: Option<&Expr>,
        ) -> Operand {
            if let Some(init) = init {
-               self.compile_expression(functions, function, scope, registers,  init);
+               self.compile_expression(functions, function, names,   init);
            }
 
-           let src = self.compile_expression(functions, function, scope, registers,  condition);
-           let src = materialize(scope, src);
+           let src = self.compile_expression(functions, function, names,   condition);
+           let src = materialize(names, src);
 
            let jump_if_false = function.emit_instruction(Instruction::JumpIfFalse {
                src,
@@ -572,14 +472,14 @@ impl CompilerContext {
 
            let loop_body = function.instructions.len();
 
-           self.compile_expression(functions, function, scope, registers,  block);
+           self.compile_expression(functions, function, names,   block);
 
            if let Some(increment) = increment {
-               self.compile_expression(functions, function, scope, registers,  increment);
+               self.compile_expression(functions, function, names,   increment);
            }
 
-           let src = self.compile_expression(functions, function, scope, registers,  condition);
-           let src = materialize(scope, src);
+           let src = self.compile_expression(functions, function, names,   condition);
+           let src = materialize(names, src);
 
            let jump_if_true = function.emit_instruction(Instruction::JumpIfTrue {
                src,
@@ -588,7 +488,7 @@ impl CompilerContext {
 
            patch_jump(function, jump_if_true, loop_body as i32 - jump_if_true as i32);
            patch_jump(
-               scope,
+               names,
                jump_if_false,
                function.instructions.len() as i32 - jump_if_false as i32,
            );
@@ -636,7 +536,7 @@ fn patch_jump(function: &mut Function, index: usize, new_offset: i32) {
 fn patch_function_arguments(function: &mut Function) {
     for instruction in &mut function.instructions {
         if let Instruction::MoveArg { dest, .. } = instruction {
-            *dest += 0;
+            *dest += function.registers;
         }
     }
 }
