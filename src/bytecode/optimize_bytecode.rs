@@ -2,28 +2,55 @@ use crate::bytecode::{function::Function, instruction::Instruction};
 
 pub fn optimize_bytecode(functions: &mut [Function]) {
     for function in functions {
-        let (reachable, leaders) = reachable_and_leaders(&function.instructions);
-        eliminate_dead_code(&mut function.instructions, &reachable);
-        remove_redundant_moves(&mut function.instructions, &leaders);
-        merge_conditional_jumps(&mut function.instructions);
-        remove_nop(&mut function.instructions);
+        let basic_blocks = construct_basic_blocks(&function.instructions);
+
+        println!("{:?}", basic_blocks);
+        //remove_nop(&mut function.instructions);
     }
 }
 
-fn eliminate_dead_code(instructions: &mut [Instruction], reachable: &[bool]) {
-    for i in 0..instructions.len() {
-        if !reachable[i] {
-            instructions[i] = Instruction::Nop;
+fn construct_basic_blocks(instructions: &[Instruction]) -> Vec<(usize, usize)> {
+    let mut leaders = vec![false; instructions.len()];
+    leaders[0] = true;
+
+    for (index, instruction) in instructions.iter().enumerate() {
+        match instruction {
+            Instruction::Jump { offset }
+            | Instruction::JumpIfFalse { offset, .. }
+            | Instruction::JumpIfTrue { offset, .. } => {
+                let target = (index as i32 + offset) as usize;
+                leaders[target] = true;
+                leaders[index + 1] = true;
+            }
+            Instruction::Return { .. } => {
+                if index + 1 < instructions.len() {
+                    leaders[index + 1] = true;
+                }
+            }
+            _ => {}
         }
     }
+
+    let mut basic_blocks = Vec::new();
+    let mut start = 0;
+
+    for (index, leader) in leaders.iter().copied().enumerate().skip(1) {
+        if leader {
+            let end = index - 1;
+            basic_blocks.push((start, end));
+            start = index;
+        }
+    }
+
+    let end = instructions.len() - 1;
+    basic_blocks.push((start, end));
+
+    basic_blocks
 }
 
-fn reachable_and_leaders(instructions: &[Instruction]) -> (Vec<bool>, Vec<bool>) {
+fn eliminate_dead_code(instructions: &mut [Instruction]) {
     let mut reachable = vec![false; instructions.len()];
-    let mut leaders = vec![false; instructions.len()];
     let mut stack = vec![0usize];
-
-    leaders[0] = true;
 
     while let Some(index) = stack.pop() {
         if reachable[index] {
@@ -33,47 +60,35 @@ fn reachable_and_leaders(instructions: &[Instruction]) -> (Vec<bool>, Vec<bool>)
 
         match instructions[index] {
             Instruction::Jump { offset } => {
-                let target = ((index as i32 + offset) as usize).clamp(0, instructions.len() - 1);
-                leaders[target] = true;
+                let target = (index as i32 + offset) as usize;
                 stack.push(target);
             }
             Instruction::JumpIfFalse { offset, .. } | Instruction::JumpIfTrue { offset, .. } => {
-                let target = ((index as i32 + offset) as usize).clamp(0, instructions.len() - 1);
-                leaders[target] = true;
+                let target = (index as i32 + offset) as usize;
                 stack.push(target);
                 stack.push(index + 1);
             }
-            Instruction::Return { .. } => {
-                if index + 1 < instructions.len() {
-                    leaders[index + 1] = true;
-                }
-            }
+            Instruction::Return { .. } => {}
             _ => stack.push(index + 1),
         }
     }
 
-    (reachable, leaders)
+    for index in 0..instructions.len() {
+        if !reachable[index] {
+            instructions[index] = Instruction::Nop;
+        }
+    }
 }
 
-fn remove_redundant_moves(instructions: &mut [Instruction], leaders: &[bool]) {
-    let mut leader = 0;
-
-    for index in 0..instructions.len() {
-        let (move_dest, src) = match instructions[index] {
+fn remove_redundant_moves(instructions: &mut [Instruction]) {
+    for i in 0..instructions.len() {
+        let (move_dest, src) = match instructions[i] {
             Instruction::Move { dest, src } | Instruction::MoveArg { dest, src } => (dest, src),
             _ => continue,
         };
 
-        if leaders[index] {
-            leader = index;
-        };
-
-        let mut i = index;
-
-        while i > leader {
-            i -= 1;
-
-            match &mut instructions[i] {
+        for j in (0..i).rev() {
+            match &mut instructions[j] {
                 Instruction::Add { dest, .. }
                 | Instruction::AddK { dest, .. }
                 | Instruction::Subtract { dest, .. }
@@ -110,7 +125,7 @@ fn remove_redundant_moves(instructions: &mut [Instruction], leaders: &[bool]) {
                     if *dest == src =>
                 {
                     *dest = move_dest;
-                    instructions[index] = Instruction::Nop;
+                    instructions[i] = Instruction::Nop;
 
                     break;
                 }

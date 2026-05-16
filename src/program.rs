@@ -8,7 +8,6 @@ use crate::{
         resolve::resolve,
     },
     diagnostics::error::Error,
-    runtime::vm::run_vm,
     syntax::{parser::Parser, token::Token},
     util::string_interner::StringInterner,
 };

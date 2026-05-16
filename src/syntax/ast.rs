@@ -50,6 +50,7 @@ pub enum Expr {
     Identifier(StringIndex),
     StringLiteral(StringIndex),
     NumberLiteral(f64),
+    BooleanLiteral(bool),
     FunctionCall {
         callee: ExprId,
         arguments: Box<[ExprId]>,
@@ -185,6 +186,10 @@ impl Ast {
 
     pub fn number_literal(&mut self, value: f64, span: Range<usize>) -> ExprId {
         self.insert(Expr::NumberLiteral(value), Some(span))
+    }
+
+    pub fn boolean_literal(&mut self, value: bool, span: Range<usize>) -> ExprId {
+        self.insert(Expr::BooleanLiteral(value), Some(span))
     }
 
     pub fn function_call(&mut self, callee: ExprId, arguments: Vec<ExprId>) -> ExprId {

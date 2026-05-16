@@ -81,12 +81,9 @@ impl CompilerContext {
             }
         }
 
-        expressions
-            .iter()
-            .copied()
-            .fold(function.emit_nil(), |_, expression| {
-                self.compile_expression(functions, function, names, expression)
-            })
+        expressions.iter().copied().fold(0, |_, expression| {
+            self.compile_expression(functions, function, names, expression)
+        })
     }
 
     fn compile_expression(
@@ -159,6 +156,7 @@ impl CompilerContext {
             Expr::Assign { left, right } => {
                 let dest = self.compile_expression(functions, function, names, left);
                 let src = self.compile_expression(functions, function, names, right);
+
                 function.emit_instruction(Instruction::Move { dest, src });
 
                 dest
@@ -434,6 +432,11 @@ impl CompilerContext {
                     dest,
                     src: src as u16,
                 });
+
+                dest
+            }
+            Expr::BooleanLiteral(value) => {
+                let dest = function.allocate_register();
 
                 dest
             }

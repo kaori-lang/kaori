@@ -219,7 +219,10 @@ fn resolve_expression(
                 return Err(report_error!(span, "`{}` is not declared", slice));
             };
         }
-        Expr::StringLiteral(_) | Expr::NumberLiteral(_) | Expr::DictLiteral { .. } => {}
+        Expr::StringLiteral(_)
+        | Expr::NumberLiteral(_)
+        | Expr::BooleanLiteral(_)
+        | Expr::DictLiteral { .. } => {}
     };
 
     Ok(())

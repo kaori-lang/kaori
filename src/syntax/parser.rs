@@ -500,12 +500,12 @@ impl<'a> Parser<'a> {
             Token::True => {
                 self.next()?;
 
-                self.ast.number_literal(1.0, span)
+                self.ast.boolean_literal(true, span)
             }
             Token::False => {
                 self.next()?;
 
-                self.ast.number_literal(0.0, span)
+                self.ast.boolean_literal(false, span)
             }
             Token::StringLiteral => {
                 let value = self.tokens.slice();
