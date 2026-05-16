@@ -1,15 +1,21 @@
 use crate::bytecode::{function::Function, instruction::Instruction};
 
-pub fn optimize_bytecode(functions: &mut [Function]) {
-    for function in functions {
-        let basic_blocks = construct_basic_blocks(&function.instructions);
+pub fn run_optimization_passes(function: &mut Function) {
+    let basic_blocks = build_cfg(&function.instructions);
 
-        println!("{:?}", basic_blocks);
-        //remove_nop(&mut function.instructions);
+    eliminate_dead_code(&mut function.instructions);
+
+    for (start, end) in basic_blocks {
+        let instructions = &mut function.instructions[start..end];
+
+        //coalesce_copies(instructions);
+        fuse_compare_branch(instructions);
     }
+
+    eliminate_nops(&mut function.instructions);
 }
 
-fn construct_basic_blocks(instructions: &[Instruction]) -> Vec<(usize, usize)> {
+fn build_cfg(instructions: &[Instruction]) -> Vec<(usize, usize)> {
     let mut leaders = vec![false; instructions.len()];
     leaders[0] = true;
 
@@ -34,11 +40,10 @@ fn construct_basic_blocks(instructions: &[Instruction]) -> Vec<(usize, usize)> {
     let mut basic_blocks = Vec::new();
     let mut start = 0;
 
-    for (index, leader) in leaders.iter().copied().enumerate().skip(1) {
+    for (end, leader) in leaders.iter().copied().enumerate().skip(1) {
         if leader {
-            let end = index - 1;
             basic_blocks.push((start, end));
-            start = index;
+            start = end;
         }
     }
 
@@ -80,7 +85,7 @@ fn eliminate_dead_code(instructions: &mut [Instruction]) {
     }
 }
 
-fn remove_redundant_moves(instructions: &mut [Instruction]) {
+fn coalesce_copies(instructions: &mut [Instruction]) {
     for i in 0..instructions.len() {
         let (move_dest, src) = match instructions[i] {
             Instruction::Move { dest, src } | Instruction::MoveArg { dest, src } => (dest, src),
@@ -138,7 +143,7 @@ fn remove_redundant_moves(instructions: &mut [Instruction]) {
     }
 }
 
-fn merge_conditional_jumps(instructions: &mut [Instruction]) {
+fn fuse_compare_branch(instructions: &mut [Instruction]) {
     for index in 1..instructions.len() {
         match instructions[index] {
             Instruction::JumpIfTrue { src, offset } => {
@@ -196,7 +201,6 @@ fn merge_conditional_jumps(instructions: &mut [Instruction]) {
 
                 if let Some(instruction) = instruction {
                     instructions[index - 1] = Instruction::Nop;
-
                     instructions[index] = instruction;
                 }
             }
@@ -256,7 +260,6 @@ fn merge_conditional_jumps(instructions: &mut [Instruction]) {
 
                 if let Some(instruction) = instruction {
                     instructions[index - 1] = Instruction::Nop;
-
                     instructions[index] = instruction;
                 }
             }
@@ -266,7 +269,7 @@ fn merge_conditional_jumps(instructions: &mut [Instruction]) {
     }
 }
 
-fn remove_nop(instructions: &mut Vec<Instruction>) {
+fn eliminate_nops(instructions: &mut Vec<Instruction>) {
     let mut instructions_map = vec![0usize; instructions.len()];
 
     let mut index = 0;

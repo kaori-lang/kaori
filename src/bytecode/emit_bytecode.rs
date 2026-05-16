@@ -39,6 +39,113 @@ impl CompilerContext {
         register
     }
 
+    fn update_register_liferange(
+        registers_life_range: &mut HashMap<Register, (usize, usize)>,
+        register: u8,
+        index: usize,
+    ) {
+        registers_life_range
+            .entry(register)
+            .and_modify(|r| r.1 = index)
+            .or_insert((index, index));
+    }
+
+    fn emit_instruction(
+        instruction: Instruction,
+        function: &mut Function,
+        registers_life_range: &mut HashMap<Register, (usize, usize)>,
+    ) {
+        let index = function.instructions.len();
+        function.emit_instruction(instruction);
+
+        let mut live = |reg: u8| Self::update_register_liferange(registers_life_range, reg, index);
+
+        match instruction {
+            Instruction::Add { dest, src1, src2 }
+            | Instruction::Subtract { dest, src1, src2 }
+            | Instruction::Multiply { dest, src1, src2 }
+            | Instruction::Divide { dest, src1, src2 }
+            | Instruction::Modulo { dest, src1, src2 }
+            | Instruction::Equal { dest, src1, src2 }
+            | Instruction::NotEqual { dest, src1, src2 }
+            | Instruction::Less { dest, src1, src2 }
+            | Instruction::LessEqual { dest, src1, src2 }
+            | Instruction::Greater { dest, src1, src2 }
+            | Instruction::GreaterEqual { dest, src1, src2 } => {
+                live(dest);
+                live(src1);
+                live(src2);
+            }
+            Instruction::SubtractRK {
+                dest,
+                src1,
+                src2: _,
+            }
+            | Instruction::DivideRK {
+                dest,
+                src1,
+                src2: _,
+            }
+            | Instruction::ModuloRK {
+                dest,
+                src1,
+                src2: _,
+            } => {
+                live(dest);
+                live(src1);
+            }
+            Instruction::DivideKR {
+                dest,
+                src1: _,
+                src2,
+            }
+            | Instruction::ModuloKR {
+                dest,
+                src1: _,
+                src2,
+            } => {
+                live(dest);
+                live(src2);
+            }
+            Instruction::Not { dest, src }
+            | Instruction::Negate { dest, src }
+            | Instruction::Move { dest, src }
+            | Instruction::MoveArg { dest, src }
+            | Instruction::CaptureValue { dest, src } => {
+                live(dest);
+                live(src);
+            }
+            Instruction::CreateDict { dest } | Instruction::CreateClosure { dest, src: _ } => {
+                live(dest);
+            }
+            Instruction::SetField { object, key, value } => {
+                live(object);
+                live(key);
+                live(value);
+            }
+            Instruction::GetField { dest, object, key } => {
+                live(dest);
+                live(object);
+                live(key);
+            }
+            Instruction::Call {
+                dest,
+                src,
+                arity: _,
+            } => {
+                live(dest);
+                live(src);
+            }
+            Instruction::Return { src } => {
+                live(src);
+            }
+            Instruction::JumpIfFalse { src, offset: _ }
+            | Instruction::JumpIfTrue { src, offset: _ } => {
+                live(src);
+            }
+            _ => {}
+        }
+    }
     pub fn compile(&self) -> Vec<Function> {
         let entry = self.ast.entry();
         let mut functions = Vec::new();

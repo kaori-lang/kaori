@@ -4,7 +4,7 @@ use logos::Logos;
 
 use crate::{
     bytecode::{
-        Function, emit_bytecode::CompilerContext, optimize_bytecode::optimize_bytecode,
+        Function, emit_bytecode::CompilerContext, optimizations::run_optimization_passes,
         resolve::resolve,
     },
     diagnostics::error::Error,
@@ -25,7 +25,9 @@ pub fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {
 
     let mut functions = compiler.compile();
 
-    optimize_bytecode(&mut functions);
+    for function in functions.iter_mut() {
+        run_optimization_passes(function);
+    }
 
     for (index, function) in functions.iter().enumerate() {
         println!("FUNCTION {}", index);
