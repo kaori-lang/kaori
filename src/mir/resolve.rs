@@ -4,8 +4,8 @@ use std::{
 };
 
 use crate::{
-    bytecode::lower_ast::ResolvedAst,
     diagnostics::error::Error,
+    mir::lower_ast::ResolvedAst,
     program::INTERNER,
     report_error,
     syntax::ast::{Ast, Expr, ExprId},

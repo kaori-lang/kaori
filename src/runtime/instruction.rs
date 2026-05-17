@@ -263,164 +263,175 @@ impl Instruction {
     }
 }
 
+impl fmt::Display for Register {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "r{}", self.0)
+    }
+}
+
+impl fmt::Display for ConstIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "k{}", self.0)
+    }
+}
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Add { dest, src1, src2 } => {
-                write!(f, "ADD r{:?} r{:?} r{:?}", dest, src1, src2)
+                write!(f, "ADD {} {} {}", dest, src1, src2)
             }
             Self::AddK { dest, src1, src2 } => {
-                write!(f, "ADD r{:?} r{:?} k{:?}", dest, src1, src2)
+                write!(f, "ADD {} {} {}", dest, src1, src2)
             }
             Self::Subtract { dest, src1, src2 } => {
-                write!(f, "SUB r{:?} r{:?} r{:?}", dest, src1, src2)
+                write!(f, "SUB {} {} {}", dest, src1, src2)
             }
             Self::SubtractRK { dest, src1, src2 } => {
-                write!(f, "SUB r{:?} r{:?} k{:?}", dest, src1, src2)
+                write!(f, "SUB {} {} {}", dest, src1, src2)
             }
             Self::SubtractKR { dest, src1, src2 } => {
-                write!(f, "SUB r{:?} k{:?} r{:?}", dest, src1, src2)
+                write!(f, "SUB {} {} {}", dest, src1, src2)
             }
             Self::Multiply { dest, src1, src2 } => {
-                write!(f, "MUL r{:?} r{:?} r{:?}", dest, src1, src2)
+                write!(f, "MUL {} {} {}", dest, src1, src2)
             }
             Self::MultiplyK { dest, src1, src2 } => {
-                write!(f, "MUL r{:?} r{:?} k{:?}", dest, src1, src2)
+                write!(f, "MUL {} {} {}", dest, src1, src2)
             }
             Self::Divide { dest, src1, src2 } => {
-                write!(f, "DIV r{:?} r{:?} r{:?}", dest, src1, src2)
+                write!(f, "DIV {} {} {}", dest, src1, src2)
             }
             Self::DivideRK { dest, src1, src2 } => {
-                write!(f, "DIV r{:?} r{:?} k{:?}", dest, src1, src2)
+                write!(f, "DIV {} {} {}", dest, src1, src2)
             }
             Self::DivideKR { dest, src1, src2 } => {
-                write!(f, "DIV r{:?} k{:?} r{:?}", dest, src1, src2)
+                write!(f, "DIV {} {} {}", dest, src1, src2)
             }
             Self::Modulo { dest, src1, src2 } => {
-                write!(f, "MOD r{:?} r{:?} r{:?}", dest, src1, src2)
+                write!(f, "MOD {} {} {}", dest, src1, src2)
             }
             Self::ModuloRK { dest, src1, src2 } => {
-                write!(f, "MOD r{:?} r{:?} k{:?}", dest, src1, src2)
+                write!(f, "MOD {} {} {}", dest, src1, src2)
             }
             Self::ModuloKR { dest, src1, src2 } => {
-                write!(f, "MOD r{:?} k{:?} r{:?}", dest, src1, src2)
+                write!(f, "MOD {} {} {}", dest, src1, src2)
             }
             Self::Equal { dest, src1, src2 } => {
-                write!(f, "EQ r{:?} r{:?} r{:?}", dest, src1, src2)
+                write!(f, "EQ {} {} {}", dest, src1, src2)
             }
             Self::EqualK { dest, src1, src2 } => {
-                write!(f, "EQ r{:?} r{:?} k{:?}", dest, src1, src2)
+                write!(f, "EQ {} {} {}", dest, src1, src2)
             }
             Self::NotEqual { dest, src1, src2 } => {
-                write!(f, "NEQ r{:?} r{:?} r{:?}", dest, src1, src2)
+                write!(f, "NEQ {} {} {}", dest, src1, src2)
             }
             Self::NotEqualK { dest, src1, src2 } => {
-                write!(f, "NEQ r{:?} r{:?} k{:?}", dest, src1, src2)
+                write!(f, "NEQ {} {} {}", dest, src1, src2)
             }
             Self::Less { dest, src1, src2 } => {
-                write!(f, "LT r{:?} r{:?} r{:?}", dest, src1, src2)
+                write!(f, "LT {} {} {}", dest, src1, src2)
             }
             Self::LessK { dest, src1, src2 } => {
-                write!(f, "LT r{:?} r{:?} k{:?}", dest, src1, src2)
+                write!(f, "LT {} {} {}", dest, src1, src2)
             }
             Self::LessEqual { dest, src1, src2 } => {
-                write!(f, "LTE r{:?} r{:?} r{:?}", dest, src1, src2)
+                write!(f, "LTE {} {} {}", dest, src1, src2)
             }
             Self::LessEqualK { dest, src1, src2 } => {
-                write!(f, "LTE r{:?} r{:?} k{:?}", dest, src1, src2)
+                write!(f, "LTE {} {} {}", dest, src1, src2)
             }
             Self::Greater { dest, src1, src2 } => {
-                write!(f, "GT r{:?} r{:?} r{:?}", dest, src1, src2)
+                write!(f, "GT {} {} {}", dest, src1, src2)
             }
             Self::GreaterK { dest, src1, src2 } => {
-                write!(f, "GT r{:?} r{:?} k{:?}", dest, src1, src2)
+                write!(f, "GT {} {} {}", dest, src1, src2)
             }
             Self::GreaterEqual { dest, src1, src2 } => {
-                write!(f, "GTE r{:?} r{:?} r{:?}", dest, src1, src2)
+                write!(f, "GTE {} {} {}", dest, src1, src2)
             }
             Self::GreaterEqualK { dest, src1, src2 } => {
-                write!(f, "GTE r{:?} r{:?} k{:?}", dest, src1, src2)
+                write!(f, "GTE {} {} {}", dest, src1, src2)
             }
             Self::Not { dest, src } => {
-                write!(f, "NOT r{:?} r{:?}", dest, src)
+                write!(f, "NOT {} {}", dest, src)
             }
             Self::Negate { dest, src } => {
-                write!(f, "NEG r{:?} r{:?}", dest, src)
+                write!(f, "NEG {} {}", dest, src)
             }
             Self::Move { dest, src } => {
-                write!(f, "MOV r{:?} r{:?}", dest, src)
+                write!(f, "MOV {} {}", dest, src)
             }
             Self::MoveArg { dest, src } => {
-                write!(f, "MOV_ARG r{:?} r{:?}", dest, src)
+                write!(f, "MOV_ARG {} {}", dest, src)
             }
             Self::LoadK { dest, src } => {
-                write!(f, "LOADK r{:?} k{:?}", dest, src)
+                write!(f, "LOADK {} {}", dest, src)
             }
             Self::CreateDict { dest } => {
-                write!(f, "DICT r{:?}", dest)
+                write!(f, "DICT {}", dest)
             }
             Self::SetField { object, key, value } => {
-                write!(f, "SET r{:?} r{:?} r{:?}", object, key, value)
+                write!(f, "SET {} {} {}", object, key, value)
             }
             Self::GetField { dest, object, key } => {
-                write!(f, "GET r{:?} r{:?} r{:?}", dest, object, key)
+                write!(f, "GET {} {} {}", dest, object, key)
             }
             Self::Call { dest, src, arity } => {
-                write!(f, "CALL r{:?} r{:?} ARITY({})", dest, src, arity)
+                write!(f, "CALL {} {} ARITY({})", dest, src, arity)
             }
             Self::Return { src } => {
-                write!(f, "RET r{:?}", src)
+                write!(f, "RET {}", src)
             }
             Self::Jump { offset } => {
                 write!(f, "JMP {}", offset)
             }
             Self::JumpIfTrue { src, offset } => {
-                write!(f, "JMP_IF_TRUE r{:?} {}", src, offset)
+                write!(f, "JMP_IF_TRUE {} {}", src, offset)
             }
             Self::JumpIfFalse { src, offset } => {
-                write!(f, "JMP_IF_FALSE r{:?} {}", src, offset)
+                write!(f, "JMP_IF_FALSE {} {}", src, offset)
             }
             Self::JumpIfLess { src1, src2, offset } => {
-                write!(f, "JMP_IF_LT r{:?} r{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_LT {} {} {}", src1, src2, offset)
             }
             Self::JumpIfLessK { src1, src2, offset } => {
-                write!(f, "JMP_IF_LT r{:?} k{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_LT {} {} {}", src1, src2, offset)
             }
             Self::JumpIfLessEqual { src1, src2, offset } => {
-                write!(f, "JMP_IF_LTE r{:?} r{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_LTE {} {} {}", src1, src2, offset)
             }
             Self::JumpIfLessEqualK { src1, src2, offset } => {
-                write!(f, "JMP_IF_LTE r{:?} k{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_LTE {} {} {}", src1, src2, offset)
             }
             Self::JumpIfGreater { src1, src2, offset } => {
-                write!(f, "JMP_IF_GT r{:?} r{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_GT {} {} {}", src1, src2, offset)
             }
             Self::JumpIfGreaterK { src1, src2, offset } => {
-                write!(f, "JMP_IF_GT r{:?} k{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_GT {} {} {}", src1, src2, offset)
             }
             Self::JumpIfGreaterEqual { src1, src2, offset } => {
-                write!(f, "JMP_IF_GTE r{:?} r{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_GTE {} {} {}", src1, src2, offset)
             }
             Self::JumpIfGreaterEqualK { src1, src2, offset } => {
-                write!(f, "JMP_IF_GTE r{:?} k{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_GTE {} {} {}", src1, src2, offset)
             }
             Self::JumpIfEqual { src1, src2, offset } => {
-                write!(f, "JMP_IF_EQ r{:?} r{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_EQ {} {} {}", src1, src2, offset)
             }
             Self::JumpIfEqualK { src1, src2, offset } => {
-                write!(f, "JMP_IF_EQ r{:?} k{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_EQ {} {} {}", src1, src2, offset)
             }
             Self::JumpIfNotEqual { src1, src2, offset } => {
-                write!(f, "JMP_IF_NEQ r{:?} r{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_NEQ {} {} {}", src1, src2, offset)
             }
             Self::JumpIfNotEqualK { src1, src2, offset } => {
-                write!(f, "JMP_IF_NEQ r{:?} k{:?} {}", src1, src2, offset)
+                write!(f, "JMP_IF_NEQ {} {} {}", src1, src2, offset)
             }
             Self::CreateClosure { dest, src } => {
-                write!(f, "CREATE_CLOSURE r{:?} FUNCTIONS[{}]", dest, src)
+                write!(f, "CREATE_CLOSURE {} FUNCTIONS[{}]", dest, src)
             }
             Self::CaptureValue { dest, src } => {
-                write!(f, "CAPTURE_VALUE r{:?} r{:?}", dest, src)
+                write!(f, "CAPTURE_VALUE {} {}", dest, src)
             }
             Self::Nop => {
                 write!(f, "NOP")

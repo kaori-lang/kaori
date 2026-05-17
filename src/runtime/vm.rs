@@ -1,15 +1,16 @@
 use std::hint::unreachable_unchecked;
 
 use super::gc::Gc;
-use crate::bytecode::Function;
-use crate::bytecode::instruction::{ConstIndex, Register};
 use crate::diagnostics::error::Error;
 
 use crate::report_error;
 
 use crate::runtime::debug_value::DebugValue;
+use crate::runtime::function::Function;
 use crate::runtime::gc::Closure;
-use crate::{bytecode::instruction::Instruction, runtime::value::Value};
+
+use crate::runtime::instruction::{ConstIndex, Instruction, Register};
+use crate::runtime::value::Value;
 
 type Handler = unsafe extern "rust-preserve-none" fn(
     ip: *const Instruction,
@@ -111,14 +112,12 @@ pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
     let Function {
         ref instructions,
         ref constants,
-        registers,
+        frame_size,
         arity,
-        ..
     } = functions[0];
 
     let ip = instructions.as_ptr();
     let index = unsafe { (*ip).discriminant() };
-    let frame_size = registers;
 
     let mut registers = [Value::default(); 4096];
     let registers = Registers(&mut registers);
@@ -1121,7 +1120,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
     let closure = {
         let Function {
             ref instructions,
-            registers,
+            frame_size,
             arity,
             ref constants,
             ..
@@ -1131,7 +1130,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
             instructions: instructions.as_ptr(),
             constants: constants.as_ptr(),
             arity,
-            size: registers as u8,
+            frame_size,
             captured: Vec::new(),
         }
     };
@@ -1194,8 +1193,9 @@ unsafe extern "rust-preserve-none" fn opcode_call(
             instructions,
             constants,
             arity: closure_arity,
-            size,
+
             ref captured,
+            ..
         } = *state.gc.get_closure(src);
 
         if call_arity != closure_arity {
@@ -1221,7 +1221,7 @@ unsafe extern "rust-preserve-none" fn opcode_call(
 
         let index = unsafe { (*instructions).discriminant() };
 
-        unsafe { HANDLERS[index](instructions, registers, constants, state, size)? }
+        unsafe { HANDLERS[index](instructions, registers, constants, state, frame_size)? }
     };
 
     registers.set_value(dest, return_value);

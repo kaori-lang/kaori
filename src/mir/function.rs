@@ -1,62 +1,51 @@
 use crate::{
-    bytecode::instruction::{ConstIndex, Register},
+    mir::instruction::{ConstIndex, Register},
     runtime::value::Value,
     util::string_interner::StringIndex,
 };
 
 use super::instruction::Instruction;
 use std::{
-    collections::HashMap,
     fmt::{self, Display, Formatter},
     ops::Range,
 };
 
-#[derive(Debug)]
 pub struct Function {
+    pub id: usize,
     pub instructions: Vec<Instruction>,
     pub constants: Vec<Value>,
-    pub registers: usize,
-    pub live_ranges: HashMap<Register, Range<usize>>,
-    pub arity: u8,
+    pub live_ranges: Vec<Range<usize>>,
+    pub arity: usize,
 }
 
 impl Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "FUNCTION({})", self.id)?;
         writeln!(f, "ARITY: {}", self.arity)?;
         for (ip, instr) in self.instructions.iter().enumerate() {
             writeln!(f, "{:04}  {}", ip, instr)?;
         }
+
         writeln!(f)?;
         Ok(())
     }
 }
 
 impl Function {
-    pub fn new(arity: u8) -> Self {
+    pub fn new(id: usize, arity: usize) -> Self {
         Self {
+            id,
             instructions: Vec::new(),
             constants: Vec::new(),
-            registers: 0,
-            live_ranges: HashMap::new(),
+            live_ranges: Vec::new(),
             arity,
         }
     }
 
-    pub fn emit_nil(&mut self) -> Register {
-        let dest = self.allocate_register();
-
-        let src = self.push_number(0.0);
-
-        self.emit_instruction(Instruction::LoadK { dest, src });
-
-        dest
-    }
-
     pub fn update_live_range(&mut self, register: Register, index: usize) {
-        self.live_ranges
-            .entry(register)
-            .and_modify(|range| range.end = index + 1)
-            .or_insert(index..(index + 1));
+        let range = &self.live_ranges[register.0 as usize];
+
+        self.live_ranges[register.0 as usize] = range.start..(index + 1);
     }
 
     pub fn emit_instruction(&mut self, instruction: Instruction) -> usize {
@@ -84,7 +73,6 @@ impl Function {
             Instruction::Not { dest, src }
             | Instruction::Negate { dest, src }
             | Instruction::Move { dest, src }
-            | Instruction::MoveArg { dest, src }
             | Instruction::CaptureValue { dest, src } => {
                 live(dest);
                 live(src);
@@ -120,7 +108,9 @@ impl Function {
             | Instruction::JumpIfTrue { src, offset: _ } => {
                 live(src);
             }
-
+            Instruction::MoveArg { src, .. } => {
+                live(src);
+            }
             _ => {}
         }
 
@@ -128,37 +118,44 @@ impl Function {
     }
 
     pub fn allocate_register(&mut self) -> Register {
-        let register = self.registers;
+        let register = self.live_ranges.len();
+        let start = self.instructions.len();
 
-        self.registers += 1;
+        self.live_ranges.push(start..start + 1);
 
-        Register(register as u8)
+        Register(register as u16)
     }
 
-    fn get_or_insert(&mut self, value: Value) -> usize {
+    fn get_or_insert(&mut self, value: Value) -> u16 {
         if let Some(index) = self.constants.iter().copied().position(|c| c == value) {
-            return index;
+            return index as u16;
         }
 
         let index = self.constants.len();
         self.constants.push(value);
 
-        index
+        index as u16
     }
 
     pub fn push_string(&mut self, value: StringIndex) -> ConstIndex {
         let index = self.get_or_insert(Value::string(value));
 
-        ConstIndex(index as u16)
+        ConstIndex(index)
     }
 
     pub fn push_number(&mut self, value: f64) -> ConstIndex {
         let index = self.get_or_insert(Value::number(value));
 
-        ConstIndex(index as u16)
+        ConstIndex(index)
     }
 
-    pub fn push_unit(&mut self) -> ConstIndex {
-        self.push_number(0.0)
+    pub fn emit_nil(&mut self) -> Register {
+        let dest = self.allocate_register();
+
+        let src = self.push_number(0.0);
+
+        self.emit_instruction(Instruction::LoadK { dest, src });
+
+        dest
     }
 }

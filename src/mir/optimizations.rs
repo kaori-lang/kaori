@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ops::Range};
 
-use crate::bytecode::{
+use crate::mir::{
     function::Function,
     instruction::{Instruction, Register},
 };
@@ -12,23 +12,23 @@ impl Function {
         Self::eliminate_dead_code(&mut self.instructions);
 
         for basic_block in basic_blocks.iter() {
-            self.coalesce_copies(basic_block);
-            self.fuse_compare_branch(basic_block);
+            /*     self.coalesce_copies(basic_block);
+            self.fuse_compare_branch(basic_block); */
         }
 
-        self.eliminate_nops();
-        println!("{:?}", self.live_ranges);
-        /*  let registers_assignment = self.allocate_registers();
-        self.rewrite_instructions(&registers_assignment);
+        //self.eliminate_nops();
 
-        let frame_size = registers_assignment.values().copied().max().unwrap() + 1;
+        println!("{:?}", self.live_ranges);
+        let registers_map = self.allocate_registers();
+
+        /*  let frame_size = registers_map.values().copied().max().unwrap() + 1;
 
         self.patch_move_args(frame_size);
 
         self.registers = frame_size; */
     }
 
-    fn patch_move_args(&mut self, frame_size: u8) {
+    fn patch_move_args(&mut self, frame_size: u16) {
         for instruction in self.instructions.iter_mut() {
             if let Instruction::MoveArg { dest, .. } = instruction {
                 *dest = Register(dest.0 + frame_size);
@@ -74,8 +74,15 @@ impl Function {
         basic_blocks
     }
 
-    fn allocate_registers(&self) -> HashMap<u8, u8> {
-        todo!()
+    fn allocate_registers(&self) {
+        /* let mut sorted_ranges = Vec::new();
+        let mut registers_map = HashMap::new();
+
+        for (&register, range) in &self.live_ranges {
+            sorted_ranges.push((register, range.clone()));
+        }
+
+        sorted_ranges.sort_by(|a, b| a.1.start.cmp(&b.1.start).then(a.0.cmp(&b.0))); */
     }
 
     fn rewrite_instructions(&mut self, assignment: &HashMap<Register, Register>) {
@@ -416,10 +423,7 @@ impl Function {
                     | Instruction::CreateDict { dest }
                     | Instruction::GetField { dest, .. }
                     | Instruction::Call { dest, .. } => {
-                        let live_range = self.live_ranges.get(dest).unwrap_or_else(|| {
-                            panic!("register {:?} not found on live ranges", dest)
-                        });
-                        // 1..5 4
+                        let live_range = &self.live_ranges[dest.0 as usize];
                         let register_lives = live_range.contains(&i);
 
                         if !register_lives && *dest == src {

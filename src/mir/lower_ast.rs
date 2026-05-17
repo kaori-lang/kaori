@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    bytecode::{
+    mir::{
         function::Function,
         instruction::{Instruction, Register},
     },
@@ -97,9 +97,10 @@ impl ResolvedAst {
         let entry = self.ast.entry();
         let mut functions = Vec::new();
 
+        let index = functions.len();
         functions.push(None);
 
-        let mut function = Function::new(0);
+        let mut function = Function::new(index, 0);
         let mut names = Vec::new();
 
         let src = self.lower_expression(&mut functions, &mut function, &mut names, entry);
@@ -177,28 +178,15 @@ impl ResolvedAst {
                     function.emit_instruction(Instruction::CaptureValue { dest, src });
                 }
 
-                let arity = parameters.len() as u8;
-                let mut function = Function::new(arity);
+                let arity = parameters.len();
+                let mut function = Function::new(index, arity);
                 let mut names = Vec::new();
 
-                for (index, parameter) in parameters.iter().copied().enumerate() {
-                    let register = Register(index as u8);
-                    function.update_live_range(register, 0);
+                for parameter in parameters.iter().copied() {
                     self.lower_expression(functions, &mut function, &mut names, parameter);
                 }
 
-                for (index, capture) in self
-                    .captures
-                    .get(&expression)
-                    .unwrap()
-                    .iter()
-                    .copied()
-                    .enumerate()
-                {
-                    let offset = parameters.len();
-                    let register = Register((index + offset) as u8);
-                    function.update_live_range(register, 0);
-
+                for capture in self.captures.get(&expression).unwrap().iter().copied() {
                     Self::lookup_or_declare(&mut names, &mut function, capture);
                 }
 
@@ -365,7 +353,7 @@ impl ResolvedAst {
                 let callee_src = self.lower_expression(functions, function, names, callee);
 
                 for (index, argument) in arguments.iter().enumerate() {
-                    let dest = Register(index as u8);
+                    let dest = Register(index as u16);
 
                     let argument = self.lower_expression(functions, function, names, *argument);
                     function.emit_instruction(Instruction::MoveArg {

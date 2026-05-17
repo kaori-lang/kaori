@@ -2,7 +2,7 @@ use std::hint::unreachable_unchecked;
 
 use foldhash::HashMap;
 
-use crate::bytecode::instruction::Instruction;
+use crate::runtime::instruction::Instruction;
 
 use super::value::Value;
 
@@ -10,7 +10,7 @@ pub struct Closure {
     pub instructions: *const Instruction,
     pub constants: *const Value,
     pub arity: u8,
-    pub size: u8,
+    pub frame_size: u8,
     pub captured: Vec<Value>,
 }
 

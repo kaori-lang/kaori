@@ -3,9 +3,8 @@ use std::sync::{LazyLock, Mutex};
 use logos::Logos;
 
 use crate::{
-    bytecode::{Function, lower_ast::ResolvedAst, resolve::resolve},
     diagnostics::error::Error,
-    runtime::vm::run_vm,
+    mir::{self, resolve::resolve},
     syntax::{parser::Parser, token::Token},
     util::string_interner::StringInterner,
 };
@@ -13,7 +12,7 @@ use crate::{
 pub static INTERNER: LazyLock<Mutex<StringInterner>> =
     LazyLock::new(|| Mutex::new(StringInterner::default()));
 
-pub fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {
+pub fn compile_source_code(source: &str) -> Result<Vec<mir::Function>, Error> {
     let tokens = Token::lexer(source).spanned();
     let parser = Parser::new(tokens);
     let ast = parser.parse()?;
@@ -24,8 +23,7 @@ pub fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {
         function.run_optimization_passes();
     }
 
-    for (index, function) in functions.iter().enumerate() {
-        println!("FUNCTION {}", index);
+    for function in functions.iter() {
         println!("{}", function);
     }
 
