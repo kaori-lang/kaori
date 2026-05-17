@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    bytecode::{function::Function, instruction::Instruction},
+    bytecode::{
+        function::Function,
+        instruction::{self, Instruction},
+    },
     syntax::{
         ast::{Ast, Expr, ExprId},
         ops::{AssignOp, BinaryOp, UnaryOp},
@@ -39,27 +42,7 @@ impl CompilerContext {
         register
     }
 
-    fn update_register_liferange(
-        registers_life_range: &mut HashMap<Register, (usize, usize)>,
-        register: u8,
-        index: usize,
-    ) {
-        registers_life_range
-            .entry(register)
-            .and_modify(|r| r.1 = index)
-            .or_insert((index, index));
-    }
-
-    fn emit_instruction(
-        instruction: Instruction,
-        function: &mut Function,
-        registers_life_range: &mut HashMap<Register, (usize, usize)>,
-    ) {
-        let index = function.instructions.len();
-        function.emit_instruction(instruction);
-
-        let mut live = |reg: u8| Self::update_register_liferange(registers_life_range, reg, index);
-
+    fn touches_register(instruction: Instruction, reg: u8) -> bool {
         match instruction {
             Instruction::Add { dest, src1, src2 }
             | Instruction::Subtract { dest, src1, src2 }
@@ -72,80 +55,46 @@ impl CompilerContext {
             | Instruction::LessEqual { dest, src1, src2 }
             | Instruction::Greater { dest, src1, src2 }
             | Instruction::GreaterEqual { dest, src1, src2 } => {
-                live(dest);
-                live(src1);
-                live(src2);
+                dest == reg || src1 == reg || src2 == reg
             }
-            Instruction::SubtractRK {
-                dest,
-                src1,
-                src2: _,
+
+            Instruction::SubtractRK { dest, src1, .. }
+            | Instruction::DivideRK { dest, src1, .. }
+            | Instruction::ModuloRK { dest, src1, .. } => dest == reg || src1 == reg,
+
+            Instruction::DivideKR { dest, src2, .. } | Instruction::ModuloKR { dest, src2, .. } => {
+                dest == reg || src2 == reg
             }
-            | Instruction::DivideRK {
-                dest,
-                src1,
-                src2: _,
-            }
-            | Instruction::ModuloRK {
-                dest,
-                src1,
-                src2: _,
-            } => {
-                live(dest);
-                live(src1);
-            }
-            Instruction::DivideKR {
-                dest,
-                src1: _,
-                src2,
-            }
-            | Instruction::ModuloKR {
-                dest,
-                src1: _,
-                src2,
-            } => {
-                live(dest);
-                live(src2);
-            }
+
             Instruction::Not { dest, src }
             | Instruction::Negate { dest, src }
             | Instruction::Move { dest, src }
             | Instruction::MoveArg { dest, src }
-            | Instruction::CaptureValue { dest, src } => {
-                live(dest);
-                live(src);
+            | Instruction::CaptureValue { dest, src } => dest == reg || src == reg,
+
+            Instruction::CreateDict { dest } | Instruction::CreateClosure { dest, .. } => {
+                dest == reg
             }
-            Instruction::CreateDict { dest } | Instruction::CreateClosure { dest, src: _ } => {
-                live(dest);
-            }
+
             Instruction::SetField { object, key, value } => {
-                live(object);
-                live(key);
-                live(value);
+                object == reg || key == reg || value == reg
             }
+
             Instruction::GetField { dest, object, key } => {
-                live(dest);
-                live(object);
-                live(key);
+                dest == reg || object == reg || key == reg
             }
-            Instruction::Call {
-                dest,
-                src,
-                arity: _,
-            } => {
-                live(dest);
-                live(src);
+
+            Instruction::Call { dest, src, .. } => dest == reg || src == reg,
+
+            Instruction::Return { src } => src == reg,
+
+            Instruction::JumpIfFalse { src, .. } | Instruction::JumpIfTrue { src, .. } => {
+                src == reg
             }
-            Instruction::Return { src } => {
-                live(src);
-            }
-            Instruction::JumpIfFalse { src, offset: _ }
-            | Instruction::JumpIfTrue { src, offset: _ } => {
-                live(src);
-            }
-            _ => {}
+            _ => false,
         }
     }
+
     pub fn compile(&self) -> Vec<Function> {
         let entry = self.ast.entry();
         let mut functions = Vec::new();
@@ -506,6 +455,19 @@ impl CompilerContext {
                     function.instructions.len() as i32 - jump_if_false as i32,
                 );
 
+                // if current scope register was used inside loop body, update live range to outlive it
+                let instructions_len = function.instructions.len();
+
+                for (_, register) in names.iter().copied() {
+                    for index in loop_body..instructions_len {
+                        let instruction = function.instructions[index];
+
+                        if Self::touches_register(instruction, register) {
+                            function.update_live_range(register, instructions_len);
+                        }
+                    }
+                }
+
                 function.emit_nil()
             }
             Expr::Return(expression) => {
@@ -559,54 +521,6 @@ impl CompilerContext {
             }
         }
     }
-
-    /*     fn compile_loop(
-           &mut self,
-           scope: &mut names,
-           init: Option<ExprId>,
-           condition: &Expr,
-           block: &Expr,
-           increment: Option<&Expr>,
-       ) -> Operand {
-           if let Some(init) = init {
-               self.compile_expression(functions, function, names,   init);
-           }
-
-           let src = self.compile_expression(functions, function, names,   condition);
-           let src = materialize(names, src);
-
-           let jump_if_false = function.emit_instruction(Instruction::JumpIfFalse {
-               src,
-               offset: 0,
-           });
-
-           let loop_body = function.instructions.len();
-
-           self.compile_expression(functions, function, names,   block);
-
-           if let Some(increment) = increment {
-               self.compile_expression(functions, function, names,   increment);
-           }
-
-           let src = self.compile_expression(functions, function, names,   condition);
-           let src = materialize(names, src);
-
-           let jump_if_true = function.emit_instruction(Instruction::JumpIfTrue {
-               src,
-               offset: 0,
-           });
-
-           patch_jump(function, jump_if_true, loop_body as i32 - jump_if_true as i32);
-           patch_jump(
-               names,
-               jump_if_false,
-               function.instructions.len() as i32 - jump_if_false as i32,
-           );
-
-           Self::nil(function,registers)
-       }
-
-    */
 
     fn block_returns(&self, expressions: &[ExprId]) -> bool {
         for expression in expressions.iter().copied() {

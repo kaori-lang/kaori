@@ -1,2 +1,12 @@
-a := 0;
-b := a;
+x := 2;
+
+while true {
+    y := 3;
+
+    while true {
+        y += 1;
+    }
+
+     x = 7;
+     y = 8 + x;
+}

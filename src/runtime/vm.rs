@@ -112,6 +112,7 @@ pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
         ref constants,
         registers,
         arity,
+        ..
     } = functions[0];
 
     let ip = instructions.as_ptr();
@@ -1122,6 +1123,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
             registers,
             arity,
             ref constants,
+            ..
         } = state.functions[src as usize];
 
         Closure {
