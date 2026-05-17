@@ -3,8 +3,9 @@ use std::sync::{LazyLock, Mutex};
 use logos::Logos;
 
 use crate::{
-    bytecode::{Function, emit_bytecode::CompilerContext, resolve::resolve},
+    bytecode::{Function, lower_ast::ResolvedAst, resolve::resolve},
     diagnostics::error::Error,
+    runtime::vm::run_vm,
     syntax::{parser::Parser, token::Token},
     util::string_interner::StringInterner,
 };
@@ -16,11 +17,8 @@ pub fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {
     let tokens = Token::lexer(source).spanned();
     let parser = Parser::new(tokens);
     let ast = parser.parse()?;
-    let captures = resolve(&ast)?;
-
-    let compiler = CompilerContext::new(ast, captures);
-
-    let mut functions = compiler.compile();
+    let resolved_ast = resolve(ast)?;
+    let mut functions = resolved_ast.lower();
 
     for function in functions.iter_mut() {
         function.run_optimization_passes();
@@ -29,7 +27,6 @@ pub fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {
     for (index, function) in functions.iter().enumerate() {
         println!("FUNCTION {}", index);
         println!("{}", function);
-        println!("{:?}", function.live_ranges);
     }
 
     Ok(functions)

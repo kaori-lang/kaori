@@ -1,22 +1,28 @@
-use crate::{runtime::value::Value, util::string_interner::StringIndex};
+use crate::{
+    bytecode::instruction::{ConstIndex, Register},
+    runtime::value::Value,
+    util::string_interner::StringIndex,
+};
 
 use super::instruction::Instruction;
 use std::{
     collections::HashMap,
     fmt::{self, Display, Formatter},
+    ops::Range,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Function {
     pub instructions: Vec<Instruction>,
     pub constants: Vec<Value>,
-    pub registers: u8,
-    pub live_ranges: HashMap<u8, (usize, usize)>,
+    pub registers: usize,
+    pub live_ranges: HashMap<Register, Range<usize>>,
     pub arity: u8,
 }
 
 impl Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "ARITY: {}", self.arity)?;
         for (ip, instr) in self.instructions.iter().enumerate() {
             writeln!(f, "{:04}  {}", ip, instr)?;
         }
@@ -26,31 +32,38 @@ impl Display for Function {
 }
 
 impl Function {
-    pub fn emit_nil(&mut self) -> u8 {
+    pub fn new(arity: u8) -> Self {
+        Self {
+            instructions: Vec::new(),
+            constants: Vec::new(),
+            registers: 0,
+            live_ranges: HashMap::new(),
+            arity,
+        }
+    }
+
+    pub fn emit_nil(&mut self) -> Register {
         let dest = self.allocate_register();
 
         let src = self.push_number(0.0);
 
-        self.instructions.push(Instruction::LoadK {
-            dest,
-            src: src as u16,
-        });
+        self.emit_instruction(Instruction::LoadK { dest, src });
 
         dest
     }
 
-    pub fn update_live_range(&mut self, register: u8, index: usize) {
+    pub fn update_live_range(&mut self, register: Register, index: usize) {
         self.live_ranges
             .entry(register)
-            .and_modify(|r| r.1 = index)
-            .or_insert((index, index));
+            .and_modify(|range| range.end = index + 1)
+            .or_insert(index..(index + 1));
     }
 
     pub fn emit_instruction(&mut self, instruction: Instruction) -> usize {
         let index = self.instructions.len();
         self.instructions.push(instruction);
 
-        let mut live = |register: u8| self.update_live_range(register, index);
+        let mut live = |register: Register| self.update_live_range(register, index);
 
         match instruction {
             Instruction::Add { dest, src1, src2 }
@@ -68,37 +81,6 @@ impl Function {
                 live(src1);
                 live(src2);
             }
-            Instruction::SubtractRK {
-                dest,
-                src1,
-                src2: _,
-            }
-            | Instruction::DivideRK {
-                dest,
-                src1,
-                src2: _,
-            }
-            | Instruction::ModuloRK {
-                dest,
-                src1,
-                src2: _,
-            } => {
-                live(dest);
-                live(src1);
-            }
-            Instruction::DivideKR {
-                dest,
-                src1: _,
-                src2,
-            }
-            | Instruction::ModuloKR {
-                dest,
-                src1: _,
-                src2,
-            } => {
-                live(dest);
-                live(src2);
-            }
             Instruction::Not { dest, src }
             | Instruction::Negate { dest, src }
             | Instruction::Move { dest, src }
@@ -106,6 +88,9 @@ impl Function {
             | Instruction::CaptureValue { dest, src } => {
                 live(dest);
                 live(src);
+            }
+            Instruction::LoadK { dest, src: _ } => {
+                live(dest);
             }
             Instruction::CreateDict { dest } | Instruction::CreateClosure { dest, src: _ } => {
                 live(dest);
@@ -135,18 +120,19 @@ impl Function {
             | Instruction::JumpIfTrue { src, offset: _ } => {
                 live(src);
             }
+
             _ => {}
         }
 
         index
     }
 
-    pub fn allocate_register(&mut self) -> u8 {
+    pub fn allocate_register(&mut self) -> Register {
         let register = self.registers;
 
         self.registers += 1;
 
-        register
+        Register(register as u8)
     }
 
     fn get_or_insert(&mut self, value: Value) -> usize {
@@ -160,15 +146,19 @@ impl Function {
         index
     }
 
-    pub fn push_string(&mut self, value: StringIndex) -> usize {
-        self.get_or_insert(Value::string(value))
+    pub fn push_string(&mut self, value: StringIndex) -> ConstIndex {
+        let index = self.get_or_insert(Value::string(value));
+
+        ConstIndex(index as u16)
     }
 
-    pub fn push_number(&mut self, value: f64) -> usize {
-        self.get_or_insert(Value::number(value))
+    pub fn push_number(&mut self, value: f64) -> ConstIndex {
+        let index = self.get_or_insert(Value::number(value));
+
+        ConstIndex(index as u16)
     }
 
-    pub fn push_unit(&mut self) -> usize {
-        self.get_or_insert(Value::number(0.0))
+    pub fn push_unit(&mut self) -> ConstIndex {
+        self.push_number(0.0)
     }
 }

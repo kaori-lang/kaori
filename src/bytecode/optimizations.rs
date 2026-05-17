@@ -1,4 +1,9 @@
-use crate::bytecode::{function::Function, instruction::Instruction};
+use std::{collections::HashMap, ops::Range};
+
+use crate::bytecode::{
+    function::Function,
+    instruction::{Instruction, Register},
+};
 
 impl Function {
     pub fn run_optimization_passes(&mut self) {
@@ -6,15 +11,32 @@ impl Function {
 
         Self::eliminate_dead_code(&mut self.instructions);
 
-        for basic_block in basic_blocks {
+        for basic_block in basic_blocks.iter() {
             self.coalesce_copies(basic_block);
             self.fuse_compare_branch(basic_block);
         }
 
-        Self::eliminate_nops(&mut self.instructions);
+        self.eliminate_nops();
+        println!("{:?}", self.live_ranges);
+        /*  let registers_assignment = self.allocate_registers();
+        self.rewrite_instructions(&registers_assignment);
+
+        let frame_size = registers_assignment.values().copied().max().unwrap() + 1;
+
+        self.patch_move_args(frame_size);
+
+        self.registers = frame_size; */
     }
 
-    fn build_cfg(&self) -> Vec<(usize, usize)> {
+    fn patch_move_args(&mut self, frame_size: u8) {
+        for instruction in self.instructions.iter_mut() {
+            if let Instruction::MoveArg { dest, .. } = instruction {
+                *dest = Register(dest.0 + frame_size);
+            }
+        }
+    }
+
+    fn build_cfg(&self) -> Vec<Range<usize>> {
         let mut leaders = vec![false; self.instructions.len()];
         leaders[0] = true;
 
@@ -41,15 +63,279 @@ impl Function {
 
         for (end, leader) in leaders.iter().copied().enumerate().skip(1) {
             if leader {
-                basic_blocks.push((start, end));
+                basic_blocks.push(start..end);
                 start = end;
             }
         }
 
         let end = self.instructions.len() - 1;
-        basic_blocks.push((start, end));
+        basic_blocks.push(start..end);
 
         basic_blocks
+    }
+
+    fn allocate_registers(&self) -> HashMap<u8, u8> {
+        todo!()
+    }
+
+    fn rewrite_instructions(&mut self, assignment: &HashMap<Register, Register>) {
+        let replace = |register: Register| *assignment.get(&register).unwrap();
+
+        for instruction in &mut self.instructions {
+            *instruction = match *instruction {
+                Instruction::Add { dest, src1, src2 } => Instruction::Add {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2: replace(src2),
+                },
+                Instruction::AddK { dest, src1, src2 } => Instruction::AddK {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2,
+                },
+                Instruction::Subtract { dest, src1, src2 } => Instruction::Subtract {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2: replace(src2),
+                },
+                Instruction::SubtractRK { dest, src1, src2 } => Instruction::SubtractRK {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2,
+                },
+                Instruction::SubtractKR { dest, src1, src2 } => Instruction::SubtractKR {
+                    dest: replace(dest),
+                    src1,
+                    src2: replace(src2),
+                },
+                Instruction::Multiply { dest, src1, src2 } => Instruction::Multiply {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2: replace(src2),
+                },
+                Instruction::MultiplyK { dest, src1, src2 } => Instruction::MultiplyK {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2,
+                },
+                Instruction::Divide { dest, src1, src2 } => Instruction::Divide {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2: replace(src2),
+                },
+                Instruction::DivideRK { dest, src1, src2 } => Instruction::DivideRK {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2,
+                },
+                Instruction::DivideKR { dest, src1, src2 } => Instruction::DivideKR {
+                    dest: replace(dest),
+                    src1,
+                    src2: replace(src2),
+                },
+                Instruction::Modulo { dest, src1, src2 } => Instruction::Modulo {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2: replace(src2),
+                },
+                Instruction::ModuloRK { dest, src1, src2 } => Instruction::ModuloRK {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2,
+                },
+                Instruction::ModuloKR { dest, src1, src2 } => Instruction::ModuloKR {
+                    dest: replace(dest),
+                    src1,
+                    src2: replace(src2),
+                },
+                Instruction::Equal { dest, src1, src2 } => Instruction::Equal {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2: replace(src2),
+                },
+                Instruction::EqualK { dest, src1, src2 } => Instruction::EqualK {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2,
+                },
+                Instruction::NotEqual { dest, src1, src2 } => Instruction::NotEqual {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2: replace(src2),
+                },
+                Instruction::NotEqualK { dest, src1, src2 } => Instruction::NotEqualK {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2,
+                },
+                Instruction::Less { dest, src1, src2 } => Instruction::Less {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2: replace(src2),
+                },
+                Instruction::LessK { dest, src1, src2 } => Instruction::LessK {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2,
+                },
+                Instruction::LessEqual { dest, src1, src2 } => Instruction::LessEqual {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2: replace(src2),
+                },
+                Instruction::LessEqualK { dest, src1, src2 } => Instruction::LessEqualK {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2,
+                },
+                Instruction::Greater { dest, src1, src2 } => Instruction::Greater {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2: replace(src2),
+                },
+                Instruction::GreaterK { dest, src1, src2 } => Instruction::GreaterK {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2,
+                },
+                Instruction::GreaterEqual { dest, src1, src2 } => Instruction::GreaterEqual {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2: replace(src2),
+                },
+                Instruction::GreaterEqualK { dest, src1, src2 } => Instruction::GreaterEqualK {
+                    dest: replace(dest),
+                    src1: replace(src1),
+                    src2,
+                },
+                Instruction::Not { dest, src } => Instruction::Not {
+                    dest: replace(dest),
+                    src: replace(src),
+                },
+                Instruction::Negate { dest, src } => Instruction::Negate {
+                    dest: replace(dest),
+                    src: replace(src),
+                },
+                Instruction::Move { dest, src } => Instruction::Move {
+                    dest: replace(dest),
+                    src: replace(src),
+                },
+                Instruction::MoveArg { dest, src } => Instruction::MoveArg {
+                    dest: replace(dest),
+                    src: replace(src),
+                },
+                Instruction::LoadK { dest, src } => Instruction::LoadK {
+                    dest: replace(dest),
+                    src,
+                },
+                Instruction::CreateDict { dest } => Instruction::CreateDict {
+                    dest: replace(dest),
+                },
+                Instruction::SetField { object, key, value } => Instruction::SetField {
+                    object: replace(object),
+                    key: replace(key),
+                    value: replace(value),
+                },
+                Instruction::GetField { dest, object, key } => Instruction::GetField {
+                    dest: replace(dest),
+                    object: replace(object),
+                    key: replace(key),
+                },
+                Instruction::CreateClosure { dest, src } => Instruction::CreateClosure {
+                    dest: replace(dest),
+                    src,
+                },
+                Instruction::CaptureValue { dest, src } => Instruction::CaptureValue {
+                    dest: replace(dest),
+                    src: replace(src),
+                },
+                Instruction::Call { dest, src, arity } => Instruction::Call {
+                    dest: replace(dest),
+                    src: replace(src),
+                    arity,
+                },
+                Instruction::Return { src } => Instruction::Return { src: replace(src) },
+                Instruction::JumpIfFalse { src, offset } => Instruction::JumpIfFalse {
+                    src: replace(src),
+                    offset,
+                },
+                Instruction::JumpIfTrue { src, offset } => Instruction::JumpIfTrue {
+                    src: replace(src),
+                    offset,
+                },
+                Instruction::JumpIfLess { src1, src2, offset } => Instruction::JumpIfLess {
+                    src1: replace(src1),
+                    src2: replace(src2),
+                    offset,
+                },
+                Instruction::JumpIfLessK { src1, src2, offset } => Instruction::JumpIfLessK {
+                    src1: replace(src1),
+                    src2,
+                    offset,
+                },
+                Instruction::JumpIfLessEqual { src1, src2, offset } => {
+                    Instruction::JumpIfLessEqual {
+                        src1: replace(src1),
+                        src2: replace(src2),
+                        offset,
+                    }
+                }
+                Instruction::JumpIfLessEqualK { src1, src2, offset } => {
+                    Instruction::JumpIfLessEqualK {
+                        src1: replace(src1),
+                        src2,
+                        offset,
+                    }
+                }
+                Instruction::JumpIfGreater { src1, src2, offset } => Instruction::JumpIfGreater {
+                    src1: replace(src1),
+                    src2: replace(src2),
+                    offset,
+                },
+                Instruction::JumpIfGreaterK { src1, src2, offset } => Instruction::JumpIfGreaterK {
+                    src1: replace(src1),
+                    src2,
+                    offset,
+                },
+                Instruction::JumpIfGreaterEqual { src1, src2, offset } => {
+                    Instruction::JumpIfGreaterEqual {
+                        src1: replace(src1),
+                        src2: replace(src2),
+                        offset,
+                    }
+                }
+                Instruction::JumpIfGreaterEqualK { src1, src2, offset } => {
+                    Instruction::JumpIfGreaterEqualK {
+                        src1: replace(src1),
+                        src2,
+                        offset,
+                    }
+                }
+                Instruction::JumpIfEqual { src1, src2, offset } => Instruction::JumpIfEqual {
+                    src1: replace(src1),
+                    src2: replace(src2),
+                    offset,
+                },
+                Instruction::JumpIfEqualK { src1, src2, offset } => Instruction::JumpIfEqualK {
+                    src1: replace(src1),
+                    src2,
+                    offset,
+                },
+                Instruction::JumpIfNotEqual { src1, src2, offset } => Instruction::JumpIfNotEqual {
+                    src1: replace(src1),
+                    src2: replace(src2),
+                    offset,
+                },
+                Instruction::JumpIfNotEqualK { src1, src2, offset } => {
+                    Instruction::JumpIfNotEqualK {
+                        src1: replace(src1),
+                        src2,
+                        offset,
+                    }
+                }
+                other => other, // Jump, Nop — no registers
+            };
+        }
     }
 
     fn eliminate_dead_code(instructions: &mut [Instruction]) {
@@ -85,18 +371,18 @@ impl Function {
         }
     }
 
-    fn coalesce_copies(&mut self, basic_block: (usize, usize)) {
-        let (start, end) = basic_block;
-        let instructions = &mut self.instructions[start..end];
+    fn coalesce_copies(&mut self, basic_block: &Range<usize>) {
+        let instructions = &mut self.instructions[basic_block.start..basic_block.end];
 
         for i in 0..instructions.len() {
             let (move_dest, src) = match instructions[i] {
-                Instruction::Move { dest, src } | Instruction::MoveArg { dest, src } => (dest, src),
+                Instruction::Move { dest, src } => (dest, src),
                 _ => continue,
             };
 
             for j in (0..i).rev() {
-                match &mut instructions[j] {
+                let instruction = &mut instructions[j];
+                match instruction {
                     Instruction::Add { dest, .. }
                     | Instruction::AddK { dest, .. }
                     | Instruction::Subtract { dest, .. }
@@ -129,13 +415,19 @@ impl Function {
                     | Instruction::LoadK { dest, .. }
                     | Instruction::CreateDict { dest }
                     | Instruction::GetField { dest, .. }
-                    | Instruction::Call { dest, .. }
-                        if *dest == src =>
-                    {
-                        *dest = move_dest;
-                        instructions[i] = Instruction::Nop;
+                    | Instruction::Call { dest, .. } => {
+                        let live_range = self.live_ranges.get(dest).unwrap_or_else(|| {
+                            panic!("register {:?} not found on live ranges", dest)
+                        });
+                        // 1..5 4
+                        let register_lives = live_range.contains(&i);
 
-                        break;
+                        if !register_lives && *dest == src {
+                            *dest = move_dest;
+                            instructions[i] = Instruction::Nop;
+
+                            break;
+                        }
                     }
                     Instruction::Nop => {}
                     _ => {
@@ -146,9 +438,10 @@ impl Function {
         }
     }
 
-    fn fuse_compare_branch(&mut self, basic_block: (usize, usize)) {
-        let (start, end) = basic_block;
-        let instructions = &mut self.instructions[start..end];
+    fn fold_constant(&mut self, basic_block: &Range<usize>) {}
+
+    fn fuse_compare_branch(&mut self, basic_block: &Range<usize>) {
+        let instructions = &mut self.instructions[basic_block.start..basic_block.end];
 
         for index in 1..instructions.len() {
             match instructions[index] {
@@ -251,13 +544,13 @@ impl Function {
         }
     }
 
-    fn eliminate_nops(instructions: &mut Vec<Instruction>) {
-        let mut instructions_map = vec![0usize; instructions.len()];
+    fn eliminate_nops(&mut self) {
+        let mut instructions_map = vec![0usize; self.instructions.len()];
 
         let mut index = 0;
 
-        for i in 0..instructions.len() {
-            if let Instruction::Nop = instructions[i] {
+        for i in 0..self.instructions.len() {
+            if let Instruction::Nop = self.instructions[i] {
                 instructions_map[i] = index;
             } else {
                 instructions_map[i] = index;
@@ -267,8 +560,8 @@ impl Function {
 
         let mut index = 0;
 
-        for i in 0..instructions.len() {
-            match &mut instructions[i] {
+        for i in 0..self.instructions.len() {
+            match &mut self.instructions[i] {
                 Instruction::Jump { offset }
                 | Instruction::JumpIfFalse { offset, .. }
                 | Instruction::JumpIfTrue { offset, .. }
@@ -287,19 +580,19 @@ impl Function {
                     let target = (i as i32 + *offset) as usize;
                     let target = instructions_map[target];
                     *offset = target as i32 - index as i32;
-                    instructions[index] = instructions[i];
+                    self.instructions[index] = self.instructions[i];
                     index += 1;
                 }
 
                 Instruction::Nop => {}
 
                 _ => {
-                    instructions[index] = instructions[i];
+                    self.instructions[index] = self.instructions[i];
                     index += 1;
                 }
             }
         }
 
-        instructions.truncate(index);
+        self.instructions.truncate(index);
     }
 }

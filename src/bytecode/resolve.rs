@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::{
+    bytecode::lower_ast::ResolvedAst,
     diagnostics::error::Error,
     program::INTERNER,
     report_error,
@@ -78,13 +79,15 @@ impl Environment {
     }
 }
 
-pub fn resolve(ast: &Ast) -> Result<HashMap<ExprId, Vec<StringIndex>>, Error> {
+pub fn resolve(ast: Ast) -> Result<ResolvedAst, Error> {
     let mut environment = Environment::new();
     let mut captures = HashMap::new();
 
-    resolve_expression(ast, ast.entry(), &mut environment, &mut captures)?;
+    resolve_expression(&ast, ast.entry(), &mut environment, &mut captures)?;
 
-    Ok(captures)
+    let resolve_ast = ResolvedAst::new(ast, captures);
+
+    Ok(resolve_ast)
 }
 
 fn resolve_block(

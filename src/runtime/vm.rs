@@ -2,6 +2,7 @@ use std::hint::unreachable_unchecked;
 
 use super::gc::Gc;
 use crate::bytecode::Function;
+use crate::bytecode::instruction::{ConstIndex, Register};
 use crate::diagnostics::error::Error;
 
 use crate::report_error;
@@ -126,10 +127,10 @@ pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
     let mut state = VmState::new(functions);
 
     let value = unsafe {
-        HANDLERS[index](ip, registers, constants, &mut state, frame_size).map_err(|e| *e)?
+        HANDLERS[index](ip, registers, constants, &mut state, frame_size as u8).map_err(|e| *e)?
     };
 
-    //println!("{:?}", DebugValue::new(value, &state.gc));
+    println!("{:?}", DebugValue::new(value, &state.gc));
     Ok(value)
 }
 
@@ -150,12 +151,12 @@ impl VmState {
 struct Registers<'a>(pub &'a mut [Value]);
 
 impl<'a> Registers<'a> {
-    fn set_value(&mut self, dest: u8, value: Value) {
-        unsafe { *self.0.get_unchecked_mut(dest as usize) = value }
+    fn set_value(&mut self, dest: Register, value: Value) {
+        unsafe { *self.0.get_unchecked_mut(dest.0 as usize) = value }
     }
 
-    unsafe fn get_value(&self, src: u8) -> Value {
-        unsafe { *self.0.get_unchecked(src as usize) }
+    unsafe fn get_value(&self, src: Register) -> Value {
+        unsafe { *self.0.get_unchecked(src.0 as usize) }
     }
 }
 
@@ -163,8 +164,8 @@ impl<'a> Registers<'a> {
 struct Constants(*const Value);
 
 impl Constants {
-    unsafe fn get_value(&self, src: u16) -> Value {
-        unsafe { *self.0.add(src as usize) }
+    unsafe fn get_value(&self, src: ConstIndex) -> Value {
+        unsafe { *self.0.add(src.0 as usize) }
     }
 }
 
@@ -1130,7 +1131,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
             instructions: instructions.as_ptr(),
             constants: constants.as_ptr(),
             arity,
-            size: registers,
+            size: registers as u8,
             captured: Vec::new(),
         }
     };
@@ -1213,7 +1214,9 @@ unsafe extern "rust-preserve-none" fn opcode_call(
         let constants = Constants(constants);
 
         for (i, value) in captured.iter().copied().enumerate() {
-            registers.set_value(closure_arity + i as u8, value);
+            let dest = Register(closure_arity + i as u8);
+
+            registers.set_value(dest, value);
         }
 
         let index = unsafe { (*instructions).discriminant() };
