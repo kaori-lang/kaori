@@ -121,7 +121,7 @@ impl ResolvedAst {
         let mut function = Function::new(index, 0);
         let mut names = Vec::new();
 
-        let src = self.lower_expr(&mut functions, &mut function, &mut names, entry, None);
+        let src = self.lower_expression(&mut functions, &mut function, &mut names, entry, None);
 
         if !self.expression_returns(entry) {
             function.emit_instruction(Instruction::Return { src });
@@ -148,19 +148,18 @@ impl ResolvedAst {
             if let Expr::Function { name, .. } = &expression
                 && let Some(name) = name
             {
-                self.lower_expr(functions, function, names, *name, None);
+                self.lower_expression(functions, function, names, *name, None);
             }
         }
 
-        expressions
-            .iter()
-            .copied()
-            .fold(Register(0), |_, expression| {
-                self.lower_expr(functions, function, names, expression, dest)
-            })
+        let dest = dest.unwrap_or_else(|| function.allocate_register());
+
+        expressions.iter().copied().fold(dest, |_, expression| {
+            self.lower_expression(functions, function, names, expression, Some(dest))
+        })
     }
 
-    fn lower_expr(
+    fn lower_expression(
         &self,
         functions: &mut Vec<Option<Function>>,
         function: &mut Function,
@@ -191,14 +190,18 @@ impl ResolvedAst {
                 todo!()
             }
             Expr::Identifier(name) => {
-                let reg = Self::lookup_or_declare(names, function, name);
+                let register = Self::lookup_or_declare(names, function, name);
+
                 if let Some(dest) = dest
-                    && dest != reg
+                    && dest != register
                 {
-                    function.emit_instruction(Instruction::Move { dest, src: reg });
+                    function.emit_instruction(Instruction::Move {
+                        dest,
+                        src: register,
+                    });
                     dest
                 } else {
-                    reg
+                    register
                 }
             }
             Expr::DeclareAssign { left, right } => {
@@ -210,12 +213,16 @@ impl ResolvedAst {
                         _ => panic!("DeclareAssign left must be Identifier"),
                     },
                 );
-                self.lower_expr(functions, function, names, right, Some(dest));
+
+                self.lower_expression(functions, function, names, right, Some(dest));
+
                 dest
             }
             Expr::Assign { left, right } => {
-                let dest = self.lower_expr(functions, function, names, left, None);
-                self.lower_expr(functions, function, names, right, Some(dest));
+                let dest = self.lower_expression(functions, function, names, left, None);
+
+                self.lower_expression(functions, function, names, right, Some(dest));
+
                 dest
             }
             Expr::CompoundAssign {
@@ -223,7 +230,7 @@ impl ResolvedAst {
                 left,
                 right,
             } => {
-                let dest = self.lower_expr(functions, function, names, left, None);
+                let dest = self.lower_expression(functions, function, names, left, None);
 
                 if let Some(src2) = self.as_number_const(function, right) {
                     function.emit_instruction(match operator {
@@ -254,7 +261,7 @@ impl ResolvedAst {
                         },
                     });
                 } else {
-                    let src2 = self.lower_expr(functions, function, names, right, None);
+                    let src2 = self.lower_expression(functions, function, names, right, None);
                     function.emit_instruction(match operator {
                         AssignOp::AddAssign => Instruction::Add {
                             dest,
@@ -294,7 +301,7 @@ impl ResolvedAst {
                 let dest = dest.unwrap_or_else(|| function.allocate_register());
 
                 if let Some(src2) = self.as_number_const(function, right) {
-                    let src1 = self.lower_expr(functions, function, names, left, None);
+                    let src1 = self.lower_expression(functions, function, names, left, None);
 
                     function.emit_instruction(match operator {
                         BinaryOp::Add => Instruction::AddK { dest, src1, src2 },
@@ -309,11 +316,12 @@ impl ResolvedAst {
                         BinaryOp::Equal => Instruction::EqualK { dest, src1, src2 },
                         BinaryOp::NotEqual => Instruction::NotEqualK { dest, src1, src2 },
                     });
+
                     return dest;
                 }
 
                 if let Some(src1) = self.as_number_const(function, left) {
-                    let src2 = self.lower_expr(functions, function, names, right, None);
+                    let src2 = self.lower_expression(functions, function, names, right, None);
 
                     function.emit_instruction(match operator {
                         BinaryOp::Add => Instruction::AddK {
@@ -363,8 +371,8 @@ impl ResolvedAst {
                     return dest;
                 }
 
-                let src1 = self.lower_expr(functions, function, names, left, None);
-                let src2 = self.lower_expr(functions, function, names, right, None);
+                let src1 = self.lower_expression(functions, function, names, left, None);
+                let src2 = self.lower_expression(functions, function, names, right, None);
 
                 function.emit_instruction(match operator {
                     BinaryOp::Add => Instruction::Add { dest, src1, src2 },
@@ -384,26 +392,29 @@ impl ResolvedAst {
             }
             Expr::Unary { operator, right } => {
                 let dest = dest.unwrap_or_else(|| function.allocate_register());
-                let src = self.lower_expr(functions, function, names, right, None);
+                let src = self.lower_expression(functions, function, names, right, None);
+
                 function.emit_instruction(match operator {
                     UnaryOp::Negate => Instruction::Negate { dest, src },
                 });
+
                 dest
             }
             Expr::LogicalNot(expression) => {
                 let dest = dest.unwrap_or_else(|| function.allocate_register());
-                let src = self.lower_expr(functions, function, names, expression, None);
+                let src = self.lower_expression(functions, function, names, expression, None);
                 function.emit_instruction(Instruction::Not { dest, src });
+
                 dest
             }
             Expr::LogicalAnd { left, right } => {
                 let dest = dest.unwrap_or_else(|| function.allocate_register());
 
-                self.lower_expr(functions, function, names, left, Some(dest));
+                self.lower_expression(functions, function, names, left, Some(dest));
 
                 let jump_if_false = lower_conditional_jump(function, dest, true);
 
-                self.lower_expr(functions, function, names, right, Some(dest));
+                self.lower_expression(functions, function, names, right, Some(dest));
 
                 patch_jump(
                     function,
@@ -414,11 +425,11 @@ impl ResolvedAst {
             }
             Expr::LogicalOr { left, right } => {
                 let dest = dest.unwrap_or_else(|| function.allocate_register());
-                self.lower_expr(functions, function, names, left, Some(dest));
+                self.lower_expression(functions, function, names, left, Some(dest));
 
                 let jump_if_true = lower_conditional_jump(function, dest, false);
 
-                self.lower_expr(functions, function, names, right, Some(dest));
+                self.lower_expression(functions, function, names, right, Some(dest));
 
                 patch_jump(
                     function,
@@ -434,11 +445,11 @@ impl ResolvedAst {
             } => {
                 let dest = dest.unwrap_or_else(|| function.allocate_register());
 
-                let condition = self.lower_expr(functions, function, names, condition, None);
+                let condition = self.lower_expression(functions, function, names, condition, None);
 
                 let jump_if_false = lower_conditional_jump(function, condition, true);
 
-                self.lower_expr(functions, function, names, then_branch, Some(dest));
+                self.lower_expression(functions, function, names, then_branch, Some(dest));
 
                 let jump_end = function.emit_instruction(Instruction::Jump { offset: 0 });
 
@@ -449,7 +460,7 @@ impl ResolvedAst {
                 );
 
                 if let Some(else_branch) = else_branch {
-                    self.lower_expr(functions, function, names, else_branch, Some(dest));
+                    self.lower_expression(functions, function, names, else_branch, Some(dest));
                 } else {
                     let src = function.push_number(0.0);
                     function.emit_instruction(Instruction::LoadK { dest, src });
@@ -464,17 +475,19 @@ impl ResolvedAst {
                 dest
             }
             Expr::WhileLoop { condition, block } => {
+                let dest = dest.unwrap_or_else(|| function.allocate_register());
+
                 let condition_register =
-                    self.lower_expr(functions, function, names, condition, None);
+                    self.lower_expression(functions, function, names, condition, None);
 
                 let jump_if_false = lower_conditional_jump(function, condition_register, true);
 
                 let loop_body = function.instructions.len();
 
-                self.lower_expr(functions, function, names, block, None);
+                self.lower_expression(functions, function, names, block, Some(dest));
 
                 let condition_register =
-                    self.lower_expr(functions, function, names, condition, None);
+                    self.lower_expression(functions, function, names, condition, None);
 
                 let jump_if_true = lower_conditional_jump(function, condition_register, false);
 
@@ -490,6 +503,7 @@ impl ResolvedAst {
                 );
 
                 let instructions_len = function.instructions.len();
+
                 for (_, register) in names.iter().copied() {
                     for index in loop_body..instructions_len {
                         let instruction = function.instructions[index];
@@ -500,9 +514,7 @@ impl ResolvedAst {
                     }
                 }
 
-                let dest = dest.unwrap_or_else(|| function.allocate_register());
-
-                function.emit_nil()
+                dest
             }
 
             Expr::Block(ref expressions) => {
@@ -520,7 +532,7 @@ impl ResolvedAst {
                 functions.push(None);
 
                 let dest = match name {
-                    Some(name) => self.lower_expr(functions, function, names, name, None),
+                    Some(name) => self.lower_expression(functions, function, names, name, None),
                     None => dest.unwrap_or_else(|| function.allocate_register()),
                 };
 
@@ -539,7 +551,7 @@ impl ResolvedAst {
                 let mut inner_names = Vec::new();
 
                 for parameter in parameters.iter().copied() {
-                    self.lower_expr(
+                    self.lower_expression(
                         functions,
                         &mut inner_function,
                         &mut inner_names,
@@ -552,7 +564,7 @@ impl ResolvedAst {
                     Self::lookup_or_declare(&mut inner_names, &mut inner_function, capture);
                 }
 
-                let src = self.lower_expr(
+                let src = self.lower_expression(
                     functions,
                     &mut inner_function,
                     &mut inner_names,
@@ -572,11 +584,11 @@ impl ResolvedAst {
                 callee,
                 ref arguments,
             } => {
-                let callee_src = self.lower_expr(functions, function, names, callee, None);
+                let callee_src = self.lower_expression(functions, function, names, callee, None);
 
                 for (index, argument) in arguments.iter().enumerate() {
                     let dest = Register(-((index + 1) as i16));
-                    self.lower_expr(functions, function, names, *argument, Some(dest));
+                    self.lower_expression(functions, function, names, *argument, Some(dest));
                 }
 
                 let dest = dest.unwrap_or_else(|| function.allocate_register());
@@ -586,12 +598,13 @@ impl ResolvedAst {
                     src: callee_src,
                     arity: arguments.len() as u8,
                 });
+
                 dest
             }
             Expr::MemberAccess { object, property } => {
                 let dest = dest.unwrap_or_else(|| function.allocate_register());
-                let object = self.lower_expr(functions, function, names, object, None);
-                let key = self.lower_expr(functions, function, names, property, None);
+                let object = self.lower_expression(functions, function, names, object, None);
+                let key = self.lower_expression(functions, function, names, property, None);
 
                 function.emit_instruction(Instruction::GetField { dest, object, key });
 
@@ -605,11 +618,12 @@ impl ResolvedAst {
             }
             Expr::Return(expression) => {
                 let src = match expression {
-                    Some(expr) => self.lower_expr(functions, function, names, expr, None),
+                    Some(expr) => self.lower_expression(functions, function, names, expr, None),
                     None => function.emit_nil(),
                 };
                 function.emit_instruction(Instruction::Return { src });
-                function.emit_nil()
+
+                src
             }
             Expr::NativeFunction { .. } => todo!(),
             Expr::ForLoop { .. } => todo!(),

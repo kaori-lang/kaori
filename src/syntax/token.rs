@@ -63,7 +63,7 @@ pub enum Token {
     Not,
     #[token("native")]
     Native,
-    #[token("fn")]
+    #[token("fun")]
     Function,
     #[token("for")]
     For,

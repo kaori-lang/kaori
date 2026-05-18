@@ -1,3 +1,5 @@
+use foldhash::{HashMap, HashMapExt};
+
 use crate::{
     mir::instruction::{ConstIndex, Register},
     runtime::value::Value,
@@ -6,7 +8,6 @@ use crate::{
 
 use super::instruction::Instruction;
 use std::{
-    collections::HashMap,
     fmt::{self, Display, Formatter},
     ops::Range,
 };

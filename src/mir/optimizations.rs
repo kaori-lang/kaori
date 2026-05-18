@@ -8,37 +8,16 @@ use crate::mir::{
 impl Function {
     pub fn run_optimization_passes(&mut self) {
         let registers_map = self.allocate_registers();
-        println!("{:?}", self.live_ranges);
-
-        let frame_size = registers_map.iter().copied().max().unwrap_or(0) + 1;
         self.rewrite_instructions(&registers_map);
-        println!("{}", self);
 
-        /*  let leaders = self.build_leaders();
-
-        Self::eliminate_dead_code(&mut self.instructions);
-        self.coalesce_copies(&leaders);
-        self.fuse_compare_branch(&leaders); */
-
-        /* let registers_map = self.allocate_registers();
-        println!("{}", self);
-        println!("{:?}", self.live_ranges);
-
-        self.rewrite_instructions(&registers_map);
+        //Self::eliminate_dead_code(&mut self.instructions);
 
         let frame_size = registers_map.iter().copied().max().unwrap_or(0);
-        self.patch_move_args(frame_size as u16);
-        self.eliminate_nops(); */
-    }
 
-    /*
-    fn patch_move_args(&mut self, frame_size: u16) {
-        for instruction in self.instructions.iter_mut() {
-            if let Instruction::MoveArg { dest, .. } = instruction {
-                *dest = Register(dest.0 + frame_size);
-            }
-        }
-    } */
+        //self.eliminate_nops();
+
+        println!("{}", self);
+    }
 
     fn allocate_registers(&self) -> Vec<usize> {
         let mut sorted_ranges = Vec::new();
