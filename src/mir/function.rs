@@ -6,6 +6,7 @@ use crate::{
 
 use super::instruction::Instruction;
 use std::{
+    collections::HashMap,
     fmt::{self, Display, Formatter},
     ops::Range,
 };
@@ -14,8 +15,9 @@ pub struct Function {
     pub id: usize,
     pub instructions: Vec<Instruction>,
     pub constants: Vec<Value>,
-    pub live_ranges: Vec<Range<usize>>,
+    pub live_ranges: HashMap<Register, Range<usize>>,
     pub arity: usize,
+    pub next_register: usize,
 }
 
 impl Display for Function {
@@ -37,15 +39,20 @@ impl Function {
             id,
             instructions: Vec::new(),
             constants: Vec::new(),
-            live_ranges: Vec::new(),
+            live_ranges: HashMap::new(),
             arity,
+            next_register: 0,
         }
     }
 
     pub fn update_live_range(&mut self, register: Register, index: usize) {
-        let range = &self.live_ranges[register.0 as usize];
+        if let Some(range) = self.live_ranges.get_mut(&register) {
+            *range = range.start..(index + 1);
+        }
+    }
 
-        self.live_ranges[register.0 as usize] = range.start..(index + 1);
+    pub fn remove_live_range(&mut self, register: Register) {
+        self.live_ranges.remove(&register);
     }
 
     pub fn emit_instruction(&mut self, instruction: Instruction) -> usize {
@@ -70,6 +77,26 @@ impl Function {
                 live(src1);
                 live(src2);
             }
+            Instruction::AddK { dest, src1, .. }
+            | Instruction::SubtractRK { dest, src1, .. }
+            | Instruction::MultiplyK { dest, src1, .. }
+            | Instruction::DivideRK { dest, src1, .. }
+            | Instruction::ModuloRK { dest, src1, .. }
+            | Instruction::EqualK { dest, src1, .. }
+            | Instruction::NotEqualK { dest, src1, .. }
+            | Instruction::LessK { dest, src1, .. }
+            | Instruction::LessEqualK { dest, src1, .. }
+            | Instruction::GreaterK { dest, src1, .. }
+            | Instruction::GreaterEqualK { dest, src1, .. } => {
+                live(dest);
+                live(src1);
+            }
+            Instruction::SubtractKR { dest, src2, .. }
+            | Instruction::DivideKR { dest, src2, .. }
+            | Instruction::ModuloKR { dest, src2, .. } => {
+                live(dest);
+                live(src2);
+            }
             Instruction::Not { dest, src }
             | Instruction::Negate { dest, src }
             | Instruction::Move { dest, src }
@@ -77,10 +104,9 @@ impl Function {
                 live(dest);
                 live(src);
             }
-            Instruction::LoadK { dest, src: _ } => {
-                live(dest);
-            }
-            Instruction::CreateDict { dest } | Instruction::CreateClosure { dest, src: _ } => {
+            Instruction::LoadK { dest, .. }
+            | Instruction::CreateDict { dest }
+            | Instruction::CreateClosure { dest, .. } => {
                 live(dest);
             }
             Instruction::SetField { object, key, value } => {
@@ -93,37 +119,49 @@ impl Function {
                 live(object);
                 live(key);
             }
-            Instruction::Call {
-                dest,
-                src,
-                arity: _,
-            } => {
+            Instruction::Call { dest, src, .. } => {
                 live(dest);
                 live(src);
             }
             Instruction::Return { src } => {
                 live(src);
             }
-            Instruction::JumpIfFalse { src, offset: _ }
-            | Instruction::JumpIfTrue { src, offset: _ } => {
+            Instruction::JumpIfFalse { src, .. } | Instruction::JumpIfTrue { src, .. } => {
                 live(src);
             }
-            Instruction::MoveArg { src, .. } => {
-                live(src);
+            Instruction::JumpIfLess { src1, src2, .. }
+            | Instruction::JumpIfLessEqual { src1, src2, .. }
+            | Instruction::JumpIfGreater { src1, src2, .. }
+            | Instruction::JumpIfGreaterEqual { src1, src2, .. }
+            | Instruction::JumpIfEqual { src1, src2, .. }
+            | Instruction::JumpIfNotEqual { src1, src2, .. } => {
+                live(src1);
+                live(src2);
             }
-            _ => {}
+            Instruction::JumpIfLessK { src1, .. }
+            | Instruction::JumpIfLessEqualK { src1, .. }
+            | Instruction::JumpIfGreaterK { src1, .. }
+            | Instruction::JumpIfGreaterEqualK { src1, .. }
+            | Instruction::JumpIfEqualK { src1, .. }
+            | Instruction::JumpIfNotEqualK { src1, .. } => {
+                live(src1);
+            }
+            Instruction::Jump { .. } | Instruction::Nop => {}
         }
 
         index
     }
 
     pub fn allocate_register(&mut self) -> Register {
-        let register = self.live_ranges.len();
+        let register = self.next_register;
         let start = self.instructions.len();
 
-        self.live_ranges.push(start..start + 1);
+        self.live_ranges
+            .insert(Register(register as i16), start..start + 1);
 
-        Register(register as u16)
+        self.next_register += 1;
+
+        Register(register as i16)
     }
 
     fn get_or_insert(&mut self, value: Value) -> u16 {

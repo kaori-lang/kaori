@@ -113,7 +113,7 @@ pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
         ref instructions,
         ref constants,
         frame_size,
-        arity,
+        ..
     } = functions[0];
 
     let ip = instructions.as_ptr();
@@ -126,7 +126,7 @@ pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
     let mut state = VmState::new(functions);
 
     let value = unsafe {
-        HANDLERS[index](ip, registers, constants, &mut state, frame_size as u8).map_err(|e| *e)?
+        HANDLERS[index](ip, registers, constants, &mut state, frame_size).map_err(|e| *e)?
     };
 
     println!("{:?}", DebugValue::new(value, &state.gc));

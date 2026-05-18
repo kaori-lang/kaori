@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Range};
+use std::{cmp::Reverse, collections::BinaryHeap};
 
 use crate::mir::{
     function::Function,
@@ -7,86 +7,81 @@ use crate::mir::{
 
 impl Function {
     pub fn run_optimization_passes(&mut self) {
-        let basic_blocks = self.build_cfg();
+        let registers_map = self.allocate_registers();
+        println!("{:?}", self.live_ranges);
+
+        let frame_size = registers_map.iter().copied().max().unwrap_or(0) + 1;
+        self.rewrite_instructions(&registers_map);
+        println!("{}", self);
+
+        /*  let leaders = self.build_leaders();
 
         Self::eliminate_dead_code(&mut self.instructions);
+        self.coalesce_copies(&leaders);
+        self.fuse_compare_branch(&leaders); */
 
-        for basic_block in basic_blocks.iter() {
-            /*     self.coalesce_copies(basic_block);
-            self.fuse_compare_branch(basic_block); */
-        }
-
-        //self.eliminate_nops();
-
+        /* let registers_map = self.allocate_registers();
+        println!("{}", self);
         println!("{:?}", self.live_ranges);
-        let registers_map = self.allocate_registers();
 
-        /*  let frame_size = registers_map.values().copied().max().unwrap() + 1;
+        self.rewrite_instructions(&registers_map);
 
-        self.patch_move_args(frame_size);
-
-        self.registers = frame_size; */
+        let frame_size = registers_map.iter().copied().max().unwrap_or(0);
+        self.patch_move_args(frame_size as u16);
+        self.eliminate_nops(); */
     }
 
+    /*
     fn patch_move_args(&mut self, frame_size: u16) {
         for instruction in self.instructions.iter_mut() {
             if let Instruction::MoveArg { dest, .. } = instruction {
                 *dest = Register(dest.0 + frame_size);
             }
         }
-    }
+    } */
 
-    fn build_cfg(&self) -> Vec<Range<usize>> {
-        let mut leaders = vec![false; self.instructions.len()];
-        leaders[0] = true;
+    fn allocate_registers(&self) -> Vec<usize> {
+        let mut sorted_ranges = Vec::new();
 
-        for (index, instruction) in self.instructions.iter().enumerate() {
-            match instruction {
-                Instruction::Jump { offset }
-                | Instruction::JumpIfFalse { offset, .. }
-                | Instruction::JumpIfTrue { offset, .. } => {
-                    let target = (index as i32 + offset) as usize;
-                    leaders[target] = true;
-                    leaders[index + 1] = true;
+        for (register, range) in self.live_ranges.iter() {
+            sorted_ranges.push((*register, range.start..range.end));
+        }
+
+        sorted_ranges.sort_by_key(|(register, range)| (range.start, *register));
+
+        let mut registers_map = vec![0usize; self.next_register];
+        let mut active_registers: BinaryHeap<Reverse<(usize, usize)>> = BinaryHeap::new();
+        let mut next_register = 0usize;
+
+        for (register, range) in sorted_ranges {
+            match active_registers.peek().copied() {
+                Some(Reverse((end, active_register))) if range.start >= end => {
+                    active_registers.pop();
+                    active_registers.push(Reverse((range.end, active_register)));
+                    registers_map[register.0 as usize] = active_register;
                 }
-                Instruction::Return { .. } => {
-                    if index + 1 < self.instructions.len() {
-                        leaders[index + 1] = true;
-                    }
+                _ => {
+                    let active_register = next_register;
+                    next_register += 1;
+                    active_registers.push(Reverse((range.end, active_register)));
+                    registers_map[register.0 as usize] = active_register;
                 }
-                _ => {}
             }
         }
 
-        let mut basic_blocks = Vec::new();
-        let mut start = 0;
-
-        for (end, leader) in leaders.iter().copied().enumerate().skip(1) {
-            if leader {
-                basic_blocks.push(start..end);
-                start = end;
-            }
-        }
-
-        let end = self.instructions.len() - 1;
-        basic_blocks.push(start..end);
-
-        basic_blocks
+        registers_map
     }
 
-    fn allocate_registers(&self) {
-        /* let mut sorted_ranges = Vec::new();
-        let mut registers_map = HashMap::new();
+    fn rewrite_instructions(&mut self, registers_map: &[usize]) {
+        let replace = |register: Register| {
+            let register = if register.0 >= 0 {
+                registers_map[register.0 as usize] as i16
+            } else {
+                register.0
+            };
 
-        for (&register, range) in &self.live_ranges {
-            sorted_ranges.push((register, range.clone()));
-        }
-
-        sorted_ranges.sort_by(|a, b| a.1.start.cmp(&b.1.start).then(a.0.cmp(&b.0))); */
-    }
-
-    fn rewrite_instructions(&mut self, assignment: &HashMap<Register, Register>) {
-        let replace = |register: Register| *assignment.get(&register).unwrap();
+            Register(register)
+        };
 
         for instruction in &mut self.instructions {
             *instruction = match *instruction {
@@ -227,10 +222,6 @@ impl Function {
                     dest: replace(dest),
                     src: replace(src),
                 },
-                Instruction::MoveArg { dest, src } => Instruction::MoveArg {
-                    dest: replace(dest),
-                    src: replace(src),
-                },
                 Instruction::LoadK { dest, src } => Instruction::LoadK {
                     dest: replace(dest),
                     src,
@@ -340,7 +331,7 @@ impl Function {
                         offset,
                     }
                 }
-                other => other, // Jump, Nop — no registers
+                other => other,
             };
         }
     }
@@ -378,186 +369,13 @@ impl Function {
         }
     }
 
-    fn coalesce_copies(&mut self, basic_block: &Range<usize>) {
-        let instructions = &mut self.instructions[basic_block.start..basic_block.end];
-
-        for i in 0..instructions.len() {
-            let (move_dest, src) = match instructions[i] {
-                Instruction::Move { dest, src } => (dest, src),
-                _ => continue,
-            };
-
-            for j in (0..i).rev() {
-                let instruction = &mut instructions[j];
-                match instruction {
-                    Instruction::Add { dest, .. }
-                    | Instruction::AddK { dest, .. }
-                    | Instruction::Subtract { dest, .. }
-                    | Instruction::SubtractRK { dest, .. }
-                    | Instruction::SubtractKR { dest, .. }
-                    | Instruction::Multiply { dest, .. }
-                    | Instruction::MultiplyK { dest, .. }
-                    | Instruction::Divide { dest, .. }
-                    | Instruction::DivideRK { dest, .. }
-                    | Instruction::DivideKR { dest, .. }
-                    | Instruction::Modulo { dest, .. }
-                    | Instruction::ModuloRK { dest, .. }
-                    | Instruction::ModuloKR { dest, .. }
-                    | Instruction::Equal { dest, .. }
-                    | Instruction::EqualK { dest, .. }
-                    | Instruction::NotEqual { dest, .. }
-                    | Instruction::NotEqualK { dest, .. }
-                    | Instruction::Less { dest, .. }
-                    | Instruction::LessK { dest, .. }
-                    | Instruction::LessEqual { dest, .. }
-                    | Instruction::LessEqualK { dest, .. }
-                    | Instruction::Greater { dest, .. }
-                    | Instruction::GreaterK { dest, .. }
-                    | Instruction::GreaterEqual { dest, .. }
-                    | Instruction::GreaterEqualK { dest, .. }
-                    | Instruction::Not { dest, .. }
-                    | Instruction::Negate { dest, .. }
-                    | Instruction::MoveArg { dest, .. }
-                    | Instruction::Move { dest, .. }
-                    | Instruction::LoadK { dest, .. }
-                    | Instruction::CreateDict { dest }
-                    | Instruction::GetField { dest, .. }
-                    | Instruction::Call { dest, .. } => {
-                        let live_range = &self.live_ranges[dest.0 as usize];
-                        let register_lives = live_range.contains(&i);
-
-                        if !register_lives && *dest == src {
-                            *dest = move_dest;
-                            instructions[i] = Instruction::Nop;
-
-                            break;
-                        }
-                    }
-                    Instruction::Nop => {}
-                    _ => {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    fn fold_constant(&mut self, basic_block: &Range<usize>) {}
-
-    fn fuse_compare_branch(&mut self, basic_block: &Range<usize>) {
-        let instructions = &mut self.instructions[basic_block.start..basic_block.end];
-
-        for index in 1..instructions.len() {
-            match instructions[index] {
-                Instruction::JumpIfTrue { src, offset } => {
-                    let instruction = match instructions[index - 1] {
-                        Instruction::Less { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfLess { src1, src2, offset })
-                        }
-                        Instruction::LessK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfLessK { src1, src2, offset })
-                        }
-                        Instruction::LessEqual { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfLessEqual { src1, src2, offset })
-                        }
-                        Instruction::LessEqualK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfLessEqualK { src1, src2, offset })
-                        }
-                        Instruction::Greater { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfGreater { src1, src2, offset })
-                        }
-                        Instruction::GreaterK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfGreaterK { src1, src2, offset })
-                        }
-                        Instruction::GreaterEqual { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfGreaterEqual { src1, src2, offset })
-                        }
-                        Instruction::GreaterEqualK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfGreaterEqualK { src1, src2, offset })
-                        }
-                        Instruction::Equal { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfEqual { src1, src2, offset })
-                        }
-                        Instruction::EqualK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfEqualK { src1, src2, offset })
-                        }
-                        Instruction::NotEqual { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfNotEqual { src1, src2, offset })
-                        }
-                        Instruction::NotEqualK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfNotEqualK { src1, src2, offset })
-                        }
-                        _ => None,
-                    };
-
-                    if let Some(instruction) = instruction {
-                        instructions[index - 1] = Instruction::Nop;
-                        instructions[index] = instruction;
-                    }
-                }
-
-                Instruction::JumpIfFalse { src, offset } => {
-                    let instruction = match instructions[index - 1] {
-                        Instruction::Less { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfGreaterEqual { src1, src2, offset })
-                        }
-                        Instruction::LessK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfGreaterEqualK { src1, src2, offset })
-                        }
-                        Instruction::LessEqual { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfGreater { src1, src2, offset })
-                        }
-                        Instruction::LessEqualK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfGreaterK { src1, src2, offset })
-                        }
-                        Instruction::Greater { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfLessEqual { src1, src2, offset })
-                        }
-                        Instruction::GreaterK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfLessEqualK { src1, src2, offset })
-                        }
-                        Instruction::GreaterEqual { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfLess { src1, src2, offset })
-                        }
-                        Instruction::GreaterEqualK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfLessK { src1, src2, offset })
-                        }
-                        Instruction::Equal { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfNotEqual { src1, src2, offset })
-                        }
-                        Instruction::EqualK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfNotEqualK { src1, src2, offset })
-                        }
-                        Instruction::NotEqual { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfEqual { src1, src2, offset })
-                        }
-                        Instruction::NotEqualK { dest, src1, src2 } if dest == src => {
-                            Some(Instruction::JumpIfEqualK { src1, src2, offset })
-                        }
-                        _ => None,
-                    };
-
-                    if let Some(instruction) = instruction {
-                        instructions[index - 1] = Instruction::Nop;
-                        instructions[index] = instruction;
-                    }
-                }
-
-                _ => {}
-            }
-        }
-    }
-
     fn eliminate_nops(&mut self) {
         let mut instructions_map = vec![0usize; self.instructions.len()];
-
         let mut index = 0;
 
-        for i in 0..self.instructions.len() {
-            if let Instruction::Nop = self.instructions[i] {
-                instructions_map[i] = index;
-            } else {
-                instructions_map[i] = index;
+        for (i, instruction) in self.instructions.iter().enumerate() {
+            instructions_map[i] = index;
+            if !matches!(instruction, Instruction::Nop) {
                 index += 1;
             }
         }
@@ -582,14 +400,12 @@ impl Function {
                 | Instruction::JumpIfNotEqual { offset, .. }
                 | Instruction::JumpIfNotEqualK { offset, .. } => {
                     let target = (i as i32 + *offset) as usize;
-                    let target = instructions_map[target];
-                    *offset = target as i32 - index as i32;
+                    let new_target = instructions_map[target];
+                    *offset = new_target as i32 - index as i32;
                     self.instructions[index] = self.instructions[i];
                     index += 1;
                 }
-
                 Instruction::Nop => {}
-
                 _ => {
                     self.instructions[index] = self.instructions[i];
                     index += 1;

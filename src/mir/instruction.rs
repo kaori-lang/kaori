@@ -1,7 +1,7 @@
 use std::fmt;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Register(pub u16);
+pub struct Register(pub i16);
 
 #[derive(Clone, Copy, Debug)]
 pub struct ConstIndex(pub u16);
@@ -145,10 +145,6 @@ pub enum Instruction {
         dest: Register,
         src: Register,
     },
-    MoveArg {
-        dest: Register,
-        src: Register,
-    },
     LoadK {
         dest: Register,
         src: ConstIndex,
@@ -258,7 +254,11 @@ pub enum Instruction {
 
 impl fmt::Display for Register {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "r{}", self.0)
+        if self.0 < 0 {
+            write!(f, "arg({})", -(self.0 + 1))
+        } else {
+            write!(f, "r{}", self.0)
+        }
     }
 }
 
@@ -353,9 +353,6 @@ impl fmt::Display for Instruction {
             }
             Self::Move { dest, src } => {
                 write!(f, "MOV {} {}", dest, src)
-            }
-            Self::MoveArg { dest, src } => {
-                write!(f, "MOV_ARG {} {}", dest, src)
             }
             Self::LoadK { dest, src } => {
                 write!(f, "LOADK {} {}", dest, src)
