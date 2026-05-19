@@ -1,6 +1,6 @@
-pub mod debug_value;
+mod debug_value;
 
-pub mod gc;
+mod gc;
 
 pub mod function;
 pub mod instruction;

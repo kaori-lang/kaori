@@ -13,17 +13,15 @@ use std::{
 };
 
 pub struct Function {
-    pub id: usize,
     pub instructions: Vec<Instruction>,
     pub constants: Vec<Value>,
     pub live_ranges: HashMap<Register, Range<usize>>,
-    pub arity: usize,
+    pub arity: u8,
     pub next_register: usize,
 }
 
 impl Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "FUNCTION({})", self.id)?;
         writeln!(f, "ARITY: {}", self.arity)?;
         for (ip, instr) in self.instructions.iter().enumerate() {
             writeln!(f, "{:04}  {}", ip, instr)?;
@@ -35,9 +33,8 @@ impl Display for Function {
 }
 
 impl Function {
-    pub fn new(id: usize, arity: usize) -> Self {
+    pub fn new(arity: u8) -> Self {
         Self {
-            id,
             instructions: Vec::new(),
             constants: Vec::new(),
             live_ranges: HashMap::new(),

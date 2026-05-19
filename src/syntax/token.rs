@@ -136,7 +136,7 @@ impl fmt::Display for Token {
             Self::Or => "`or`",
             Self::Not => "`not`",
             Self::Native => "`native`",
-            Self::Function => "`fn`",
+            Self::Function => "`fun`",
             Self::For => "`for`",
             Self::While => "`while`",
             Self::Break => "`break`",

@@ -115,10 +115,10 @@ impl ResolvedAst {
         let entry = self.ast.entry();
         let mut functions = Vec::new();
 
-        let index = functions.len();
         functions.push(None);
 
-        let mut function = Function::new(index, 0);
+        let arity = 0;
+        let mut function = Function::new(arity);
         let mut names = Vec::new();
 
         let src = self.lower_expression(&mut functions, &mut function, &mut names, entry, None);
@@ -199,20 +199,18 @@ impl ResolvedAst {
                         dest,
                         src: register,
                     });
+
                     dest
                 } else {
                     register
                 }
             }
             Expr::DeclareAssign { left, right } => {
-                let dest = Self::lookup_or_declare(
-                    names,
-                    function,
-                    match *self.ast.get(left) {
-                        Expr::Identifier(name) => name,
-                        _ => panic!("DeclareAssign left must be Identifier"),
-                    },
-                );
+                let Expr::Identifier(name) = *self.ast.get(left) else {
+                    panic!("DeclareAssign left must be Identifier")
+                };
+
+                let dest = Self::lookup_or_declare(names, function, name);
 
                 self.lower_expression(functions, function, names, right, Some(dest));
 
@@ -496,6 +494,7 @@ impl ResolvedAst {
                     jump_if_true,
                     loop_body as i32 - jump_if_true as i32,
                 );
+
                 patch_jump(
                     function,
                     jump_if_false,
@@ -546,8 +545,12 @@ impl ResolvedAst {
                     function.emit_instruction(Instruction::CaptureValue { dest, src });
                 }
 
-                let arity = parameters.len();
-                let mut inner_function = Function::new(index, arity);
+                let arity: u8 = match parameters.len().try_into() {
+                    Ok(value) => value,
+                    Err(error) => panic!("max parameters per function"),
+                };
+
+                let mut inner_function = Function::new(arity);
                 let mut inner_names = Vec::new();
 
                 for parameter in parameters.iter().copied() {

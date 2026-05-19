@@ -3,13 +3,14 @@ use std::hint::unreachable_unchecked;
 use super::gc::Gc;
 use crate::diagnostics::error::Error;
 
+use crate::mir::instruction::ConstIndex;
 use crate::report_error;
 
 use crate::runtime::debug_value::DebugValue;
 use crate::runtime::function::Function;
 use crate::runtime::gc::Closure;
 
-use crate::runtime::instruction::{ConstIndex, Instruction, Register};
+use crate::runtime::instruction::{Instruction, Register};
 use crate::runtime::value::Value;
 
 type Handler = unsafe extern "rust-preserve-none" fn(
@@ -20,7 +21,7 @@ type Handler = unsafe extern "rust-preserve-none" fn(
     frame_size: u8,
 ) -> Result<Value, Box<Error>>;
 
-static HANDLERS: [Handler; 53] = [
+static HANDLERS: [Handler; 52] = [
     opcode_add_rr,
     opcode_add_rk,
     opcode_subtract_rr,
@@ -49,7 +50,6 @@ static HANDLERS: [Handler; 53] = [
     opcode_not,
     opcode_negate,
     opcode_move,
-    opcode_move_arg,
     opcode_load_k,
     opcode_create_dict,
     opcode_set_field,
@@ -119,7 +119,7 @@ pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
     let ip = instructions.as_ptr();
     let index = unsafe { (*ip).discriminant() };
 
-    let mut registers = [Value::default(); 4096];
+    let mut registers = [Value::default(); 1024];
     let registers = Registers(&mut registers);
     let constants = Constants(constants.as_ptr());
 
@@ -129,7 +129,7 @@ pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
         HANDLERS[index](ip, registers, constants, &mut state, frame_size).map_err(|e| *e)?
     };
 
-    println!("{:?}", DebugValue::new(value, &state.gc));
+    //println!("{:?}", DebugValue::new(value, &state.gc));
     Ok(value)
 }
 
@@ -147,6 +147,7 @@ impl VmState {
     }
 }
 
+#[derive(Debug)]
 struct Registers<'a>(pub &'a mut [Value]);
 
 impl<'a> Registers<'a> {
@@ -974,29 +975,6 @@ unsafe extern "rust-preserve-none" fn opcode_move(
 }
 
 #[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_move_arg(
-    ip: *const Instruction,
-    mut registers: Registers,
-    constants: Constants,
-    state: &mut VmState,
-    frame_size: u8,
-) -> Result<Value, Box<Error>> {
-    let (dest, src) = unsafe {
-        let Instruction::MoveArg { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-
-        (dest, src)
-    };
-
-    let src = unsafe { registers.get_value(src) };
-
-    registers.set_value(dest, src);
-
-    dispatch_next!(ip, registers, constants, state, frame_size)
-}
-
-#[inline(never)]
 unsafe extern "rust-preserve-none" fn opcode_load_k(
     ip: *const Instruction,
     mut registers: Registers,
@@ -1159,7 +1137,6 @@ unsafe extern "rust-preserve-none" fn opcode_capture_value(
     };
 
     let value = unsafe { registers.get_value(src) };
-
     let index = unsafe { registers.get_value(dest) };
     let closure = state.gc.get_mut_closure(index);
 
@@ -1193,9 +1170,8 @@ unsafe extern "rust-preserve-none" fn opcode_call(
             instructions,
             constants,
             arity: closure_arity,
-
             ref captured,
-            ..
+            frame_size: new_frame_size,
         } = *state.gc.get_closure(src);
 
         if call_arity != closure_arity {
@@ -1211,6 +1187,7 @@ unsafe extern "rust-preserve-none" fn opcode_call(
         };
 
         let mut registers = Registers(&mut registers.0[frame_size as usize..]);
+
         let constants = Constants(constants);
 
         for (i, value) in captured.iter().copied().enumerate() {
@@ -1221,7 +1198,7 @@ unsafe extern "rust-preserve-none" fn opcode_call(
 
         let index = unsafe { (*instructions).discriminant() };
 
-        unsafe { HANDLERS[index](instructions, registers, constants, state, frame_size)? }
+        unsafe { HANDLERS[index](instructions, registers, constants, state, new_frame_size)? }
     };
 
     registers.set_value(dest, return_value);
@@ -1234,7 +1211,7 @@ unsafe extern "rust-preserve-none" fn opcode_return(
     ip: *const Instruction,
     registers: Registers,
     _constants: Constants,
-    _vm: &mut VmState,
+    state: &mut VmState,
     _frame_size: u8,
 ) -> Result<Value, Box<Error>> {
     let src = unsafe {

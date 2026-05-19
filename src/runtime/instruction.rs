@@ -1,10 +1,8 @@
+use crate::mir::instruction::ConstIndex;
 use std::fmt;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Register(pub u8);
-
-#[derive(Clone, Copy, Debug)]
-pub struct ConstIndex(pub u16);
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
@@ -146,10 +144,6 @@ pub enum Instruction {
         dest: Register,
         src: Register,
     },
-    MoveArg {
-        dest: Register,
-        src: Register,
-    },
     LoadK {
         dest: Register,
         src: ConstIndex,
@@ -269,11 +263,6 @@ impl fmt::Display for Register {
     }
 }
 
-impl fmt::Display for ConstIndex {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "k{}", self.0)
-    }
-}
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -360,9 +349,6 @@ impl fmt::Display for Instruction {
             }
             Self::Move { dest, src } => {
                 write!(f, "MOV {} {}", dest, src)
-            }
-            Self::MoveArg { dest, src } => {
-                write!(f, "MOV_ARG {} {}", dest, src)
             }
             Self::LoadK { dest, src } => {
                 write!(f, "LOADK {} {}", dest, src)

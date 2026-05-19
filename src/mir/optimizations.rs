@@ -5,18 +5,457 @@ use crate::mir::{
     instruction::{Instruction, Register},
 };
 
+use crate::mir::instruction as mir_instruction;
+use crate::runtime::function as runtime_function;
+use crate::runtime::instruction as runtime_instruction;
+
 impl Function {
-    pub fn run_optimization_passes(&mut self) {
+    pub fn run_optimization_passes(self) -> runtime_function::Function {
         let registers_map = self.allocate_registers();
-        self.rewrite_instructions(&registers_map);
 
         //Self::eliminate_dead_code(&mut self.instructions);
 
-        let frame_size = registers_map.iter().copied().max().unwrap_or(0);
-
+        let max_register: u8 = match registers_map.iter().copied().max().unwrap_or(0).try_into() {
+            Ok(value) => value,
+            Err(err) => panic!("Max registers per function exceeded!"),
+        };
+        let frame_size = max_register + 1;
         //self.eliminate_nops();
 
-        println!("{}", self);
+        self.into_runtime_function(&registers_map, frame_size)
+    }
+
+    fn into_runtime_function(
+        self,
+        registers_map: &[usize],
+        frame_size: u8,
+    ) -> runtime_function::Function {
+        let Function {
+            instructions,
+            constants,
+            arity,
+            ..
+        } = self;
+
+        fn map_register(
+            register: Register,
+            map: &[usize],
+            frame_size: u8,
+        ) -> runtime_instruction::Register {
+            let value = if register.0 >= 0 {
+                map[register.0 as usize] as u8
+            } else {
+                frame_size + (-register.0 - 1) as u8
+            };
+
+            runtime_instruction::Register(value)
+        }
+
+        let instructions = instructions
+            .into_iter()
+            .map(|instruction| match instruction {
+                mir_instruction::Instruction::Add { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::Add {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::AddK { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::AddK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                    }
+                }
+
+                mir_instruction::Instruction::Subtract { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::Subtract {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::SubtractRK { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::SubtractRK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                    }
+                }
+
+                mir_instruction::Instruction::SubtractKR { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::SubtractKR {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1,
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::Multiply { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::Multiply {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::MultiplyK { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::MultiplyK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                    }
+                }
+
+                mir_instruction::Instruction::Divide { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::Divide {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::DivideRK { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::DivideRK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                    }
+                }
+
+                mir_instruction::Instruction::DivideKR { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::DivideKR {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1,
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::Modulo { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::Modulo {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::ModuloRK { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::ModuloRK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                    }
+                }
+
+                mir_instruction::Instruction::ModuloKR { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::ModuloKR {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1,
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::Equal { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::Equal {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::EqualK { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::EqualK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                    }
+                }
+
+                mir_instruction::Instruction::NotEqual { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::NotEqual {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::NotEqualK { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::NotEqualK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                    }
+                }
+
+                mir_instruction::Instruction::Less { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::Less {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::LessK { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::LessK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                    }
+                }
+
+                mir_instruction::Instruction::LessEqual { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::LessEqual {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::LessEqualK { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::LessEqualK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                    }
+                }
+
+                mir_instruction::Instruction::Greater { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::Greater {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::GreaterK { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::GreaterK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                    }
+                }
+
+                mir_instruction::Instruction::GreaterEqual { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::GreaterEqual {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::GreaterEqualK { dest, src1, src2 } => {
+                    runtime_instruction::Instruction::GreaterEqualK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                    }
+                }
+
+                mir_instruction::Instruction::Not { dest, src } => {
+                    runtime_instruction::Instruction::Not {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src: map_register(src, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::Negate { dest, src } => {
+                    runtime_instruction::Instruction::Negate {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src: map_register(src, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::Move { dest, src } => {
+                    runtime_instruction::Instruction::Move {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src: map_register(src, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::LoadK { dest, src } => {
+                    runtime_instruction::Instruction::LoadK {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src,
+                    }
+                }
+
+                mir_instruction::Instruction::CreateDict { dest } => {
+                    runtime_instruction::Instruction::CreateDict {
+                        dest: map_register(dest, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::SetField { object, key, value } => {
+                    runtime_instruction::Instruction::SetField {
+                        object: map_register(object, registers_map, frame_size),
+                        key: map_register(key, registers_map, frame_size),
+                        value: map_register(value, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::GetField { dest, object, key } => {
+                    runtime_instruction::Instruction::GetField {
+                        dest: map_register(dest, registers_map, frame_size),
+                        object: map_register(object, registers_map, frame_size),
+                        key: map_register(key, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::CreateClosure { dest, src } => {
+                    runtime_instruction::Instruction::CreateClosure {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src,
+                    }
+                }
+
+                mir_instruction::Instruction::CaptureValue { dest, src } => {
+                    runtime_instruction::Instruction::CaptureValue {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src: map_register(src, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::Call { dest, src, arity } => {
+                    runtime_instruction::Instruction::Call {
+                        dest: map_register(dest, registers_map, frame_size),
+                        src: map_register(src, registers_map, frame_size),
+                        arity,
+                    }
+                }
+
+                mir_instruction::Instruction::Return { src } => {
+                    runtime_instruction::Instruction::Return {
+                        src: map_register(src, registers_map, frame_size),
+                    }
+                }
+
+                mir_instruction::Instruction::Jump { offset } => {
+                    runtime_instruction::Instruction::Jump { offset }
+                }
+
+                mir_instruction::Instruction::JumpIfFalse { src, offset } => {
+                    runtime_instruction::Instruction::JumpIfFalse {
+                        src: map_register(src, registers_map, frame_size),
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfTrue { src, offset } => {
+                    runtime_instruction::Instruction::JumpIfTrue {
+                        src: map_register(src, registers_map, frame_size),
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfLess { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfLess {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfLessK { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfLessK {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfLessEqual { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfLessEqual {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfLessEqualK { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfLessEqualK {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfGreater { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfGreater {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfGreaterK { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfGreaterK {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfGreaterEqual { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfGreaterEqual {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfGreaterEqualK { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfGreaterEqualK {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfEqual { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfEqual {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfEqualK { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfEqualK {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfNotEqual { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfNotEqual {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2: map_register(src2, registers_map, frame_size),
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::JumpIfNotEqualK { src1, src2, offset } => {
+                    runtime_instruction::Instruction::JumpIfNotEqualK {
+                        src1: map_register(src1, registers_map, frame_size),
+                        src2,
+                        offset,
+                    }
+                }
+
+                mir_instruction::Instruction::Nop => runtime_instruction::Instruction::Nop,
+            })
+            .collect();
+
+        runtime_function::Function {
+            instructions,
+            constants,
+            frame_size,
+            arity,
+        }
     }
 
     fn allocate_registers(&self) -> Vec<usize> {
@@ -49,270 +488,6 @@ impl Function {
         }
 
         registers_map
-    }
-
-    fn rewrite_instructions(&mut self, registers_map: &[usize]) {
-        let replace = |register: Register| {
-            let register = if register.0 >= 0 {
-                registers_map[register.0 as usize] as i16
-            } else {
-                register.0
-            };
-
-            Register(register)
-        };
-
-        for instruction in &mut self.instructions {
-            *instruction = match *instruction {
-                Instruction::Add { dest, src1, src2 } => Instruction::Add {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2: replace(src2),
-                },
-                Instruction::AddK { dest, src1, src2 } => Instruction::AddK {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2,
-                },
-                Instruction::Subtract { dest, src1, src2 } => Instruction::Subtract {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2: replace(src2),
-                },
-                Instruction::SubtractRK { dest, src1, src2 } => Instruction::SubtractRK {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2,
-                },
-                Instruction::SubtractKR { dest, src1, src2 } => Instruction::SubtractKR {
-                    dest: replace(dest),
-                    src1,
-                    src2: replace(src2),
-                },
-                Instruction::Multiply { dest, src1, src2 } => Instruction::Multiply {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2: replace(src2),
-                },
-                Instruction::MultiplyK { dest, src1, src2 } => Instruction::MultiplyK {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2,
-                },
-                Instruction::Divide { dest, src1, src2 } => Instruction::Divide {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2: replace(src2),
-                },
-                Instruction::DivideRK { dest, src1, src2 } => Instruction::DivideRK {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2,
-                },
-                Instruction::DivideKR { dest, src1, src2 } => Instruction::DivideKR {
-                    dest: replace(dest),
-                    src1,
-                    src2: replace(src2),
-                },
-                Instruction::Modulo { dest, src1, src2 } => Instruction::Modulo {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2: replace(src2),
-                },
-                Instruction::ModuloRK { dest, src1, src2 } => Instruction::ModuloRK {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2,
-                },
-                Instruction::ModuloKR { dest, src1, src2 } => Instruction::ModuloKR {
-                    dest: replace(dest),
-                    src1,
-                    src2: replace(src2),
-                },
-                Instruction::Equal { dest, src1, src2 } => Instruction::Equal {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2: replace(src2),
-                },
-                Instruction::EqualK { dest, src1, src2 } => Instruction::EqualK {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2,
-                },
-                Instruction::NotEqual { dest, src1, src2 } => Instruction::NotEqual {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2: replace(src2),
-                },
-                Instruction::NotEqualK { dest, src1, src2 } => Instruction::NotEqualK {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2,
-                },
-                Instruction::Less { dest, src1, src2 } => Instruction::Less {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2: replace(src2),
-                },
-                Instruction::LessK { dest, src1, src2 } => Instruction::LessK {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2,
-                },
-                Instruction::LessEqual { dest, src1, src2 } => Instruction::LessEqual {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2: replace(src2),
-                },
-                Instruction::LessEqualK { dest, src1, src2 } => Instruction::LessEqualK {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2,
-                },
-                Instruction::Greater { dest, src1, src2 } => Instruction::Greater {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2: replace(src2),
-                },
-                Instruction::GreaterK { dest, src1, src2 } => Instruction::GreaterK {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2,
-                },
-                Instruction::GreaterEqual { dest, src1, src2 } => Instruction::GreaterEqual {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2: replace(src2),
-                },
-                Instruction::GreaterEqualK { dest, src1, src2 } => Instruction::GreaterEqualK {
-                    dest: replace(dest),
-                    src1: replace(src1),
-                    src2,
-                },
-                Instruction::Not { dest, src } => Instruction::Not {
-                    dest: replace(dest),
-                    src: replace(src),
-                },
-                Instruction::Negate { dest, src } => Instruction::Negate {
-                    dest: replace(dest),
-                    src: replace(src),
-                },
-                Instruction::Move { dest, src } => Instruction::Move {
-                    dest: replace(dest),
-                    src: replace(src),
-                },
-                Instruction::LoadK { dest, src } => Instruction::LoadK {
-                    dest: replace(dest),
-                    src,
-                },
-                Instruction::CreateDict { dest } => Instruction::CreateDict {
-                    dest: replace(dest),
-                },
-                Instruction::SetField { object, key, value } => Instruction::SetField {
-                    object: replace(object),
-                    key: replace(key),
-                    value: replace(value),
-                },
-                Instruction::GetField { dest, object, key } => Instruction::GetField {
-                    dest: replace(dest),
-                    object: replace(object),
-                    key: replace(key),
-                },
-                Instruction::CreateClosure { dest, src } => Instruction::CreateClosure {
-                    dest: replace(dest),
-                    src,
-                },
-                Instruction::CaptureValue { dest, src } => Instruction::CaptureValue {
-                    dest: replace(dest),
-                    src: replace(src),
-                },
-                Instruction::Call { dest, src, arity } => Instruction::Call {
-                    dest: replace(dest),
-                    src: replace(src),
-                    arity,
-                },
-                Instruction::Return { src } => Instruction::Return { src: replace(src) },
-                Instruction::JumpIfFalse { src, offset } => Instruction::JumpIfFalse {
-                    src: replace(src),
-                    offset,
-                },
-                Instruction::JumpIfTrue { src, offset } => Instruction::JumpIfTrue {
-                    src: replace(src),
-                    offset,
-                },
-                Instruction::JumpIfLess { src1, src2, offset } => Instruction::JumpIfLess {
-                    src1: replace(src1),
-                    src2: replace(src2),
-                    offset,
-                },
-                Instruction::JumpIfLessK { src1, src2, offset } => Instruction::JumpIfLessK {
-                    src1: replace(src1),
-                    src2,
-                    offset,
-                },
-                Instruction::JumpIfLessEqual { src1, src2, offset } => {
-                    Instruction::JumpIfLessEqual {
-                        src1: replace(src1),
-                        src2: replace(src2),
-                        offset,
-                    }
-                }
-                Instruction::JumpIfLessEqualK { src1, src2, offset } => {
-                    Instruction::JumpIfLessEqualK {
-                        src1: replace(src1),
-                        src2,
-                        offset,
-                    }
-                }
-                Instruction::JumpIfGreater { src1, src2, offset } => Instruction::JumpIfGreater {
-                    src1: replace(src1),
-                    src2: replace(src2),
-                    offset,
-                },
-                Instruction::JumpIfGreaterK { src1, src2, offset } => Instruction::JumpIfGreaterK {
-                    src1: replace(src1),
-                    src2,
-                    offset,
-                },
-                Instruction::JumpIfGreaterEqual { src1, src2, offset } => {
-                    Instruction::JumpIfGreaterEqual {
-                        src1: replace(src1),
-                        src2: replace(src2),
-                        offset,
-                    }
-                }
-                Instruction::JumpIfGreaterEqualK { src1, src2, offset } => {
-                    Instruction::JumpIfGreaterEqualK {
-                        src1: replace(src1),
-                        src2,
-                        offset,
-                    }
-                }
-                Instruction::JumpIfEqual { src1, src2, offset } => Instruction::JumpIfEqual {
-                    src1: replace(src1),
-                    src2: replace(src2),
-                    offset,
-                },
-                Instruction::JumpIfEqualK { src1, src2, offset } => Instruction::JumpIfEqualK {
-                    src1: replace(src1),
-                    src2,
-                    offset,
-                },
-                Instruction::JumpIfNotEqual { src1, src2, offset } => Instruction::JumpIfNotEqual {
-                    src1: replace(src1),
-                    src2: replace(src2),
-                    offset,
-                },
-                Instruction::JumpIfNotEqualK { src1, src2, offset } => {
-                    Instruction::JumpIfNotEqualK {
-                        src1: replace(src1),
-                        src2,
-                        offset,
-                    }
-                }
-                other => other,
-            };
-        }
     }
 
     fn eliminate_dead_code(instructions: &mut [Instruction]) {
