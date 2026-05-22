@@ -613,9 +613,21 @@ impl ResolvedAst {
 
                 dest
             }
-            Expr::DictLiteral { .. } => {
+            Expr::DictLiteral { ref fields } => {
                 let dest = dest.unwrap_or_else(|| function.allocate_register());
                 function.emit_instruction(Instruction::CreateDict { dest });
+
+                for (key, value) in fields.iter().copied() {
+                    let key = self.lower_expression(functions, function, names, key, None);
+                    let value =
+                        self.lower_expression(functions, function, names, value.unwrap(), None);
+
+                    function.emit_instruction(Instruction::SetField {
+                        object: dest,
+                        key,
+                        value,
+                    });
+                }
 
                 dest
             }

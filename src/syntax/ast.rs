@@ -47,6 +47,10 @@ pub enum Expr {
         left: ExprId,
         right: ExprId,
     },
+    DeclareAssignCell {
+        left: ExprId,
+        right: ExprId,
+    },
     Identifier(StringIndex),
     StringLiteral(StringIndex),
     NumberLiteral(f64),
@@ -174,6 +178,15 @@ impl Ast {
 
     pub fn declare_assign(&mut self, left: ExprId, right: ExprId, span: Range<usize>) -> ExprId {
         self.insert(Expr::DeclareAssign { left, right }, Some(span))
+    }
+
+    pub fn declare_assign_cell(
+        &mut self,
+        left: ExprId,
+        right: ExprId,
+        span: Range<usize>,
+    ) -> ExprId {
+        self.insert(Expr::DeclareAssignCell { left, right }, Some(span))
     }
 
     pub fn identifier(&mut self, index: StringIndex, span: Range<usize>) -> ExprId {

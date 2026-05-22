@@ -299,6 +299,12 @@ impl<'a> Parser<'a> {
 
                 return Ok(self.ast.declare_assign(left, right, span));
             }
+            Token::DeclareAssignCell => {
+                self.next()?;
+                let right = self.parse_or()?;
+
+                return Ok(self.ast.declare_assign_cell(left, right, span));
+            }
             _ => return Ok(left),
         };
 
