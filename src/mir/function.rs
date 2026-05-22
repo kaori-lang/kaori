@@ -63,12 +63,17 @@ impl Function {
         };
 
         match instruction {
-            Instruction::Arith {
-                dest, src1, src2, ..
-            }
-            | Instruction::Cmp {
-                dest, src1, src2, ..
-            } => {
+            Instruction::Add { dest, src1, src2 }
+            | Instruction::Subtract { dest, src1, src2 }
+            | Instruction::Multiply { dest, src1, src2 }
+            | Instruction::Divide { dest, src1, src2 }
+            | Instruction::Modulo { dest, src1, src2 }
+            | Instruction::Equal { dest, src1, src2 }
+            | Instruction::NotEqual { dest, src1, src2 }
+            | Instruction::Less { dest, src1, src2 }
+            | Instruction::LessEqual { dest, src1, src2 }
+            | Instruction::Greater { dest, src1, src2 }
+            | Instruction::GreaterEqual { dest, src1, src2 } => {
                 live(dest);
                 if let Operand::Register(r) = src1 {
                     live(r);
@@ -112,7 +117,16 @@ impl Function {
             Instruction::JumpIfFalse { src, .. } | Instruction::JumpIfTrue { src, .. } => {
                 live(src);
             }
-            Instruction::JumpIf { src1, src2, .. } => {
+            Instruction::JumpIfEqual { src1, src2, .. }
+            | Instruction::JumpIfNotEqual { src1, src2, .. }
+            | Instruction::JumpIfLess { src1, src2, .. }
+            | Instruction::JumpIfNotLess { src1, src2, .. }
+            | Instruction::JumpIfLessEqual { src1, src2, .. }
+            | Instruction::JumpIfNotLessEqual { src1, src2, .. }
+            | Instruction::JumpIfGreater { src1, src2, .. }
+            | Instruction::JumpIfNotGreater { src1, src2, .. }
+            | Instruction::JumpIfGreaterEqual { src1, src2, .. }
+            | Instruction::JumpIfNotGreaterEqual { src1, src2, .. } => {
                 if let Operand::Register(r) = src1 {
                     live(r);
                 }
@@ -125,7 +139,6 @@ impl Function {
 
         index
     }
-
     pub fn allocate_register(&mut self) -> Register {
         let register = self.next_register;
         let start = self.instructions.len();
@@ -166,7 +179,7 @@ impl Function {
 
         let src = self.push_number(0.0);
 
-        self.emit_instruction(Instruction::load_const(dest, src));
+        self.emit_instruction(Instruction::LoadConst { dest, src });
 
         dest
     }

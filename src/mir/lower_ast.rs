@@ -4,7 +4,7 @@ use crate::{
     diagnostics::error::Error,
     mir::{
         function::Function,
-        instruction::{ArithOp, CmpOp, ConstIndex, Instruction, Operand, Register},
+        instruction::{ConstIndex, Instruction, Operand, Register},
     },
     program::INTERNER,
     report_error,
@@ -236,7 +236,7 @@ pub fn lower_ast(ast: Ast) -> Result<Vec<Function>, Error> {
     let src = lower_expression(&ast, &mut functions, &mut function, &mut env, entry, None)?;
 
     if !expression_returns(&ast, entry) {
-        function.emit_instruction(Instruction::ret(src));
+        function.emit_instruction(Instruction::Return { src });
     }
 
     functions[0] = Some(function);
@@ -321,13 +321,13 @@ fn lower_expression(
         Expr::NumberLiteral(value) => {
             let src = function.push_number(value);
             let dest = dest.unwrap_or_else(|| function.allocate_register());
-            function.emit_instruction(Instruction::load_const(dest, src));
+            function.emit_instruction(Instruction::LoadConst { dest, src });
             dest
         }
         Expr::StringLiteral(value) => {
             let src = function.push_string(value);
             let dest = dest.unwrap_or_else(|| function.allocate_register());
-            function.emit_instruction(Instruction::load_const(dest, src));
+            function.emit_instruction(Instruction::LoadConst { dest, src });
             dest
         }
         Expr::BooleanLiteral(_) => {
@@ -354,7 +354,10 @@ fn lower_expression(
                     if let Some(dest) = dest
                         && dest != register
                     {
-                        function.emit_instruction(Instruction::mov(dest, register));
+                        function.emit_instruction(Instruction::Move {
+                            dest,
+                            src: register,
+                        });
                         dest
                     } else {
                         register
@@ -411,21 +414,61 @@ fn lower_expression(
 
             if let Some(src2) = as_number_const(ast, function, right) {
                 function.emit_instruction(match operator {
-                    AssignOp::AddAssign => Instruction::add(dest, dest, src2),
-                    AssignOp::SubtractAssign => Instruction::sub(dest, dest, src2),
-                    AssignOp::MultiplyAssign => Instruction::mul(dest, dest, src2),
-                    AssignOp::DivideAssign => Instruction::div(dest, dest, src2),
-                    AssignOp::ModuloAssign => Instruction::mod_(dest, dest, src2),
+                    AssignOp::AddAssign => Instruction::Add {
+                        dest,
+                        src1: dest.into(),
+                        src2: src2.into(),
+                    },
+                    AssignOp::SubtractAssign => Instruction::Subtract {
+                        dest,
+                        src1: dest.into(),
+                        src2: src2.into(),
+                    },
+                    AssignOp::MultiplyAssign => Instruction::Multiply {
+                        dest,
+                        src1: dest.into(),
+                        src2: src2.into(),
+                    },
+                    AssignOp::DivideAssign => Instruction::Divide {
+                        dest,
+                        src1: dest.into(),
+                        src2: src2.into(),
+                    },
+                    AssignOp::ModuloAssign => Instruction::Modulo {
+                        dest,
+                        src1: dest.into(),
+                        src2: src2.into(),
+                    },
                 });
             } else {
                 let src2 = lower_expression(ast, functions, function, env, right, None)?;
 
                 function.emit_instruction(match operator {
-                    AssignOp::AddAssign => Instruction::add(dest, dest, src2),
-                    AssignOp::SubtractAssign => Instruction::sub(dest, dest, src2),
-                    AssignOp::MultiplyAssign => Instruction::mul(dest, dest, src2),
-                    AssignOp::DivideAssign => Instruction::div(dest, dest, src2),
-                    AssignOp::ModuloAssign => Instruction::mod_(dest, dest, src2),
+                    AssignOp::AddAssign => Instruction::Add {
+                        dest,
+                        src1: dest.into(),
+                        src2: src2.into(),
+                    },
+                    AssignOp::SubtractAssign => Instruction::Subtract {
+                        dest,
+                        src1: dest.into(),
+                        src2: src2.into(),
+                    },
+                    AssignOp::MultiplyAssign => Instruction::Multiply {
+                        dest,
+                        src1: dest.into(),
+                        src2: src2.into(),
+                    },
+                    AssignOp::DivideAssign => Instruction::Divide {
+                        dest,
+                        src1: dest.into(),
+                        src2: src2.into(),
+                    },
+                    AssignOp::ModuloAssign => Instruction::Modulo {
+                        dest,
+                        src1: dest.into(),
+                        src2: src2.into(),
+                    },
                 });
             }
 
@@ -442,17 +485,61 @@ fn lower_expression(
                 let src1 = lower_expression(ast, functions, function, env, left, None)?;
 
                 function.emit_instruction(match operator {
-                    BinaryOp::Add => Instruction::add(dest, src1, src2),
-                    BinaryOp::Subtract => Instruction::sub(dest, src1, src2),
-                    BinaryOp::Multiply => Instruction::mul(dest, src1, src2),
-                    BinaryOp::Divide => Instruction::div(dest, src1, src2),
-                    BinaryOp::Modulo => Instruction::mod_(dest, src1, src2),
-                    BinaryOp::Equal => Instruction::eq(dest, src1, src2),
-                    BinaryOp::NotEqual => Instruction::neq(dest, src1, src2),
-                    BinaryOp::Less => Instruction::lt(dest, src1, src2),
-                    BinaryOp::LessEqual => Instruction::lte(dest, src1, src2),
-                    BinaryOp::Greater => Instruction::gt(dest, src1, src2),
-                    BinaryOp::GreaterEqual => Instruction::gte(dest, src1, src2),
+                    BinaryOp::Add => Instruction::Add {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Subtract => Instruction::Subtract {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Multiply => Instruction::Multiply {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Divide => Instruction::Divide {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Modulo => Instruction::Modulo {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Equal => Instruction::Equal {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::NotEqual => Instruction::NotEqual {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Less => Instruction::Less {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::LessEqual => Instruction::LessEqual {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Greater => Instruction::Greater {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::GreaterEqual => Instruction::GreaterEqual {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
                 });
 
                 return Ok(dest);
@@ -462,17 +549,61 @@ fn lower_expression(
                 let src2 = lower_expression(ast, functions, function, env, right, None)?;
 
                 function.emit_instruction(match operator {
-                    BinaryOp::Add => Instruction::add(dest, src1, src2),
-                    BinaryOp::Subtract => Instruction::sub(dest, src1, src2),
-                    BinaryOp::Multiply => Instruction::mul(dest, src1, src2),
-                    BinaryOp::Divide => Instruction::div(dest, src1, src2),
-                    BinaryOp::Modulo => Instruction::mod_(dest, src1, src2),
-                    BinaryOp::Equal => Instruction::eq(dest, src1, src2),
-                    BinaryOp::NotEqual => Instruction::neq(dest, src1, src2),
-                    BinaryOp::Less => Instruction::lt(dest, src1, src2),
-                    BinaryOp::LessEqual => Instruction::lte(dest, src1, src2),
-                    BinaryOp::Greater => Instruction::gt(dest, src1, src2),
-                    BinaryOp::GreaterEqual => Instruction::gte(dest, src1, src2),
+                    BinaryOp::Add => Instruction::Add {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Subtract => Instruction::Subtract {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Multiply => Instruction::Multiply {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Divide => Instruction::Divide {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Modulo => Instruction::Modulo {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Equal => Instruction::Equal {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::NotEqual => Instruction::NotEqual {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Less => Instruction::Less {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::LessEqual => Instruction::LessEqual {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Greater => Instruction::Greater {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::GreaterEqual => Instruction::GreaterEqual {
+                        dest,
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
                 });
 
                 return Ok(dest);
@@ -482,17 +613,61 @@ fn lower_expression(
             let src2 = lower_expression(ast, functions, function, env, right, None)?;
 
             function.emit_instruction(match operator {
-                BinaryOp::Add => Instruction::add(dest, src1, src2),
-                BinaryOp::Subtract => Instruction::sub(dest, src1, src2),
-                BinaryOp::Multiply => Instruction::mul(dest, src1, src2),
-                BinaryOp::Divide => Instruction::div(dest, src1, src2),
-                BinaryOp::Modulo => Instruction::mod_(dest, src1, src2),
-                BinaryOp::Equal => Instruction::eq(dest, src1, src2),
-                BinaryOp::NotEqual => Instruction::neq(dest, src1, src2),
-                BinaryOp::Less => Instruction::lt(dest, src1, src2),
-                BinaryOp::LessEqual => Instruction::lte(dest, src1, src2),
-                BinaryOp::Greater => Instruction::gt(dest, src1, src2),
-                BinaryOp::GreaterEqual => Instruction::gte(dest, src1, src2),
+                BinaryOp::Add => Instruction::Add {
+                    dest,
+                    src1: src1.into(),
+                    src2: src2.into(),
+                },
+                BinaryOp::Subtract => Instruction::Subtract {
+                    dest,
+                    src1: src1.into(),
+                    src2: src2.into(),
+                },
+                BinaryOp::Multiply => Instruction::Multiply {
+                    dest,
+                    src1: src1.into(),
+                    src2: src2.into(),
+                },
+                BinaryOp::Divide => Instruction::Divide {
+                    dest,
+                    src1: src1.into(),
+                    src2: src2.into(),
+                },
+                BinaryOp::Modulo => Instruction::Modulo {
+                    dest,
+                    src1: src1.into(),
+                    src2: src2.into(),
+                },
+                BinaryOp::Equal => Instruction::Equal {
+                    dest,
+                    src1: src1.into(),
+                    src2: src2.into(),
+                },
+                BinaryOp::NotEqual => Instruction::NotEqual {
+                    dest,
+                    src1: src1.into(),
+                    src2: src2.into(),
+                },
+                BinaryOp::Less => Instruction::Less {
+                    dest,
+                    src1: src1.into(),
+                    src2: src2.into(),
+                },
+                BinaryOp::LessEqual => Instruction::LessEqual {
+                    dest,
+                    src1: src1.into(),
+                    src2: src2.into(),
+                },
+                BinaryOp::Greater => Instruction::Greater {
+                    dest,
+                    src1: src1.into(),
+                    src2: src2.into(),
+                },
+                BinaryOp::GreaterEqual => Instruction::GreaterEqual {
+                    dest,
+                    src1: src1.into(),
+                    src2: src2.into(),
+                },
             });
 
             dest
@@ -502,7 +677,7 @@ fn lower_expression(
             let src = lower_expression(ast, functions, function, env, right, None)?;
 
             function.emit_instruction(match operator {
-                UnaryOp::Negate => Instruction::neg(dest, src),
+                UnaryOp::Negate => Instruction::Negate { dest, src },
             });
 
             dest
@@ -510,7 +685,7 @@ fn lower_expression(
         Expr::LogicalNot(expression) => {
             let dest = dest.unwrap_or_else(|| function.allocate_register());
             let src = lower_expression(ast, functions, function, env, expression, None)?;
-            function.emit_instruction(Instruction::not(dest, src));
+            function.emit_instruction(Instruction::Not { dest, src });
             dest
         }
         Expr::LogicalAnd { left, right } => {
@@ -548,7 +723,7 @@ fn lower_expression(
             let jump_if_false = lower_jump_if_false(function, condition);
             lower_expression(ast, functions, function, env, then_branch, Some(dest))?;
 
-            let jump_end = function.emit_instruction(Instruction::jump(0));
+            let jump_end = function.emit_instruction(Instruction::Jump { offset: 0 });
             patch_jump(
                 function,
                 jump_if_false,
@@ -559,7 +734,7 @@ fn lower_expression(
                 lower_expression(ast, functions, function, env, else_branch, Some(dest))?;
             } else {
                 let src = function.push_number(0.0);
-                function.emit_instruction(Instruction::load_const(dest, src));
+                function.emit_instruction(Instruction::LoadConst { dest, src });
             }
 
             patch_jump(
@@ -682,7 +857,7 @@ fn lower_expression(
             )?;
 
             if !expression_returns(ast, block) {
-                inner_function.emit_instruction(Instruction::ret(src));
+                inner_function.emit_instruction(Instruction::Return { src });
             }
 
             functions[index] = Some(inner_function);
@@ -694,14 +869,20 @@ fn lower_expression(
                 None => dest.unwrap_or_else(|| function.allocate_register()),
             };
 
-            function.emit_instruction(Instruction::create_closure(dest, index as u32));
+            function.emit_instruction(Instruction::CreateClosure {
+                dest,
+                src: index as u32,
+            });
 
             for name in free_names.iter().copied() {
                 let Local { register, .. } = env
                     .lookup(name)
                     .expect("name must've been declared to reach this point of the code");
 
-                function.emit_instruction(Instruction::capture_value(dest, register));
+                function.emit_instruction(Instruction::CaptureValue {
+                    dest,
+                    src: register,
+                });
             }
 
             dest
@@ -718,7 +899,11 @@ fn lower_expression(
             }
 
             let dest = dest.unwrap_or_else(|| function.allocate_register());
-            function.emit_instruction(Instruction::call(dest, callee_src, arguments.len() as u8));
+            function.emit_instruction(Instruction::Call {
+                dest,
+                src: callee_src,
+                arity: arguments.len() as u8,
+            });
 
             dest
         }
@@ -726,16 +911,20 @@ fn lower_expression(
             let dest = dest.unwrap_or_else(|| function.allocate_register());
             let object = lower_expression(ast, functions, function, env, object, None)?;
             let key = lower_expression(ast, functions, function, env, property, None)?;
-            function.emit_instruction(Instruction::get_field(dest, object, key));
+            function.emit_instruction(Instruction::GetField { dest, object, key });
             dest
         }
         Expr::DictLiteral { ref fields } => {
             let dest = dest.unwrap_or_else(|| function.allocate_register());
-            function.emit_instruction(Instruction::create_dict(dest));
+            function.emit_instruction(Instruction::CreateDict { dest });
             for &(key, value) in fields.iter() {
                 let key = lower_expression(ast, functions, function, env, key, None)?;
                 let value = lower_expression(ast, functions, function, env, value.unwrap(), None)?;
-                function.emit_instruction(Instruction::set_field(dest, key, value));
+                function.emit_instruction(Instruction::SetField {
+                    object: dest,
+                    key,
+                    value,
+                });
             }
             dest
         }
@@ -745,7 +934,7 @@ fn lower_expression(
                 None => function.emit_nil(),
             };
 
-            function.emit_instruction(Instruction::ret(src));
+            function.emit_instruction(Instruction::Return { src });
             src
         }
         Expr::NativeFunction { .. } => todo!(),
@@ -759,12 +948,17 @@ fn lower_expression(
 
 fn touches_register(instruction: Instruction, register: Register) -> bool {
     match instruction {
-        Instruction::Arith {
-            dest, src1, src2, ..
-        }
-        | Instruction::Cmp {
-            dest, src1, src2, ..
-        } => {
+        Instruction::Add { dest, src1, src2 }
+        | Instruction::Subtract { dest, src1, src2 }
+        | Instruction::Multiply { dest, src1, src2 }
+        | Instruction::Divide { dest, src1, src2 }
+        | Instruction::Modulo { dest, src1, src2 }
+        | Instruction::Equal { dest, src1, src2 }
+        | Instruction::NotEqual { dest, src1, src2 }
+        | Instruction::Less { dest, src1, src2 }
+        | Instruction::LessEqual { dest, src1, src2 }
+        | Instruction::Greater { dest, src1, src2 }
+        | Instruction::GreaterEqual { dest, src1, src2 } => {
             dest == register
                 || src1 == Operand::Register(register)
                 || src2 == Operand::Register(register)
@@ -790,7 +984,16 @@ fn touches_register(instruction: Instruction, register: Register) -> bool {
         Instruction::JumpIfFalse { src, .. } | Instruction::JumpIfTrue { src, .. } => {
             src == register
         }
-        Instruction::JumpIf { src1, src2, .. } => {
+        Instruction::JumpIfEqual { src1, src2, .. }
+        | Instruction::JumpIfNotEqual { src1, src2, .. }
+        | Instruction::JumpIfLess { src1, src2, .. }
+        | Instruction::JumpIfNotLess { src1, src2, .. }
+        | Instruction::JumpIfLessEqual { src1, src2, .. }
+        | Instruction::JumpIfNotLessEqual { src1, src2, .. }
+        | Instruction::JumpIfGreater { src1, src2, .. }
+        | Instruction::JumpIfNotGreater { src1, src2, .. }
+        | Instruction::JumpIfGreaterEqual { src1, src2, .. }
+        | Instruction::JumpIfNotGreaterEqual { src1, src2, .. } => {
             src1 == Operand::Register(register) || src2 == Operand::Register(register)
         }
         Instruction::Jump { .. } | Instruction::Nop => false,
@@ -817,24 +1020,64 @@ fn lower_jump_if_true(function: &mut Function, register: Register) -> usize {
     let last = function.instructions.last().copied();
 
     match last {
-        Some(Instruction::Cmp {
-            op,
-            dest,
-            src1,
-            src2,
-        }) => {
+        Some(Instruction::Equal { dest, src1, src2 }) => {
             function.instructions.pop();
             function.remove_live_range(dest);
-            function.emit_instruction(match op {
-                CmpOp::Equal => Instruction::jump_if_eq(src1, src2, 0),
-                CmpOp::NotEqual => Instruction::jump_if_not_eq(src1, src2, 0),
-                CmpOp::Less => Instruction::jump_if_lt(src1, src2, 0),
-                CmpOp::LessEqual => Instruction::jump_if_lte(src1, src2, 0),
-                CmpOp::Greater => Instruction::jump_if_gt(src1, src2, 0),
-                CmpOp::GreaterEqual => Instruction::jump_if_gte(src1, src2, 0),
+            function.emit_instruction(Instruction::JumpIfEqual {
+                src1,
+                src2,
+                offset: 0,
             })
         }
-        _ => function.emit_instruction(Instruction::jump_if_true(register, 0)),
+        Some(Instruction::NotEqual { dest, src1, src2 }) => {
+            function.instructions.pop();
+            function.remove_live_range(dest);
+            function.emit_instruction(Instruction::JumpIfNotEqual {
+                src1,
+                src2,
+                offset: 0,
+            })
+        }
+        Some(Instruction::Less { dest, src1, src2 }) => {
+            function.instructions.pop();
+            function.remove_live_range(dest);
+            function.emit_instruction(Instruction::JumpIfLess {
+                src1,
+                src2,
+                offset: 0,
+            })
+        }
+        Some(Instruction::LessEqual { dest, src1, src2 }) => {
+            function.instructions.pop();
+            function.remove_live_range(dest);
+            function.emit_instruction(Instruction::JumpIfLessEqual {
+                src1,
+                src2,
+                offset: 0,
+            })
+        }
+        Some(Instruction::Greater { dest, src1, src2 }) => {
+            function.instructions.pop();
+            function.remove_live_range(dest);
+            function.emit_instruction(Instruction::JumpIfGreater {
+                src1,
+                src2,
+                offset: 0,
+            })
+        }
+        Some(Instruction::GreaterEqual { dest, src1, src2 }) => {
+            function.instructions.pop();
+            function.remove_live_range(dest);
+            function.emit_instruction(Instruction::JumpIfGreaterEqual {
+                src1,
+                src2,
+                offset: 0,
+            })
+        }
+        _ => function.emit_instruction(Instruction::JumpIfTrue {
+            src: register,
+            offset: 0,
+        }),
     }
 }
 
@@ -842,24 +1085,64 @@ fn lower_jump_if_false(function: &mut Function, register: Register) -> usize {
     let last = function.instructions.last().copied();
 
     match last {
-        Some(Instruction::Cmp {
-            op,
-            dest,
-            src1,
-            src2,
-        }) => {
+        Some(Instruction::Equal { dest, src1, src2 }) => {
             function.instructions.pop();
             function.remove_live_range(dest);
-            function.emit_instruction(match op {
-                CmpOp::Equal => Instruction::jump_if_not_eq(src1, src2, 0),
-                CmpOp::NotEqual => Instruction::jump_if_eq(src1, src2, 0),
-                CmpOp::Less => Instruction::jump_if_not_lt(src1, src2, 0),
-                CmpOp::LessEqual => Instruction::jump_if_not_lte(src1, src2, 0),
-                CmpOp::Greater => Instruction::jump_if_not_gt(src1, src2, 0),
-                CmpOp::GreaterEqual => Instruction::jump_if_not_gte(src1, src2, 0),
+            function.emit_instruction(Instruction::JumpIfNotEqual {
+                src1,
+                src2,
+                offset: 0,
             })
         }
-        _ => function.emit_instruction(Instruction::jump_if_false(register, 0)),
+        Some(Instruction::NotEqual { dest, src1, src2 }) => {
+            function.instructions.pop();
+            function.remove_live_range(dest);
+            function.emit_instruction(Instruction::JumpIfEqual {
+                src1,
+                src2,
+                offset: 0,
+            })
+        }
+        Some(Instruction::Less { dest, src1, src2 }) => {
+            function.instructions.pop();
+            function.remove_live_range(dest);
+            function.emit_instruction(Instruction::JumpIfNotLess {
+                src1,
+                src2,
+                offset: 0,
+            })
+        }
+        Some(Instruction::LessEqual { dest, src1, src2 }) => {
+            function.instructions.pop();
+            function.remove_live_range(dest);
+            function.emit_instruction(Instruction::JumpIfNotLessEqual {
+                src1,
+                src2,
+                offset: 0,
+            })
+        }
+        Some(Instruction::Greater { dest, src1, src2 }) => {
+            function.instructions.pop();
+            function.remove_live_range(dest);
+            function.emit_instruction(Instruction::JumpIfNotGreater {
+                src1,
+                src2,
+                offset: 0,
+            })
+        }
+        Some(Instruction::GreaterEqual { dest, src1, src2 }) => {
+            function.instructions.pop();
+            function.remove_live_range(dest);
+            function.emit_instruction(Instruction::JumpIfNotGreaterEqual {
+                src1,
+                src2,
+                offset: 0,
+            })
+        }
+        _ => function.emit_instruction(Instruction::JumpIfFalse {
+            src: register,
+            offset: 0,
+        }),
     }
 }
 
@@ -868,7 +1151,16 @@ fn patch_jump(function: &mut Function, index: usize, new_offset: i32) {
         Instruction::Jump { offset }
         | Instruction::JumpIfTrue { offset, .. }
         | Instruction::JumpIfFalse { offset, .. }
-        | Instruction::JumpIf { offset, .. } => *offset = new_offset,
+        | Instruction::JumpIfEqual { offset, .. }
+        | Instruction::JumpIfNotEqual { offset, .. }
+        | Instruction::JumpIfLess { offset, .. }
+        | Instruction::JumpIfNotLess { offset, .. }
+        | Instruction::JumpIfLessEqual { offset, .. }
+        | Instruction::JumpIfNotLessEqual { offset, .. }
+        | Instruction::JumpIfGreater { offset, .. }
+        | Instruction::JumpIfNotGreater { offset, .. }
+        | Instruction::JumpIfGreaterEqual { offset, .. }
+        | Instruction::JumpIfNotGreaterEqual { offset, .. } => *offset = new_offset,
         _ => panic!("tried to patch a non-jump instruction at index {index}"),
     }
 }
