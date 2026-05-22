@@ -1,5 +1,3 @@
-use std::hint::unreachable_unchecked;
-
 use foldhash::HashMap;
 
 use crate::runtime::instruction::Instruction;
@@ -7,109 +5,142 @@ use crate::runtime::instruction::Instruction;
 use super::value::Value;
 
 pub struct Closure {
+    pub captured: Vec<Value>,
     pub instructions: *const Instruction,
     pub constants: *const Value,
     pub arity: u8,
     pub frame_size: u8,
-    pub captured: Vec<Value>,
-}
-
-enum Object {
-    Vec(Vec<Value>),
-    Dict(HashMap<Value, Value>),
-    Closure(Closure),
 }
 
 #[derive(Default)]
 pub struct Gc {
-    objects: Vec<Object>,
-    free_list: Vec<usize>,
+    vecs: Vec<Vec<Value>>,
+    dicts: Vec<HashMap<Value, Value>>,
+    closures: Vec<Closure>,
+
+    free_vecs: Vec<usize>,
+    free_dicts: Vec<usize>,
+    free_closures: Vec<usize>,
 }
 
 impl Gc {
-    fn alloc(&mut self, object: Object) -> usize {
-        if let Some(index) = self.free_list.pop() {
-            self.objects[index] = object;
-
+    #[inline(always)]
+    fn alloc_vec(&mut self, object: Vec<Value>) -> usize {
+        if let Some(index) = self.free_vecs.pop() {
+            self.vecs[index] = object;
             index
         } else {
-            let index = self.objects.len();
-            self.objects.push(object);
+            let index = self.vecs.len();
+
+            self.vecs.push(object);
+
             index
         }
     }
 
-    pub fn allocate_dict(&mut self) -> Value {
-        let object = Object::Dict(HashMap::default());
-        let index = self.alloc(object);
+    #[inline(always)]
+    fn alloc_dict(&mut self, object: HashMap<Value, Value>) -> usize {
+        if let Some(index) = self.free_dicts.pop() {
+            self.dicts[index] = object;
+            index
+        } else {
+            let index = self.dicts.len();
 
-        Value::dict(index)
+            self.dicts.push(object);
+
+            index
+        }
     }
 
+    #[inline(always)]
+    fn alloc_closure(&mut self, object: Closure) -> usize {
+        if let Some(index) = self.free_closures.pop() {
+            self.closures[index] = object;
+            index
+        } else {
+            let index = self.closures.len();
+
+            self.closures.push(object);
+
+            index
+        }
+    }
+
+    #[inline(always)]
     pub fn allocate_vec(&mut self) -> Value {
-        let object = Object::Vec(Vec::new());
-        let index = self.alloc(object);
+        let index = self.alloc_vec(Vec::new());
 
         Value::vec(index)
     }
 
-    pub fn allocate_closure(&mut self, object: Closure) -> Value {
-        let index = self.alloc(Object::Closure(object));
+    #[inline(always)]
+    pub fn allocate_dict(&mut self) -> Value {
+        let index = self.alloc_dict(HashMap::default());
+
+        Value::dict(index)
+    }
+
+    #[inline(always)]
+    pub fn allocate_closure(&mut self, closure: Closure) -> Value {
+        let index = self.alloc_closure(closure);
 
         Value::closure(index)
     }
 
-    pub fn get_mut_closure(&mut self, value: Value) -> &mut Closure {
-        let index = value.as_index();
-
-        match &mut self.objects[index] {
-            Object::Closure(object) => object,
-            _ => unsafe { unreachable_unchecked() },
-        }
-    }
-
-    pub fn get_mut_vec(&mut self, value: Value) -> &mut Vec<Value> {
-        let index = value.as_index();
-
-        match &mut self.objects[index] {
-            Object::Vec(v) => v,
-            _ => unsafe { unreachable_unchecked() },
-        }
-    }
-
-    pub fn get_mut_dict(&mut self, value: Value) -> &mut HashMap<Value, Value> {
-        let index = value.as_index();
-
-        match &mut self.objects[index] {
-            Object::Dict(d) => d,
-            _ => unsafe { unreachable_unchecked() },
-        }
-    }
-
+    #[inline(always)]
     pub fn get_vec(&self, value: Value) -> &Vec<Value> {
-        let index = value.as_index();
-
-        match &self.objects[index] {
-            Object::Vec(v) => v,
-            _ => unreachable!(),
-        }
+        unsafe { self.vecs.get_unchecked(value.as_index()) }
     }
 
+    #[inline(always)]
+    pub fn get_mut_vec(&mut self, value: Value) -> &mut Vec<Value> {
+        unsafe { self.vecs.get_unchecked_mut(value.as_index()) }
+    }
+
+    #[inline(always)]
     pub fn get_dict(&self, value: Value) -> &HashMap<Value, Value> {
-        let index = value.as_index();
-
-        match &self.objects[index] {
-            Object::Dict(d) => d,
-            _ => unsafe { unreachable_unchecked() },
-        }
+        unsafe { self.dicts.get_unchecked(value.as_index()) }
     }
 
+    #[inline(always)]
+    pub fn get_mut_dict(&mut self, value: Value) -> &mut HashMap<Value, Value> {
+        unsafe { self.dicts.get_unchecked_mut(value.as_index()) }
+    }
+
+    #[inline(always)]
     pub fn get_closure(&self, value: Value) -> &Closure {
+        unsafe { self.closures.get_unchecked(value.as_index()) }
+    }
+
+    #[inline(always)]
+    pub fn get_mut_closure(&mut self, value: Value) -> &mut Closure {
+        unsafe { self.closures.get_unchecked_mut(value.as_index()) }
+    }
+
+    #[inline(always)]
+    pub fn free_vec(&mut self, value: Value) {
         let index = value.as_index();
 
-        match &self.objects[index] {
-            Object::Closure(object) => object,
-            _ => unsafe { unreachable_unchecked() },
-        }
+        self.vecs[index].clear();
+
+        self.free_vecs.push(index);
+    }
+
+    #[inline(always)]
+    pub fn free_dict(&mut self, value: Value) {
+        let index = value.as_index();
+
+        self.dicts[index].clear();
+
+        self.free_dicts.push(index);
+    }
+
+    #[inline(always)]
+    pub fn free_closure(&mut self, value: Value) {
+        let index = value.as_index();
+
+        self.closures[index].captured.clear();
+
+        self.free_closures.push(index);
     }
 }
