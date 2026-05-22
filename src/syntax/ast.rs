@@ -43,11 +43,11 @@ pub enum Expr {
         left: ExprId,
         right: ExprId,
     },
-    DeclareAssign {
+    Variable {
         left: ExprId,
         right: ExprId,
     },
-    DeclareAssignCell {
+    Mut {
         left: ExprId,
         right: ExprId,
     },
@@ -176,17 +176,12 @@ impl Ast {
         )
     }
 
-    pub fn declare_assign(&mut self, left: ExprId, right: ExprId, span: Range<usize>) -> ExprId {
-        self.insert(Expr::DeclareAssign { left, right }, Some(span))
+    pub fn variable(&mut self, left: ExprId, right: ExprId) -> ExprId {
+        self.insert(Expr::Variable { left, right }, None)
     }
 
-    pub fn declare_assign_cell(
-        &mut self,
-        left: ExprId,
-        right: ExprId,
-        span: Range<usize>,
-    ) -> ExprId {
-        self.insert(Expr::DeclareAssignCell { left, right }, Some(span))
+    pub fn mut_(&mut self, left: ExprId, right: ExprId) -> ExprId {
+        self.insert(Expr::Mut { left, right }, None)
     }
 
     pub fn identifier(&mut self, index: StringIndex, span: Range<usize>) -> ExprId {

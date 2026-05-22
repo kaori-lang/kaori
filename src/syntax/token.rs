@@ -3,10 +3,6 @@ use std::fmt;
 #[derive(Logos, Debug, PartialEq, Copy, Clone)]
 #[logos(skip r"[ \t\f\r\n]+")]
 pub enum Token {
-    #[token("::=")]
-    DeclareAssignCell,
-    #[token(":=")]
-    DeclareAssign,
     #[token("=")]
     Assign,
     #[token("+=")]
@@ -85,6 +81,10 @@ pub enum Token {
     True,
     #[token("false")]
     False,
+    #[token("let")]
+    Let,
+    #[token("mut")]
+    Mut,
     #[regex(r"[0-9]+(\.[0-9]+)?")]
     NumberLiteral,
     #[token(";")]
@@ -101,8 +101,6 @@ pub enum Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            Self::DeclareAssignCell => "`::=`",
-            Self::DeclareAssign => "`:=`",
             Self::Assign => "`=`",
             Self::AddAssign => "`+=`",
             Self::SubtractAssign => "`-=`",
@@ -143,6 +141,8 @@ impl fmt::Display for Token {
             Self::Return => "`return`",
             Self::True => "`true`",
             Self::False => "`false`",
+            Self::Let => "`let`",
+            Self::Mut => "`mut`",
             Self::NumberLiteral => "<number literal>",
             Self::StringLiteral => "<string literal>",
             Self::UnterminatedStringLiteral => "<unterminated string>",

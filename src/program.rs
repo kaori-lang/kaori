@@ -4,7 +4,7 @@ use logos::Logos;
 
 use crate::{
     diagnostics::error::Error,
-    mir::resolve::resolve,
+    mir::lower_ast::lower_ast,
     runtime::vm::run_vm,
     syntax::{parser::Parser, token::Token},
     util::string_interner::StringInterner,
@@ -19,8 +19,7 @@ pub fn compile_source_code(source: &str) -> Result<Vec<runtime_function>, Error>
     let tokens = Token::lexer(source).spanned();
     let parser = Parser::new(tokens);
     let ast = parser.parse()?;
-    let resolved_ast = resolve(ast)?;
-    let functions = resolved_ast.lower();
+    let functions = lower_ast(ast);
 
     let functions = functions
         .into_iter()

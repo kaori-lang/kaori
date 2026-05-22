@@ -148,6 +148,8 @@ impl<'a> Parser<'a> {
             Token::Continue => self.parse_continue()?,
             Token::Return => self.parse_return()?,
             Token::If => self.parse_if()?,
+            Token::Let => self.parse_variable()?,
+            Token::Mut => self.parse_mut()?,
             _ => self.parse_expression()?,
         };
 
@@ -276,6 +278,30 @@ impl<'a> Parser<'a> {
         Ok(self.ast.function(name, parameters, block))
     }
 
+    fn parse_variable(&mut self) -> Result<ExprId, Error> {
+        self.consume(Token::Let)?;
+
+        let left = self.parse_identifier()?;
+
+        self.consume(Token::Assign)?;
+
+        let right = self.parse_expression()?;
+
+        Ok(self.ast.variable(left, right))
+    }
+
+    fn parse_mut(&mut self) -> Result<ExprId, Error> {
+        self.consume(Token::Let)?;
+
+        let left = self.parse_identifier()?;
+
+        self.consume(Token::Assign)?;
+
+        let right = self.parse_expression()?;
+
+        Ok(self.ast.mut_(left, right))
+    }
+
     fn parse_assign(&mut self) -> Result<ExprId, Error> {
         let left = self.parse_or()?;
 
@@ -292,18 +318,6 @@ impl<'a> Parser<'a> {
                 let right = self.parse_or()?;
 
                 return Ok(self.ast.assign(left, right, span));
-            }
-            Token::DeclareAssign => {
-                self.next()?;
-                let right = self.parse_or()?;
-
-                return Ok(self.ast.declare_assign(left, right, span));
-            }
-            Token::DeclareAssignCell => {
-                self.next()?;
-                let right = self.parse_or()?;
-
-                return Ok(self.ast.declare_assign_cell(left, right, span));
             }
             _ => return Ok(left),
         };
