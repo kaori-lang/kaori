@@ -4,4 +4,4 @@ pub mod instruction;
 
 pub mod lower_ast;
 
-mod optimizations;
+//mod optimizations;

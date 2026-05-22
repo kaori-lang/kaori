@@ -1,7 +1,7 @@
 use foldhash::{HashMap, HashMapExt};
 
 use crate::{
-    mir::instruction::{ConstIndex, Register},
+    mir::instruction::{ConstIndex, Operand, Register},
     runtime::value::Value,
     util::string_interner::StringIndex,
 };
@@ -55,54 +55,39 @@ impl Function {
 
     pub fn emit_instruction(&mut self, instruction: Instruction) -> usize {
         let index = self.instructions.len();
+
         self.instructions.push(instruction);
 
-        let mut live = |register: Register| self.update_live_range(register, index);
+        let mut live = |register: Register| {
+            self.update_live_range(register, index);
+        };
 
         match instruction {
-            Instruction::Add { dest, src1, src2 }
-            | Instruction::Subtract { dest, src1, src2 }
-            | Instruction::Multiply { dest, src1, src2 }
-            | Instruction::Divide { dest, src1, src2 }
-            | Instruction::Modulo { dest, src1, src2 }
-            | Instruction::Equal { dest, src1, src2 }
-            | Instruction::NotEqual { dest, src1, src2 }
-            | Instruction::Less { dest, src1, src2 }
-            | Instruction::LessEqual { dest, src1, src2 }
-            | Instruction::Greater { dest, src1, src2 }
-            | Instruction::GreaterEqual { dest, src1, src2 } => {
-                live(dest);
-                live(src1);
-                live(src2);
+            Instruction::Arith {
+                dest, src1, src2, ..
             }
-            Instruction::AddK { dest, src1, .. }
-            | Instruction::SubtractRK { dest, src1, .. }
-            | Instruction::MultiplyK { dest, src1, .. }
-            | Instruction::DivideRK { dest, src1, .. }
-            | Instruction::ModuloRK { dest, src1, .. }
-            | Instruction::EqualK { dest, src1, .. }
-            | Instruction::NotEqualK { dest, src1, .. }
-            | Instruction::LessK { dest, src1, .. }
-            | Instruction::LessEqualK { dest, src1, .. }
-            | Instruction::GreaterK { dest, src1, .. }
-            | Instruction::GreaterEqualK { dest, src1, .. } => {
+            | Instruction::Cmp {
+                dest, src1, src2, ..
+            } => {
                 live(dest);
-                live(src1);
-            }
-            Instruction::SubtractKR { dest, src2, .. }
-            | Instruction::DivideKR { dest, src2, .. }
-            | Instruction::ModuloKR { dest, src2, .. } => {
-                live(dest);
-                live(src2);
+                if let Operand::Register(r) = src1 {
+                    live(r);
+                }
+                if let Operand::Register(r) = src2 {
+                    live(r);
+                }
             }
             Instruction::Not { dest, src }
             | Instruction::Negate { dest, src }
             | Instruction::Move { dest, src }
-            | Instruction::CaptureValue { dest, src } => {
+            | Instruction::CaptureValue { dest, src }
+            | Instruction::CreateCell { dest, src }
+            | Instruction::SetCell { dest, src }
+            | Instruction::GetCell { dest, src } => {
                 live(dest);
                 live(src);
             }
-            Instruction::LoadK { dest, .. }
+            Instruction::LoadConst { dest, .. }
             | Instruction::CreateDict { dest }
             | Instruction::CreateClosure { dest, .. } => {
                 live(dest);
@@ -127,22 +112,13 @@ impl Function {
             Instruction::JumpIfFalse { src, .. } | Instruction::JumpIfTrue { src, .. } => {
                 live(src);
             }
-            Instruction::JumpIfLess { src1, src2, .. }
-            | Instruction::JumpIfLessEqual { src1, src2, .. }
-            | Instruction::JumpIfGreater { src1, src2, .. }
-            | Instruction::JumpIfGreaterEqual { src1, src2, .. }
-            | Instruction::JumpIfEqual { src1, src2, .. }
-            | Instruction::JumpIfNotEqual { src1, src2, .. } => {
-                live(src1);
-                live(src2);
-            }
-            Instruction::JumpIfLessK { src1, .. }
-            | Instruction::JumpIfLessEqualK { src1, .. }
-            | Instruction::JumpIfGreaterK { src1, .. }
-            | Instruction::JumpIfGreaterEqualK { src1, .. }
-            | Instruction::JumpIfEqualK { src1, .. }
-            | Instruction::JumpIfNotEqualK { src1, .. } => {
-                live(src1);
+            Instruction::JumpIf { src1, src2, .. } => {
+                if let Operand::Register(r) = src1 {
+                    live(r);
+                }
+                if let Operand::Register(r) = src2 {
+                    live(r);
+                }
             }
             Instruction::Jump { .. } | Instruction::Nop => {}
         }
@@ -190,7 +166,7 @@ impl Function {
 
         let src = self.push_number(0.0);
 
-        self.emit_instruction(Instruction::LoadK { dest, src });
+        self.emit_instruction(Instruction::load_const(dest, src));
 
         dest
     }

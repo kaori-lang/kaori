@@ -21,7 +21,7 @@ type Handler = unsafe extern "rust-preserve-none" fn(
     frame_size: u8,
 ) -> Result<Value, Box<Error>>;
 
-static HANDLERS: [Handler; 52] = [
+static HANDLERS: [Handler; 54] = [
     opcode_add_rr,
     opcode_add_rk,
     opcode_subtract_rr,
@@ -56,6 +56,9 @@ static HANDLERS: [Handler; 52] = [
     opcode_get_field,
     opcode_create_closure,
     opcode_capture_value,
+    opcode_create_cell,
+    opcode_set_cell,
+    opcode_get_cell,
     opcode_call,
     opcode_return,
     opcode_jump,
@@ -73,7 +76,6 @@ static HANDLERS: [Handler; 52] = [
     opcode_jump_if_equal_rk,
     opcode_jump_if_not_equal_rr,
     opcode_jump_if_not_equal_rk,
-    opcode_nop,
 ];
 
 macro_rules! dispatch_next {
@@ -1146,6 +1148,75 @@ unsafe extern "rust-preserve-none" fn opcode_capture_value(
 }
 
 #[inline(never)]
+unsafe extern "rust-preserve-none" fn opcode_create_cell(
+    ip: *const Instruction,
+    mut registers: Registers,
+    constants: Constants,
+    state: &mut VmState,
+    frame_size: u8,
+) -> Result<Value, Box<Error>> {
+    let (dest, src) = unsafe {
+        let Instruction::CreateCell { dest, src } = *ip else {
+            unreachable_unchecked()
+        };
+
+        (dest, src)
+    };
+
+    let value = unsafe { registers.get_value(src) };
+
+    let cell = state.gc.allocate_cell(value);
+
+    registers.set_value(dest, cell);
+
+    dispatch_next!(ip, registers, constants, state, frame_size)
+}
+
+#[inline(never)]
+unsafe extern "rust-preserve-none" fn opcode_set_cell(
+    ip: *const Instruction,
+    registers: Registers,
+    constants: Constants,
+    state: &mut VmState,
+    frame_size: u8,
+) -> Result<Value, Box<Error>> {
+    let (dest, src) = unsafe {
+        let Instruction::SetCell { dest, src } = *ip else {
+            unreachable_unchecked()
+        };
+        (dest, src)
+    };
+    let cell = unsafe { registers.get_value(dest) };
+    let value = unsafe { registers.get_value(src) };
+
+    state.gc.set_cell(cell, value);
+
+    dispatch_next!(ip, registers, constants, state, frame_size)
+}
+
+#[inline(never)]
+unsafe extern "rust-preserve-none" fn opcode_get_cell(
+    ip: *const Instruction,
+    mut registers: Registers,
+    constants: Constants,
+    state: &mut VmState,
+    frame_size: u8,
+) -> Result<Value, Box<Error>> {
+    let (dest, src) = unsafe {
+        let Instruction::GetCell { dest, src } = *ip else {
+            unreachable_unchecked()
+        };
+        (dest, src)
+    };
+
+    let cell = unsafe { registers.get_value(src) };
+    let value = state.gc.get_cell(cell);
+
+    registers.set_value(dest, value);
+    dispatch_next!(ip, registers, constants, state, frame_size)
+}
+
+#[inline(never)]
 unsafe extern "rust-preserve-none" fn opcode_call(
     ip: *const Instruction,
     mut registers: Registers,
@@ -1656,15 +1727,4 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rk(
     } else {
         dispatch_next!(ip, registers, constants, state, frame_size)
     }
-}
-
-#[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_nop(
-    ip: *const Instruction,
-    registers: Registers,
-    constants: Constants,
-    state: &mut VmState,
-    frame_size: u8,
-) -> Result<Value, Box<Error>> {
-    dispatch_next!(ip, registers, constants, state, frame_size)
 }
