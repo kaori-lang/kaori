@@ -1,9 +1,33 @@
-let x = 0;
+let width = 800;
+let height = 800;
+let max_iter = 1000;
+let x_min = -2.5;
+let x_max = 1.0;
+let y_min = -1.25;
+let y_max = 1.25;
+let y = 0;
 
+while y < height {
+    let x = 0;
 
-let y = if x >= 0 {
-    1
-} else {
-    2
-};
+    while x < width {
+        let cx = x_min + (x * (x_max - x_min) / width);
+        let cy = y_min + (y * (y_max - y_min) / height);
+        let zx = 0.0;
+        let zy = 0.0;
+        let iter = 0;
+
+        while (zx * zx + zy * zy < 4.0) and (iter < max_iter) {
+            let xtemp = zx * zx - zy * zy + cx;
+            zy = 2.0 * zx * zy + cy;
+            zx = xtemp;
+            iter += 1;
+        }
+
+        x += 1;
+    }
+
+    y += 1;
+}
+
 

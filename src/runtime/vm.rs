@@ -51,7 +51,7 @@ static HANDLERS: [Handler; 54] = [
     opcode_not,
     opcode_negate,
     opcode_move,
-    opcode_load_k,
+    opcode_load_const,
     opcode_create_dict,
     opcode_set_field,
     opcode_get_field,
@@ -568,7 +568,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    registers.set_value(dest, Value::number((src1 == src2) as u8 as f64));
+    registers.set_value(dest, Value::bool(src1 == src2));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -592,7 +592,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    registers.set_value(dest, Value::number((src1 == src2) as u8 as f64));
+    registers.set_value(dest, Value::bool(src1 == src2));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -616,7 +616,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    registers.set_value(dest, Value::number((src1 != src2) as u8 as f64));
+    registers.set_value(dest, Value::bool(src1 != src2));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -640,7 +640,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    registers.set_value(dest, Value::number((src1 != src2) as u8 as f64));
+    registers.set_value(dest, Value::bool(src1 != src2));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -978,7 +978,7 @@ unsafe extern "rust-preserve-none" fn opcode_move(
 }
 
 #[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_load_k(
+unsafe extern "rust-preserve-none" fn opcode_load_const(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
@@ -986,7 +986,7 @@ unsafe extern "rust-preserve-none" fn opcode_load_k(
     frame_size: u8,
 ) -> Result<Value, Box<Error>> {
     let (dest, src) = unsafe {
-        let Instruction::LoadK { dest, src } = *ip else {
+        let Instruction::LoadConst { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
@@ -1337,11 +1337,11 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_false(
     let src = unsafe { registers.get_value(src) };
 
     type_check!(
-        src.is_number(),
+        src.is_bool(),
         "cannot use this as a condition, value must be a boolean",
     );
 
-    if src.as_number() == 0.0 {
+    if !src.as_bool() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
     } else {
         dispatch_next!(ip, registers, constants, state, frame_size)
@@ -1367,14 +1367,14 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_true(
     let src = unsafe { registers.get_value(src) };
 
     type_check!(
-        src.is_number(),
+        src.is_bool(),
         "cannot use this as a condition, value must be a boolean",
     );
 
-    if src.as_number() == 0.0 {
-        dispatch_next!(ip, registers, constants, state, frame_size)
-    } else {
+    if src.as_bool() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    } else {
+        dispatch_next!(ip, registers, constants, state, frame_size)
     }
 }
 
@@ -1671,7 +1671,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    if src1.as_number() == src2.as_number() {
+    if src1 == src2 {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
     } else {
         dispatch_next!(ip, registers, constants, state, frame_size)
@@ -1723,7 +1723,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    if src1.as_number() != src2.as_number() {
+    if src1 != src2 {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
     } else {
         dispatch_next!(ip, registers, constants, state, frame_size)

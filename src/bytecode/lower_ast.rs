@@ -136,7 +136,7 @@ impl Environment {
 
 fn as_number_const(ast: &Ast, function: &mut Function, expr: ExprId) -> Option<Const> {
     match *ast.node(expr) {
-        Expr::NumberLiteral(value) => Some(function.push_number(value)),
+        Expr::NumberLiteral(value) => Some(function.store_number_const(value)),
         _ => None,
     }
 }
@@ -326,21 +326,25 @@ fn lower_expression(
 ) -> Result<Register, Error> {
     let register = match *ast.node(expression) {
         Expr::NumberLiteral(value) => {
-            let src = function.push_number(value);
+            let src = function.store_number_const(value);
             let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
-            function.emit_instruction(Instruction::LoadK {
+
+            function.emit_instruction(Instruction::LoadConst {
                 dest: dest.into(),
                 src,
             });
+
             dest
         }
         Expr::StringLiteral(value) => {
-            let src = function.push_string(value);
+            let src = function.store_string_const(value);
             let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
-            function.emit_instruction(Instruction::LoadK {
+
+            function.emit_instruction(Instruction::LoadConst {
                 dest: dest.into(),
                 src,
             });
+
             dest
         }
         Expr::BooleanLiteral(_) => {

@@ -51,7 +51,7 @@ pub enum Instruction {
     Not { dest: Reg, src: Reg },
     Negate { dest: Reg, src: Reg },
     Move { dest: Reg, src: Reg },
-    LoadK { dest: Reg, src: Const },
+    LoadConst { dest: Reg, src: Const },
     CreateDict { dest: Reg },
     SetField { object: Reg, key: Reg, value: Reg },
     GetField { dest: Reg, object: Reg, key: Reg },
@@ -93,7 +93,7 @@ impl fmt::Display for Reg {
 
 impl fmt::Display for Const {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "K{}", self.0)
+        write!(f, "C{}", self.0)
     }
 }
 
@@ -128,7 +128,7 @@ impl fmt::Display for Instruction {
             Self::Not { dest, src } => write!(f, "NOT {} {}", dest, src),
             Self::Negate { dest, src } => write!(f, "NEG {} {}", dest, src),
             Self::Move { dest, src } => write!(f, "MOV {} {}", dest, src),
-            Self::LoadK { dest, src } => write!(f, "LOADK {} {}", dest, src),
+            Self::LoadConst { dest, src } => write!(f, "LOAD_CONST {} {}", dest, src),
             Self::CreateDict { dest } => write!(f, "DICT {}", dest),
             Self::SetField { object, key, value } => write!(f, "SET {} {} {}", object, key, value),
             Self::GetField { dest, object, key } => write!(f, "GET {} {} {}", dest, object, key),

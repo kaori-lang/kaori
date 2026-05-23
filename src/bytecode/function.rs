@@ -52,13 +52,13 @@ impl Function {
         index as u16
     }
 
-    pub fn push_string(&mut self, value: Symbol) -> Const {
+    pub fn store_string_const(&mut self, value: Symbol) -> Const {
         let index = self.get_or_insert(Value::string(value));
 
         Const(index)
     }
 
-    pub fn push_number(&mut self, value: f64) -> Const {
+    pub fn store_number_const(&mut self, value: f64) -> Const {
         let index = self.get_or_insert(Value::number(value));
 
         Const(index)

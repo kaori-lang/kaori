@@ -103,6 +103,8 @@ pub enum Token {
     True,
     #[token("false")]
     False,
+    #[token("nil")]
+    Nil,
     #[token("let")]
     Let,
     #[token("mut")]
@@ -161,6 +163,7 @@ impl fmt::Display for Token {
             Self::Return => "`return`",
             Self::True => "`true`",
             Self::False => "`false`",
+            Self::Nil => "`nil`",
             Self::Let => "`let`",
             Self::Mut => "`mut`",
             Self::NumberLiteral => "<number literal>",
