@@ -135,7 +135,7 @@ impl Environment {
 }
 
 fn as_number_const(ast: &Ast, function: &mut Function, expr: ExprId) -> Option<Const> {
-    match *ast.get(expr) {
+    match *ast.node(expr) {
         Expr::NumberLiteral(value) => Some(function.push_number(value)),
         _ => None,
     }
@@ -147,7 +147,7 @@ fn collect_free_variables(
     bound: &mut Vec<Symbol>,
     free: &mut Vec<Symbol>,
 ) {
-    match *ast.get(expression) {
+    match *ast.node(expression) {
         Expr::Identifier(name) => {
             if !bound.contains(&name) && !free.contains(&name) {
                 free.push(name);
@@ -155,21 +155,21 @@ fn collect_free_variables(
         }
         Expr::Variable { left, right } => {
             collect_free_variables(ast, right, bound, free);
-            let Expr::Identifier(name) = *ast.get(left) else {
+            let Expr::Identifier(name) = *ast.node(left) else {
                 unreachable!("let lhs must be an identifier");
             };
             bound.push(name);
         }
         Expr::Mut { left, right } => {
             collect_free_variables(ast, right, bound, free);
-            let Expr::Identifier(name) = *ast.get(left) else {
+            let Expr::Identifier(name) = *ast.node(left) else {
                 unreachable!("mut lhs must be an identifier");
             };
             bound.push(name);
         }
         Expr::Function { name, .. } => {
             if let Some(name_id) = name {
-                let Expr::Identifier(name) = *ast.get(name_id) else {
+                let Expr::Identifier(name) = *ast.node(name_id) else {
                     unreachable!("function name must be an identifier");
                 };
                 bound.push(name);
@@ -181,9 +181,9 @@ fn collect_free_variables(
                 if let Expr::Function {
                     name: Some(name_id),
                     ..
-                } = *ast.get(expr)
+                } = *ast.node(expr)
                 {
-                    let Expr::Identifier(name) = *ast.get(name_id) else {
+                    let Expr::Identifier(name) = *ast.node(name_id) else {
                         unreachable!();
                     };
                     bound.push(name);
@@ -280,9 +280,9 @@ fn lower_block(
         if let Expr::Function {
             name: Some(name_id),
             ..
-        } = *ast.get(expression)
+        } = *ast.node(expression)
         {
-            let Expr::Identifier(name) = *ast.get(name_id) else {
+            let Expr::Identifier(name) = *ast.node(name_id) else {
                 unreachable!("function name must be parsed as identifier");
             };
             let register = env.allocate_register();
@@ -316,7 +316,7 @@ fn resolve_lhs_expression(
     expression: ExprId,
     dest: Option<Register>,
 ) -> Result<Register, Error> {
-    match *ast.get(expression) {
+    match *ast.node(expression) {
         Expr::Identifier(_) => todo!(),
         Expr::MemberAccess { .. } => todo!(),
         _ => panic!("this is not a valid lhs"),
@@ -331,7 +331,7 @@ fn lower_expression(
     expression: ExprId,
     dest: Option<Register>,
 ) -> Result<Register, Error> {
-    let register = match *ast.get(expression) {
+    let register = match *ast.node(expression) {
         Expr::NumberLiteral(value) => {
             let src = function.push_number(value);
             let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
@@ -359,8 +359,9 @@ fn lower_expression(
                 let span = ast
                     .span(expression)
                     .expect("identifier expression must have a span");
+
                 let slice = INTERNER.lock().unwrap().resolve(name);
-                return Err(report_error!(span.clone(), "{} is not declared", slice));
+                return Err(report_error!(span, "{} is not declared", slice));
             };
 
             match kind {
@@ -381,7 +382,7 @@ fn lower_expression(
             }
         }
         Expr::Variable { left, right } => {
-            let Expr::Identifier(name) = *ast.get(left) else {
+            let Expr::Identifier(name) = *ast.node(left) else {
                 unreachable!("let lhs must be an identifier");
             };
 
@@ -395,7 +396,7 @@ fn lower_expression(
             dest
         }
         Expr::Mut { left, right } => {
-            let Expr::Identifier(name) = *ast.get(left) else {
+            let Expr::Identifier(name) = *ast.node(left) else {
                 unreachable!("mut lhs must be an identifier");
             };
 
@@ -846,7 +847,7 @@ fn lower_expression(
             let mut inner_env = Environment::with_parent(parent);
 
             for parameter in parameters.iter().copied() {
-                let Expr::Identifier(name) = *ast.get(parameter) else {
+                let Expr::Identifier(name) = *ast.node(parameter) else {
                     unreachable!("parameter must be parsed as identifier");
                 };
 
@@ -862,7 +863,7 @@ fn lower_expression(
                 .iter()
                 .copied()
                 .map(|p| {
-                    let Expr::Identifier(name) = *ast.get(p) else {
+                    let Expr::Identifier(name) = *ast.node(p) else {
                         unreachable!()
                     };
                     name
@@ -1000,7 +1001,7 @@ fn lower_expression(
 }
 
 fn expression_returns(ast: &Ast, expression: ExprId) -> bool {
-    match *ast.get(expression) {
+    match *ast.node(expression) {
         Expr::Return(..) => true,
         Expr::Block(ref expressions) => expressions
             .iter()

@@ -1,7 +1,5 @@
 use std::ops::Range;
 
-use logos::SpannedIter;
-
 use crate::{
     diagnostics::error::Error,
     program::INTERNER,
@@ -9,21 +7,23 @@ use crate::{
     syntax::{
         ast::{Ast, ExprId},
         ops::{AssignOp, BinaryOp, UnaryOp},
-        token::Token,
+        token::{Span, Token},
     },
 };
 
 pub struct Parser<'a> {
-    tokens: SpannedIter<'a, Token>,
-    peeked: Option<(Token, Range<usize>)>,
+    source: &'a str,
+    tokens: Vec<(Token, Span)>,
+    pos: usize,
     ast: Ast,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(tokens: SpannedIter<'a, Token>) -> Self {
+    pub fn new(source: &'a str, tokens: Vec<(Token, Span)>) -> Self {
         Self {
+            source,
             tokens,
-            peeked: None,
+            pos: 0,
             ast: Ast::default(),
         }
     }
@@ -31,7 +31,7 @@ impl<'a> Parser<'a> {
     pub fn parse(mut self) -> Result<Ast, Error> {
         let mut expressions = Vec::new();
 
-        while !self.at_end()? {
+        while !self.at_end() {
             let (expression, require_semicolon) = self.parse_expression_statement()?;
             expressions.push(expression);
 
@@ -45,40 +45,35 @@ impl<'a> Parser<'a> {
         Ok(self.ast)
     }
 
-    fn at_end(&mut self) -> Result<bool, Error> {
-        match self.peek() {
-            Ok((token, _)) => Ok(token == Token::Eof),
-            Err(err) => Err(err),
-        }
+    fn at_end(&mut self) -> bool {
+        self.peek_token() == Token::Eof
     }
 
-    fn peek(&mut self) -> Result<(Token, Range<usize>), Error> {
-        if self.peeked.is_none() {
-            self.next()?;
-        }
-
-        let (token, span) = self.peeked.as_ref().unwrap();
-
-        Ok((*token, span.start..span.end))
+    fn lexeme(&self, span: Span) -> &str {
+        &self.source[Range::<usize>::from(span)]
     }
 
-    fn peek_token(&mut self) -> Result<Token, Error> {
-        let (token, _) = self.peek()?;
-
-        Ok(token)
+    fn peek(&mut self) -> (Token, Span) {
+        self.tokens[self.pos]
     }
 
-    fn peek_span(&mut self) -> Result<Range<usize>, Error> {
-        let (_, span) = self.peek()?;
+    fn peek_token(&mut self) -> Token {
+        let (token, _) = self.tokens[self.pos];
 
-        Ok(span)
+        token
+    }
+
+    fn peek_span(&mut self) -> Span {
+        let (_, span) = self.tokens[self.pos];
+
+        span
     }
 
     fn consume(&mut self, expected: Token) -> Result<(), Error> {
-        let (token, span) = self.peek()?;
+        let (token, span) = self.peek();
 
         if token == expected {
-            self.next()?;
+            self.advance_token();
             Ok(())
         } else {
             Err(report_error!(
@@ -90,24 +85,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn next(&mut self) -> Result<(Token, Range<usize>), Error> {
-        if let Some((token, span)) = self.tokens.next() {
-            match token {
-                Ok(Token::UnterminatedStringLiteral) => {
-                    Err(report_error!(span, "unterminated string literal"))
-                }
-                Ok(token) => {
-                    self.peeked = Some((token, span.start..span.end));
-
-                    Ok((token, span))
-                }
-                Err(_) => Err(report_error!(span, "this is not a valid token")),
-            }
-        } else {
-            self.peeked = Some((Token::Eof, 0..0));
-
-            Ok((Token::Eof, 0..0))
-        }
+    fn advance_token(&mut self) {
+        self.pos += 1;
     }
 
     fn parse_comma_separator<T>(
@@ -117,11 +96,11 @@ impl<'a> Parser<'a> {
     ) -> Result<Vec<T>, Error> {
         let mut items = Vec::new();
 
-        while !self.at_end()? && self.peek_token()? != terminator {
+        while !self.at_end() && self.peek_token() != terminator {
             let item = parse_item(self)?;
             items.push(item);
 
-            if self.peek_token()? == terminator {
+            if self.peek_token() == terminator {
                 break;
             }
 
@@ -132,7 +111,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression_statement(&mut self) -> Result<(ExprId, bool), Error> {
-        let token = self.peek_token()?;
+        let token = self.peek_token();
 
         let require_semicolon = !matches!(
             token,
@@ -163,7 +142,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_return(&mut self) -> Result<ExprId, Error> {
-        let span = self.peek_span()?;
+        let span = self.peek_span();
 
         self.consume(Token::Return)?;
 
@@ -173,7 +152,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_continue(&mut self) -> Result<ExprId, Error> {
-        let span = self.peek_span()?;
+        let span = self.peek_span();
 
         self.consume(Token::Continue)?;
 
@@ -181,7 +160,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_break(&mut self) -> Result<ExprId, Error> {
-        let span = self.peek_span()?;
+        let span = self.peek_span();
 
         self.consume(Token::Break)?;
 
@@ -193,11 +172,11 @@ impl<'a> Parser<'a> {
 
         let mut expressions = Vec::new();
 
-        while !self.at_end()? && self.peek_token()? != Token::RightBrace {
+        while !self.at_end() && self.peek_token() != Token::RightBrace {
             let (expression, requires_semicolon) = self.parse_expression_statement()?;
             expressions.push(expression);
 
-            if self.peek_token()? != Token::RightBrace && requires_semicolon {
+            if self.peek_token() != Token::RightBrace && requires_semicolon {
                 self.consume(Token::Semicolon)?;
             }
         }
@@ -213,13 +192,13 @@ impl<'a> Parser<'a> {
         let condition = self.parse_expression()?;
         let then_branch = self.parse_block()?;
 
-        if self.peek_token()? != Token::Else {
+        if self.peek_token() != Token::Else {
             return Ok(self.ast.if_(condition, then_branch, None));
         }
 
-        self.next()?;
+        self.advance_token();
 
-        if self.peek_token()? == Token::If {
+        if self.peek_token() == Token::If {
             let else_branch = Some(self.parse_if()?);
 
             return Ok(self.ast.if_(condition, then_branch, else_branch));
@@ -261,7 +240,7 @@ impl<'a> Parser<'a> {
     fn parse_function(&mut self) -> Result<ExprId, Error> {
         self.consume(Token::Function)?;
 
-        let name = if self.peek_token()? == Token::Identifier {
+        let name = if self.peek_token() == Token::Identifier {
             Some(self.parse_identifier()?)
         } else {
             None
@@ -305,7 +284,7 @@ impl<'a> Parser<'a> {
     fn parse_assign(&mut self) -> Result<ExprId, Error> {
         let left = self.parse_or()?;
 
-        let (token, span) = self.peek()?;
+        let (token, span) = self.peek();
 
         let operator = match token {
             Token::AddAssign => AssignOp::AddAssign,
@@ -314,7 +293,7 @@ impl<'a> Parser<'a> {
             Token::DivideAssign => AssignOp::DivideAssign,
             Token::ModuloAssign => AssignOp::ModuloAssign,
             Token::Assign => {
-                self.next()?;
+                self.advance_token();
                 let right = self.parse_or()?;
 
                 return Ok(self.ast.assign(left, right, span));
@@ -322,7 +301,7 @@ impl<'a> Parser<'a> {
             _ => return Ok(left),
         };
 
-        self.next()?;
+        self.advance_token();
 
         let right = self.parse_or()?;
 
@@ -332,14 +311,14 @@ impl<'a> Parser<'a> {
     fn parse_or(&mut self) -> Result<ExprId, Error> {
         let mut left = self.parse_and()?;
 
-        while !self.at_end()? {
-            let (token, span) = self.peek()?;
+        while !self.at_end() {
+            let (token, span) = self.peek();
 
             let Token::Or = token else {
                 break;
             };
 
-            self.next()?;
+            self.advance_token();
 
             let right = self.parse_and()?;
 
@@ -352,14 +331,14 @@ impl<'a> Parser<'a> {
     fn parse_and(&mut self) -> Result<ExprId, Error> {
         let mut left = self.parse_equality()?;
 
-        while !self.at_end()? {
-            let (token, span) = self.peek()?;
+        while !self.at_end() {
+            let (token, span) = self.peek();
 
             let Token::And = token else {
                 break;
             };
 
-            self.next()?;
+            self.advance_token();
 
             let right = self.parse_equality()?;
 
@@ -372,8 +351,8 @@ impl<'a> Parser<'a> {
     fn parse_equality(&mut self) -> Result<ExprId, Error> {
         let mut left = self.parse_comparison()?;
 
-        while !self.at_end()? {
-            let (token, span) = self.peek()?;
+        while !self.at_end() {
+            let (token, span) = self.peek();
 
             let operator = match token {
                 Token::Equal => BinaryOp::Equal,
@@ -381,7 +360,7 @@ impl<'a> Parser<'a> {
                 _ => break,
             };
 
-            self.next()?;
+            self.advance_token();
 
             let right = self.parse_comparison()?;
 
@@ -394,8 +373,8 @@ impl<'a> Parser<'a> {
     fn parse_comparison(&mut self) -> Result<ExprId, Error> {
         let mut left = self.parse_term()?;
 
-        while !self.at_end()? {
-            let (token, span) = self.peek()?;
+        while !self.at_end() {
+            let (token, span) = self.peek();
 
             let operator = match token {
                 Token::Greater => BinaryOp::Greater,
@@ -405,7 +384,7 @@ impl<'a> Parser<'a> {
                 _ => break,
             };
 
-            self.next()?;
+            self.advance_token();
 
             let right = self.parse_term()?;
 
@@ -418,8 +397,8 @@ impl<'a> Parser<'a> {
     fn parse_term(&mut self) -> Result<ExprId, Error> {
         let mut left = self.parse_factor()?;
 
-        while !self.at_end()? {
-            let (token, span) = self.peek()?;
+        while !self.at_end() {
+            let (token, span) = self.peek();
 
             let operator = match token {
                 Token::Plus => BinaryOp::Add,
@@ -427,7 +406,7 @@ impl<'a> Parser<'a> {
                 _ => break,
             };
 
-            self.next()?;
+            self.advance_token();
 
             let right = self.parse_factor()?;
 
@@ -440,8 +419,8 @@ impl<'a> Parser<'a> {
     fn parse_factor(&mut self) -> Result<ExprId, Error> {
         let mut left = self.parse_prefix_unary()?;
 
-        while !self.at_end()? {
-            let (token, span) = self.peek()?;
+        while !self.at_end() {
+            let (token, span) = self.peek();
 
             let operator = match token {
                 Token::Multiply => BinaryOp::Multiply,
@@ -450,7 +429,7 @@ impl<'a> Parser<'a> {
                 _ => break,
             };
 
-            self.next()?;
+            self.advance_token();
 
             let right = self.parse_prefix_unary()?;
 
@@ -461,16 +440,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_prefix_unary(&mut self) -> Result<ExprId, Error> {
-        let (token, span) = self.peek()?;
+        let (token, span) = self.peek();
 
         let operator = match token {
             Token::Plus => {
-                self.next()?;
+                self.advance_token();
 
                 return self.parse_prefix_unary();
             }
             Token::Not => {
-                self.next()?;
+                self.advance_token();
 
                 let right = self.parse_or()?;
 
@@ -484,7 +463,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        self.next()?;
+        self.advance_token();
 
         let right = self.parse_prefix_unary()?;
 
@@ -492,7 +471,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_primary(&mut self) -> Result<ExprId, Error> {
-        let (token, span) = self.peek()?;
+        let (token, span) = self.peek();
 
         let primary = match token {
             Token::Function => self.parse_function()?,
@@ -505,33 +484,37 @@ impl<'a> Parser<'a> {
                 expression
             }
             Token::NumberLiteral => {
-                let value = match self.tokens.slice().parse::<f64>() {
+                let span = self.peek_span();
+                let lexeme = self.lexeme(span);
+
+                let value = match lexeme.parse::<f64>() {
                     Ok(value) => Ok(value),
-                    Err(..) => Err(report_error!(span.start..span.end, "failed to parse float")),
+                    Err(..) => Err(report_error!(span, "failed to parse float")),
                 }?;
 
-                self.next()?;
+                self.advance_token();
 
                 self.ast.number_literal(value, span)
             }
             Token::True => {
-                self.next()?;
+                self.advance_token();
 
                 self.ast.boolean_literal(true, span)
             }
             Token::False => {
-                self.next()?;
+                self.advance_token();
 
                 self.ast.boolean_literal(false, span)
             }
             Token::StringLiteral => {
-                let value = self.tokens.slice();
-                self.next()?;
+                let span = self.peek_span();
+                self.advance_token();
+                let lexeme = self.lexeme(span);
 
                 let index = INTERNER
                     .lock()
                     .unwrap()
-                    .get_or_intern(&value[1..value.len() - 1]);
+                    .get_or_intern(&lexeme[1..lexeme.len() - 1]);
 
                 self.ast.string_literal(index, span)
             }
@@ -542,11 +525,11 @@ impl<'a> Parser<'a> {
             }
             Token::LeftBrace => self.parse_dict_literal()?,
             _ => {
-                let span = self.peek_span()?;
+                let span = self.peek_span();
 
                 return Err(report_error!(
                     span,
-                    "expected a valid operand, but found: {:?}",
+                    "expected a valid operand, but found: {}",
                     token
                 ));
             }
@@ -556,9 +539,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_identifier(&mut self) -> Result<ExprId, Error> {
-        let name = self.tokens.slice();
-        let span = self.peek_span()?;
-        let index = INTERNER.lock().unwrap().get_or_intern(name);
+        let span = self.peek_span();
+        let lexeme = self.lexeme(span);
+
+        let index = INTERNER.lock().unwrap().get_or_intern(lexeme);
 
         self.consume(Token::Identifier)?;
 
@@ -568,7 +552,7 @@ impl<'a> Parser<'a> {
     fn parse_dict_literal_field(&mut self) -> Result<(ExprId, Option<ExprId>), Error> {
         let identifier = self.parse_expression()?;
 
-        if self.peek_token()? == Token::Colon {
+        if self.peek_token() == Token::Colon {
             self.consume(Token::Colon)?;
             let expression = self.parse_expression()?;
 
@@ -590,7 +574,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_postfix_unary(&mut self, operand: ExprId) -> Result<ExprId, Error> {
-        let token = self.peek_token()?;
+        let token = self.peek_token();
 
         Ok(match token {
             Token::LeftParen => self.parse_function_call(operand)?,
@@ -614,9 +598,9 @@ impl<'a> Parser<'a> {
     fn parse_member_access(&mut self, object: ExprId) -> Result<ExprId, Error> {
         self.consume(Token::Dot)?;
 
-        let span = self.peek_span()?;
-
-        let index = INTERNER.lock().unwrap().get_or_intern(self.tokens.slice());
+        let span = self.peek_span();
+        let lexeme = self.lexeme(span);
+        let index = INTERNER.lock().unwrap().get_or_intern(lexeme);
 
         let property = self.ast.string_literal(index, span);
 

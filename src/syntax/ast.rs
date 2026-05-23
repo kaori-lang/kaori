@@ -1,18 +1,18 @@
 use crate::{
-    syntax::ops::{AssignOp, BinaryOp, UnaryOp},
+    syntax::{
+        ops::{AssignOp, BinaryOp, UnaryOp},
+        token::Span,
+    },
     util::string_interner::Symbol,
 };
 
-use std::collections::HashMap;
-use std::ops::Range;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExprId(u32);
 
 #[derive(Default)]
 pub struct Ast {
     expressions: Vec<Expr>,
-    spans: HashMap<ExprId, Range<usize>>,
+    spans: Vec<Option<Span>>,
 }
 
 pub enum Expr {
@@ -96,14 +96,11 @@ pub enum Expr {
 }
 
 impl Ast {
-    fn insert(&mut self, expr: Expr, span: Option<Range<usize>>) -> ExprId {
+    fn insert(&mut self, expr: Expr, span: Option<Span>) -> ExprId {
         let id = ExprId(self.expressions.len() as u32);
 
         self.expressions.push(expr);
-
-        if let Some(span) = span {
-            self.spans.insert(id, span);
-        }
+        self.spans.push(span);
 
         id
     }
@@ -114,12 +111,12 @@ impl Ast {
         ExprId(last as u32)
     }
 
-    pub fn get(&self, id: ExprId) -> &Expr {
+    pub fn node(&self, id: ExprId) -> &Expr {
         &self.expressions[id.0 as usize]
     }
 
-    pub fn span(&self, id: ExprId) -> Option<&Range<usize>> {
-        self.spans.get(&id)
+    pub fn span(&self, id: ExprId) -> Option<Span> {
+        self.spans[id.0 as usize]
     }
 
     pub fn binary(
@@ -127,7 +124,7 @@ impl Ast {
         operator: BinaryOp,
         left: ExprId,
         right: ExprId,
-        span: Range<usize>,
+        span: Span,
     ) -> ExprId {
         self.insert(
             Expr::Binary {
@@ -139,23 +136,23 @@ impl Ast {
         )
     }
 
-    pub fn logical_and(&mut self, left: ExprId, right: ExprId, span: Range<usize>) -> ExprId {
+    pub fn logical_and(&mut self, left: ExprId, right: ExprId, span: Span) -> ExprId {
         self.insert(Expr::LogicalAnd { left, right }, Some(span))
     }
 
-    pub fn logical_or(&mut self, left: ExprId, right: ExprId, span: Range<usize>) -> ExprId {
+    pub fn logical_or(&mut self, left: ExprId, right: ExprId, span: Span) -> ExprId {
         self.insert(Expr::LogicalOr { left, right }, Some(span))
     }
 
-    pub fn logical_not(&mut self, expression: ExprId, span: Range<usize>) -> ExprId {
+    pub fn logical_not(&mut self, expression: ExprId, span: Span) -> ExprId {
         self.insert(Expr::LogicalNot(expression), Some(span))
     }
 
-    pub fn unary(&mut self, operator: UnaryOp, right: ExprId, span: Range<usize>) -> ExprId {
+    pub fn unary(&mut self, operator: UnaryOp, right: ExprId, span: Span) -> ExprId {
         self.insert(Expr::Unary { operator, right }, Some(span))
     }
 
-    pub fn assign(&mut self, left: ExprId, right: ExprId, span: Range<usize>) -> ExprId {
+    pub fn assign(&mut self, left: ExprId, right: ExprId, span: Span) -> ExprId {
         self.insert(Expr::Assign { left, right }, Some(span))
     }
 
@@ -164,7 +161,7 @@ impl Ast {
         operator: AssignOp,
         left: ExprId,
         right: ExprId,
-        span: Range<usize>,
+        span: Span,
     ) -> ExprId {
         self.insert(
             Expr::CompoundAssign {
@@ -184,19 +181,19 @@ impl Ast {
         self.insert(Expr::Mut { left, right }, None)
     }
 
-    pub fn identifier(&mut self, index: Symbol, span: Range<usize>) -> ExprId {
+    pub fn identifier(&mut self, index: Symbol, span: Span) -> ExprId {
         self.insert(Expr::Identifier(index), Some(span))
     }
 
-    pub fn string_literal(&mut self, index: Symbol, span: Range<usize>) -> ExprId {
+    pub fn string_literal(&mut self, index: Symbol, span: Span) -> ExprId {
         self.insert(Expr::StringLiteral(index), Some(span))
     }
 
-    pub fn number_literal(&mut self, value: f64, span: Range<usize>) -> ExprId {
+    pub fn number_literal(&mut self, value: f64, span: Span) -> ExprId {
         self.insert(Expr::NumberLiteral(value), Some(span))
     }
 
-    pub fn boolean_literal(&mut self, value: bool, span: Range<usize>) -> ExprId {
+    pub fn boolean_literal(&mut self, value: bool, span: Span) -> ExprId {
         self.insert(Expr::BooleanLiteral(value), Some(span))
     }
 
@@ -277,15 +274,15 @@ impl Ast {
         self.insert(Expr::ForLoop { start, end, block }, None)
     }
 
-    pub fn return_(&mut self, expression: Option<ExprId>, span: Range<usize>) -> ExprId {
+    pub fn return_(&mut self, expression: Option<ExprId>, span: Span) -> ExprId {
         self.insert(Expr::Return(expression), Some(span))
     }
 
-    pub fn break_(&mut self, span: Range<usize>) -> ExprId {
+    pub fn break_(&mut self, span: Span) -> ExprId {
         self.insert(Expr::Break, Some(span))
     }
 
-    pub fn continue_(&mut self, span: Range<usize>) -> ExprId {
+    pub fn continue_(&mut self, span: Span) -> ExprId {
         self.insert(Expr::Continue, Some(span))
     }
 }

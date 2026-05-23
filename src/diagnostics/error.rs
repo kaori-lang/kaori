@@ -2,6 +2,8 @@ use std::ops::Range;
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 
+use crate::syntax::token::Span;
+
 #[macro_export]
 macro_rules! report_error {
     ($span:expr, $msg:literal $(, $arg:expr)* $(,)?) => {
@@ -14,21 +16,21 @@ macro_rules! report_error {
 
 #[derive(Clone, Debug)]
 pub struct Error {
-    pub span: Option<Range<usize>>,
+    pub span: Option<Span>,
     pub message: String,
 }
 
 impl Error {
-    pub fn new(span: Option<Range<usize>>, message: String) -> Self {
+    pub fn new(span: Option<Span>, message: String) -> Self {
         Self { span, message }
     }
 
     pub fn report(&self, source: &str) {
         let file_id = "source";
-        let span = self.span.clone().unwrap_or(0..0);
+        let span: Range<usize> = self.span.unwrap_or_default().into();
 
         let report = Report::build(ReportKind::Error, (file_id, span.clone())).with_label(
-            Label::new((file_id, span.clone()))
+            Label::new((file_id, span))
                 .with_message(&self.message)
                 .with_color(Color::Red),
         );

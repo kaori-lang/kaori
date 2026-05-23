@@ -1,5 +1,27 @@
 use logos::Logos;
-use std::fmt;
+use std::{fmt, ops::Range};
+
+#[derive(Default, Debug, Clone, Copy)]
+pub struct Span {
+    pub start: u32,
+    pub end: u32,
+}
+
+impl From<Range<usize>> for Span {
+    fn from(value: Range<usize>) -> Self {
+        Self {
+            start: value.start as u32,
+            end: value.end as u32,
+        }
+    }
+}
+
+impl From<Span> for Range<usize> {
+    fn from(value: Span) -> Self {
+        value.start as usize..value.end as usize
+    }
+}
+
 #[derive(Logos, Debug, PartialEq, Copy, Clone)]
 #[logos(skip r"[ \t\f\r\n]+")]
 pub enum Token {
@@ -91,8 +113,6 @@ pub enum Token {
     Semicolon,
     #[regex(r#""([^"\\]|\\.)*""#)]
     StringLiteral,
-    #[regex(r#""([^"\\]|\\.)*"#)]
-    UnterminatedStringLiteral,
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
     Identifier,
     Eof,
@@ -145,7 +165,6 @@ impl fmt::Display for Token {
             Self::Mut => "`mut`",
             Self::NumberLiteral => "<number literal>",
             Self::StringLiteral => "<string literal>",
-            Self::UnterminatedStringLiteral => "<unterminated string>",
             Self::Identifier => "<identifier>",
             Self::Eof => "<end of file>",
         };
