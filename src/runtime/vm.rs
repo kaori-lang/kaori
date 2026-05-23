@@ -3,14 +3,15 @@ use std::hint::unreachable_unchecked;
 use super::gc::Gc;
 use crate::diagnostics::error::Error;
 
-use crate::mir::instruction::ConstIndex;
+use crate::bytecode::function::Function;
+
+use crate::bytecode::instruction::{Const, Instruction, Reg};
 use crate::report_error;
 
 use crate::runtime::debug_value::DebugValue;
-use crate::runtime::function::Function;
+
 use crate::runtime::gc::Closure;
 
-use crate::runtime::instruction::{Instruction, Register};
 use crate::runtime::value::Value;
 
 type Handler = unsafe extern "rust-preserve-none" fn(
@@ -153,11 +154,11 @@ impl VmState {
 struct Registers<'a>(pub &'a mut [Value]);
 
 impl<'a> Registers<'a> {
-    fn set_value(&mut self, dest: Register, value: Value) {
+    fn set_value(&mut self, dest: Reg, value: Value) {
         unsafe { *self.0.get_unchecked_mut(dest.0 as usize) = value }
     }
 
-    unsafe fn get_value(&self, src: Register) -> Value {
+    unsafe fn get_value(&self, src: Reg) -> Value {
         unsafe { *self.0.get_unchecked(src.0 as usize) }
     }
 }
@@ -166,7 +167,7 @@ impl<'a> Registers<'a> {
 struct Constants(*const Value);
 
 impl Constants {
-    unsafe fn get_value(&self, src: ConstIndex) -> Value {
+    unsafe fn get_value(&self, src: Const) -> Value {
         unsafe { *self.0.add(src.0 as usize) }
     }
 }
@@ -1262,7 +1263,7 @@ unsafe extern "rust-preserve-none" fn opcode_call(
         let constants = Constants(constants);
 
         for (i, value) in captured.iter().copied().enumerate() {
-            let dest = Register(closure_arity + i as u8);
+            let dest = Reg(closure_arity + i as u8);
 
             registers.set_value(dest, value);
         }

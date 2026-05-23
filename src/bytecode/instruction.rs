@@ -1,265 +1,82 @@
-use crate::mir::instruction::ConstIndex;
 use std::fmt;
 
+use crate::bytecode::lower_ast::Register;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Register(pub u8);
+pub struct Const(pub u16);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Reg(pub u8);
+
+impl From<Register> for Reg {
+    fn from(register: Register) -> Self {
+        let register = match register {
+            Register::Arg(register) => register,
+            Register::Local(register) => register,
+            Register::Temp(register) => register,
+        };
+
+        Reg(register)
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum Instruction {
-    Add {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    AddK {
-        dest: Register,
-        src1: Register,
-        src2: ConstIndex,
-    },
-    Subtract {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    SubtractRK {
-        dest: Register,
-        src1: Register,
-        src2: ConstIndex,
-    },
-    SubtractKR {
-        dest: Register,
-        src1: ConstIndex,
-        src2: Register,
-    },
-    Multiply {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    MultiplyK {
-        dest: Register,
-        src1: Register,
-        src2: ConstIndex,
-    },
-    Divide {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    DivideRK {
-        dest: Register,
-        src1: Register,
-        src2: ConstIndex,
-    },
-    DivideKR {
-        dest: Register,
-        src1: ConstIndex,
-        src2: Register,
-    },
-    Modulo {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    ModuloRK {
-        dest: Register,
-        src1: Register,
-        src2: ConstIndex,
-    },
-    ModuloKR {
-        dest: Register,
-        src1: ConstIndex,
-        src2: Register,
-    },
-    Equal {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    EqualK {
-        dest: Register,
-        src1: Register,
-        src2: ConstIndex,
-    },
-    NotEqual {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    NotEqualK {
-        dest: Register,
-        src1: Register,
-        src2: ConstIndex,
-    },
-    Less {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    LessK {
-        dest: Register,
-        src1: Register,
-        src2: ConstIndex,
-    },
-    LessEqual {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    LessEqualK {
-        dest: Register,
-        src1: Register,
-        src2: ConstIndex,
-    },
-    Greater {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    GreaterK {
-        dest: Register,
-        src1: Register,
-        src2: ConstIndex,
-    },
-    GreaterEqual {
-        dest: Register,
-        src1: Register,
-        src2: Register,
-    },
-    GreaterEqualK {
-        dest: Register,
-        src1: Register,
-        src2: ConstIndex,
-    },
-    Not {
-        dest: Register,
-        src: Register,
-    },
-    Negate {
-        dest: Register,
-        src: Register,
-    },
-    Move {
-        dest: Register,
-        src: Register,
-    },
-    LoadK {
-        dest: Register,
-        src: ConstIndex,
-    },
-    CreateDict {
-        dest: Register,
-    },
-    SetField {
-        object: Register,
-        key: Register,
-        value: Register,
-    },
-    GetField {
-        dest: Register,
-        object: Register,
-        key: Register,
-    },
-    CreateClosure {
-        dest: Register,
-        src: u32,
-    },
-    CaptureValue {
-        dest: Register,
-        src: Register,
-    },
-    CreateCell {
-        dest: Register,
-        src: Register,
-    },
-    SetCell {
-        dest: Register,
-        src: Register,
-    },
-    GetCell {
-        dest: Register,
-        src: Register,
-    },
-    Call {
-        dest: Register,
-        src: Register,
-        arity: u8,
-    },
-    Return {
-        src: Register,
-    },
-    Jump {
-        offset: i32,
-    },
-    JumpIfFalse {
-        src: Register,
-        offset: i32,
-    },
-    JumpIfTrue {
-        src: Register,
-        offset: i32,
-    },
-    JumpIfLess {
-        src1: Register,
-        src2: Register,
-        offset: i32,
-    },
-    JumpIfLessK {
-        src1: Register,
-        src2: ConstIndex,
-        offset: i32,
-    },
-    JumpIfLessEqual {
-        src1: Register,
-        src2: Register,
-        offset: i32,
-    },
-    JumpIfLessEqualK {
-        src1: Register,
-        src2: ConstIndex,
-        offset: i32,
-    },
-    JumpIfGreater {
-        src1: Register,
-        src2: Register,
-        offset: i32,
-    },
-    JumpIfGreaterK {
-        src1: Register,
-        src2: ConstIndex,
-        offset: i32,
-    },
-    JumpIfGreaterEqual {
-        src1: Register,
-        src2: Register,
-        offset: i32,
-    },
-    JumpIfGreaterEqualK {
-        src1: Register,
-        src2: ConstIndex,
-        offset: i32,
-    },
-    JumpIfEqual {
-        src1: Register,
-        src2: Register,
-        offset: i32,
-    },
-    JumpIfEqualK {
-        src1: Register,
-        src2: ConstIndex,
-        offset: i32,
-    },
-    JumpIfNotEqual {
-        src1: Register,
-        src2: Register,
-        offset: i32,
-    },
-    JumpIfNotEqualK {
-        src1: Register,
-        src2: ConstIndex,
-        offset: i32,
-    },
+    Add { dest: Reg, src1: Reg, src2: Reg },
+    AddK { dest: Reg, src1: Reg, src2: Const },
+    Subtract { dest: Reg, src1: Reg, src2: Reg },
+    SubtractRK { dest: Reg, src1: Reg, src2: Const },
+    SubtractKR { dest: Reg, src1: Const, src2: Reg },
+    Multiply { dest: Reg, src1: Reg, src2: Reg },
+    MultiplyK { dest: Reg, src1: Reg, src2: Const },
+    Divide { dest: Reg, src1: Reg, src2: Reg },
+    DivideRK { dest: Reg, src1: Reg, src2: Const },
+    DivideKR { dest: Reg, src1: Const, src2: Reg },
+    Modulo { dest: Reg, src1: Reg, src2: Reg },
+    ModuloRK { dest: Reg, src1: Reg, src2: Const },
+    ModuloKR { dest: Reg, src1: Const, src2: Reg },
+    Equal { dest: Reg, src1: Reg, src2: Reg },
+    EqualK { dest: Reg, src1: Reg, src2: Const },
+    NotEqual { dest: Reg, src1: Reg, src2: Reg },
+    NotEqualK { dest: Reg, src1: Reg, src2: Const },
+    Less { dest: Reg, src1: Reg, src2: Reg },
+    LessK { dest: Reg, src1: Reg, src2: Const },
+    LessEqual { dest: Reg, src1: Reg, src2: Reg },
+    LessEqualK { dest: Reg, src1: Reg, src2: Const },
+    Greater { dest: Reg, src1: Reg, src2: Reg },
+    GreaterK { dest: Reg, src1: Reg, src2: Const },
+    GreaterEqual { dest: Reg, src1: Reg, src2: Reg },
+    GreaterEqualK { dest: Reg, src1: Reg, src2: Const },
+    Not { dest: Reg, src: Reg },
+    Negate { dest: Reg, src: Reg },
+    Move { dest: Reg, src: Reg },
+    LoadK { dest: Reg, src: Const },
+    CreateDict { dest: Reg },
+    SetField { object: Reg, key: Reg, value: Reg },
+    GetField { dest: Reg, object: Reg, key: Reg },
+    CreateClosure { dest: Reg, src: u32 },
+    CaptureValue { dest: Reg, src: Reg },
+    CreateCell { dest: Reg, src: Reg },
+    SetCell { dest: Reg, src: Reg },
+    GetCell { dest: Reg, src: Reg },
+    Call { dest: Reg, src: Reg, arity: u8 },
+    Return { src: Reg },
+    Jump { offset: i32 },
+    JumpIfFalse { src: Reg, offset: i32 },
+    JumpIfTrue { src: Reg, offset: i32 },
+    JumpIfLess { src1: Reg, src2: Reg, offset: i32 },
+    JumpIfLessK { src1: Reg, src2: Const, offset: i32 },
+    JumpIfLessEqual { src1: Reg, src2: Reg, offset: i32 },
+    JumpIfLessEqualK { src1: Reg, src2: Const, offset: i32 },
+    JumpIfGreater { src1: Reg, src2: Reg, offset: i32 },
+    JumpIfGreaterK { src1: Reg, src2: Const, offset: i32 },
+    JumpIfGreaterEqual { src1: Reg, src2: Reg, offset: i32 },
+    JumpIfGreaterEqualK { src1: Reg, src2: Const, offset: i32 },
+    JumpIfEqual { src1: Reg, src2: Reg, offset: i32 },
+    JumpIfEqualK { src1: Reg, src2: Const, offset: i32 },
+    JumpIfNotEqual { src1: Reg, src2: Reg, offset: i32 },
+    JumpIfNotEqualK { src1: Reg, src2: Const, offset: i32 },
 }
 
 impl Instruction {
@@ -268,9 +85,15 @@ impl Instruction {
     }
 }
 
-impl fmt::Display for Register {
+impl fmt::Display for Reg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "r{}", self.0)
+        write!(f, "R{}", self.0)
+    }
+}
+
+impl fmt::Display for Const {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "K{}", self.0)
     }
 }
 

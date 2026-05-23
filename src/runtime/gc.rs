@@ -1,6 +1,6 @@
 use foldhash::HashMap;
 
-use crate::runtime::instruction::Instruction;
+use crate::bytecode::instruction::Instruction;
 
 use super::value::Value;
 
