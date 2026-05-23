@@ -669,10 +669,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_rr(
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() < src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::bool(src1.as_number() < src2.as_number()));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -701,10 +698,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_rk(
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() < src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::bool(src1.as_number() < src2.as_number()));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -733,10 +727,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rr(
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() <= src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::bool(src1.as_number() <= src2.as_number()));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -765,10 +756,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rk(
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() <= src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::bool(src1.as_number() <= src2.as_number()));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -797,10 +785,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rr(
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() > src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::bool(src1.as_number() > src2.as_number()));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -829,10 +814,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rk(
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() > src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::bool(src1.as_number() > src2.as_number()));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -861,10 +843,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rr(
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() >= src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::bool(src1.as_number() >= src2.as_number()));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -893,10 +872,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rk(
         "cannot compare, both operands must be numbers",
     );
 
-    registers.set_value(
-        dest,
-        Value::number((src1.as_number() >= src2.as_number()) as u8 as f64),
-    );
+    registers.set_value(dest, Value::bool(src1.as_number() >= src2.as_number()));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -919,12 +895,9 @@ unsafe extern "rust-preserve-none" fn opcode_not(
 
     let src = unsafe { registers.get_value(src) };
 
-    type_check!(
-        src.is_number(),
-        "cannot apply not, operand must be a boolean",
-    );
+    type_check!(src.is_bool(), "cannot apply not, operand must be a boolean",);
 
-    registers.set_value(dest, Value::number((src.as_number() == 0.0) as u8 as f64));
+    registers.set_value(dest, Value::bool(!src.as_bool()));
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -1098,6 +1071,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
 
         (dest, src)
     };
+
     let closure = {
         let Function {
             ref instructions,
@@ -1185,8 +1159,10 @@ unsafe extern "rust-preserve-none" fn opcode_set_cell(
         let Instruction::SetCell { dest, src } = *ip else {
             unreachable_unchecked()
         };
+
         (dest, src)
     };
+
     let cell = unsafe { registers.get_value(dest) };
     let value = unsafe { registers.get_value(src) };
 
@@ -1207,6 +1183,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_cell(
         let Instruction::GetCell { dest, src } = *ip else {
             unreachable_unchecked()
         };
+
         (dest, src)
     };
 
@@ -1214,6 +1191,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_cell(
     let value = state.gc.get_cell(cell);
 
     registers.set_value(dest, value);
+
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
 

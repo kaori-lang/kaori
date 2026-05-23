@@ -8,7 +8,7 @@ use crate::{
         instruction::{Const, Instruction},
     },
     diagnostics::error::Error,
-    program::INTERNER,
+    interpreter::INTERNER,
     report_error,
     syntax::{
         ast::{Ast, Expr, ExprId},
@@ -243,7 +243,7 @@ fn collect_free_variables(
         | Expr::NumberLiteral(_)
         | Expr::StringLiteral(_)
         | Expr::BooleanLiteral(_) => {}
-        Expr::ForLoop { .. } => todo!(),
+        Expr::NilLiteral | Expr::ForLoop { .. } => todo!(),
     }
 }
 
@@ -347,9 +347,27 @@ fn lower_expression(
 
             dest
         }
-        Expr::BooleanLiteral(_) => {
+        Expr::BooleanLiteral(value) => {
+            let src = function.store_boolean_const(value);
             let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
-            todo!()
+
+            function.emit_instruction(Instruction::LoadConst {
+                dest: dest.into(),
+                src,
+            });
+
+            dest
+        }
+        Expr::NilLiteral => {
+            let src = function.store_nil_const();
+            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+
+            function.emit_instruction(Instruction::LoadConst {
+                dest: dest.into(),
+                src,
+            });
+
+            dest
         }
         Expr::Identifier(name) => {
             let Some(Local { register, kind, .. }) = env.lookup(name) else {

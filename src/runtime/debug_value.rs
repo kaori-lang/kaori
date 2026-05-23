@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::{
-    program::INTERNER,
+    interpreter::INTERNER,
     runtime::{gc::Gc, value::Value},
     util::string_interner::Symbol,
 };
@@ -21,6 +21,12 @@ impl<'a> fmt::Debug for DebugValue<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.value.is_number() {
             return write!(f, "{}", self.value.as_number());
+        }
+        if self.value.is_bool() {
+            return write!(f, "{}", self.value.as_bool());
+        }
+        if self.value.is_nil() {
+            return write!(f, "nil");
         }
         if self.value.is_closure() {
             return write!(f, "Closure({:p})", self.gc.get_closure(self.value));
@@ -48,6 +54,7 @@ impl<'a> fmt::Debug for DebugValue<'a> {
             }
             return map.finish();
         }
-        unsafe { std::hint::unreachable_unchecked() }
+
+        unreachable!("Should not be reached, tried to debug invalid tag value")
     }
 }

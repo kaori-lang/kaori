@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use crate::{
     diagnostics::error::Error,
-    program::INTERNER,
+    interpreter::INTERNER,
     report_error,
     syntax::{
         ast::{Ast, ExprId},

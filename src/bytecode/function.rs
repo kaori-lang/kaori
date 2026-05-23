@@ -63,4 +63,16 @@ impl Function {
 
         Const(index)
     }
+
+    pub fn store_nil_const(&mut self) -> Const {
+        let index = self.get_or_insert(Value::nil());
+
+        Const(index)
+    }
+
+    pub fn store_boolean_const(&mut self, value: bool) -> Const {
+        let index = self.get_or_insert(Value::bool(value));
+
+        Const(index)
+    }
 }

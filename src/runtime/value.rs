@@ -15,7 +15,7 @@ pub struct Value(u64);
 
 impl Default for Value {
     fn default() -> Self {
-        Value::number(0.0)
+        Value::nil()
     }
 }
 

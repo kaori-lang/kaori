@@ -4,11 +4,11 @@ use std::{env::args, process::ExitCode};
 use std::{fs, time::Instant};
 
 use clap::{Arg, Command};
+use kaori::interpreter::compile_and_run;
 
-use kaori::program::run_program;
 use std::path::PathBuf;
 
-/* fn main() {
+fn main() {
     let matches = Command::new("kaori")
         .arg(Arg::new("file").required(true))
         .get_matches();
@@ -17,18 +17,19 @@ use std::path::PathBuf;
 
     match fs::read_to_string(&file) {
         Ok(source) => {
-            if let Err(error) = run_program(&source) {
+            if let Err(error) = compile_and_run(&source) {
                 error.report(&source);
             }
         }
         Err(_) => eprintln!("Error: Could not read the file by the given path."),
     };
-} */
+}
 
-fn main() {
+/* fn main() {
     let source = fs::read_to_string("main.kr").expect("could not read main.kr");
 
-    if let Err(error) = run_program(&source) {
+    if let Err(error) = compile_and_run(&source) {
         error.report(&source);
     }
 }
+ */
