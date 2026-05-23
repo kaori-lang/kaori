@@ -2,10 +2,10 @@ use std::fmt;
 
 use crate::bytecode::lower_ast::Register;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Const(pub u16);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Reg(pub u8);
 
 impl From<Register> for Reg {

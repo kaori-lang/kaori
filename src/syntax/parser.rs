@@ -119,18 +119,18 @@ impl<'a> Parser<'a> {
         );
 
         let expression = match token {
-            Token::Function => self.parse_function()?,
-            Token::Native => self.parse_native_function()?,
-            Token::While => self.parse_while_loop()?,
-            Token::For => self.parse_for_loop()?,
-            Token::Break => self.parse_break()?,
-            Token::Continue => self.parse_continue()?,
-            Token::Return => self.parse_return()?,
-            Token::If => self.parse_if()?,
-            Token::Let => self.parse_variable()?,
-            Token::Mut => self.parse_mut()?,
-            _ => self.parse_expression()?,
-        };
+            Token::Function => self.parse_function(),
+            Token::Native => self.parse_native_function(),
+            Token::While => self.parse_while_loop(),
+            Token::For => self.parse_for_loop(),
+            Token::Break => self.parse_break(),
+            Token::Continue => self.parse_continue(),
+            Token::Return => self.parse_return(),
+            Token::If => self.parse_if(),
+            Token::Let => self.parse_variable(),
+            Token::Mut => self.parse_mut(),
+            _ => self.parse_expression(),
+        }?;
 
         Ok((expression, require_semicolon))
     }
@@ -529,7 +529,7 @@ impl<'a> Parser<'a> {
 
                 return Err(report_error!(
                     span,
-                    "expected a valid operand, but found: {}",
+                    "expected a <operand> and found: {}",
                     token
                 ));
             }

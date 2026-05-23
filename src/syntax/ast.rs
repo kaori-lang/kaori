@@ -15,6 +15,7 @@ pub struct Ast {
     spans: Vec<Option<Span>>,
 }
 
+#[derive(Debug)]
 pub enum Expr {
     Binary {
         operator: BinaryOp,
