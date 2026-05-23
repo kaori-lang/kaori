@@ -14,12 +14,12 @@ use crate::{
         ast::{Ast, Expr, ExprId},
         ops::{AssignOp, BinaryOp, UnaryOp},
     },
-    util::string_interner::StringIndex,
+    util::string_interner::Symbol,
 };
 
 #[derive(Clone, Copy)]
 struct Local {
-    name: StringIndex,
+    name: Symbol,
     register: Register,
     kind: LocalKind,
 }
@@ -84,7 +84,7 @@ impl Environment {
             .push(local);
     }
 
-    pub fn lookup(&self, name: StringIndex) -> Option<Local> {
+    pub fn lookup(&self, name: Symbol) -> Option<Local> {
         for scope in self.scopes.iter().rev() {
             for local in scope.iter().copied().rev() {
                 if local.name == name {
@@ -107,7 +107,7 @@ impl Environment {
         }
     }
 
-    pub fn lookup_in_parent(&self, name: StringIndex) -> Option<Local> {
+    pub fn lookup_in_parent(&self, name: Symbol) -> Option<Local> {
         self.parent.as_ref()?.lookup(name)
     }
 
@@ -144,8 +144,8 @@ fn as_number_const(ast: &Ast, function: &mut Function, expr: ExprId) -> Option<C
 fn collect_free_variables(
     ast: &Ast,
     expression: ExprId,
-    bound: &mut Vec<StringIndex>,
-    free: &mut Vec<StringIndex>,
+    bound: &mut Vec<Symbol>,
+    free: &mut Vec<Symbol>,
 ) {
     match *ast.get(expression) {
         Expr::Identifier(name) => {
@@ -723,13 +723,14 @@ fn lower_expression(
 
             lower_expression(ast, functions, function, env, left, Some(dest))?;
 
-            let jump = lower_jump_if_false(function, env, dest);
+            let jump_if_false = lower_jump_if_false(function, env, dest);
 
             lower_expression(ast, functions, function, env, right, Some(dest))?;
+
             patch_jump(
                 function,
-                jump,
-                function.instructions.len() as i32 - jump as i32,
+                jump_if_false,
+                function.instructions.len() as i32 - jump_if_false as i32,
             );
 
             dest
@@ -739,14 +740,14 @@ fn lower_expression(
 
             lower_expression(ast, functions, function, env, left, Some(dest))?;
 
-            let jump = lower_jump_if_true(function, env, dest);
+            let jump_if_true = lower_jump_if_true(function, env, dest);
 
             lower_expression(ast, functions, function, env, right, Some(dest))?;
 
             patch_jump(
                 function,
-                jump,
-                function.instructions.len() as i32 - jump as i32,
+                jump_if_true,
+                function.instructions.len() as i32 - jump_if_true as i32,
             );
 
             dest
@@ -857,7 +858,7 @@ fn lower_expression(
                 });
             }
 
-            let mut bound: Vec<StringIndex> = parameters
+            let mut bound: Vec<Symbol> = parameters
                 .iter()
                 .copied()
                 .map(|p| {

@@ -1,4 +1,4 @@
-use crate::util::string_interner::StringIndex;
+use crate::util::string_interner::Symbol;
 
 const QNAN: u64 = 0x7FFC_0000_0000_0000;
 const PTR_MASK: u64 = 0x0000_FFFF_FFFF_FFFF;
@@ -54,7 +54,7 @@ impl Value {
         f64::from_bits(self.0)
     }
 
-    pub fn string(index: StringIndex) -> Self {
+    pub fn string(index: Symbol) -> Self {
         Self(TAG_STRING | (index.0 as u64))
     }
 

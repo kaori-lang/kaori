@@ -507,10 +507,7 @@ impl<'a> Parser<'a> {
             Token::NumberLiteral => {
                 let value = match self.tokens.slice().parse::<f64>() {
                     Ok(value) => Ok(value),
-                    Err(..) => Err(report_error!(
-                        span.start..span.end,
-                        "expected a valid float to be parsed"
-                    )),
+                    Err(..) => Err(report_error!(span.start..span.end, "failed to parse float")),
                 }?;
 
                 self.next()?;

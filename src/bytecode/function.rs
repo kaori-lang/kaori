@@ -1,6 +1,4 @@
-use crate::{
-    bytecode::instruction::Const, runtime::value::Value, util::string_interner::StringIndex,
-};
+use crate::{bytecode::instruction::Const, runtime::value::Value, util::string_interner::Symbol};
 
 use super::instruction::Instruction;
 use std::fmt::{self, Display, Formatter};
@@ -54,7 +52,7 @@ impl Function {
         index as u16
     }
 
-    pub fn push_string(&mut self, value: StringIndex) -> Const {
+    pub fn push_string(&mut self, value: Symbol) -> Const {
         let index = self.get_or_insert(Value::string(value));
 
         Const(index)

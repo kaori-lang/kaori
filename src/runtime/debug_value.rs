@@ -3,7 +3,7 @@ use std::fmt;
 use crate::{
     program::INTERNER,
     runtime::{gc::Gc, value::Value},
-    util::string_interner::StringIndex,
+    util::string_interner::Symbol,
 };
 
 pub struct DebugValue<'a> {
@@ -26,7 +26,7 @@ impl<'a> fmt::Debug for DebugValue<'a> {
             return write!(f, "Closure({:p})", self.gc.get_closure(self.value));
         }
         if self.value.is_string() {
-            let index = StringIndex(self.value.as_index() as u32);
+            let index = Symbol(self.value.as_index() as u32);
 
             return write!(f, "{}", INTERNER.lock().unwrap().resolve(index));
         }

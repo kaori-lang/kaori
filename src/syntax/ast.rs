@@ -1,6 +1,6 @@
 use crate::{
     syntax::ops::{AssignOp, BinaryOp, UnaryOp},
-    util::string_interner::StringIndex,
+    util::string_interner::Symbol,
 };
 
 use std::collections::HashMap;
@@ -51,8 +51,8 @@ pub enum Expr {
         left: ExprId,
         right: ExprId,
     },
-    Identifier(StringIndex),
-    StringLiteral(StringIndex),
+    Identifier(Symbol),
+    StringLiteral(Symbol),
     NumberLiteral(f64),
     BooleanLiteral(bool),
     FunctionCall {
@@ -184,11 +184,11 @@ impl Ast {
         self.insert(Expr::Mut { left, right }, None)
     }
 
-    pub fn identifier(&mut self, index: StringIndex, span: Range<usize>) -> ExprId {
+    pub fn identifier(&mut self, index: Symbol, span: Range<usize>) -> ExprId {
         self.insert(Expr::Identifier(index), Some(span))
     }
 
-    pub fn string_literal(&mut self, index: StringIndex, span: Range<usize>) -> ExprId {
+    pub fn string_literal(&mut self, index: Symbol, span: Range<usize>) -> ExprId {
         self.insert(Expr::StringLiteral(index), Some(span))
     }
 

@@ -132,7 +132,7 @@ pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
         HANDLERS[index](ip, registers, constants, &mut state, frame_size).map_err(|e| *e)?
     };
 
-    println!("{:?}", DebugValue::new(value, &state.gc));
+    //println!("{:?}", DebugValue::new(value, &state.gc));
     Ok(value)
 }
 
