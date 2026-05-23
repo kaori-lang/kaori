@@ -56,6 +56,7 @@ pub enum Expr {
     StringLiteral(Symbol),
     NumberLiteral(f64),
     BooleanLiteral(bool),
+    NilLiteral,
     FunctionCall {
         callee: ExprId,
         arguments: Box<[ExprId]>,
@@ -196,6 +197,10 @@ impl Ast {
 
     pub fn boolean_literal(&mut self, value: bool, span: Span) -> ExprId {
         self.insert(Expr::BooleanLiteral(value), Some(span))
+    }
+
+    pub fn nil_literal(&mut self, span: Span) -> ExprId {
+        self.insert(Expr::NilLiteral, Some(span))
     }
 
     pub fn function_call(&mut self, callee: ExprId, arguments: Vec<ExprId>) -> ExprId {

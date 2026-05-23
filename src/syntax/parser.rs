@@ -508,6 +508,11 @@ impl<'a> Parser<'a> {
 
                 self.ast.boolean_literal(false, span)
             }
+            Token::Nil => {
+                self.advance_token();
+
+                self.ast.nil_literal(span)
+            }
             Token::StringLiteral => {
                 let span = self.peek_span();
                 self.advance_token();
