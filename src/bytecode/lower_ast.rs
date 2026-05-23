@@ -155,6 +155,7 @@ fn collect_free_variables(
         }
         Expr::Variable { left, right } => {
             collect_free_variables(ast, right, bound, free);
+
             let Expr::Identifier(name) = *ast.node(left) else {
                 unreachable!("let lhs must be an identifier");
             };
@@ -204,7 +205,7 @@ fn collect_free_variables(
         }
         Expr::Unary { right, .. } => collect_free_variables(ast, right, bound, free),
         Expr::LogicalNot(expr) => collect_free_variables(ast, expr, bound, free),
-        Expr::Return(Some(expr)) => collect_free_variables(ast, expr, bound, free),
+        Expr::Return(expr) => collect_free_variables(ast, expr, bound, free),
         Expr::If {
             condition,
             then_branch,
@@ -212,9 +213,7 @@ fn collect_free_variables(
         } => {
             collect_free_variables(ast, condition, bound, free);
             collect_free_variables(ast, then_branch, bound, free);
-            if let Some(else_branch) = else_branch {
-                collect_free_variables(ast, else_branch, bound, free);
-            }
+            collect_free_variables(ast, else_branch, bound, free);
         }
         Expr::WhileLoop { condition, block } => {
             collect_free_variables(ast, condition, bound, free);
@@ -238,8 +237,7 @@ fn collect_free_variables(
                 }
             }
         }
-        Expr::Return(None)
-        | Expr::Break
+        Expr::Break
         | Expr::Continue
         | Expr::NativeFunction { .. }
         | Expr::NumberLiteral(_)
@@ -296,16 +294,11 @@ fn lower_block(
 
     let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
 
-    for expression in expressions.iter().copied().rev().skip(1).rev() {
-        lower_expression(ast, functions, function, env, expression, None)?;
+    for expression in expressions.iter().copied() {
+        lower_expression(ast, functions, function, env, expression, Some(dest))?;
     }
 
-    Ok(match expressions.last().copied() {
-        Some(expression) => {
-            lower_expression(ast, functions, function, env, expression, Some(dest))?
-        }
-        _ => dest,
-    })
+    Ok(dest)
 }
 
 fn resolve_lhs_expression(
@@ -387,12 +380,15 @@ fn lower_expression(
             };
 
             let dest = env.allocate_register();
+
             env.insert_local(Local {
                 name,
                 register: dest,
                 kind: LocalKind::Variable,
             });
+
             lower_expression(ast, functions, function, env, right, Some(dest))?;
+
             dest
         }
         Expr::Mut { left, right } => {
@@ -559,6 +555,7 @@ fn lower_expression(
                 });
 
                 env.free_temporary_register(src1);
+
                 return Ok(dest);
             }
 
@@ -624,6 +621,7 @@ fn lower_expression(
                 });
 
                 env.free_temporary_register(src2);
+
                 return Ok(dest);
             }
 
@@ -690,6 +688,7 @@ fn lower_expression(
 
             env.free_temporary_register(src1);
             env.free_temporary_register(src2);
+
             dest
         }
         Expr::Unary { operator, right } => {
@@ -704,6 +703,7 @@ fn lower_expression(
             });
 
             env.free_temporary_register(src);
+
             dest
         }
         Expr::LogicalNot(expression) => {
@@ -760,12 +760,9 @@ fn lower_expression(
         } => {
             let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
 
-            let condition_register =
-                lower_expression(ast, functions, function, env, condition, None)?;
+            lower_expression(ast, functions, function, env, condition, Some(dest))?;
 
-            let jump_if_false = lower_jump_if_false(function, env, condition_register);
-
-            env.free_temporary_register(condition_register);
+            let jump_if_false = lower_jump_if_false(function, env, dest);
 
             lower_expression(ast, functions, function, env, then_branch, Some(dest))?;
 
@@ -777,15 +774,7 @@ fn lower_expression(
                 function.instructions.len() as i32 - jump_if_false as i32,
             );
 
-            if let Some(else_branch) = else_branch {
-                lower_expression(ast, functions, function, env, else_branch, Some(dest))?;
-            } else {
-                let src = function.push_number(0.0);
-                function.emit_instruction(Instruction::LoadK {
-                    dest: dest.into(),
-                    src,
-                });
-            }
+            lower_expression(ast, functions, function, env, else_branch, Some(dest))?;
 
             patch_jump(
                 function,
@@ -959,7 +948,9 @@ fn lower_expression(
         }
         Expr::DictLiteral { ref fields } => {
             let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+
             function.emit_instruction(Instruction::CreateDict { dest: dest.into() });
+
             for &(key, value) in fields.iter() {
                 let key = lower_expression(ast, functions, function, env, key, None)?;
                 let value = lower_expression(ast, functions, function, env, value.unwrap(), None)?;
@@ -974,21 +965,12 @@ fn lower_expression(
             dest
         }
         Expr::Return(expression) => {
-            let src = match expression {
-                Some(expr) => lower_expression(ast, functions, function, env, expr, None)?,
-                None => {
-                    let src = function.push_number(0.0);
-                    let dest = env.allocate_temporary_register();
-                    function.emit_instruction(Instruction::LoadK {
-                        dest: dest.into(),
-                        src,
-                    });
-                    dest
-                }
-            };
+            let src = lower_expression(ast, functions, function, env, expression, dest)?;
 
             function.emit_instruction(Instruction::Return { src: src.into() });
+
             env.free_temporary_register(src);
+
             src
         }
         Expr::NativeFunction { .. } => todo!(),
@@ -1009,7 +991,7 @@ fn expression_returns(ast: &Ast, expression: ExprId) -> bool {
             .any(|e| expression_returns(ast, e)),
         Expr::If {
             then_branch,
-            else_branch: Some(else_branch),
+            else_branch,
             ..
         } => expression_returns(ast, then_branch) && expression_returns(ast, else_branch),
         _ => false,

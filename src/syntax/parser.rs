@@ -146,7 +146,7 @@ impl<'a> Parser<'a> {
 
         self.consume(Token::Return)?;
 
-        let expression = Some(self.parse_expression()?);
+        let expression = self.parse_expression()?;
 
         Ok(self.ast.return_(expression, span))
     }
@@ -193,18 +193,20 @@ impl<'a> Parser<'a> {
         let then_branch = self.parse_block()?;
 
         if self.peek_token() != Token::Else {
-            return Ok(self.ast.if_(condition, then_branch, None));
+            let empty_else_branch = self.ast.block(vec![]);
+
+            return Ok(self.ast.if_(condition, then_branch, empty_else_branch));
         }
 
         self.advance_token();
 
         if self.peek_token() == Token::If {
-            let else_branch = Some(self.parse_if()?);
+            let else_branch = self.parse_if()?;
 
             return Ok(self.ast.if_(condition, then_branch, else_branch));
         }
 
-        let else_branch = Some(self.parse_block()?);
+        let else_branch = self.parse_block()?;
 
         Ok(self.ast.if_(condition, then_branch, else_branch))
     }

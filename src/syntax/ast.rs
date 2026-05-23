@@ -80,7 +80,7 @@ pub enum Expr {
     If {
         condition: ExprId,
         then_branch: ExprId,
-        else_branch: Option<ExprId>,
+        else_branch: ExprId,
     },
     WhileLoop {
         condition: ExprId,
@@ -91,7 +91,7 @@ pub enum Expr {
         end: ExprId,
         block: ExprId,
     },
-    Return(Option<ExprId>),
+    Return(ExprId),
     Break,
     Continue,
 }
@@ -251,12 +251,7 @@ impl Ast {
         self.insert(Expr::Block(expressions.into()), None)
     }
 
-    pub fn if_(
-        &mut self,
-        condition: ExprId,
-        then_branch: ExprId,
-        else_branch: Option<ExprId>,
-    ) -> ExprId {
+    pub fn if_(&mut self, condition: ExprId, then_branch: ExprId, else_branch: ExprId) -> ExprId {
         self.insert(
             Expr::If {
                 condition,
@@ -275,7 +270,7 @@ impl Ast {
         self.insert(Expr::ForLoop { start, end, block }, None)
     }
 
-    pub fn return_(&mut self, expression: Option<ExprId>, span: Span) -> ExprId {
+    pub fn return_(&mut self, expression: ExprId, span: Span) -> ExprId {
         self.insert(Expr::Return(expression), Some(span))
     }
 
