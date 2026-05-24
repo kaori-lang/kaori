@@ -5,7 +5,7 @@ use crate::{
     interpreter::INTERNER,
     report_error,
     syntax::{
-        ast::{Ast, ExprId},
+        ast::{Ast, ExprId, Name},
         ops::{AssignOp, BinaryOp, UnaryOp},
         token::{Span, Token},
     },
@@ -228,11 +228,11 @@ impl<'a> Parser<'a> {
         self.consume(Token::Native)?;
         self.consume(Token::Function)?;
 
-        let name = self.parse_identifier()?;
+        let name = self.parse_name()?;
 
         self.consume(Token::LeftParen)?;
 
-        let parameters = self.parse_comma_separator(Self::parse_identifier, Token::RightParen)?;
+        let parameters = self.parse_comma_separator(Self::parse_name, Token::RightParen)?;
 
         self.consume(Token::RightParen)?;
 
@@ -243,14 +243,14 @@ impl<'a> Parser<'a> {
         self.consume(Token::Function)?;
 
         let name = if self.peek_token() == Token::Identifier {
-            Some(self.parse_identifier()?)
+            Some(self.parse_name()?)
         } else {
             None
         };
 
         self.consume(Token::LeftParen)?;
 
-        let parameters = self.parse_comma_separator(Self::parse_identifier, Token::RightParen)?;
+        let parameters = self.parse_comma_separator(Self::parse_name, Token::RightParen)?;
 
         self.consume(Token::RightParen)?;
 
@@ -262,7 +262,7 @@ impl<'a> Parser<'a> {
     fn parse_variable(&mut self) -> Result<ExprId, Error> {
         self.consume(Token::Let)?;
 
-        let left = self.parse_identifier()?;
+        let left = self.parse_name()?;
 
         self.consume(Token::Assign)?;
 
@@ -274,7 +274,7 @@ impl<'a> Parser<'a> {
     fn parse_mut(&mut self) -> Result<ExprId, Error> {
         self.consume(Token::Let)?;
 
-        let left = self.parse_identifier()?;
+        let left = self.parse_name()?;
 
         self.consume(Token::Assign)?;
 
@@ -545,15 +545,20 @@ impl<'a> Parser<'a> {
         Ok(primary)
     }
 
-    fn parse_identifier(&mut self) -> Result<ExprId, Error> {
+    fn parse_name(&mut self) -> Result<Name, Error> {
         let span = self.peek_span();
         let lexeme = self.lexeme(span);
-
-        let index = INTERNER.lock().unwrap().get_or_intern(lexeme);
+        let symbol = INTERNER.lock().unwrap().get_or_intern(lexeme);
 
         self.consume(Token::Identifier)?;
 
-        Ok(self.ast.identifier(index, span))
+        Ok(Name { symbol, span })
+    }
+
+    fn parse_identifier(&mut self) -> Result<ExprId, Error> {
+        let name = self.parse_name()?;
+
+        Ok(self.ast.identifier(name))
     }
 
     fn parse_dict_literal_field(&mut self) -> Result<(ExprId, Option<ExprId>), Error> {

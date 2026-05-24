@@ -171,13 +171,11 @@ fn lower_block(
 ) -> Result<Register, Error> {
     for &expression in expressions.iter() {
         if let Expr::Function {
-            name: Some(name_id),
-            ..
+            name: Some(name), ..
         } = *ast.node(expression)
         {
-            let Expr::Identifier(name) = *ast.node(name_id) else {
-                unreachable!("function name must be parsed as identifier");
-            };
+            let name = ast.node(name).as_identifier();
+
             let register = env.allocate_register();
             env.insert_local(Local {
                 name,

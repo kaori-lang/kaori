@@ -16,6 +16,12 @@ pub struct Ast {
 }
 
 #[derive(Debug)]
+pub struct Name {
+    pub symbol: Symbol,
+    pub span: Span,
+}
+
+#[derive(Debug)]
 pub enum Expr {
     Binary {
         operator: BinaryOp,
@@ -45,39 +51,39 @@ pub enum Expr {
         right: ExprId,
     },
     Variable {
-        left: ExprId,
+        left: Name,
         right: ExprId,
     },
     Mut {
-        left: ExprId,
+        left: Name,
         right: ExprId,
     },
-    Identifier(Symbol),
+    Identifier(Name),
     StringLiteral(Symbol),
     NumberLiteral(f64),
     BooleanLiteral(bool),
     NilLiteral,
     FunctionCall {
         callee: ExprId,
-        arguments: Box<[ExprId]>,
+        arguments: Vec<ExprId>,
     },
     MemberAccess {
         object: ExprId,
         property: ExprId,
     },
     DictLiteral {
-        fields: Box<[(ExprId, Option<ExprId>)]>,
+        fields: Vec<(ExprId, Option<ExprId>)>,
     },
     NativeFunction {
-        name: ExprId,
-        parameters: Box<[ExprId]>,
+        name: Name,
+        parameters: Vec<Name>,
     },
     Function {
-        name: Option<ExprId>,
-        parameters: Box<[ExprId]>,
+        name: Option<Name>,
+        parameters: Vec<Name>,
         block: ExprId,
     },
-    Block(Box<[ExprId]>),
+    Block(Vec<ExprId>),
     If {
         condition: ExprId,
         then_branch: ExprId,
@@ -95,15 +101,6 @@ pub enum Expr {
     Return(ExprId),
     Break,
     Continue,
-}
-
-impl Expr {
-    pub fn as_identifier(&self) -> Symbol {
-        match self {
-            Self::Identifier(name) => *name,
-            _ => unreachable!("must be an identifier"),
-        }
-    }
 }
 
 impl Ast {
@@ -184,16 +181,16 @@ impl Ast {
         )
     }
 
-    pub fn variable(&mut self, left: ExprId, right: ExprId) -> ExprId {
+    pub fn variable(&mut self, left: Name, right: ExprId) -> ExprId {
         self.insert(Expr::Variable { left, right }, None)
     }
 
-    pub fn mut_(&mut self, left: ExprId, right: ExprId) -> ExprId {
+    pub fn mut_(&mut self, left: Name, right: ExprId) -> ExprId {
         self.insert(Expr::Mut { left, right }, None)
     }
 
-    pub fn identifier(&mut self, index: Symbol, span: Span) -> ExprId {
-        self.insert(Expr::Identifier(index), Some(span))
+    pub fn identifier(&mut self, name: Name) -> ExprId {
+        self.insert(Expr::Identifier(name), None)
     }
 
     pub fn string_literal(&mut self, index: Symbol, span: Span) -> ExprId {
@@ -213,13 +210,7 @@ impl Ast {
     }
 
     pub fn function_call(&mut self, callee: ExprId, arguments: Vec<ExprId>) -> ExprId {
-        self.insert(
-            Expr::FunctionCall {
-                callee,
-                arguments: arguments.into(),
-            },
-            None,
-        )
+        self.insert(Expr::FunctionCall { callee, arguments }, None)
     }
 
     pub fn member_access(&mut self, object: ExprId, property: ExprId) -> ExprId {
@@ -227,34 +218,18 @@ impl Ast {
     }
 
     pub fn dict_literal(&mut self, fields: Vec<(ExprId, Option<ExprId>)>) -> ExprId {
-        self.insert(
-            Expr::DictLiteral {
-                fields: fields.into(),
-            },
-            None,
-        )
+        self.insert(Expr::DictLiteral { fields }, None)
     }
 
-    pub fn native_function(&mut self, name: ExprId, parameters: Vec<ExprId>) -> ExprId {
-        self.insert(
-            Expr::NativeFunction {
-                name,
-                parameters: parameters.into(),
-            },
-            None,
-        )
+    pub fn native_function(&mut self, name: Name, parameters: Vec<Name>) -> ExprId {
+        self.insert(Expr::NativeFunction { name, parameters }, None)
     }
 
-    pub fn function(
-        &mut self,
-        name: Option<ExprId>,
-        parameters: Vec<ExprId>,
-        block: ExprId,
-    ) -> ExprId {
+    pub fn function(&mut self, name: Option<Name>, parameters: Vec<Name>, block: ExprId) -> ExprId {
         self.insert(
             Expr::Function {
                 name,
-                parameters: parameters.into(),
+                parameters,
                 block,
             },
             None,
@@ -262,7 +237,7 @@ impl Ast {
     }
 
     pub fn block(&mut self, expressions: Vec<ExprId>) -> ExprId {
-        self.insert(Expr::Block(expressions.into()), None)
+        self.insert(Expr::Block(expressions), None)
     }
 
     pub fn if_(&mut self, condition: ExprId, then_branch: ExprId, else_branch: ExprId) -> ExprId {
