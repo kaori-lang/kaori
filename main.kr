@@ -6,6 +6,7 @@ let x_max = 1.0;
 let y_min = -1.25;
 let y_max = 1.25;
 let y = 0;
+
 while y < height {
     let x = 0;
     while x < width {
@@ -14,6 +15,7 @@ while y < height {
         let zx = 0.0;
         let zy = 0.0;
         let iter = 0;
+
         while (zx * zx + zy * zy < 4.0) and (iter < max_iter) {
             let xtemp = zx * zx - zy * zy + cx;
             zy = 2.0 * zx * zy + cy;

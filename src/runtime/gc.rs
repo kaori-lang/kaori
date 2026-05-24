@@ -65,7 +65,7 @@ impl Gc {
     pub fn allocate_cell(&mut self, value: Value) -> Value {
         let index = Self::alloc(&mut self.cells, &mut self.free_cells, value);
 
-        todo!()
+        Value::cell(index)
     }
 
     #[inline(always)]

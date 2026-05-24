@@ -8,6 +8,7 @@ const TAG_CLOSURE: u64 = QNAN | 0x0003_0000_0000_0000;
 const TAG_STRING: u64 = QNAN | 0x0004_0000_0000_0000;
 const TAG_DICT: u64 = QNAN | 0x0005_0000_0000_0000;
 const TAG_VEC: u64 = QNAN | 0x0006_0000_0000_0000;
+const TAG_CELL: u64 = QNAN | 0x0007_0000_0000_0000;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[repr(transparent)]
@@ -48,6 +49,10 @@ impl Value {
         Self(TAG_VEC | (index as u64))
     }
 
+    pub fn cell(index: usize) -> Self {
+        Self(TAG_CELL | (index as u64))
+    }
+
     pub fn is_number(self) -> bool {
         (self.0 & QNAN) != QNAN
     }
@@ -74,6 +79,10 @@ impl Value {
 
     pub fn is_dict(self) -> bool {
         self.is_tag(TAG_DICT)
+    }
+
+    pub fn is_cell(self) -> bool {
+        self.is_tag(TAG_CELL)
     }
 
     pub fn as_number(self) -> f64 {

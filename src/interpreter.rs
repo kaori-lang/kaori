@@ -32,9 +32,9 @@ fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {
     let ast = parser.parse()?;
     let functions = lower_ast(ast)?;
 
-    /*   for function in functions.iter() {
+    for function in functions.iter() {
         println!("{}", function);
-    } */
+    }
 
     Ok(functions)
 }

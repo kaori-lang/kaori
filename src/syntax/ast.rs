@@ -97,6 +97,15 @@ pub enum Expr {
     Continue,
 }
 
+impl Expr {
+    pub fn as_identifier(&self) -> Symbol {
+        match self {
+            Self::Identifier(name) => *name,
+            _ => unreachable!("must be an identifier"),
+        }
+    }
+}
+
 impl Ast {
     fn insert(&mut self, expr: Expr, span: Option<Span>) -> ExprId {
         let id = ExprId(self.expressions.len() as u32);

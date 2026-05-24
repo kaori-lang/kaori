@@ -8,7 +8,7 @@ use kaori::interpreter::compile_and_run;
 
 use std::path::PathBuf;
 
-fn main() {
+/* fn main() {
     let matches = Command::new("kaori")
         .arg(Arg::new("file").required(true))
         .get_matches();
@@ -23,13 +23,12 @@ fn main() {
         }
         Err(_) => eprintln!("Error: Could not read the file by the given path."),
     };
-}
+} */
 
-/* fn main() {
+fn main() {
     let source = fs::read_to_string("main.kr").expect("could not read main.kr");
 
     if let Err(error) = compile_and_run(&source) {
         error.report(&source);
     }
 }
- */

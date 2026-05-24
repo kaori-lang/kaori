@@ -13,6 +13,7 @@ for y = 0, height - 1 do
         local zx = 0.0
         local zy = 0.0
         local iteration = 0
+        
         while (zx * zx + zy * zy < 4.0) and (iteration < max_iteration) do
             local xtemp = zx * zx - zy * zy + cx
             zy = 2.0 * zx * zy + cy
