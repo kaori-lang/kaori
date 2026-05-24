@@ -4,6 +4,7 @@ use std::collections::BinaryHeap;
 
 use crate::{
     bytecode::{
+        collect_free_variables::collect_free_variables,
         function::Function,
         instruction::{Const, Instruction},
     },
@@ -138,112 +139,6 @@ fn as_number_const(ast: &Ast, function: &mut Function, expr: ExprId) -> Option<C
     match *ast.node(expr) {
         Expr::NumberLiteral(value) => Some(function.store_number_const(value)),
         _ => None,
-    }
-}
-
-fn collect_free_variables(
-    ast: &Ast,
-    expression: ExprId,
-    bound: &mut Vec<Symbol>,
-    free: &mut Vec<Symbol>,
-) {
-    match *ast.node(expression) {
-        Expr::Identifier(name) => {
-            if !bound.contains(&name) && !free.contains(&name) {
-                free.push(name);
-            }
-        }
-        Expr::Variable { left, right } => {
-            collect_free_variables(ast, right, bound, free);
-
-            let name = ast.node(left).as_identifier();
-
-            bound.push(name);
-        }
-        Expr::Mut { left, right } => {
-            collect_free_variables(ast, right, bound, free);
-
-            let name = ast.node(left).as_identifier();
-
-            bound.push(name);
-        }
-        Expr::Function { name, .. } => {
-            if let Some(name) = name {
-                let name = ast.node(name).as_identifier();
-
-                bound.push(name);
-            }
-        }
-        Expr::Block(ref expressions) => {
-            let bound_size = bound.len();
-
-            for &expr in expressions.iter() {
-                if let Expr::Function {
-                    name: Some(name_id),
-                    ..
-                } = *ast.node(expr)
-                {
-                    let Expr::Identifier(name) = *ast.node(name_id) else {
-                        unreachable!();
-                    };
-                    bound.push(name);
-                }
-            }
-            for &expr in expressions.iter() {
-                collect_free_variables(ast, expr, bound, free);
-            }
-
-            bound.truncate(bound_size);
-        }
-        Expr::Assign { left, right }
-        | Expr::Binary { left, right, .. }
-        | Expr::LogicalAnd { left, right }
-        | Expr::LogicalOr { left, right }
-        | Expr::CompoundAssign { left, right, .. } => {
-            collect_free_variables(ast, left, bound, free);
-            collect_free_variables(ast, right, bound, free);
-        }
-        Expr::Unary { right, .. } => collect_free_variables(ast, right, bound, free),
-        Expr::LogicalNot(expr) => collect_free_variables(ast, expr, bound, free),
-        Expr::Return(expr) => collect_free_variables(ast, expr, bound, free),
-        Expr::If {
-            condition,
-            then_branch,
-            else_branch,
-        } => {
-            collect_free_variables(ast, condition, bound, free);
-            collect_free_variables(ast, then_branch, bound, free);
-            collect_free_variables(ast, else_branch, bound, free);
-        }
-        Expr::WhileLoop { condition, block } => {
-            collect_free_variables(ast, condition, bound, free);
-            collect_free_variables(ast, block, bound, free);
-        }
-        Expr::FunctionCall {
-            callee,
-            ref arguments,
-        } => {
-            collect_free_variables(ast, callee, bound, free);
-            for &arg in arguments.iter() {
-                collect_free_variables(ast, arg, bound, free);
-            }
-        }
-        Expr::MemberAccess { object, .. } => collect_free_variables(ast, object, bound, free),
-        Expr::DictLiteral { ref fields } => {
-            for &(key, value) in fields.iter() {
-                collect_free_variables(ast, key, bound, free);
-                if let Some(value) = value {
-                    collect_free_variables(ast, value, bound, free);
-                }
-            }
-        }
-        Expr::Break
-        | Expr::Continue
-        | Expr::NativeFunction { .. }
-        | Expr::NumberLiteral(_)
-        | Expr::StringLiteral(_)
-        | Expr::BooleanLiteral(_) => {}
-        Expr::NilLiteral | Expr::ForLoop { .. } => todo!(),
     }
 }
 
@@ -883,16 +778,9 @@ fn lower_expression(
                 });
             }
 
-            let mut bound = parameters
-                .iter()
-                .copied()
-                .map(|parameter| ast.node(parameter).as_identifier())
-                .collect();
-            let mut free_names = Vec::new();
+            let free_variables = collect_free_variables(ast, expression);
 
-            collect_free_variables(ast, block, &mut bound, &mut free_names);
-
-            for name in free_names.iter().copied() {
+            for name in free_variables.iter().copied() {
                 if let Some(mut local) = inner_env.lookup_in_parent(name) {
                     let register = inner_env.allocate_register();
                     local.register = register;
@@ -929,7 +817,7 @@ fn lower_expression(
                 src: index as u32,
             });
 
-            for name in free_names.iter().copied() {
+            for name in free_variables.iter().copied() {
                 let Local { register, .. } = env
                     .lookup(name)
                     .expect("name must've been declared to reach this point of the code");
