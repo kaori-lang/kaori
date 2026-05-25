@@ -1,74 +1,52 @@
 use crate::{
-    syntax::ast::{Ast, Expr, ExprId},
+    syntax::ast::{Ast, Expr, ExprId, Name},
     util::string_interner::Symbol,
 };
 
-pub fn collect_free_variables(ast: &Ast, function: ExprId) -> Vec<Symbol> {
+pub fn collect_free_variables(ast: &Ast, id: ExprId) -> Vec<Name> {
     let Expr::Function {
         ref parameters,
         block,
         ..
-    } = *ast.node(function)
+    } = *ast.get_node(id)
     else {
-        unreachable!("Collect free_variables variables should be called on a function node")
+        unreachable!("collect_free_variables should be called on a function node")
     };
 
     let mut free_variables = Vec::new();
-    let mut bound = parameters
-        .iter()
-        .copied()
-        .map(|parameter| ast.node(parameter).as_identifier())
-        .collect();
+    let mut bound = parameters.to_vec();
 
     collect(ast, block, &mut bound, &mut free_variables);
 
     free_variables
 }
 
-fn collect(
-    ast: &Ast,
-    expression: ExprId,
-    bound: &mut Vec<Symbol>,
-    free_variables: &mut Vec<Symbol>,
-) {
-    match *ast.node(expression) {
+fn collect(ast: &Ast, id: ExprId, bound: &mut Vec<Name>, free_variables: &mut Vec<Name>) {
+    match *ast.get_node(id) {
         Expr::Identifier(name) => {
-            if !bound.contains(&name) && !free_variables.contains(&name) {
+            if !bound.iter().any(|found| found.symbol == name.symbol)
+                && !free_variables
+                    .iter()
+                    .any(|found| found.symbol == name.symbol)
+            {
                 free_variables.push(name);
             }
         }
-        Expr::Variable { left, right } => {
+        Expr::Variable { left, right } | Expr::Mut { left, right } => {
             collect(ast, right, bound, free_variables);
-
-            let name = ast.node(left).as_identifier();
-
-            bound.push(name);
-        }
-        Expr::Mut { left, right } => {
-            collect(ast, right, bound, free_variables);
-
-            let name = ast.node(left).as_identifier();
-
-            bound.push(name);
+            bound.push(left);
         }
         Expr::Function { name, .. } => {
             if let Some(name) = name {
-                let name = ast.node(name).as_identifier();
-
                 bound.push(name);
             }
         }
         Expr::Block(ref expressions) => {
             let bound_size = bound.len();
 
-            for expression in expressions.iter().copied() {
-                if let Expr::Function {
-                    name: Some(name), ..
-                } = *ast.node(expression)
-                {
-                    let name = ast.node(name).as_identifier();
-
-                    bound.push(name);
+            for id in expressions.iter().copied() {
+                if let Expr::Function { .. } = ast.get_node(id) {
+                    collect(ast, id, bound, free_variables);
                 }
             }
 
@@ -116,10 +94,7 @@ fn collect(
         Expr::DictLiteral { ref fields } => {
             for (key, value) in fields.iter().copied() {
                 collect(ast, key, bound, free_variables);
-
-                if let Some(value) = value {
-                    collect(ast, value, bound, free_variables);
-                }
+                collect(ast, value, bound, free_variables);
             }
         }
         Expr::Break

@@ -9,6 +9,7 @@ let y = 0;
 
 while y < height {
     let x = 0;
+
     while x < width {
         let cx = x_min + (x * (x_max - x_min) / width);
         let cy = y_min + (y * (y_max - y_min) / height);
@@ -22,8 +23,12 @@ while y < height {
             zx = xtemp;
             iter += 1;
         }
+
         x += 1;
     }
+    
     y += 1;
 }
 
+
+y;

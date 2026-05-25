@@ -6,7 +6,7 @@ use crate::{
     report_error,
     syntax::{
         ast::{Ast, ExprId, Name},
-        ops::{AssignOp, BinaryOp, UnaryOp},
+        ops::{BinaryOp, CompoundOp, UnaryOp},
         token::{Span, Token},
     },
 };
@@ -289,11 +289,11 @@ impl<'a> Parser<'a> {
         let (token, span) = self.peek();
 
         let operator = match token {
-            Token::AddAssign => AssignOp::AddAssign,
-            Token::SubtractAssign => AssignOp::SubtractAssign,
-            Token::MultiplyAssign => AssignOp::MultiplyAssign,
-            Token::DivideAssign => AssignOp::DivideAssign,
-            Token::ModuloAssign => AssignOp::ModuloAssign,
+            Token::AddAssign => CompoundOp::Add,
+            Token::SubtractAssign => CompoundOp::Subtract,
+            Token::MultiplyAssign => CompoundOp::Multiply,
+            Token::DivideAssign => CompoundOp::Divide,
+            Token::ModuloAssign => CompoundOp::Modulo,
             Token::Assign => {
                 self.advance_token();
                 let right = self.parse_or()?;
@@ -561,17 +561,12 @@ impl<'a> Parser<'a> {
         Ok(self.ast.identifier(name))
     }
 
-    fn parse_dict_literal_field(&mut self) -> Result<(ExprId, Option<ExprId>), Error> {
-        let identifier = self.parse_expression()?;
+    fn parse_dict_literal_field(&mut self) -> Result<(ExprId, ExprId), Error> {
+        let key = self.parse_expression()?;
+        self.consume(Token::Colon)?;
+        let value = self.parse_expression()?;
 
-        if self.peek_token() == Token::Colon {
-            self.consume(Token::Colon)?;
-            let expression = self.parse_expression()?;
-
-            Ok((identifier, Some(expression)))
-        } else {
-            Ok((identifier, None))
-        }
+        Ok((key, value))
     }
 
     fn parse_dict_literal(&mut self) -> Result<ExprId, Error> {

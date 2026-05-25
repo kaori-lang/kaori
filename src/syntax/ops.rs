@@ -19,10 +19,10 @@ pub enum UnaryOp {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum AssignOp {
-    AddAssign,
-    SubtractAssign,
-    MultiplyAssign,
-    DivideAssign,
-    ModuloAssign,
+pub enum CompoundOp {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Modulo,
 }

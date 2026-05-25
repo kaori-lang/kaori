@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::bytecode::lower_ast::Register;
+use crate::bytecode::register_allocator::Register;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Const(pub u16);
@@ -11,7 +11,6 @@ pub struct Reg(pub u8);
 impl From<Register> for Reg {
     fn from(register: Register) -> Self {
         let register = match register {
-            Register::Arg(register) => register,
             Register::Local(register) => register,
             Register::Temp(register) => register,
         };

@@ -1,6 +1,6 @@
 use crate::{
     syntax::{
-        ops::{AssignOp, BinaryOp, UnaryOp},
+        ops::{BinaryOp, CompoundOp, UnaryOp},
         token::Span,
     },
     util::string_interner::Symbol,
@@ -15,7 +15,7 @@ pub struct Ast {
     spans: Vec<Option<Span>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Name {
     pub symbol: Symbol,
     pub span: Span,
@@ -46,7 +46,7 @@ pub enum Expr {
         right: ExprId,
     },
     CompoundAssign {
-        operator: AssignOp,
+        operator: CompoundOp,
         left: ExprId,
         right: ExprId,
     },
@@ -72,7 +72,7 @@ pub enum Expr {
         property: ExprId,
     },
     DictLiteral {
-        fields: Vec<(ExprId, Option<ExprId>)>,
+        fields: Vec<(ExprId, ExprId)>,
     },
     NativeFunction {
         name: Name,
@@ -113,17 +113,15 @@ impl Ast {
         id
     }
 
-    pub fn entry(&self) -> ExprId {
-        let last = self.expressions.len() - 1;
-
-        ExprId(last as u32)
+    pub fn last(&self) -> ExprId {
+        ExprId((self.expressions.len() - 1) as u32)
     }
 
-    pub fn node(&self, id: ExprId) -> &Expr {
+    pub fn get_node(&self, id: ExprId) -> &Expr {
         &self.expressions[id.0 as usize]
     }
 
-    pub fn span(&self, id: ExprId) -> Option<Span> {
+    pub fn get_span(&self, id: ExprId) -> Option<Span> {
         self.spans[id.0 as usize]
     }
 
@@ -166,7 +164,7 @@ impl Ast {
 
     pub fn compound_assign(
         &mut self,
-        operator: AssignOp,
+        operator: CompoundOp,
         left: ExprId,
         right: ExprId,
         span: Span,
@@ -217,7 +215,7 @@ impl Ast {
         self.insert(Expr::MemberAccess { object, property }, None)
     }
 
-    pub fn dict_literal(&mut self, fields: Vec<(ExprId, Option<ExprId>)>) -> ExprId {
+    pub fn dict_literal(&mut self, fields: Vec<(ExprId, ExprId)>) -> ExprId {
         self.insert(Expr::DictLiteral { fields }, None)
     }
 

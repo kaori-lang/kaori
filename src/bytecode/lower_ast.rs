@@ -1,158 +1,50 @@
 use core::panic;
-use std::cmp::Reverse;
-use std::collections::BinaryHeap;
 
 use crate::{
     bytecode::{
         collect_free_variables::collect_free_variables,
+        environment::{Environment, Local, LocalKind},
         function::Function,
         instruction::{Const, Instruction},
+        register_allocator::{Register, RegisterAllocator},
     },
     diagnostics::error::Error,
     interpreter::INTERNER,
     report_error,
     syntax::{
         ast::{Ast, Expr, ExprId},
-        ops::{AssignOp, BinaryOp, UnaryOp},
+        ops::{BinaryOp, CompoundOp, UnaryOp},
     },
-    util::string_interner::Symbol,
 };
 
-#[derive(Clone, Copy)]
-struct Local {
-    name: Symbol,
-    register: Register,
-    kind: LocalKind,
-}
-
-#[derive(Clone, Copy)]
-enum LocalKind {
-    Variable,
-    Mut,
-    Constant,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Register {
-    Temp(u8),
-    Local(u8),
-    Arg(u8),
-}
-
-#[derive(Default)]
-struct Environment {
-    parent: Option<Box<Environment>>,
-    scopes: Vec<Vec<Local>>,
-    next_register: u8,
-    free_temporary_registers: BinaryHeap<Reverse<u8>>,
-}
-
-impl Environment {
-    pub fn new() -> Self {
-        Self {
-            parent: None,
-            scopes: vec![Vec::new()],
-            next_register: 0,
-            free_temporary_registers: BinaryHeap::new(),
-        }
-    }
-
-    pub fn with_parent(parent: Environment) -> Self {
-        Self {
-            parent: Some(Box::new(parent)),
-            scopes: vec![Vec::new()],
-            next_register: 0,
-            free_temporary_registers: BinaryHeap::new(),
-        }
-    }
-
-    pub fn push_scope(&mut self) {
-        self.scopes.push(Vec::new());
-    }
-
-    pub fn pop_scope(&mut self) {
-        assert!(
-            self.scopes.len() > 1,
-            "tried to pop a scope with empty array"
-        );
-        self.scopes.pop();
-    }
-
-    pub fn insert_local(&mut self, local: Local) {
-        self.scopes
-            .last_mut()
-            .expect("scopes must never be empty")
-            .push(local);
-    }
-
-    pub fn lookup(&self, name: Symbol) -> Option<Local> {
-        for scope in self.scopes.iter().rev() {
-            for local in scope.iter().copied().rev() {
-                if local.name == name {
-                    return Some(local);
-                }
-            }
-        }
-
-        if let Some(parent) = &self.parent {
-            if let Some(mut local) = parent.lookup(name) {
-                if let LocalKind::Variable = local.kind {
-                    local.kind = LocalKind::Constant;
-                }
-                Some(local)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-
-    pub fn lookup_in_parent(&self, name: Symbol) -> Option<Local> {
-        self.parent.as_ref()?.lookup(name)
-    }
-
-    pub fn allocate_register(&mut self) -> Register {
-        let r = self.next_register;
-        self.next_register += 1;
-        Register::Local(r)
-    }
-
-    pub fn allocate_temporary_register(&mut self) -> Register {
-        if let Some(Reverse(r)) = self.free_temporary_registers.pop() {
-            Register::Temp(r)
-        } else {
-            let r = self.next_register;
-            self.next_register += 1;
-            Register::Temp(r)
-        }
-    }
-
-    pub fn free_temporary_register(&mut self, register: Register) {
-        if let Register::Temp(r) = register {
-            self.free_temporary_registers.push(Reverse(r));
-        }
-    }
-}
-
-fn as_number_const(ast: &Ast, function: &mut Function, expr: ExprId) -> Option<Const> {
-    match *ast.node(expr) {
+fn as_number_const(ast: &Ast, function: &mut Function, id: ExprId) -> Option<Const> {
+    match *ast.get_node(id) {
         Expr::NumberLiteral(value) => Some(function.store_number_const(value)),
         _ => None,
     }
 }
 
 pub fn lower_ast(ast: Ast) -> Result<Vec<Function>, Error> {
-    let entry = ast.entry();
+    let id = ast.last(); // Last node emitted is the entry point of the program
+
     let mut functions = Vec::new();
     functions.push(None);
 
     let mut env = Environment::new();
     let mut function = Function::new(0);
+    let mut regalloc = RegisterAllocator::default();
 
-    let src = lower_expression(&ast, &mut functions, &mut function, &mut env, entry, None)?;
+    let src = lower_expression(
+        &ast,
+        &mut functions,
+        &mut function,
+        &mut env,
+        &mut regalloc,
+        id,
+        None,
+    )?;
 
-    if !expression_returns(&ast, entry) {
+    if !expression_returns(&ast, id) {
         function.emit_instruction(Instruction::Return { src: src.into() });
     }
 
@@ -166,35 +58,32 @@ fn lower_block(
     functions: &mut Vec<Option<Function>>,
     function: &mut Function,
     env: &mut Environment,
-    expressions: &[ExprId],
+    regalloc: &mut RegisterAllocator,
+    ids: &[ExprId],
     dest: Option<Register>,
 ) -> Result<Register, Error> {
-    for &expression in expressions.iter() {
+    for id in ids.iter().copied() {
         if let Expr::Function {
             name: Some(name), ..
-        } = *ast.node(expression)
+        } = ast.get_node(id)
         {
-            let name = ast.node(name).as_identifier();
-
-            let register = env.allocate_register();
+            let register = regalloc.allocate_register();
             env.insert_local(Local {
-                name,
+                name: name.symbol,
                 register,
                 kind: LocalKind::Variable,
             });
         }
     }
 
-    let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+    let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
 
-    for expression in expressions.iter().copied().rev().skip(1).rev() {
-        lower_expression(ast, functions, function, env, expression, Some(dest))?;
+    for id in ids.iter().copied().rev().skip(1).rev() {
+        lower_expression(ast, functions, function, env, regalloc, id, Some(dest))?;
     }
 
-    let dest = match expressions.last().copied() {
-        Some(expression) => {
-            lower_expression(ast, functions, function, env, expression, Some(dest))?
-        }
+    let dest = match ids.last().copied() {
+        Some(id) => lower_expression(ast, functions, function, env, regalloc, id, Some(dest))?,
         _ => {
             let src = function.store_nil_const();
 
@@ -218,7 +107,7 @@ fn lower_block(
     expression: ExprId,
     dest: Option<Register>,
 ) -> Result<Register, Error> {
-    match *ast.node(expression) {
+    match *ast.get_node(expression) {
         Expr::Identifier(_) => todo!(),
         Expr::MemberAccess { .. } => todo!(),
         _ => panic!("this is not a valid lhs"),
@@ -230,13 +119,14 @@ fn lower_expression(
     functions: &mut Vec<Option<Function>>,
     function: &mut Function,
     env: &mut Environment,
-    expression: ExprId,
+    regalloc: &mut RegisterAllocator,
+    id: ExprId,
     dest: Option<Register>,
 ) -> Result<Register, Error> {
-    let register = match *ast.node(expression) {
+    let register = match *ast.get_node(id) {
         Expr::NumberLiteral(value) => {
             let src = function.store_number_const(value);
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
 
             function.emit_instruction(Instruction::LoadConst {
                 dest: dest.into(),
@@ -247,7 +137,7 @@ fn lower_expression(
         }
         Expr::StringLiteral(value) => {
             let src = function.store_string_const(value);
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
 
             function.emit_instruction(Instruction::LoadConst {
                 dest: dest.into(),
@@ -258,7 +148,7 @@ fn lower_expression(
         }
         Expr::BooleanLiteral(value) => {
             let src = function.store_boolean_const(value);
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
 
             function.emit_instruction(Instruction::LoadConst {
                 dest: dest.into(),
@@ -269,7 +159,7 @@ fn lower_expression(
         }
         Expr::NilLiteral => {
             let src = function.store_nil_const();
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
 
             function.emit_instruction(Instruction::LoadConst {
                 dest: dest.into(),
@@ -279,13 +169,10 @@ fn lower_expression(
             dest
         }
         Expr::Identifier(name) => {
-            let Some(Local { register, kind, .. }) = env.lookup(name) else {
-                let span = ast
-                    .span(expression)
-                    .expect("identifier expression must have a span");
+            let Some(Local { register, kind, .. }) = env.lookup(name.symbol) else {
+                let slice = INTERNER.lock().unwrap().resolve(name.symbol);
 
-                let slice = INTERNER.lock().unwrap().resolve(name);
-                return Err(report_error!(span, "{} is not declared", slice));
+                return Err(report_error!(name.span, "{} is not declared", slice));
             };
 
             match kind {
@@ -297,6 +184,7 @@ fn lower_expression(
                             dest: dest.into(),
                             src: register.into(),
                         });
+
                         dest
                     } else {
                         register
@@ -306,40 +194,37 @@ fn lower_expression(
             }
         }
         Expr::Variable { left, right } => {
-            let name = ast.node(left).as_identifier();
-
-            let dest = env.allocate_register();
+            let dest = regalloc.allocate_register();
 
             env.insert_local(Local {
-                name,
+                name: left.symbol,
                 register: dest,
                 kind: LocalKind::Variable,
             });
 
-            lower_expression(ast, functions, function, env, right, Some(dest))?;
+            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
 
             dest
         }
         Expr::Mut { left, right } => {
-            let name = ast.node(left).as_identifier();
+            let dest = regalloc.allocate_register();
 
-            let dest = env.allocate_register();
             env.insert_local(Local {
-                name,
+                name: left.symbol,
                 register: dest,
                 kind: LocalKind::Mut,
             });
 
-            lower_expression(ast, functions, function, env, right, Some(dest))?;
+            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
 
             dest
         }
         Expr::Assign { left, right } => {
-            let dest = lower_expression(ast, functions, function, env, left, None)?;
-            let src = lower_expression(ast, functions, function, env, right, Some(dest))?;
+            let dest = lower_expression(ast, functions, function, env, regalloc, left, None)?;
+            let src = lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
 
             if src != dest {
-                env.free_temporary_register(src);
+                regalloc.free_temporary_register(src);
             }
 
             dest
@@ -349,68 +234,68 @@ fn lower_expression(
             left,
             right,
         } => {
-            let dest = lower_expression(ast, functions, function, env, left, None)?;
+            let dest = lower_expression(ast, functions, function, env, regalloc, left, None)?;
 
             if let Some(src2) = as_number_const(ast, function, right) {
                 function.emit_instruction(match operator {
-                    AssignOp::AddAssign => Instruction::AddK {
+                    CompoundOp::Add => Instruction::AddK {
                         dest: dest.into(),
                         src1: dest.into(),
                         src2,
                     },
-                    AssignOp::SubtractAssign => Instruction::SubtractRK {
+                    CompoundOp::Subtract => Instruction::SubtractRK {
                         dest: dest.into(),
                         src1: dest.into(),
                         src2,
                     },
-                    AssignOp::MultiplyAssign => Instruction::MultiplyK {
+                    CompoundOp::Multiply => Instruction::MultiplyK {
                         dest: dest.into(),
                         src1: dest.into(),
                         src2,
                     },
-                    AssignOp::DivideAssign => Instruction::DivideRK {
+                    CompoundOp::Divide => Instruction::DivideRK {
                         dest: dest.into(),
                         src1: dest.into(),
                         src2,
                     },
-                    AssignOp::ModuloAssign => Instruction::ModuloRK {
+                    CompoundOp::Modulo => Instruction::ModuloRK {
                         dest: dest.into(),
                         src1: dest.into(),
                         src2,
                     },
                 });
             } else {
-                let src2 = lower_expression(ast, functions, function, env, right, None)?;
+                let src2 = lower_expression(ast, functions, function, env, regalloc, right, None)?;
 
                 function.emit_instruction(match operator {
-                    AssignOp::AddAssign => Instruction::Add {
+                    CompoundOp::Add => Instruction::Add {
                         dest: dest.into(),
                         src1: dest.into(),
                         src2: src2.into(),
                     },
-                    AssignOp::SubtractAssign => Instruction::Subtract {
+                    CompoundOp::Subtract => Instruction::Subtract {
                         dest: dest.into(),
                         src1: dest.into(),
                         src2: src2.into(),
                     },
-                    AssignOp::MultiplyAssign => Instruction::Multiply {
+                    CompoundOp::Multiply => Instruction::Multiply {
                         dest: dest.into(),
                         src1: dest.into(),
                         src2: src2.into(),
                     },
-                    AssignOp::DivideAssign => Instruction::Divide {
+                    CompoundOp::Divide => Instruction::Divide {
                         dest: dest.into(),
                         src1: dest.into(),
                         src2: src2.into(),
                     },
-                    AssignOp::ModuloAssign => Instruction::Modulo {
+                    CompoundOp::Modulo => Instruction::Modulo {
                         dest: dest.into(),
                         src1: dest.into(),
                         src2: src2.into(),
                     },
                 });
 
-                env.free_temporary_register(src2);
+                regalloc.free_temporary_register(src2);
             }
 
             dest
@@ -420,10 +305,10 @@ fn lower_expression(
             left,
             right,
         } => {
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
 
             if let Some(src2) = as_number_const(ast, function, right) {
-                let src1 = lower_expression(ast, functions, function, env, left, None)?;
+                let src1 = lower_expression(ast, functions, function, env, regalloc, left, None)?;
 
                 function.emit_instruction(match operator {
                     BinaryOp::Add => Instruction::AddK {
@@ -483,13 +368,13 @@ fn lower_expression(
                     },
                 });
 
-                env.free_temporary_register(src1);
+                regalloc.free_temporary_register(src1);
 
                 return Ok(dest);
             }
 
             if let Some(src1) = as_number_const(ast, function, left) {
-                let src2 = lower_expression(ast, functions, function, env, right, None)?;
+                let src2 = lower_expression(ast, functions, function, env, regalloc, right, None)?;
 
                 function.emit_instruction(match operator {
                     BinaryOp::Add => Instruction::AddK {
@@ -549,13 +434,13 @@ fn lower_expression(
                     },
                 });
 
-                env.free_temporary_register(src2);
+                regalloc.free_temporary_register(src2);
 
                 return Ok(dest);
             }
 
-            let src1 = lower_expression(ast, functions, function, env, left, None)?;
-            let src2 = lower_expression(ast, functions, function, env, right, None)?;
+            let src1 = lower_expression(ast, functions, function, env, regalloc, left, None)?;
+            let src2 = lower_expression(ast, functions, function, env, regalloc, right, None)?;
 
             function.emit_instruction(match operator {
                 BinaryOp::Add => Instruction::Add {
@@ -615,14 +500,14 @@ fn lower_expression(
                 },
             });
 
-            env.free_temporary_register(src1);
-            env.free_temporary_register(src2);
+            regalloc.free_temporary_register(src1);
+            regalloc.free_temporary_register(src2);
 
             dest
         }
         Expr::Unary { operator, right } => {
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
-            let src = lower_expression(ast, functions, function, env, right, None)?;
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let src = lower_expression(ast, functions, function, env, regalloc, right, None)?;
 
             function.emit_instruction(match operator {
                 UnaryOp::Negate => Instruction::Negate {
@@ -631,31 +516,31 @@ fn lower_expression(
                 },
             });
 
-            env.free_temporary_register(src);
+            regalloc.free_temporary_register(src);
 
             dest
         }
         Expr::LogicalNot(expression) => {
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
-            let src = lower_expression(ast, functions, function, env, expression, None)?;
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let src = lower_expression(ast, functions, function, env, regalloc, expression, None)?;
 
             function.emit_instruction(Instruction::Not {
                 dest: dest.into(),
                 src: src.into(),
             });
 
-            env.free_temporary_register(src);
+            regalloc.free_temporary_register(src);
 
             dest
         }
         Expr::LogicalAnd { left, right } => {
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
 
-            lower_expression(ast, functions, function, env, left, Some(dest))?;
+            lower_expression(ast, functions, function, env, regalloc, left, Some(dest))?;
 
             let jump_if_false = lower_jump_if_false(function, dest);
 
-            lower_expression(ast, functions, function, env, right, Some(dest))?;
+            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
 
             patch_jump(
                 function,
@@ -666,13 +551,13 @@ fn lower_expression(
             dest
         }
         Expr::LogicalOr { left, right } => {
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
 
-            lower_expression(ast, functions, function, env, left, Some(dest))?;
+            lower_expression(ast, functions, function, env, regalloc, left, Some(dest))?;
 
             let jump_if_true = lower_jump_if_true(function, dest);
 
-            lower_expression(ast, functions, function, env, right, Some(dest))?;
+            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
 
             patch_jump(
                 function,
@@ -687,13 +572,29 @@ fn lower_expression(
             then_branch,
             else_branch,
         } => {
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
 
-            lower_expression(ast, functions, function, env, condition, Some(dest))?;
+            lower_expression(
+                ast,
+                functions,
+                function,
+                env,
+                regalloc,
+                condition,
+                Some(dest),
+            )?;
 
             let jump_if_false = lower_jump_if_false(function, dest);
 
-            lower_expression(ast, functions, function, env, then_branch, Some(dest))?;
+            lower_expression(
+                ast,
+                functions,
+                function,
+                env,
+                regalloc,
+                then_branch,
+                Some(dest),
+            )?;
 
             let jump_end = function.emit_instruction(Instruction::Jump { offset: 0 });
 
@@ -703,7 +604,15 @@ fn lower_expression(
                 function.instructions.len() as i32 - jump_if_false as i32,
             );
 
-            lower_expression(ast, functions, function, env, else_branch, Some(dest))?;
+            lower_expression(
+                ast,
+                functions,
+                function,
+                env,
+                regalloc,
+                else_branch,
+                Some(dest),
+            )?;
 
             patch_jump(
                 function,
@@ -714,21 +623,21 @@ fn lower_expression(
             dest
         }
         Expr::WhileLoop { condition, block } => {
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
 
             let condition_register =
-                lower_expression(ast, functions, function, env, condition, None)?;
+                lower_expression(ast, functions, function, env, regalloc, condition, None)?;
 
             let jump_if_false = lower_jump_if_false(function, condition_register);
-            env.free_temporary_register(condition_register);
+            regalloc.free_temporary_register(condition_register);
 
             let loop_body = function.instructions.len();
-            lower_expression(ast, functions, function, env, block, Some(dest))?;
+            lower_expression(ast, functions, function, env, regalloc, block, Some(dest))?;
 
             let condition_register =
-                lower_expression(ast, functions, function, env, condition, None)?;
+                lower_expression(ast, functions, function, env, regalloc, condition, None)?;
             let jump_if_true = lower_jump_if_true(function, condition_register);
-            env.free_temporary_register(condition_register);
+            regalloc.free_temporary_register(condition_register);
 
             patch_jump(
                 function,
@@ -746,8 +655,11 @@ fn lower_expression(
         }
         Expr::Block(ref expressions) => {
             env.push_scope();
-            let register = lower_block(ast, functions, function, env, expressions, dest)?;
+
+            let register = lower_block(ast, functions, function, env, regalloc, expressions, dest)?;
+
             env.pop_scope();
+
             register
         }
         Expr::Function {
@@ -761,30 +673,30 @@ fn lower_expression(
             let arity = parameters.len() as u8;
             let mut inner_function = Function::new(arity);
 
-            let parent = std::mem::take(env);
-            let mut inner_env = Environment::with_parent(parent);
+            let mut inner_env = Environment::with_parent(std::mem::take(env));
+            let mut inner_regalloc = RegisterAllocator::default();
 
             for parameter in parameters.iter().copied() {
-                let name = ast.node(parameter).as_identifier();
-
-                let register = inner_env.allocate_register();
+                let register = inner_regalloc.allocate_register();
 
                 inner_env.insert_local(Local {
-                    name,
+                    name: parameter.symbol,
                     register,
                     kind: LocalKind::Variable,
                 });
             }
 
-            let free_variables = collect_free_variables(ast, expression);
+            let free_variables = collect_free_variables(ast, id);
 
             for name in free_variables.iter().copied() {
-                if let Some(mut local) = inner_env.lookup_in_parent(name) {
-                    let register = inner_env.allocate_register();
+                if let Some(mut local) = inner_env.lookup_in_parent(name.symbol) {
+                    let register = inner_regalloc.allocate_register();
                     local.register = register;
                     inner_env.insert_local(local);
                 } else {
-                    panic!("tried to capture undeclared name")
+                    let slice = INTERNER.lock().unwrap().resolve(name.symbol);
+
+                    return Err(report_error!(name.span, "{} is not declared", slice));
                 }
             }
 
@@ -793,6 +705,7 @@ fn lower_expression(
                 functions,
                 &mut inner_function,
                 &mut inner_env,
+                &mut inner_regalloc,
                 block,
                 None,
             )?;
@@ -803,11 +716,11 @@ fn lower_expression(
 
             functions[index] = Some(inner_function);
 
-            *env = *inner_env.parent.take().unwrap();
+            *env = std::mem::take(&mut inner_env.parent.unwrap_or_default());
 
             let dest = match name {
-                Some(name) => lower_expression(ast, functions, function, env, name, None)?,
-                None => dest.unwrap_or_else(|| env.allocate_temporary_register()),
+                Some(name) => env.lookup(name.symbol).unwrap().register,
+                None => dest.unwrap_or_else(|| regalloc.allocate_temporary_register()),
             };
 
             function.emit_instruction(Instruction::CreateClosure {
@@ -817,7 +730,7 @@ fn lower_expression(
 
             for name in free_variables.iter().copied() {
                 let Local { register, .. } = env
-                    .lookup(name)
+                    .lookup(name.symbol)
                     .expect("name must've been declared to reach this point of the code");
 
                 function.emit_instruction(Instruction::CaptureValue {
@@ -832,60 +745,75 @@ fn lower_expression(
             callee,
             ref arguments,
         } => {
-            let callee_src = lower_expression(ast, functions, function, env, callee, None)?;
+            let callee_src =
+                lower_expression(ast, functions, function, env, regalloc, callee, None)?;
 
             for (index, argument) in arguments.iter().enumerate() {
-                let arg_dest = Register::Arg(index as u8);
-                lower_expression(ast, functions, function, env, *argument, Some(arg_dest))?;
+                let arg_dest = Register::Local(index as u8);
+                lower_expression(
+                    ast,
+                    functions,
+                    function,
+                    env,
+                    regalloc,
+                    *argument,
+                    Some(arg_dest),
+                )?;
             }
 
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
             function.emit_instruction(Instruction::Call {
                 dest: dest.into(),
                 src: callee_src.into(),
                 arity: arguments.len() as u8,
             });
 
-            env.free_temporary_register(callee_src);
+            regalloc.free_temporary_register(callee_src);
             dest
         }
         Expr::MemberAccess { object, property } => {
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
-            let object = lower_expression(ast, functions, function, env, object, None)?;
-            let key = lower_expression(ast, functions, function, env, property, None)?;
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let object = lower_expression(ast, functions, function, env, regalloc, object, None)?;
+            let key = lower_expression(ast, functions, function, env, regalloc, property, None)?;
+
             function.emit_instruction(Instruction::GetField {
                 dest: dest.into(),
                 object: object.into(),
                 key: key.into(),
             });
-            env.free_temporary_register(object);
-            env.free_temporary_register(key);
+
+            regalloc.free_temporary_register(object);
+            regalloc.free_temporary_register(key);
+
             dest
         }
         Expr::DictLiteral { ref fields } => {
-            let dest = dest.unwrap_or_else(|| env.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
 
             function.emit_instruction(Instruction::CreateDict { dest: dest.into() });
 
-            for &(key, value) in fields.iter() {
-                let key = lower_expression(ast, functions, function, env, key, None)?;
-                let value = lower_expression(ast, functions, function, env, value.unwrap(), None)?;
+            for (key, value) in fields.iter().copied() {
+                let key = lower_expression(ast, functions, function, env, regalloc, key, None)?;
+                let value = lower_expression(ast, functions, function, env, regalloc, value, None)?;
+
                 function.emit_instruction(Instruction::SetField {
                     object: dest.into(),
                     key: key.into(),
                     value: value.into(),
                 });
-                env.free_temporary_register(key);
-                env.free_temporary_register(value);
+
+                regalloc.free_temporary_register(key);
+                regalloc.free_temporary_register(value);
             }
+
             dest
         }
         Expr::Return(expression) => {
-            let src = lower_expression(ast, functions, function, env, expression, dest)?;
+            let src = lower_expression(ast, functions, function, env, regalloc, expression, dest)?;
 
             function.emit_instruction(Instruction::Return { src: src.into() });
 
-            env.free_temporary_register(src);
+            regalloc.free_temporary_register(src);
 
             src
         }
@@ -898,8 +826,8 @@ fn lower_expression(
     Ok(register)
 }
 
-fn expression_returns(ast: &Ast, expression: ExprId) -> bool {
-    match *ast.node(expression) {
+fn expression_returns(ast: &Ast, id: ExprId) -> bool {
+    match *ast.get_node(id) {
         Expr::Return(..) => true,
         Expr::Block(ref expressions) => expressions
             .iter()

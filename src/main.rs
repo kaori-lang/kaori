@@ -1,9 +1,11 @@
+use std::hint::black_box;
 #[allow(unused_imports)]
 use std::{env::args, process::ExitCode};
 #[allow(unused_imports)]
 use std::{fs, time::Instant};
 
 use clap::{Arg, Command};
+use foldhash::HashMap;
 use kaori::interpreter::compile_and_run;
 
 use std::path::PathBuf;
