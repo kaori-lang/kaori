@@ -67,7 +67,7 @@ fn lower_block(
             name: Some(name), ..
         } = ast.get_node(id)
         {
-            let register = regalloc.allocate_register();
+            let register = regalloc.allocate_local();
             env.insert_local(Local {
                 name: name.symbol,
                 register,
@@ -76,25 +76,30 @@ fn lower_block(
         }
     }
 
-    let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+    let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
+    let mut locals = Vec::new();
 
-    for id in ids.iter().copied().rev().skip(1).rev() {
-        lower_expression(ast, functions, function, env, regalloc, id, Some(dest))?;
+    for id in ids.iter().copied() {
+        let register = lower_expression(ast, functions, function, env, regalloc, id, Some(dest))?;
+
+        locals.push(register);
     }
 
-    let dest = match ids.last().copied() {
-        Some(id) => lower_expression(ast, functions, function, env, regalloc, id, Some(dest))?,
-        _ => {
+    for local in locals.iter().copied() {
+        regalloc.free_local(local);
+    }
+
+    match locals.last() {
+        Some(Register::Local(_)) | None => {
             let src = function.store_nil_const();
 
             function.emit_instruction(Instruction::LoadConst {
                 dest: dest.into(),
                 src,
             });
-
-            dest
         }
-    };
+        Some(Register::Temp(_)) => {}
+    }
 
     Ok(dest)
 }
@@ -126,7 +131,7 @@ fn lower_expression(
     let register = match *ast.get_node(id) {
         Expr::NumberLiteral(value) => {
             let src = function.store_number_const(value);
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             function.emit_instruction(Instruction::LoadConst {
                 dest: dest.into(),
@@ -137,7 +142,7 @@ fn lower_expression(
         }
         Expr::StringLiteral(value) => {
             let src = function.store_string_const(value);
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             function.emit_instruction(Instruction::LoadConst {
                 dest: dest.into(),
@@ -148,7 +153,7 @@ fn lower_expression(
         }
         Expr::BooleanLiteral(value) => {
             let src = function.store_boolean_const(value);
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             function.emit_instruction(Instruction::LoadConst {
                 dest: dest.into(),
@@ -159,7 +164,7 @@ fn lower_expression(
         }
         Expr::NilLiteral => {
             let src = function.store_nil_const();
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             function.emit_instruction(Instruction::LoadConst {
                 dest: dest.into(),
@@ -194,7 +199,7 @@ fn lower_expression(
             }
         }
         Expr::Variable { left, right } => {
-            let dest = regalloc.allocate_register();
+            let dest = regalloc.allocate_local();
 
             env.insert_local(Local {
                 name: left.symbol,
@@ -207,7 +212,7 @@ fn lower_expression(
             dest
         }
         Expr::Mut { left, right } => {
-            let dest = regalloc.allocate_register();
+            let dest = regalloc.allocate_local();
 
             env.insert_local(Local {
                 name: left.symbol,
@@ -224,7 +229,7 @@ fn lower_expression(
             let src = lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
 
             if src != dest {
-                regalloc.free_temporary_register(src);
+                regalloc.free_temp(src);
             }
 
             dest
@@ -295,7 +300,7 @@ fn lower_expression(
                     },
                 });
 
-                regalloc.free_temporary_register(src2);
+                regalloc.free_temp(src2);
             }
 
             dest
@@ -305,7 +310,7 @@ fn lower_expression(
             left,
             right,
         } => {
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             if let Some(src2) = as_number_const(ast, function, right) {
                 let src1 = lower_expression(ast, functions, function, env, regalloc, left, None)?;
@@ -368,7 +373,7 @@ fn lower_expression(
                     },
                 });
 
-                regalloc.free_temporary_register(src1);
+                regalloc.free_temp(src1);
 
                 return Ok(dest);
             }
@@ -434,7 +439,7 @@ fn lower_expression(
                     },
                 });
 
-                regalloc.free_temporary_register(src2);
+                regalloc.free_temp(src2);
 
                 return Ok(dest);
             }
@@ -500,13 +505,13 @@ fn lower_expression(
                 },
             });
 
-            regalloc.free_temporary_register(src1);
-            regalloc.free_temporary_register(src2);
+            regalloc.free_temp(src1);
+            regalloc.free_temp(src2);
 
             dest
         }
         Expr::Unary { operator, right } => {
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
             let src = lower_expression(ast, functions, function, env, regalloc, right, None)?;
 
             function.emit_instruction(match operator {
@@ -516,12 +521,12 @@ fn lower_expression(
                 },
             });
 
-            regalloc.free_temporary_register(src);
+            regalloc.free_temp(src);
 
             dest
         }
         Expr::LogicalNot(expression) => {
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
             let src = lower_expression(ast, functions, function, env, regalloc, expression, None)?;
 
             function.emit_instruction(Instruction::Not {
@@ -529,12 +534,12 @@ fn lower_expression(
                 src: src.into(),
             });
 
-            regalloc.free_temporary_register(src);
+            regalloc.free_temp(src);
 
             dest
         }
         Expr::LogicalAnd { left, right } => {
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             lower_expression(ast, functions, function, env, regalloc, left, Some(dest))?;
 
@@ -551,7 +556,7 @@ fn lower_expression(
             dest
         }
         Expr::LogicalOr { left, right } => {
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             lower_expression(ast, functions, function, env, regalloc, left, Some(dest))?;
 
@@ -572,7 +577,7 @@ fn lower_expression(
             then_branch,
             else_branch,
         } => {
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             lower_expression(
                 ast,
@@ -623,13 +628,13 @@ fn lower_expression(
             dest
         }
         Expr::WhileLoop { condition, block } => {
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             let condition_register =
                 lower_expression(ast, functions, function, env, regalloc, condition, None)?;
 
             let jump_if_false = lower_jump_if_false(function, condition_register);
-            regalloc.free_temporary_register(condition_register);
+            regalloc.free_temp(condition_register);
 
             let loop_body = function.instructions.len();
             lower_expression(ast, functions, function, env, regalloc, block, Some(dest))?;
@@ -637,7 +642,7 @@ fn lower_expression(
             let condition_register =
                 lower_expression(ast, functions, function, env, regalloc, condition, None)?;
             let jump_if_true = lower_jump_if_true(function, condition_register);
-            regalloc.free_temporary_register(condition_register);
+            regalloc.free_temp(condition_register);
 
             patch_jump(
                 function,
@@ -677,7 +682,7 @@ fn lower_expression(
             let mut inner_regalloc = RegisterAllocator::default();
 
             for parameter in parameters.iter().copied() {
-                let register = inner_regalloc.allocate_register();
+                let register = inner_regalloc.allocate_local();
 
                 inner_env.insert_local(Local {
                     name: parameter.symbol,
@@ -690,7 +695,7 @@ fn lower_expression(
 
             for name in free_variables.iter().copied() {
                 if let Some(mut local) = inner_env.lookup_in_parent(name.symbol) {
-                    let register = inner_regalloc.allocate_register();
+                    let register = inner_regalloc.allocate_local();
                     local.register = register;
                     inner_env.insert_local(local);
                 } else {
@@ -720,7 +725,7 @@ fn lower_expression(
 
             let dest = match name {
                 Some(name) => env.lookup(name.symbol).unwrap().register,
-                None => dest.unwrap_or_else(|| regalloc.allocate_temporary_register()),
+                None => dest.unwrap_or_else(|| regalloc.allocate_temp()),
             };
 
             function.emit_instruction(Instruction::CreateClosure {
@@ -761,18 +766,18 @@ fn lower_expression(
                 )?;
             }
 
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
             function.emit_instruction(Instruction::Call {
                 dest: dest.into(),
                 src: callee_src.into(),
                 arity: arguments.len() as u8,
             });
 
-            regalloc.free_temporary_register(callee_src);
+            regalloc.free_temp(callee_src);
             dest
         }
         Expr::MemberAccess { object, property } => {
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
             let object = lower_expression(ast, functions, function, env, regalloc, object, None)?;
             let key = lower_expression(ast, functions, function, env, regalloc, property, None)?;
 
@@ -782,13 +787,13 @@ fn lower_expression(
                 key: key.into(),
             });
 
-            regalloc.free_temporary_register(object);
-            regalloc.free_temporary_register(key);
+            regalloc.free_temp(object);
+            regalloc.free_temp(key);
 
             dest
         }
         Expr::DictLiteral { ref fields } => {
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temporary_register());
+            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             function.emit_instruction(Instruction::CreateDict { dest: dest.into() });
 
@@ -802,8 +807,8 @@ fn lower_expression(
                     value: value.into(),
                 });
 
-                regalloc.free_temporary_register(key);
-                regalloc.free_temporary_register(value);
+                regalloc.free_temp(key);
+                regalloc.free_temp(value);
             }
 
             dest
@@ -813,7 +818,7 @@ fn lower_expression(
 
             function.emit_instruction(Instruction::Return { src: src.into() });
 
-            regalloc.free_temporary_register(src);
+            regalloc.free_temp(src);
 
             src
         }

@@ -18,24 +18,26 @@ impl Default for RegisterAllocator {
     }
 }
 impl RegisterAllocator {
-    pub fn allocate_register(&mut self) -> Register {
-        if let Some(Reverse(register)) = self.registers.pop() {
-            Register::Local(register)
-        } else {
-            panic!("Exceeed the amount of registers per function")
-        }
+    pub fn allocate_local(&mut self) -> Register {
+        Register::Local(self.pop())
     }
 
-    pub fn allocate_temporary_register(&mut self) -> Register {
-        if let Some(Reverse(register)) = self.registers.pop() {
-            Register::Temp(register)
-        } else {
-            panic!("Exceeed the amount of registers per function")
-        }
+    pub fn allocate_temp(&mut self) -> Register {
+        Register::Temp(self.pop())
     }
 
-    pub fn free_temporary_register(&mut self, register: Register) {
+    fn pop(&mut self) -> u8 {
+        self.registers.pop().expect("exceeded register limit").0
+    }
+
+    pub fn free_temp(&mut self, register: Register) {
         if let Register::Temp(register) = register {
+            self.registers.push(Reverse(register));
+        }
+    }
+
+    pub fn free_local(&mut self, register: Register) {
+        if let Register::Local(register) = register {
             self.registers.push(Reverse(register));
         }
     }
