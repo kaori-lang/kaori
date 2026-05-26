@@ -1,7 +1,7 @@
-use crate::syntax::ast::{Ast, Expr, ExprId, Name};
+use crate::syntax::ast::{Ast, AstNode, Name, NodeId};
 
-pub fn collect_free_variables(ast: &Ast, id: ExprId) -> Vec<Name> {
-    let Expr::Function {
+pub fn collect_free_variables(ast: &Ast, id: NodeId) -> Vec<Name> {
+    let AstNode::Function {
         ref parameters,
         block,
         ..
@@ -18,9 +18,9 @@ pub fn collect_free_variables(ast: &Ast, id: ExprId) -> Vec<Name> {
     free_variables
 }
 
-fn collect(ast: &Ast, id: ExprId, bound: &mut Vec<Name>, free_variables: &mut Vec<Name>) {
+fn collect(ast: &Ast, id: NodeId, bound: &mut Vec<Name>, free_variables: &mut Vec<Name>) {
     match *ast.get_node(id) {
-        Expr::Identifier(name) => {
+        AstNode::Identifier(name) => {
             if !bound.iter().any(|found| found.symbol == name.symbol)
                 && !free_variables
                     .iter()
@@ -29,21 +29,21 @@ fn collect(ast: &Ast, id: ExprId, bound: &mut Vec<Name>, free_variables: &mut Ve
                 free_variables.push(name);
             }
         }
-        Expr::Variable { left, right } | Expr::Mut { left, right } => {
+        AstNode::Variable { left, right } | AstNode::Mut { left, right } => {
             collect(ast, right, bound, free_variables);
 
             bound.push(left);
         }
-        Expr::Function { name, .. } => {
+        AstNode::Function { name, .. } => {
             if let Some(name) = name {
                 bound.push(name);
             }
         }
-        Expr::Block(ref expressions) => {
+        AstNode::Block(ref expressions) => {
             let size = bound.len();
 
             for id in expressions.iter().copied() {
-                if let Expr::Function { .. } = ast.get_node(id) {
+                if let AstNode::Function { .. } = ast.get_node(id) {
                     collect(ast, id, bound, free_variables);
                 }
             }
@@ -54,18 +54,18 @@ fn collect(ast: &Ast, id: ExprId, bound: &mut Vec<Name>, free_variables: &mut Ve
 
             bound.truncate(size);
         }
-        Expr::Assign { left, right }
-        | Expr::Binary { left, right, .. }
-        | Expr::LogicalAnd { left, right }
-        | Expr::LogicalOr { left, right }
-        | Expr::CompoundAssign { left, right, .. } => {
+        AstNode::Assign { left, right }
+        | AstNode::Binary { left, right, .. }
+        | AstNode::LogicalAnd { left, right }
+        | AstNode::LogicalOr { left, right }
+        | AstNode::CompoundAssign { left, right, .. } => {
             collect(ast, left, bound, free_variables);
             collect(ast, right, bound, free_variables);
         }
-        Expr::Unary { right, .. } => collect(ast, right, bound, free_variables),
-        Expr::LogicalNot(expr) => collect(ast, expr, bound, free_variables),
-        Expr::Return(expr) => collect(ast, expr, bound, free_variables),
-        Expr::If {
+        AstNode::Unary { right, .. } => collect(ast, right, bound, free_variables),
+        AstNode::LogicalNot(expr) => collect(ast, expr, bound, free_variables),
+        AstNode::Return(expr) => collect(ast, expr, bound, free_variables),
+        AstNode::If {
             condition,
             then_branch,
             else_branch,
@@ -74,11 +74,11 @@ fn collect(ast: &Ast, id: ExprId, bound: &mut Vec<Name>, free_variables: &mut Ve
             collect(ast, then_branch, bound, free_variables);
             collect(ast, else_branch, bound, free_variables);
         }
-        Expr::WhileLoop { condition, block } => {
+        AstNode::WhileLoop { condition, block } => {
             collect(ast, condition, bound, free_variables);
             collect(ast, block, bound, free_variables);
         }
-        Expr::FunctionCall {
+        AstNode::FunctionCall {
             callee,
             ref arguments,
         } => {
@@ -88,20 +88,20 @@ fn collect(ast: &Ast, id: ExprId, bound: &mut Vec<Name>, free_variables: &mut Ve
                 collect(ast, argument, bound, free_variables);
             }
         }
-        Expr::MemberAccess { object, .. } => collect(ast, object, bound, free_variables),
-        Expr::DictLiteral { ref fields } => {
+        AstNode::MemberAccess { object, .. } => collect(ast, object, bound, free_variables),
+        AstNode::DictLiteral { ref fields } => {
             for (key, value) in fields.iter().copied() {
                 collect(ast, key, bound, free_variables);
                 collect(ast, value, bound, free_variables);
             }
         }
-        Expr::Break
-        | Expr::Continue
-        | Expr::NativeFunction { .. }
-        | Expr::NumberLiteral(_)
-        | Expr::StringLiteral(_)
-        | Expr::BooleanLiteral(_)
-        | Expr::NilLiteral => {}
-        Expr::ForLoop { .. } => {}
+        AstNode::Break
+        | AstNode::Continue
+        | AstNode::NativeFunction { .. }
+        | AstNode::NumberLiteral(_)
+        | AstNode::StringLiteral(_)
+        | AstNode::BooleanLiteral(_)
+        | AstNode::NilLiteral => {}
+        AstNode::ForLoop { .. } => {}
     }
 }

@@ -1,11 +1,11 @@
-let width = 800
-let height = 800
-let max_iter = 1000
-let x_min = -2.5
-let x_max = 1.0
-let y_min = -1.25
-let y_max = 1.25
-let y = 0
+let width = 800;
+let height = 800;
+let max_iter = 1000;
+let x_min = -2.5;
+let x_max = 1.0;
+let y_min = -1.25;
+let y_max = 1.25;
+let y = 0;
 
 while y < height {
     let x = 0;
