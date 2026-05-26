@@ -12,20 +12,20 @@ use crate::{
     interpreter::INTERNER,
     report_error,
     syntax::{
-        ast::{Ast, AstNode, NodeId},
+        ast::{Ast, Expr, ExprId},
         ops::{BinaryOp, CompoundOp, UnaryOp},
     },
 };
 
-fn as_number_const(ast: &Ast, function: &mut Function, id: NodeId) -> Option<Const> {
-    match *ast.get_node(id) {
-        AstNode::NumberLiteral(value) => Some(function.store_number_const(value)),
+fn as_number_const(ast: &Ast, function: &mut Function, id: ExprId) -> Option<Const> {
+    match ast.expr(id).node {
+        Expr::NumberLiteral(value) => Some(function.store_number_const(value)),
         _ => None,
     }
 }
 
 pub fn lower_ast(ast: Ast) -> Result<Vec<Function>, Error> {
-    let id = ast.last();
+    let id = ast.last_stmt();
 
     let mut functions = Vec::new();
     functions.push(None);
@@ -59,10 +59,10 @@ fn lower_statement(
     function: &mut Function,
     env: &mut Environment,
     regalloc: &mut RegisterAllocator,
-    id: NodeId,
+    id: ExprId,
 ) -> Result<(), Error> {
-    match *ast.get_node(id) {
-        AstNode::Variable { left, right } => {
+    match *ast.node(id) {
+        Expr::Variable { left, right } => {
             let dest = regalloc.allocate_local();
 
             env.insert_local(Local {
@@ -73,7 +73,7 @@ fn lower_statement(
 
             lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
         }
-        AstNode::Mut { left, right } => {
+        Expr::Mut { left, right } => {
             let dest = regalloc.allocate_local();
 
             env.insert_local(Local {
@@ -84,7 +84,7 @@ fn lower_statement(
 
             lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
         }
-        AstNode::Assign { left, right } => {
+        Expr::Assign { left, right } => {
             let dest = lower_expression(ast, functions, function, env, regalloc, left, None)?;
 
             let src = lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
@@ -93,7 +93,7 @@ fn lower_statement(
                 regalloc.free_temp(src);
             }
         }
-        AstNode::CompoundAssign {
+        Expr::CompoundAssign {
             operator,
             left,
             right,
@@ -162,7 +162,7 @@ fn lower_statement(
                 regalloc.free_temp(src2);
             }
         }
-        AstNode::WhileLoop { condition, block } => {
+        Expr::WhileLoop { condition, block } => {
             let src = lower_expression(ast, functions, function, env, regalloc, condition, None)?;
             regalloc.free_temp(src);
 
@@ -188,23 +188,23 @@ fn lower_statement(
                 function.instructions.len() as i32 - jump_if_false as i32,
             );
         }
-        AstNode::Return(expression) => {
+        Expr::Return(expression) => {
             let src = lower_expression(ast, functions, function, env, regalloc, expression, None)?;
 
             function.emit_instruction(Instruction::Return { src: src.into() });
 
             regalloc.free_temp(src);
         }
-        AstNode::Block {
+        Expr::Block {
             ref statements,
             tail,
         } => {
             env.push_scope();
 
             for id in statements.iter().copied() {
-                if let AstNode::Function {
+                if let Expr::Function {
                     name: Some(name), ..
-                } = ast.get_node(id)
+                } = ast.node(id)
                 {
                     let register = regalloc.allocate_local();
 
@@ -220,15 +220,20 @@ fn lower_statement(
                 lower_statement(ast, functions, function, env, regalloc, id)?;
             }
 
-            if tail.is_some() {
-                panic!("Expressions as last statement only allowed in block expressions")
+            if let Some(id) = tail {
+                let span = ast.span(id);
+
+                return Err(report_error!(
+                    span,
+                    "expected `;`, only the last expression in a block expression can omit it"
+                ));
             }
 
             env.pop_scope();
         }
-        AstNode::Break => todo!(),
-        AstNode::Continue => todo!(),
-        AstNode::NativeFunction { .. } => todo!(),
+        Expr::Break => todo!(),
+        Expr::Continue => todo!(),
+        Expr::NativeFunction { .. } => todo!(),
         _ => {
             lower_expression(ast, functions, function, env, regalloc, id, None)?;
         }
@@ -243,11 +248,11 @@ fn lower_expression(
     function: &mut Function,
     env: &mut Environment,
     regalloc: &mut RegisterAllocator,
-    id: NodeId,
+    id: ExprId,
     dest: Option<Register>,
 ) -> Result<Register, Error> {
-    let register = match *ast.get_node(id) {
-        AstNode::NumberLiteral(value) => {
+    let register = match *ast.node(id) {
+        Expr::NumberLiteral(value) => {
             let src = function.store_number_const(value);
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
@@ -258,7 +263,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::StringLiteral(value) => {
+        Expr::StringLiteral(value) => {
             let src = function.store_string_const(value);
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
@@ -269,7 +274,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::BooleanLiteral(value) => {
+        Expr::BooleanLiteral(value) => {
             let src = function.store_boolean_const(value);
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
@@ -280,7 +285,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::NilLiteral => {
+        Expr::NilLiteral => {
             let src = function.store_nil_const();
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
@@ -291,7 +296,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::Identifier(name) => {
+        Expr::Identifier(name) => {
             let Some(Local { register, kind, .. }) = env.lookup(name.symbol) else {
                 let slice = INTERNER.lock().unwrap().resolve(name.symbol);
 
@@ -318,7 +323,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::Binary {
+        Expr::Binary {
             operator,
             left,
             right,
@@ -521,7 +526,7 @@ fn lower_expression(
                 dest
             }
         }
-        AstNode::Unary { operator, right } => {
+        Expr::Unary { operator, right } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             let src = lower_expression(ast, functions, function, env, regalloc, right, None)?;
@@ -537,7 +542,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::LogicalNot(expression) => {
+        Expr::LogicalNot(expression) => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             let src = lower_expression(ast, functions, function, env, regalloc, expression, None)?;
@@ -551,7 +556,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::LogicalAnd { left, right } => {
+        Expr::LogicalAnd { left, right } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             lower_expression(ast, functions, function, env, regalloc, left, Some(dest))?;
@@ -568,7 +573,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::LogicalOr { left, right } => {
+        Expr::LogicalOr { left, right } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             lower_expression(ast, functions, function, env, regalloc, left, Some(dest))?;
@@ -585,7 +590,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::If {
+        Expr::If {
             condition,
             then_branch,
             else_branch,
@@ -615,15 +620,17 @@ fn lower_expression(
                 function.instructions.len() as i32 - jump_if_false as i32,
             );
 
-            lower_expression(
-                ast,
-                functions,
-                function,
-                env,
-                regalloc,
-                else_branch,
-                Some(dest),
-            )?;
+            if let Some(else_branch) = else_branch {
+                lower_expression(
+                    ast,
+                    functions,
+                    function,
+                    env,
+                    regalloc,
+                    else_branch,
+                    Some(dest),
+                )?;
+            }
 
             patch_jump(
                 function,
@@ -633,16 +640,16 @@ fn lower_expression(
 
             dest
         }
-        AstNode::Block {
+        Expr::Block {
             ref statements,
             tail,
         } => {
             env.push_scope();
 
             for id in statements.iter().copied() {
-                if let AstNode::Function {
+                if let Expr::Function {
                     name: Some(name), ..
-                } = ast.get_node(id)
+                } = ast.node(id)
                 {
                     let register = regalloc.allocate_local();
 
@@ -675,7 +682,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::Function {
+        Expr::Function {
             ref parameters,
             block,
             name,
@@ -754,7 +761,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::FunctionCall {
+        Expr::FunctionCall {
             callee,
             ref arguments,
         } => {
@@ -787,12 +794,22 @@ fn lower_expression(
 
             dest
         }
-        AstNode::MemberAccess { object, property } => {
+        Expr::MemberAccess { object, property } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             let object = lower_expression(ast, functions, function, env, regalloc, object, None)?;
 
-            let key = lower_expression(ast, functions, function, env, regalloc, property, None)?;
+            let key = {
+                let dest = regalloc.allocate_temp();
+                let src = function.store_string_const(property.symbol);
+
+                function.emit_instruction(Instruction::LoadConst {
+                    dest: dest.into(),
+                    src,
+                });
+
+                dest
+            };
 
             function.emit_instruction(Instruction::GetField {
                 dest: dest.into(),
@@ -805,7 +822,7 @@ fn lower_expression(
 
             dest
         }
-        AstNode::DictLiteral { ref fields } => {
+        Expr::DictLiteral { ref fields } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             function.emit_instruction(Instruction::CreateDict { dest: dest.into() });
@@ -827,27 +844,32 @@ fn lower_expression(
 
             dest
         }
-        AstNode::Mut { .. }
-        | AstNode::NativeFunction { .. }
-        | AstNode::Variable { .. }
-        | AstNode::Return(..)
-        | AstNode::Break
-        | AstNode::Continue
-        | AstNode::ForLoop { .. }
-        | AstNode::WhileLoop { .. }
-        | AstNode::Assign { .. }
-        | AstNode::CompoundAssign { .. } => {
-            unreachable!("Statement nodes can't appear inside of expressions")
+        Expr::Mut { .. }
+        | Expr::NativeFunction { .. }
+        | Expr::Variable { .. }
+        | Expr::Return(..)
+        | Expr::Break
+        | Expr::Continue
+        | Expr::ForLoop { .. }
+        | Expr::WhileLoop { .. }
+        | Expr::Assign { .. }
+        | Expr::CompoundAssign { .. } => {
+            let span = ast.span(id);
+
+            return Err(report_error!(
+                span,
+                "statements aren't allowed in middle of expressions"
+            ));
         }
     };
 
     Ok(register)
 }
 
-fn block_returns(ast: &Ast, id: NodeId) -> bool {
-    match *ast.get_node(id) {
-        AstNode::Return(..) => true,
-        AstNode::Block {
+fn block_returns(ast: &Ast, id: ExprId) -> bool {
+    match *ast.node(id) {
+        Expr::Return(..) => true,
+        Expr::Block {
             ref statements,
             tail,
         } => {
@@ -860,11 +882,20 @@ fn block_returns(ast: &Ast, id: NodeId) -> bool {
 
             statements || tail
         }
-        AstNode::If {
+        Expr::If {
             then_branch,
             else_branch,
             ..
-        } => block_returns(ast, then_branch) && block_returns(ast, else_branch),
+        } => {
+            let then_branch = block_returns(ast, then_branch);
+            let else_branch = if let Some(id) = else_branch {
+                block_returns(ast, id)
+            } else {
+                false
+            };
+
+            then_branch && else_branch
+        }
         _ => false,
     }
 }
