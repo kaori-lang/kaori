@@ -32,12 +32,8 @@ impl<'a> Parser<'a> {
         let mut expressions = Vec::new();
 
         while !self.at_end() {
-            let (expression, require_semicolon) = self.parse_expression_statement()?;
+            let expression = self.parse_expression()?;
             expressions.push(expression);
-
-            if require_semicolon {
-                self.consume(Token::Semicolon)?;
-            }
         }
 
         self.ast.block(expressions);
@@ -110,31 +106,6 @@ impl<'a> Parser<'a> {
         Ok(items)
     }
 
-    fn parse_expression_statement(&mut self) -> Result<(ExprId, bool), Error> {
-        let token = self.peek_token();
-
-        let require_semicolon = !matches!(
-            token,
-            Token::Function | Token::While | Token::For | Token::If
-        );
-
-        let expression = match token {
-            Token::Function => self.parse_function(),
-            Token::Native => self.parse_native_function(),
-            Token::While => self.parse_while_loop(),
-            Token::For => self.parse_for_loop(),
-            Token::Break => self.parse_break(),
-            Token::Continue => self.parse_continue(),
-            Token::Return => self.parse_return(),
-            Token::If => self.parse_if(),
-            Token::Let => self.parse_variable(),
-            Token::Mut => self.parse_mut(),
-            _ => self.parse_expression(),
-        }?;
-
-        Ok((expression, require_semicolon))
-    }
-
     fn parse_expression(&mut self) -> Result<ExprId, Error> {
         let assign = self.parse_assign()?;
 
@@ -173,12 +144,8 @@ impl<'a> Parser<'a> {
         let mut expressions = Vec::new();
 
         while !self.at_end() && self.peek_token() != Token::RightBrace {
-            let (expression, requires_semicolon) = self.parse_expression_statement()?;
+            let expression = self.parse_expression()?;
             expressions.push(expression);
-
-            if self.peek_token() != Token::RightBrace && requires_semicolon {
-                self.consume(Token::Semicolon)?;
-            }
         }
 
         self.consume(Token::RightBrace)?;
@@ -477,6 +444,14 @@ impl<'a> Parser<'a> {
 
         let primary = match token {
             Token::Function => self.parse_function()?,
+            Token::Native => self.parse_native_function()?,
+            Token::While => self.parse_while_loop()?,
+            Token::For => self.parse_for_loop()?,
+            Token::Break => self.parse_break()?,
+            Token::Continue => self.parse_continue()?,
+            Token::Return => self.parse_return()?,
+            Token::Let => self.parse_variable()?,
+            Token::Mut => self.parse_mut()?,
             Token::If => self.parse_if()?,
             Token::LeftParen => {
                 self.consume(Token::LeftParen)?;

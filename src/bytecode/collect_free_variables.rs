@@ -1,7 +1,4 @@
-use crate::{
-    syntax::ast::{Ast, Expr, ExprId, Name},
-    util::string_interner::Symbol,
-};
+use crate::syntax::ast::{Ast, Expr, ExprId, Name};
 
 pub fn collect_free_variables(ast: &Ast, id: ExprId) -> Vec<Name> {
     let Expr::Function {
@@ -34,6 +31,7 @@ fn collect(ast: &Ast, id: ExprId, bound: &mut Vec<Name>, free_variables: &mut Ve
         }
         Expr::Variable { left, right } | Expr::Mut { left, right } => {
             collect(ast, right, bound, free_variables);
+
             bound.push(left);
         }
         Expr::Function { name, .. } => {
@@ -42,7 +40,7 @@ fn collect(ast: &Ast, id: ExprId, bound: &mut Vec<Name>, free_variables: &mut Ve
             }
         }
         Expr::Block(ref expressions) => {
-            let bound_size = bound.len();
+            let size = bound.len();
 
             for id in expressions.iter().copied() {
                 if let Expr::Function { .. } = ast.get_node(id) {
@@ -54,7 +52,7 @@ fn collect(ast: &Ast, id: ExprId, bound: &mut Vec<Name>, free_variables: &mut Ve
                 collect(ast, expression, bound, free_variables);
             }
 
-            bound.truncate(bound_size);
+            bound.truncate(size);
         }
         Expr::Assign { left, right }
         | Expr::Binary { left, right, .. }

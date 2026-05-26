@@ -12,10 +12,27 @@ use crate::{
     interpreter::INTERNER,
     report_error,
     syntax::{
-        ast::{Ast, Expr, ExprId},
+        ast::{Ast, Expr, ExprId, Name},
         ops::{BinaryOp, CompoundOp, UnaryOp},
+        token::Span,
     },
 };
+
+struct ExprResult {
+    register: Option<Register>,
+    span: Span,
+}
+
+impl ExprResult {
+    fn new(register: Option<Register>, span: Span) -> Self {
+        Self { register, span }
+    }
+
+    fn expect_value(self) -> Result<Register, Error> {
+        self.register
+            .ok_or_else(|| report_error!(self.span, "expected a value expression"))
+    }
+}
 
 fn as_number_const(ast: &Ast, function: &mut Function, id: ExprId) -> Option<Const> {
     match *ast.get_node(id) {
@@ -25,7 +42,7 @@ fn as_number_const(ast: &Ast, function: &mut Function, id: ExprId) -> Option<Con
 }
 
 pub fn lower_ast(ast: Ast) -> Result<Vec<Function>, Error> {
-    let id = ast.last(); // Last node emitted is the entry point of the program
+    let id = ast.last();
 
     let mut functions = Vec::new();
     functions.push(None);
@@ -44,6 +61,21 @@ pub fn lower_ast(ast: Ast) -> Result<Vec<Function>, Error> {
         None,
     )?;
 
+    let src = match src.register {
+        Some(register) => register,
+        None => {
+            let src = function.store_nil_const();
+            let dest = regalloc.allocate_temp();
+
+            function.emit_instruction(Instruction::LoadConst {
+                dest: dest.into(),
+                src,
+            });
+
+            dest
+        }
+    };
+
     if !expression_returns(&ast, id) {
         function.emit_instruction(Instruction::Return { src: src.into() });
     }
@@ -61,13 +93,14 @@ fn lower_block(
     regalloc: &mut RegisterAllocator,
     ids: &[ExprId],
     dest: Option<Register>,
-) -> Result<Register, Error> {
+) -> Result<ExprResult, Error> {
     for id in ids.iter().copied() {
         if let Expr::Function {
             name: Some(name), ..
         } = ast.get_node(id)
         {
             let register = regalloc.allocate_local();
+
             env.insert_local(Local {
                 name: name.symbol,
                 register,
@@ -76,48 +109,26 @@ fn lower_block(
         }
     }
 
-    let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
-    let mut locals = Vec::new();
+    let mut last: Option<ExprResult> = None;
 
     for id in ids.iter().copied() {
-        let register = lower_expression(ast, functions, function, env, regalloc, id, Some(dest))?;
+        let result = lower_expression(ast, functions, function, env, regalloc, id, dest)?;
 
-        locals.push(register);
-    }
-
-    for local in locals.iter().copied() {
-        regalloc.free_local(local);
-    }
-
-    match locals.last() {
-        Some(Register::Local(_)) | None => {
-            let src = function.store_nil_const();
-
-            function.emit_instruction(Instruction::LoadConst {
-                dest: dest.into(),
-                src,
-            });
+        if let Some(prev) = last {
+            if let Some(r) = prev.register {
+                if Some(r) != dest {
+                    regalloc.free_temp(r);
+                }
+            }
         }
-        Some(Register::Temp(_)) => {}
+
+        last = Some(result);
     }
 
-    Ok(dest)
+    let span = ast.get_span(id).unwrap_or_default();
+
+    Ok(ExprResult::new(dest, span))
 }
-
-/* fn resolve_lhs_expression(
-    ast: &Ast,
-    functions: &mut Vec<Option<Function>>,
-    function: &mut Function,
-    env: &mut Environment,
-    expression: ExprId,
-    dest: Option<Register>,
-) -> Result<Register, Error> {
-    match *ast.get_node(expression) {
-        Expr::Identifier(_) => todo!(),
-        Expr::MemberAccess { .. } => todo!(),
-        _ => panic!("this is not a valid lhs"),
-    }
-} */
 
 fn lower_expression(
     ast: &Ast,
@@ -127,7 +138,7 @@ fn lower_expression(
     regalloc: &mut RegisterAllocator,
     id: ExprId,
     dest: Option<Register>,
-) -> Result<Register, Error> {
+) -> Result<ExprResult, Error> {
     let register = match *ast.get_node(id) {
         Expr::NumberLiteral(value) => {
             let src = function.store_number_const(value);
@@ -138,7 +149,7 @@ fn lower_expression(
                 src,
             });
 
-            dest
+            Some(dest)
         }
         Expr::StringLiteral(value) => {
             let src = function.store_string_const(value);
@@ -149,7 +160,7 @@ fn lower_expression(
                 src,
             });
 
-            dest
+            Some(dest)
         }
         Expr::BooleanLiteral(value) => {
             let src = function.store_boolean_const(value);
@@ -160,7 +171,7 @@ fn lower_expression(
                 src,
             });
 
-            dest
+            Some(dest)
         }
         Expr::NilLiteral => {
             let src = function.store_nil_const();
@@ -171,7 +182,7 @@ fn lower_expression(
                 src,
             });
 
-            dest
+            Some(dest)
         }
         Expr::Identifier(name) => {
             let Some(Local { register, kind, .. }) = env.lookup(name.symbol) else {
@@ -180,7 +191,7 @@ fn lower_expression(
                 return Err(report_error!(name.span, "{} is not declared", slice));
             };
 
-            match kind {
+            let dest = match kind {
                 LocalKind::Constant | LocalKind::Variable => {
                     if let Some(dest) = dest
                         && dest != register
@@ -196,7 +207,9 @@ fn lower_expression(
                     }
                 }
                 LocalKind::Mut => todo!(),
-            }
+            };
+
+            Some(dest)
         }
         Expr::Variable { left, right } => {
             let dest = regalloc.allocate_local();
@@ -207,9 +220,10 @@ fn lower_expression(
                 kind: LocalKind::Variable,
             });
 
-            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
+            let src = lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?
+                .expect_value();
 
-            dest
+            None
         }
         Expr::Mut { left, right } => {
             let dest = regalloc.allocate_local();
@@ -220,26 +234,31 @@ fn lower_expression(
                 kind: LocalKind::Mut,
             });
 
-            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
+            let src = lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?
+                .expect_value();
 
-            dest
+            None
         }
         Expr::Assign { left, right } => {
-            let dest = lower_expression(ast, functions, function, env, regalloc, left, None)?;
-            let src = lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
+            let dest = lower_expression(ast, functions, function, env, regalloc, left, None)?
+                .expect_value()?;
+
+            let src = lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?
+                .expect_value()?;
 
             if src != dest {
                 regalloc.free_temp(src);
             }
 
-            dest
+            None
         }
         Expr::CompoundAssign {
             operator,
             left,
             right,
         } => {
-            let dest = lower_expression(ast, functions, function, env, regalloc, left, None)?;
+            let dest = lower_expression(ast, functions, function, env, regalloc, left, None)?
+                .expect_value()?;
 
             if let Some(src2) = as_number_const(ast, function, right) {
                 function.emit_instruction(match operator {
@@ -270,7 +289,8 @@ fn lower_expression(
                     },
                 });
             } else {
-                let src2 = lower_expression(ast, functions, function, env, regalloc, right, None)?;
+                let src2 = lower_expression(ast, functions, function, env, regalloc, right, None)?
+                    .expect_value()?;
 
                 function.emit_instruction(match operator {
                     CompoundOp::Add => Instruction::Add {
@@ -303,7 +323,7 @@ fn lower_expression(
                 regalloc.free_temp(src2);
             }
 
-            dest
+            None
         }
         Expr::Binary {
             operator,
@@ -313,7 +333,8 @@ fn lower_expression(
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             if let Some(src2) = as_number_const(ast, function, right) {
-                let src1 = lower_expression(ast, functions, function, env, regalloc, left, None)?;
+                let src1 = lower_expression(ast, functions, function, env, regalloc, left, None)?
+                    .expect_value()?;
 
                 function.emit_instruction(match operator {
                     BinaryOp::Add => Instruction::AddK {
@@ -375,11 +396,10 @@ fn lower_expression(
 
                 regalloc.free_temp(src1);
 
-                return Ok(dest);
-            }
-
-            if let Some(src1) = as_number_const(ast, function, left) {
-                let src2 = lower_expression(ast, functions, function, env, regalloc, right, None)?;
+                Some(dest)
+            } else if let Some(src1) = as_number_const(ast, function, left) {
+                let src2 = lower_expression(ast, functions, function, env, regalloc, right, None)?
+                    .expect_value()?;
 
                 function.emit_instruction(match operator {
                     BinaryOp::Add => Instruction::AddK {
@@ -441,78 +461,83 @@ fn lower_expression(
 
                 regalloc.free_temp(src2);
 
-                return Ok(dest);
+                Some(dest)
+            } else {
+                let src1 = lower_expression(ast, functions, function, env, regalloc, left, None)?
+                    .expect_value()?;
+
+                let src2 = lower_expression(ast, functions, function, env, regalloc, right, None)?
+                    .expect_value()?;
+
+                function.emit_instruction(match operator {
+                    BinaryOp::Add => Instruction::Add {
+                        dest: dest.into(),
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Subtract => Instruction::Subtract {
+                        dest: dest.into(),
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Multiply => Instruction::Multiply {
+                        dest: dest.into(),
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Divide => Instruction::Divide {
+                        dest: dest.into(),
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Modulo => Instruction::Modulo {
+                        dest: dest.into(),
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Equal => Instruction::Equal {
+                        dest: dest.into(),
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::NotEqual => Instruction::NotEqual {
+                        dest: dest.into(),
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Less => Instruction::Less {
+                        dest: dest.into(),
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::LessEqual => Instruction::LessEqual {
+                        dest: dest.into(),
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::Greater => Instruction::Greater {
+                        dest: dest.into(),
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                    BinaryOp::GreaterEqual => Instruction::GreaterEqual {
+                        dest: dest.into(),
+                        src1: src1.into(),
+                        src2: src2.into(),
+                    },
+                });
+
+                regalloc.free_temp(src1);
+                regalloc.free_temp(src2);
+
+                Some(dest)
             }
-
-            let src1 = lower_expression(ast, functions, function, env, regalloc, left, None)?;
-            let src2 = lower_expression(ast, functions, function, env, regalloc, right, None)?;
-
-            function.emit_instruction(match operator {
-                BinaryOp::Add => Instruction::Add {
-                    dest: dest.into(),
-                    src1: src1.into(),
-                    src2: src2.into(),
-                },
-                BinaryOp::Subtract => Instruction::Subtract {
-                    dest: dest.into(),
-                    src1: src1.into(),
-                    src2: src2.into(),
-                },
-                BinaryOp::Multiply => Instruction::Multiply {
-                    dest: dest.into(),
-                    src1: src1.into(),
-                    src2: src2.into(),
-                },
-                BinaryOp::Divide => Instruction::Divide {
-                    dest: dest.into(),
-                    src1: src1.into(),
-                    src2: src2.into(),
-                },
-                BinaryOp::Modulo => Instruction::Modulo {
-                    dest: dest.into(),
-                    src1: src1.into(),
-                    src2: src2.into(),
-                },
-                BinaryOp::Equal => Instruction::Equal {
-                    dest: dest.into(),
-                    src1: src1.into(),
-                    src2: src2.into(),
-                },
-                BinaryOp::NotEqual => Instruction::NotEqual {
-                    dest: dest.into(),
-                    src1: src1.into(),
-                    src2: src2.into(),
-                },
-                BinaryOp::Less => Instruction::Less {
-                    dest: dest.into(),
-                    src1: src1.into(),
-                    src2: src2.into(),
-                },
-                BinaryOp::LessEqual => Instruction::LessEqual {
-                    dest: dest.into(),
-                    src1: src1.into(),
-                    src2: src2.into(),
-                },
-                BinaryOp::Greater => Instruction::Greater {
-                    dest: dest.into(),
-                    src1: src1.into(),
-                    src2: src2.into(),
-                },
-                BinaryOp::GreaterEqual => Instruction::GreaterEqual {
-                    dest: dest.into(),
-                    src1: src1.into(),
-                    src2: src2.into(),
-                },
-            });
-
-            regalloc.free_temp(src1);
-            regalloc.free_temp(src2);
-
-            dest
         }
         Expr::Unary { operator, right } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
-            let src = lower_expression(ast, functions, function, env, regalloc, right, None)?;
+
+            let src = lower_expression(ast, functions, function, env, regalloc, right, None)?
+                .expect_value()?;
 
             function.emit_instruction(match operator {
                 UnaryOp::Negate => Instruction::Negate {
@@ -523,11 +548,13 @@ fn lower_expression(
 
             regalloc.free_temp(src);
 
-            dest
+            Some(dest)
         }
         Expr::LogicalNot(expression) => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
-            let src = lower_expression(ast, functions, function, env, regalloc, expression, None)?;
+
+            let src = lower_expression(ast, functions, function, env, regalloc, expression, None)?
+                .expect_value()?;
 
             function.emit_instruction(Instruction::Not {
                 dest: dest.into(),
@@ -536,16 +563,18 @@ fn lower_expression(
 
             regalloc.free_temp(src);
 
-            dest
+            Some(dest)
         }
         Expr::LogicalAnd { left, right } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
-            lower_expression(ast, functions, function, env, regalloc, left, Some(dest))?;
+            lower_expression(ast, functions, function, env, regalloc, left, Some(dest))?
+                .expect_value()?;
 
             let jump_if_false = lower_jump_if_false(function, dest);
 
-            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
+            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?
+                .expect_value()?;
 
             patch_jump(
                 function,
@@ -553,16 +582,18 @@ fn lower_expression(
                 function.instructions.len() as i32 - jump_if_false as i32,
             );
 
-            dest
+            Some(dest)
         }
         Expr::LogicalOr { left, right } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
-            lower_expression(ast, functions, function, env, regalloc, left, Some(dest))?;
+            lower_expression(ast, functions, function, env, regalloc, left, Some(dest))?
+                .expect_value()?;
 
             let jump_if_true = lower_jump_if_true(function, dest);
 
-            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
+            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?
+                .expect_value()?;
 
             patch_jump(
                 function,
@@ -570,7 +601,7 @@ fn lower_expression(
                 function.instructions.len() as i32 - jump_if_true as i32,
             );
 
-            dest
+            Some(dest)
         }
         Expr::If {
             condition,
@@ -587,7 +618,8 @@ fn lower_expression(
                 regalloc,
                 condition,
                 Some(dest),
-            )?;
+            )?
+            .expect_value()?;
 
             let jump_if_false = lower_jump_if_false(function, dest);
 
@@ -625,13 +657,14 @@ fn lower_expression(
                 function.instructions.len() as i32 - jump_end as i32,
             );
 
-            dest
+            Some(dest)
         }
         Expr::WhileLoop { condition, block } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
             let condition_register =
-                lower_expression(ast, functions, function, env, regalloc, condition, None)?;
+                lower_expression(ast, functions, function, env, regalloc, condition, None)?
+                    .expect_value()?;
 
             let jump_if_false = lower_jump_if_false(function, condition_register);
             regalloc.free_temp(condition_register);
@@ -640,7 +673,9 @@ fn lower_expression(
             lower_expression(ast, functions, function, env, regalloc, block, Some(dest))?;
 
             let condition_register =
-                lower_expression(ast, functions, function, env, regalloc, condition, None)?;
+                lower_expression(ast, functions, function, env, regalloc, condition, None)?
+                    .expect_value()?;
+
             let jump_if_true = lower_jump_if_true(function, condition_register);
             regalloc.free_temp(condition_register);
 
@@ -656,16 +691,16 @@ fn lower_expression(
                 function.instructions.len() as i32 - jump_if_false as i32,
             );
 
-            dest
+            None
         }
         Expr::Block(ref expressions) => {
             env.push_scope();
 
-            let register = lower_block(ast, functions, function, env, regalloc, expressions, dest)?;
+            lower_block(ast, functions, function, env, regalloc, expressions, dest)?;
 
             env.pop_scope();
 
-            register
+            dest
         }
         Expr::Function {
             ref parameters,
@@ -715,6 +750,21 @@ fn lower_expression(
                 None,
             )?;
 
+            let src = match src.register {
+                Some(register) => register,
+                None => {
+                    let src = inner_function.store_nil_const();
+                    let dest = inner_regalloc.allocate_temp();
+
+                    inner_function.emit_instruction(Instruction::LoadConst {
+                        dest: dest.into(),
+                        src,
+                    });
+
+                    dest
+                }
+            };
+
             if !expression_returns(ast, block) {
                 inner_function.emit_instruction(Instruction::Return { src: src.into() });
             }
@@ -744,17 +794,19 @@ fn lower_expression(
                 });
             }
 
-            dest
+            Some(dest)
         }
         Expr::FunctionCall {
             callee,
             ref arguments,
         } => {
             let callee_src =
-                lower_expression(ast, functions, function, env, regalloc, callee, None)?;
+                lower_expression(ast, functions, function, env, regalloc, callee, None)?
+                    .expect_value()?;
 
             for (index, argument) in arguments.iter().enumerate() {
                 let arg_dest = Register::Local(index as u8);
+
                 lower_expression(
                     ast,
                     functions,
@@ -763,10 +815,12 @@ fn lower_expression(
                     regalloc,
                     *argument,
                     Some(arg_dest),
-                )?;
+                )?
+                .expect_value()?;
             }
 
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
+
             function.emit_instruction(Instruction::Call {
                 dest: dest.into(),
                 src: callee_src.into(),
@@ -774,12 +828,17 @@ fn lower_expression(
             });
 
             regalloc.free_temp(callee_src);
-            dest
+
+            Some(dest)
         }
         Expr::MemberAccess { object, property } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
-            let object = lower_expression(ast, functions, function, env, regalloc, object, None)?;
-            let key = lower_expression(ast, functions, function, env, regalloc, property, None)?;
+
+            let object = lower_expression(ast, functions, function, env, regalloc, object, None)?
+                .expect_value()?;
+
+            let key = lower_expression(ast, functions, function, env, regalloc, property, None)?
+                .expect_value()?;
 
             function.emit_instruction(Instruction::GetField {
                 dest: dest.into(),
@@ -790,7 +849,7 @@ fn lower_expression(
             regalloc.free_temp(object);
             regalloc.free_temp(key);
 
-            dest
+            Some(dest)
         }
         Expr::DictLiteral { ref fields } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
@@ -798,8 +857,11 @@ fn lower_expression(
             function.emit_instruction(Instruction::CreateDict { dest: dest.into() });
 
             for (key, value) in fields.iter().copied() {
-                let key = lower_expression(ast, functions, function, env, regalloc, key, None)?;
-                let value = lower_expression(ast, functions, function, env, regalloc, value, None)?;
+                let key = lower_expression(ast, functions, function, env, regalloc, key, None)?
+                    .expect_value()?;
+
+                let value = lower_expression(ast, functions, function, env, regalloc, value, None)?
+                    .expect_value()?;
 
                 function.emit_instruction(Instruction::SetField {
                     object: dest.into(),
@@ -811,16 +873,17 @@ fn lower_expression(
                 regalloc.free_temp(value);
             }
 
-            dest
+            Some(dest)
         }
         Expr::Return(expression) => {
-            let src = lower_expression(ast, functions, function, env, regalloc, expression, dest)?;
+            let src = lower_expression(ast, functions, function, env, regalloc, expression, dest)?
+                .expect_value()?;
 
             function.emit_instruction(Instruction::Return { src: src.into() });
 
             regalloc.free_temp(src);
 
-            src
+            None
         }
         Expr::NativeFunction { .. } => todo!(),
         Expr::ForLoop { .. } => todo!(),
@@ -828,7 +891,9 @@ fn lower_expression(
         Expr::Continue => todo!(),
     };
 
-    Ok(register)
+    let span = ast.get_span(id).unwrap_or_default();
+
+    Ok(ExprResult::new(register, span))
 }
 
 fn expression_returns(ast: &Ast, id: ExprId) -> bool {
