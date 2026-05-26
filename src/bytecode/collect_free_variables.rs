@@ -5,7 +5,7 @@ pub fn collect_free_variables(ast: &Ast, id: NodeId) -> Vec<Name> {
         ref parameters,
         block,
         ..
-    } = *ast.get_node(id)
+    } = *ast.node(id)
     else {
         unreachable!("collect_free_variables should be called on a function node")
     };
@@ -19,7 +19,7 @@ pub fn collect_free_variables(ast: &Ast, id: NodeId) -> Vec<Name> {
 }
 
 fn collect(ast: &Ast, id: NodeId, bound: &mut Vec<Name>, free_variables: &mut Vec<Name>) {
-    match *ast.get_node(id) {
+    match *ast.node(id) {
         AstNode::Identifier(name) => {
             if !bound.iter().any(|found| found.symbol == name.symbol)
                 && !free_variables
@@ -39,17 +39,30 @@ fn collect(ast: &Ast, id: NodeId, bound: &mut Vec<Name>, free_variables: &mut Ve
                 bound.push(name);
             }
         }
-        AstNode::Block(ref expressions) => {
+        AstNode::Block {
+            ref statements,
+            tail,
+        } => {
             let size = bound.len();
 
-            for id in expressions.iter().copied() {
-                if let AstNode::Function { .. } = ast.get_node(id) {
+            for id in statements.iter().copied() {
+                if let AstNode::Function { .. } = ast.node(id) {
                     collect(ast, id, bound, free_variables);
                 }
             }
 
-            for expression in expressions.iter().copied() {
-                collect(ast, expression, bound, free_variables);
+            if let Some(id) = tail
+                && let AstNode::Function { .. } = ast.node(id)
+            {
+                collect(ast, id, bound, free_variables);
+            }
+
+            for id in statements.iter().copied() {
+                collect(ast, id, bound, free_variables);
+            }
+
+            if let Some(id) = tail {
+                collect(ast, id, bound, free_variables);
             }
 
             bound.truncate(size);
@@ -72,7 +85,10 @@ fn collect(ast: &Ast, id: NodeId, bound: &mut Vec<Name>, free_variables: &mut Ve
         } => {
             collect(ast, condition, bound, free_variables);
             collect(ast, then_branch, bound, free_variables);
-            collect(ast, else_branch, bound, free_variables);
+
+            if let Some(id) = else_branch {
+                collect(ast, id, bound, free_variables);
+            }
         }
         AstNode::WhileLoop { condition, block } => {
             collect(ast, condition, bound, free_variables);

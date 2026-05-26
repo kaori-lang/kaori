@@ -7,6 +7,15 @@ pub struct Span {
     pub end: u32,
 }
 
+impl Span {
+    pub fn merge(self, other: Span) -> Self {
+        Self {
+            start: self.start,
+            end: other.end,
+        }
+    }
+}
+
 impl From<Range<usize>> for Span {
     fn from(value: Range<usize>) -> Self {
         Self {

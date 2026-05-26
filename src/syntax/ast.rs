@@ -12,7 +12,7 @@ pub struct NodeId(u32);
 #[derive(Default)]
 pub struct Ast {
     expressions: Vec<AstNode>,
-    spans: Vec<Option<Span>>,
+    spans: Vec<Span>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -69,7 +69,7 @@ pub enum AstNode {
     },
     MemberAccess {
         object: NodeId,
-        property: NodeId,
+        property: Name,
     },
     DictLiteral {
         fields: Vec<(NodeId, NodeId)>,
@@ -83,11 +83,14 @@ pub enum AstNode {
         parameters: Vec<Name>,
         block: NodeId,
     },
-    Block(Vec<NodeId>),
+    Block {
+        statements: Vec<NodeId>,
+        tail: Option<NodeId>,
+    },
     If {
         condition: NodeId,
         then_branch: NodeId,
-        else_branch: NodeId,
+        else_branch: Option<NodeId>,
     },
     WhileLoop {
         condition: NodeId,
@@ -104,7 +107,7 @@ pub enum AstNode {
 }
 
 impl Ast {
-    fn insert(&mut self, node: AstNode, span: Option<Span>) -> NodeId {
+    fn insert(&mut self, node: AstNode, span: Span) -> NodeId {
         let id = NodeId(self.expressions.len() as u32);
 
         self.expressions.push(node);
@@ -117,11 +120,11 @@ impl Ast {
         NodeId((self.expressions.len() - 1) as u32)
     }
 
-    pub fn get_node(&self, id: NodeId) -> &AstNode {
+    pub fn node(&self, id: NodeId) -> &AstNode {
         &self.expressions[id.0 as usize]
     }
 
-    pub fn get_span(&self, id: NodeId) -> Option<Span> {
+    pub fn span(&self, id: NodeId) -> Span {
         self.spans[id.0 as usize]
     }
 
@@ -138,28 +141,28 @@ impl Ast {
                 left,
                 right,
             },
-            Some(span),
+            span,
         )
     }
 
     pub fn logical_and(&mut self, left: NodeId, right: NodeId, span: Span) -> NodeId {
-        self.insert(AstNode::LogicalAnd { left, right }, Some(span))
+        self.insert(AstNode::LogicalAnd { left, right }, span)
     }
 
     pub fn logical_or(&mut self, left: NodeId, right: NodeId, span: Span) -> NodeId {
-        self.insert(AstNode::LogicalOr { left, right }, Some(span))
+        self.insert(AstNode::LogicalOr { left, right }, span)
     }
 
     pub fn logical_not(&mut self, expression: NodeId, span: Span) -> NodeId {
-        self.insert(AstNode::LogicalNot(expression), Some(span))
+        self.insert(AstNode::LogicalNot(expression), span)
     }
 
     pub fn unary(&mut self, operator: UnaryOp, right: NodeId, span: Span) -> NodeId {
-        self.insert(AstNode::Unary { operator, right }, Some(span))
+        self.insert(AstNode::Unary { operator, right }, span)
     }
 
     pub fn assign(&mut self, left: NodeId, right: NodeId, span: Span) -> NodeId {
-        self.insert(AstNode::Assign { left, right }, Some(span))
+        self.insert(AstNode::Assign { left, right }, span)
     }
 
     pub fn compound_assign(
@@ -175,97 +178,109 @@ impl Ast {
                 left,
                 right,
             },
-            Some(span),
+            span,
         )
     }
 
-    pub fn variable(&mut self, left: Name, right: NodeId) -> NodeId {
-        self.insert(AstNode::Variable { left, right }, None)
+    pub fn variable(&mut self, left: Name, right: NodeId, span: Span) -> NodeId {
+        self.insert(AstNode::Variable { left, right }, span)
     }
 
-    pub fn mut_(&mut self, left: Name, right: NodeId) -> NodeId {
-        self.insert(AstNode::Mut { left, right }, None)
+    pub fn mut_(&mut self, left: Name, right: NodeId, span: Span) -> NodeId {
+        self.insert(AstNode::Mut { left, right }, span)
     }
 
     pub fn identifier(&mut self, name: Name) -> NodeId {
-        self.insert(AstNode::Identifier(name), None)
+        self.insert(AstNode::Identifier(name), name.span)
     }
 
     pub fn string_literal(&mut self, index: Symbol, span: Span) -> NodeId {
-        self.insert(AstNode::StringLiteral(index), Some(span))
+        self.insert(AstNode::StringLiteral(index), span)
     }
 
     pub fn number_literal(&mut self, value: f64, span: Span) -> NodeId {
-        self.insert(AstNode::NumberLiteral(value), Some(span))
+        self.insert(AstNode::NumberLiteral(value), span)
     }
 
     pub fn boolean_literal(&mut self, value: bool, span: Span) -> NodeId {
-        self.insert(AstNode::BooleanLiteral(value), Some(span))
+        self.insert(AstNode::BooleanLiteral(value), span)
     }
 
     pub fn nil_literal(&mut self, span: Span) -> NodeId {
-        self.insert(AstNode::NilLiteral, Some(span))
+        self.insert(AstNode::NilLiteral, span)
     }
 
-    pub fn function_call(&mut self, callee: NodeId, arguments: Vec<NodeId>) -> NodeId {
-        self.insert(AstNode::FunctionCall { callee, arguments }, None)
+    pub fn function_call(&mut self, callee: NodeId, arguments: Vec<NodeId>, span: Span) -> NodeId {
+        self.insert(AstNode::FunctionCall { callee, arguments }, span)
     }
 
-    pub fn member_access(&mut self, object: NodeId, property: NodeId) -> NodeId {
-        self.insert(AstNode::MemberAccess { object, property }, None)
+    pub fn member_access(&mut self, object: NodeId, property: Name, span: Span) -> NodeId {
+        self.insert(AstNode::MemberAccess { object, property }, span)
     }
 
-    pub fn dict_literal(&mut self, fields: Vec<(NodeId, NodeId)>) -> NodeId {
-        self.insert(AstNode::DictLiteral { fields }, None)
+    pub fn dict_literal(&mut self, fields: Vec<(NodeId, NodeId)>, span: Span) -> NodeId {
+        self.insert(AstNode::DictLiteral { fields }, span)
     }
 
-    pub fn native_function(&mut self, name: Name, parameters: Vec<Name>) -> NodeId {
-        self.insert(AstNode::NativeFunction { name, parameters }, None)
+    pub fn native_function(&mut self, name: Name, parameters: Vec<Name>, span: Span) -> NodeId {
+        self.insert(AstNode::NativeFunction { name, parameters }, span)
     }
 
-    pub fn function(&mut self, name: Option<Name>, parameters: Vec<Name>, block: NodeId) -> NodeId {
+    pub fn function(
+        &mut self,
+        name: Option<Name>,
+        parameters: Vec<Name>,
+        block: NodeId,
+        span: Span,
+    ) -> NodeId {
         self.insert(
             AstNode::Function {
                 name,
                 parameters,
                 block,
             },
-            None,
+            span,
         )
     }
 
-    pub fn block(&mut self, expressions: Vec<NodeId>) -> NodeId {
-        self.insert(AstNode::Block(expressions), None)
+    pub fn block(&mut self, statements: Vec<NodeId>, tail: Option<NodeId>, span: Span) -> NodeId {
+        self.insert(AstNode::Block { statements, tail }, span)
     }
 
-    pub fn if_(&mut self, condition: NodeId, then_branch: NodeId, else_branch: NodeId) -> NodeId {
+    pub fn if_(
+        &mut self,
+        condition: NodeId,
+        then_branch: NodeId,
+        else_branch: Option<NodeId>,
+        span: Span,
+    ) -> NodeId {
         self.insert(
             AstNode::If {
                 condition,
                 then_branch,
                 else_branch,
             },
-            None,
+            span,
         )
     }
 
-    pub fn while_loop(&mut self, condition: NodeId, block: NodeId) -> NodeId {
-        self.insert(AstNode::WhileLoop { condition, block }, None)
+    pub fn while_loop(&mut self, condition: NodeId, block: NodeId, span: Span) -> NodeId {
+        self.insert(AstNode::WhileLoop { condition, block }, span)
     }
 
-    pub fn for_loop(&mut self, start: NodeId, end: NodeId, block: NodeId) -> NodeId {
-        self.insert(AstNode::ForLoop { start, end, block }, None)
+    pub fn for_loop(&mut self, start: NodeId, end: NodeId, block: NodeId, span: Span) -> NodeId {
+        self.insert(AstNode::ForLoop { start, end, block }, span)
     }
 
     pub fn return_(&mut self, expression: NodeId, span: Span) -> NodeId {
-        self.insert(AstNode::Return(expression), Some(span))
+        self.insert(AstNode::Return(expression), span)
     }
 
     pub fn break_(&mut self, span: Span) -> NodeId {
-        self.insert(AstNode::Break, Some(span))
+        self.insert(AstNode::Break, span)
     }
 
     pub fn continue_(&mut self, span: Span) -> NodeId {
-        self.insert(AstNode::Continue, Some(span))
+        self.insert(AstNode::Continue, span)
     }
 }
