@@ -111,8 +111,6 @@ pub enum Token {
     Mut,
     #[regex(r"[0-9]+(\.[0-9]+)?")]
     NumberLiteral,
-    #[token(";")]
-    Semicolon,
     #[regex(r#""([^"\\]|\\.)*""#)]
     StringLiteral,
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
@@ -142,7 +140,6 @@ impl fmt::Display for Token {
             Self::Less => "`<`",
             Self::Comma => "`,`",
             Self::Colon => "`:`",
-            Self::Semicolon => "`;`",
             Self::Dot => "`.`",
             Self::Pipe => "`|`",
             Self::LeftParen => "`(`",

@@ -125,7 +125,7 @@ fn lower_block(
         last = Some(result);
     }
 
-    let span = ast.get_span(id).unwrap_or_default();
+    let span = ast.get_span(ExprId(0)).unwrap_or_default();
 
     Ok(ExprResult::new(dest, span))
 }
@@ -220,8 +220,8 @@ fn lower_expression(
                 kind: LocalKind::Variable,
             });
 
-            let src = lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?
-                .expect_value();
+            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?
+                .expect_value()?;
 
             None
         }
@@ -234,8 +234,8 @@ fn lower_expression(
                 kind: LocalKind::Mut,
             });
 
-            let src = lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?
-                .expect_value();
+            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?
+                .expect_value()?;
 
             None
         }
