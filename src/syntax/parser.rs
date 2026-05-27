@@ -90,6 +90,20 @@ impl<'a> Parser<'a> {
         self.pos += 1;
     }
 
+    fn lookahead(&self, tokens: &[Token]) -> bool {
+        for (offset, expected) in tokens.iter().enumerate() {
+            match self.tokens.get(self.pos + offset) {
+                Some((token, _)) => {
+                    if token != expected {
+                        return false;
+                    }
+                }
+                None => return false,
+            }
+        }
+        true
+    }
+
     fn requires_semicolon(&mut self, id: ExprId) -> bool {
         !matches!(
             self.ast.node(id),
@@ -264,31 +278,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_variable(&mut self) -> Result<ExprId, Error> {
-        let let_span = self.consume(Token::Let)?;
-
         let left = self.parse_name()?;
 
-        self.consume(Token::Assign)?;
+        self.consume(Token::Walrus)?;
 
         let right = self.parse_expression()?;
 
-        let span = let_span.merge(self.ast.span(right));
+        let span = left.span.merge(self.ast.span(right));
 
         Ok(self.ast.variable(left, right, span))
-    }
-
-    fn parse_mut(&mut self) -> Result<ExprId, Error> {
-        let mut_span = self.consume(Token::Mut)?;
-
-        let left = self.parse_name()?;
-
-        self.consume(Token::Assign)?;
-
-        let right = self.parse_expression()?;
-
-        let span = mut_span.merge(self.ast.span(right));
-
-        Ok(self.ast.mut_(left, right, span))
     }
 
     fn parse_assign(&mut self) -> Result<ExprId, Error> {
@@ -505,8 +503,9 @@ impl<'a> Parser<'a> {
             Token::Continue => self.parse_continue()?,
             Token::Return => self.parse_return()?,
             Token::If => self.parse_if()?,
-            Token::Let => self.parse_variable()?,
-            Token::Mut => self.parse_mut()?,
+            Token::Identifier if self.lookahead(&[Token::Identifier, Token::Walrus]) => {
+                self.parse_variable()?
+            }
             Token::LeftParen => {
                 self.consume(Token::LeftParen)?;
                 let expression = self.parse_expression()?;

@@ -35,7 +35,7 @@ fn collect(
                 free_variables.push(name);
             }
         }
-        Expr::Variable { left, right } | Expr::Mut { left, right } => {
+        Expr::Variable { left, right } => {
             collect(ast, right, bound, free_variables);
 
             bound.push(left);

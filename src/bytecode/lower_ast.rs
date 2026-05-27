@@ -89,17 +89,6 @@ fn lower_effect(
 
             lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
         }
-        Expr::Mut { left, right } => {
-            let dest = regalloc.allocate_local();
-
-            env.insert_local(Local {
-                name: left.value,
-                register: dest,
-                kind: LocalKind::Mut,
-            });
-
-            lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
-        }
         Expr::Assign { left, right } => {
             let dest = lower_expression(ast, functions, function, env, regalloc, left, None)?;
 
@@ -848,7 +837,6 @@ fn lower_expression(
             dest
         }
         Expr::Variable { .. }
-        | Expr::Mut { .. }
         | Expr::Assign { .. }
         | Expr::CompoundAssign { .. }
         | Expr::WhileLoop { .. }
