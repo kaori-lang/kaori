@@ -34,6 +34,8 @@ impl From<Span> for Range<usize> {
 #[derive(Logos, Debug, PartialEq, Copy, Clone)]
 #[logos(skip r"[ \t\f\r\n]+")]
 pub enum Token {
+    #[token(":=")]
+    Walrus,
     #[token("=")]
     Assign,
     #[token("+=")]
@@ -116,10 +118,6 @@ pub enum Token {
     False,
     #[token("nil")]
     Nil,
-    #[token("let")]
-    Let,
-    #[token("mut")]
-    Mut,
     #[regex(r"[0-9]+(\.[0-9]+)?")]
     NumberLiteral,
     #[token(";")]
@@ -134,6 +132,7 @@ pub enum Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
+            Self::Walrus => "`:=`",
             Self::Assign => "`=`",
             Self::AddAssign => "`+=`",
             Self::SubtractAssign => "`-=`",
@@ -176,8 +175,6 @@ impl fmt::Display for Token {
             Self::True => "`true`",
             Self::False => "`false`",
             Self::Nil => "`nil`",
-            Self::Let => "`let`",
-            Self::Mut => "`mut`",
             Self::NumberLiteral => "<number literal>",
             Self::StringLiteral => "<string literal>",
             Self::Identifier => "<identifier>",
