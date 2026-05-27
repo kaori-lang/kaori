@@ -4,6 +4,7 @@ use std::{cmp::Reverse, collections::BinaryHeap};
 pub enum Register {
     Temp(u8),
     Local(u8),
+    Nil,
 }
 
 pub struct RegisterAllocator {
@@ -17,6 +18,7 @@ impl Default for RegisterAllocator {
         }
     }
 }
+
 impl RegisterAllocator {
     pub fn allocate_local(&mut self) -> Register {
         Register::Local(self.pop())

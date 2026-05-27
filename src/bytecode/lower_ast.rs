@@ -18,14 +18,30 @@ use crate::{
 };
 
 fn as_number_const(ast: &Ast, function: &mut Function, id: ExprId) -> Option<Const> {
-    match ast.expr(id).node {
+    match *ast.node(id) {
         Expr::NumberLiteral(value) => Some(function.store_number_const(value)),
         _ => None,
     }
 }
 
+fn emit_nil(
+    function: &mut Function,
+    regalloc: &mut RegisterAllocator,
+    dest: Option<Register>,
+) -> Register {
+    let src = function.store_nil_const();
+    let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
+
+    function.emit_instruction(Instruction::LoadConst {
+        dest: dest.into(),
+        src,
+    });
+
+    dest
+}
+
 pub fn lower_ast(ast: Ast) -> Result<Vec<Function>, Error> {
-    let id = ast.last_stmt();
+    let id = ast.last();
 
     let mut functions = Vec::new();
     functions.push(None);
@@ -53,7 +69,7 @@ pub fn lower_ast(ast: Ast) -> Result<Vec<Function>, Error> {
     Ok(functions.into_iter().map(|f| f.unwrap()).collect())
 }
 
-fn lower_statement(
+fn lower_effect(
     ast: &Ast,
     functions: &mut Vec<Option<Function>>,
     function: &mut Function,
@@ -164,17 +180,17 @@ fn lower_statement(
         }
         Expr::WhileLoop { condition, block } => {
             let src = lower_expression(ast, functions, function, env, regalloc, condition, None)?;
-            regalloc.free_temp(src);
 
             let jump_if_false = lower_jump_if_false(function, src);
-
-            let loop_body = function.instructions.len();
-            lower_statement(ast, functions, function, env, regalloc, block)?;
-
-            let src = lower_expression(ast, functions, function, env, regalloc, condition, None)?;
             regalloc.free_temp(src);
 
+            let loop_body = function.instructions.len();
+            lower_effect(ast, functions, function, env, regalloc, block)?;
+
+            let src = lower_expression(ast, functions, function, env, regalloc, condition, None)?;
+
             let jump_if_true = lower_jump_if_true(function, src);
+            regalloc.free_temp(src);
 
             patch_jump(
                 function,
@@ -188,6 +204,9 @@ fn lower_statement(
                 function.instructions.len() as i32 - jump_if_false as i32,
             );
         }
+        Expr::ForLoop { start, end, block } => {
+            todo!()
+        }
         Expr::Return(expression) => {
             let src = lower_expression(ast, functions, function, env, regalloc, expression, None)?;
 
@@ -195,13 +214,16 @@ fn lower_statement(
 
             regalloc.free_temp(src);
         }
+        Expr::Break => todo!(),
+        Expr::Continue => todo!(),
+        Expr::NativeFunction { .. } => todo!(),
         Expr::Block {
-            ref statements,
+            ref expressions,
             tail,
         } => {
             env.push_scope();
 
-            for id in statements.iter().copied() {
+            for id in expressions.iter().copied() {
                 if let Expr::Function {
                     name: Some(name), ..
                 } = ast.node(id)
@@ -216,8 +238,8 @@ fn lower_statement(
                 }
             }
 
-            for id in statements.iter().copied() {
-                lower_statement(ast, functions, function, env, regalloc, id)?;
+            for id in expressions.iter().copied() {
+                lower_effect(ast, functions, function, env, regalloc, id)?;
             }
 
             if let Some(id) = tail {
@@ -231,13 +253,12 @@ fn lower_statement(
 
             env.pop_scope();
         }
-        Expr::Break => todo!(),
-        Expr::Continue => todo!(),
-        Expr::NativeFunction { .. } => todo!(),
         _ => {
-            lower_expression(ast, functions, function, env, regalloc, id, None)?;
+            let register = lower_expression(ast, functions, function, env, regalloc, id, None)?;
+
+            regalloc.free_temp(register);
         }
-    };
+    }
 
     Ok(())
 }
@@ -285,17 +306,7 @@ fn lower_expression(
 
             dest
         }
-        Expr::NilLiteral => {
-            let src = function.store_nil_const();
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
-
-            function.emit_instruction(Instruction::LoadConst {
-                dest: dest.into(),
-                src,
-            });
-
-            dest
-        }
+        Expr::NilLiteral => emit_nil(function, regalloc, dest),
         Expr::Identifier(name) => {
             let Some(Local { register, kind, .. }) = env.lookup(name.symbol) else {
                 let slice = INTERNER.lock().unwrap().resolve(name.symbol);
@@ -303,7 +314,7 @@ fn lower_expression(
                 return Err(report_error!(name.span, "{} is not declared", slice));
             };
 
-            let dest = match kind {
+            match kind {
                 LocalKind::Constant | LocalKind::Variable => {
                     if let Some(dest) = dest
                         && dest != register
@@ -319,9 +330,7 @@ fn lower_expression(
                     }
                 }
                 LocalKind::Mut => todo!(),
-            };
-
-            dest
+            }
         }
         Expr::Binary {
             operator,
@@ -630,6 +639,8 @@ fn lower_expression(
                     else_branch,
                     Some(dest),
                 )?;
+            } else {
+                emit_nil(function, regalloc, Some(dest));
             }
 
             patch_jump(
@@ -641,12 +652,12 @@ fn lower_expression(
             dest
         }
         Expr::Block {
-            ref statements,
+            ref expressions,
             tail,
         } => {
             env.push_scope();
 
-            for id in statements.iter().copied() {
+            for id in expressions.iter().copied() {
                 if let Expr::Function {
                     name: Some(name), ..
                 } = ast.node(id)
@@ -661,22 +672,14 @@ fn lower_expression(
                 }
             }
 
-            for id in statements.iter().copied() {
-                lower_statement(ast, functions, function, env, regalloc, id)?;
+            for id in expressions.iter().copied() {
+                lower_effect(ast, functions, function, env, regalloc, id)?;
             }
 
-            let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
-
-            if let Some(id) = tail {
-                lower_expression(ast, functions, function, env, regalloc, id, Some(dest))?;
-            } else {
-                let src = function.store_nil_const();
-
-                function.emit_instruction(Instruction::LoadConst {
-                    dest: dest.into(),
-                    src,
-                });
-            }
+            let dest = match tail {
+                Some(id) => lower_expression(ast, functions, function, env, regalloc, id, dest)?,
+                None => emit_nil(function, regalloc, dest),
+            };
 
             env.pop_scope();
 
@@ -844,21 +847,21 @@ fn lower_expression(
 
             dest
         }
-        Expr::Mut { .. }
-        | Expr::NativeFunction { .. }
-        | Expr::Variable { .. }
+        Expr::Variable { .. }
+        | Expr::Mut { .. }
+        | Expr::Assign { .. }
+        | Expr::CompoundAssign { .. }
+        | Expr::WhileLoop { .. }
+        | Expr::ForLoop { .. }
         | Expr::Return(..)
         | Expr::Break
         | Expr::Continue
-        | Expr::ForLoop { .. }
-        | Expr::WhileLoop { .. }
-        | Expr::Assign { .. }
-        | Expr::CompoundAssign { .. } => {
+        | Expr::NativeFunction { .. } => {
             let span = ast.span(id);
 
             return Err(report_error!(
                 span,
-                "statements aren't allowed in middle of expressions"
+                "this expression cannot be used as a value"
             ));
         }
     };
@@ -870,17 +873,17 @@ fn block_returns(ast: &Ast, id: ExprId) -> bool {
     match *ast.node(id) {
         Expr::Return(..) => true,
         Expr::Block {
-            ref statements,
+            ref expressions,
             tail,
         } => {
-            let statements = statements.iter().copied().any(|e| block_returns(ast, e));
+            let expressions = expressions.iter().copied().any(|e| block_returns(ast, e));
             let tail = if let Some(id) = tail {
                 block_returns(ast, id)
             } else {
                 false
             };
 
-            statements || tail
+            expressions || tail
         }
         Expr::If {
             then_branch,

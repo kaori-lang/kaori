@@ -13,6 +13,7 @@ impl From<Register> for Reg {
         let register = match register {
             Register::Local(register) => register,
             Register::Temp(register) => register,
+            Register::Nil => unreachable!("Tried to use a invalid register to emit instruction"),
         };
 
         Reg(register)

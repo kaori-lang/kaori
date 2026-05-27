@@ -5,11 +5,10 @@ use crate::{
     interpreter::INTERNER,
     report_error,
     syntax::{
-        ast::{Ast, Expr, ExprId, Spanned, Stmt, StmtId},
+        ast::{Ast, Expr, ExprId, Name},
         ops::{BinaryOp, CompoundOp, UnaryOp},
         token::{Span, Token},
     },
-    util::string_interner::Symbol,
 };
 
 pub struct Parser<'a> {
@@ -27,6 +26,23 @@ impl<'a> Parser<'a> {
             pos: 0,
             ast: Ast::default(),
         }
+    }
+
+    pub fn parse(mut self) -> Result<Ast, Error> {
+        let mut expressions = Vec::new();
+
+        while !self.at_end() {
+            let expression = self.parse_statement()?;
+            expressions.push(expression);
+
+            if self.requires_semicolon(expression) {
+                self.consume(Token::Semicolon)?;
+            }
+        }
+
+        self.ast.block(expressions, None, Span::default());
+
+        Ok(self.ast)
     }
 
     fn at_end(&mut self) -> bool {
@@ -73,24 +89,15 @@ impl<'a> Parser<'a> {
         self.pos += 1;
     }
 
-    fn expr_requires_semicolon(&self, id: ExprId) -> bool {
+    fn requires_semicolon(&mut self, id: ExprId) -> bool {
         !matches!(
-            self.ast.expr(id).node,
-            Expr::Block { .. } | Expr::If { .. } | Expr::Function { .. }
+            self.ast.node(id),
+            Expr::Block { .. }
+                | Expr::If { .. }
+                | Expr::Function { .. }
+                | Expr::ForLoop { .. }
+                | Expr::WhileLoop { .. }
         )
-    }
-
-    pub fn parse(mut self) -> Result<Ast, Error> {
-        let mut statements = Vec::new();
-
-        while !self.at_end() {
-            let statement = self.parse_statement()?;
-            statements.push(statement);
-        }
-
-        self.ast.stmt_block(statements, Span::default());
-
-        Ok(self.ast)
     }
 
     fn parse_comma_separator<T>(
@@ -114,184 +121,79 @@ impl<'a> Parser<'a> {
         Ok(items)
     }
 
-    fn parse_statement(&mut self) -> Result<StmtId, Error> {
+    fn parse_statement(&mut self) -> Result<ExprId, Error> {
         let token = self.peek_token();
 
-        match token {
+        let expression = match token {
+            Token::Function => self.parse_function(),
             Token::Native => self.parse_native_function(),
             Token::While => self.parse_while_loop(),
             Token::For => self.parse_for_loop(),
             Token::Break => self.parse_break(),
             Token::Continue => self.parse_continue(),
             Token::Return => self.parse_return(),
+            Token::If => self.parse_if(),
             Token::Let => self.parse_variable(),
             Token::Mut => self.parse_mut(),
-            _ => self.parse_expression_statement(),
-        }
-    }
+            _ => self.parse_expression(),
+        }?;
 
-    fn parse_expression_statement(&mut self) -> Result<StmtId, Error> {
-        let token = self.peek_token();
-
-        let expr = match token {
-            Token::Function => self.parse_function()?,
-            Token::If => self.parse_if()?,
-            _ => {
-                let expr = self.parse_expression()?;
-
-                if self.expr_requires_semicolon(expr) {
-                    self.consume(Token::Semicolon)?;
-                } else if self.peek_token() == Token::Semicolon {
-                    self.advance_token();
-                }
-
-                let span = self.ast.expr(expr).span;
-
-                return Ok(self.ast.stmt_expr(expr, span));
-            }
-        };
-
-        if self.peek_token() == Token::Semicolon {
-            self.advance_token();
-        }
-
-        let span = self.ast.expr(expr).span;
-
-        Ok(self.ast.stmt_expr(expr, span))
+        Ok(expression)
     }
 
     fn parse_expression(&mut self) -> Result<ExprId, Error> {
-        self.parse_assign()
+        let assign = self.parse_assign()?;
+
+        Ok(assign)
     }
 
-    fn parse_return(&mut self) -> Result<StmtId, Error> {
-        let start = self.consume(Token::Return)?;
+    fn parse_return(&mut self) -> Result<ExprId, Error> {
+        let span = self.consume(Token::Return)?;
 
         let expression = self.parse_expression()?;
-
-        self.consume(Token::Semicolon)?;
-
-        let span = start.merge(self.ast.expr(expression).span);
 
         Ok(self.ast.return_(expression, span))
     }
 
-    fn parse_continue(&mut self) -> Result<StmtId, Error> {
+    fn parse_continue(&mut self) -> Result<ExprId, Error> {
         let span = self.consume(Token::Continue)?;
-
-        self.consume(Token::Semicolon)?;
 
         Ok(self.ast.continue_(span))
     }
 
-    fn parse_break(&mut self) -> Result<StmtId, Error> {
+    fn parse_break(&mut self) -> Result<ExprId, Error> {
         let span = self.consume(Token::Break)?;
 
-        self.consume(Token::Semicolon)?;
-
         Ok(self.ast.break_(span))
-    }
-
-    fn parse_stmt_block(&mut self) -> Result<StmtId, Error> {
-        let lbrace_span = self.consume(Token::LeftBrace)?;
-
-        let mut statements = Vec::new();
-
-        while !self.at_end() && self.peek_token() != Token::RightBrace {
-            let statement = self.parse_statement()?;
-            statements.push(statement);
-        }
-
-        let rbrace_span = self.consume(Token::RightBrace)?;
-
-        let span = lbrace_span.merge(rbrace_span);
-
-        Ok(self.ast.stmt_block(statements, span))
     }
 
     fn parse_block(&mut self) -> Result<ExprId, Error> {
         let lbrace_span = self.consume(Token::LeftBrace)?;
 
-        let mut statements = Vec::new();
-        let mut tail = None;
+        let mut expressions = Vec::new();
+        let mut consumed = false;
 
         while !self.at_end() && self.peek_token() != Token::RightBrace {
-            let token = self.peek_token();
+            let expression = self.parse_statement()?;
+            expressions.push(expression);
 
-            match token {
-                Token::Function => {
-                    let expr = self.parse_function()?;
-                    let span = self.ast.expr(expr).span;
+            consumed = false;
 
-                    if self.peek_token() == Token::Semicolon {
-                        self.advance_token();
-                        statements.push(self.ast.stmt_expr(expr, span));
-                    } else {
-                        tail = Some(expr);
-                        break;
-                    }
-                }
-                Token::If => {
-                    let expr = self.parse_if()?;
-                    let span = self.ast.expr(expr).span;
-
-                    if self.peek_token() == Token::Semicolon {
-                        self.advance_token();
-                        statements.push(self.ast.stmt_expr(expr, span));
-                    } else {
-                        tail = Some(expr);
-                        break;
-                    }
-                }
-                Token::Native => {
-                    statements.push(self.parse_native_function()?);
-                }
-                Token::While => {
-                    statements.push(self.parse_while_loop()?);
-                }
-                Token::For => {
-                    statements.push(self.parse_for_loop()?);
-                }
-                Token::Break => {
-                    statements.push(self.parse_break()?);
-                }
-                Token::Continue => {
-                    statements.push(self.parse_continue()?);
-                }
-                Token::Return => {
-                    statements.push(self.parse_return()?);
-                }
-                Token::Let => {
-                    statements.push(self.parse_variable()?);
-                }
-                Token::Mut => {
-                    statements.push(self.parse_mut()?);
-                }
-                _ => {
-                    let expr = self.parse_expression()?;
-                    let span = self.ast.expr(expr).span;
-
-                    if self.peek_token() == Token::Semicolon {
-                        self.advance_token();
-                        statements.push(self.ast.stmt_expr(expr, span));
-                    } else if self.peek_token() == Token::RightBrace {
-                        tail = Some(expr);
-                        break;
-                    } else {
-                        return Err(report_error!(
-                            span,
-                            "expected `;` after expression, only the last expression in a block expression can omit it"
-                        ));
-                    }
-                }
+            if self.peek_token() != Token::RightBrace
+                && (self.requires_semicolon(expression) || self.peek_token() == Token::Semicolon)
+            {
+                self.consume(Token::Semicolon)?;
+                consumed = true;
             }
         }
 
         let rbrace_span = self.consume(Token::RightBrace)?;
 
+        let tail = if consumed { None } else { expressions.pop() };
+
         let span = lbrace_span.merge(rbrace_span);
 
-        Ok(self.ast.block(statements, tail, span))
+        Ok(self.ast.block(expressions, tail, span))
     }
 
     fn parse_if(&mut self) -> Result<ExprId, Error> {
@@ -301,7 +203,7 @@ impl<'a> Parser<'a> {
         let then_branch = self.parse_block()?;
 
         if self.peek_token() != Token::Else {
-            let span = if_span.merge(self.ast.expr(then_branch).span);
+            let span = if_span.merge(self.ast.span(then_branch));
 
             return Ok(self.ast.if_(condition, then_branch, None, span));
         }
@@ -310,7 +212,8 @@ impl<'a> Parser<'a> {
 
         if self.peek_token() == Token::If {
             let else_branch = self.parse_if()?;
-            let span = if_span.merge(self.ast.expr(else_branch).span);
+
+            let span = if_span.merge(self.ast.span(else_branch));
 
             return Ok(self
                 .ast
@@ -318,30 +221,30 @@ impl<'a> Parser<'a> {
         }
 
         let else_branch = self.parse_block()?;
-        let span = if_span.merge(self.ast.expr(else_branch).span);
+        let span = if_span.merge(self.ast.span(else_branch));
 
         Ok(self
             .ast
             .if_(condition, then_branch, Some(else_branch), span))
     }
 
-    fn parse_while_loop(&mut self) -> Result<StmtId, Error> {
+    fn parse_while_loop(&mut self) -> Result<ExprId, Error> {
         let while_span = self.consume(Token::While)?;
 
         let condition = self.parse_expression()?;
-        let block = self.parse_stmt_block()?;
+        let block = self.parse_block()?;
 
-        let span = while_span.merge(self.ast.stmt(block).span);
+        let span = while_span.merge(self.ast.span(block));
 
         Ok(self.ast.while_loop(condition, block, span))
     }
 
-    fn parse_for_loop(&mut self) -> Result<StmtId, Error> {
+    fn parse_for_loop(&mut self) -> Result<ExprId, Error> {
         todo!()
     }
 
-    fn parse_native_function(&mut self) -> Result<StmtId, Error> {
-        let start = self.consume(Token::Native)?;
+    fn parse_native_function(&mut self) -> Result<ExprId, Error> {
+        let function_span = self.consume(Token::Native)?;
         self.consume(Token::Function)?;
 
         let name = self.parse_name()?;
@@ -352,15 +255,13 @@ impl<'a> Parser<'a> {
 
         let rparen_span = self.consume(Token::RightParen)?;
 
-        self.consume(Token::Semicolon)?;
-
-        let span = start.merge(rparen_span);
+        let span = function_span.merge(rparen_span);
 
         Ok(self.ast.native_function(name, parameters, span))
     }
 
     fn parse_function(&mut self) -> Result<ExprId, Error> {
-        let start = self.consume(Token::Function)?;
+        let function_span = self.consume(Token::Function)?;
 
         let name = if self.peek_token() == Token::Identifier {
             Some(self.parse_name()?)
@@ -374,15 +275,15 @@ impl<'a> Parser<'a> {
 
         self.consume(Token::RightParen)?;
 
-        let block = self.parse_stmt_block()?;
+        let block = self.parse_block()?;
 
-        let span = start.merge(self.ast.stmt(block).span);
+        let span = function_span.merge(self.ast.span(block));
 
         Ok(self.ast.function(name, parameters, block, span))
     }
 
-    fn parse_variable(&mut self) -> Result<StmtId, Error> {
-        let start = self.consume(Token::Let)?;
+    fn parse_variable(&mut self) -> Result<ExprId, Error> {
+        let let_span = self.consume(Token::Let)?;
 
         let left = self.parse_name()?;
 
@@ -390,15 +291,13 @@ impl<'a> Parser<'a> {
 
         let right = self.parse_expression()?;
 
-        self.consume(Token::Semicolon)?;
-
-        let span = start.merge(self.ast.expr(right).span);
+        let span = let_span.merge(self.ast.span(right));
 
         Ok(self.ast.variable(left, right, span))
     }
 
-    fn parse_mut(&mut self) -> Result<StmtId, Error> {
-        let start = self.consume(Token::Mut)?;
+    fn parse_mut(&mut self) -> Result<ExprId, Error> {
+        let mut_span = self.consume(Token::Mut)?;
 
         let left = self.parse_name()?;
 
@@ -406,9 +305,7 @@ impl<'a> Parser<'a> {
 
         let right = self.parse_expression()?;
 
-        self.consume(Token::Semicolon)?;
-
-        let span = start.merge(self.ast.expr(right).span);
+        let span = mut_span.merge(self.ast.span(right));
 
         Ok(self.ast.mut_(left, right, span))
     }
@@ -428,7 +325,8 @@ impl<'a> Parser<'a> {
                 self.advance_token();
 
                 let right = self.parse_or()?;
-                let span = self.ast.expr(left).span.merge(self.ast.expr(right).span);
+
+                let span = self.ast.span(left).merge(self.ast.span(right));
 
                 return Ok(self.ast.assign(left, right, span));
             }
@@ -438,7 +336,8 @@ impl<'a> Parser<'a> {
         self.advance_token();
 
         let right = self.parse_or()?;
-        let span = self.ast.expr(left).span.merge(self.ast.expr(right).span);
+
+        let span = self.ast.span(left).merge(self.ast.span(right));
 
         Ok(self.ast.compound_assign(operator, left, right, span))
     }
@@ -456,7 +355,7 @@ impl<'a> Parser<'a> {
             self.advance_token();
 
             let right = self.parse_and()?;
-            let span = self.ast.expr(left).span.merge(self.ast.expr(right).span);
+            let span = self.ast.span(left).merge(self.ast.span(right));
 
             left = self.ast.logical_or(left, right, span);
         }
@@ -477,7 +376,7 @@ impl<'a> Parser<'a> {
             self.advance_token();
 
             let right = self.parse_equality()?;
-            let span = self.ast.expr(left).span.merge(self.ast.expr(right).span);
+            let span = self.ast.span(left).merge(self.ast.span(right));
 
             left = self.ast.logical_and(left, right, span);
         }
@@ -500,7 +399,7 @@ impl<'a> Parser<'a> {
             self.advance_token();
 
             let right = self.parse_comparison()?;
-            let span = self.ast.expr(left).span.merge(self.ast.expr(right).span);
+            let span = self.ast.span(left).merge(self.ast.span(right));
 
             left = self.ast.binary(operator, left, right, span);
         }
@@ -525,7 +424,7 @@ impl<'a> Parser<'a> {
             self.advance_token();
 
             let right = self.parse_term()?;
-            let span = self.ast.expr(left).span.merge(self.ast.expr(right).span);
+            let span = self.ast.span(left).merge(self.ast.span(right));
 
             left = self.ast.binary(operator, left, right, span);
         }
@@ -548,7 +447,7 @@ impl<'a> Parser<'a> {
             self.advance_token();
 
             let right = self.parse_factor()?;
-            let span = self.ast.expr(left).span.merge(self.ast.expr(right).span);
+            let span = self.ast.span(left).merge(self.ast.span(right));
 
             left = self.ast.binary(operator, left, right, span);
         }
@@ -572,7 +471,7 @@ impl<'a> Parser<'a> {
             self.advance_token();
 
             let right = self.parse_prefix_unary()?;
-            let span = self.ast.expr(left).span.merge(self.ast.expr(right).span);
+            let span = self.ast.span(left).merge(self.ast.span(right));
 
             left = self.ast.binary(operator, left, right, span);
         }
@@ -593,20 +492,22 @@ impl<'a> Parser<'a> {
                 self.advance_token();
 
                 let right = self.parse_or()?;
-                let span = span.merge(self.ast.expr(right).span);
 
                 return Ok(self.ast.logical_not(right, span));
             }
             Token::Minus => UnaryOp::Negate,
             _ => {
-                return self.parse_primary();
+                let primary = self.parse_primary()?;
+
+                return Ok(primary);
             }
         };
 
         self.advance_token();
 
         let right = self.parse_prefix_unary()?;
-        let span = span.merge(self.ast.expr(right).span);
+
+        let span = span.merge(self.ast.span(right));
 
         Ok(self.ast.unary(operator, right, span))
     }
@@ -671,6 +572,8 @@ impl<'a> Parser<'a> {
             }
             Token::LeftBrace => self.parse_dict_literal()?,
             _ => {
+                let span = self.peek_span();
+
                 return Err(report_error!(
                     span,
                     "expected a <operand> and found: {}",
@@ -682,14 +585,14 @@ impl<'a> Parser<'a> {
         Ok(primary)
     }
 
-    fn parse_name(&mut self) -> Result<Spanned<Symbol>, Error> {
+    fn parse_name(&mut self) -> Result<Name, Error> {
         let span = self.peek_span();
         let lexeme = self.lexeme(span);
         let symbol = INTERNER.lock().unwrap().get_or_intern(lexeme);
 
         self.consume(Token::Identifier)?;
 
-        Ok(Spanned::new(symbol, span))
+        Ok(Name { symbol, span })
     }
 
     fn parse_identifier(&mut self) -> Result<ExprId, Error> {
@@ -730,13 +633,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_function_call(&mut self, callee: ExprId) -> Result<ExprId, Error> {
-        self.consume(Token::LeftParen)?;
+        let lparen_span = self.consume(Token::LeftParen)?;
 
         let arguments = self.parse_comma_separator(Self::parse_expression, Token::RightParen)?;
 
         let rparen_span = self.consume(Token::RightParen)?;
 
-        let span = self.ast.expr(callee).span.merge(rparen_span);
+        let span = lparen_span.merge(rparen_span);
 
         let function_call = self.ast.function_call(callee, arguments, span);
 
@@ -744,11 +647,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_member_access(&mut self, object: ExprId) -> Result<ExprId, Error> {
-        self.consume(Token::Dot)?;
+        let dot_span = self.consume(Token::Dot)?;
 
         let property = self.parse_name()?;
 
-        let span = self.ast.expr(object).span.merge(property.span);
+        let span = dot_span.merge(property.span);
 
         let member_access = self.ast.member_access(object, property, span);
 

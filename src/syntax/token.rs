@@ -80,6 +80,8 @@ pub enum Token {
     LeftParen,
     #[token(")")]
     RightParen,
+    #[token("#")]
+    Hash,
     #[token("{")]
     LeftBrace,
     #[token("}")]
@@ -156,6 +158,7 @@ impl fmt::Display for Token {
             Self::Pipe => "`|`",
             Self::LeftParen => "`(`",
             Self::RightParen => "`)`",
+            Self::Hash => "`#`",
             Self::LeftBrace => "`{`",
             Self::RightBrace => "`}`",
             Self::And => "`and`",
