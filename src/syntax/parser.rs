@@ -458,6 +458,8 @@ impl<'a> Parser<'a> {
                 return Ok(self.ast.logical_not(right, span));
             }
             Token::Minus => UnaryOp::Negate,
+            Token::Multiply => UnaryOp::Deref,
+            Token::Ampersand => UnaryOp::Ref,
             _ => {
                 let primary = self.parse_primary()?;
 

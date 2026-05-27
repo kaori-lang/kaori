@@ -16,6 +16,8 @@ pub enum BinaryOp {
 #[derive(Debug, Clone, Copy)]
 pub enum UnaryOp {
     Negate,
+    Ref,
+    Deref,
 }
 
 #[derive(Debug, Clone, Copy)]

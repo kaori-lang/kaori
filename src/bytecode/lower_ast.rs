@@ -509,6 +509,14 @@ fn lower_expression(
                     dest: dest.into(),
                     src: src.into(),
                 },
+                UnaryOp::Ref => Instruction::CreateCell {
+                    dest: dest.into(),
+                    src: src.into(),
+                },
+                UnaryOp::Deref => Instruction::GetCell {
+                    dest: dest.into(),
+                    src: src.into(),
+                },
             });
 
             regalloc.free_temp(src);
