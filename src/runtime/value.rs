@@ -6,7 +6,7 @@ const TAG_NIL: u64 = QNAN | 0x0001_0000_0000_0000;
 const TAG_BOOL: u64 = QNAN | 0x0002_0000_0000_0000;
 const TAG_CLOSURE: u64 = QNAN | 0x0003_0000_0000_0000;
 const TAG_STRING: u64 = QNAN | 0x0004_0000_0000_0000;
-const TAG_DICT: u64 = QNAN | 0x0005_0000_0000_0000;
+const TAG_MAP: u64 = QNAN | 0x0005_0000_0000_0000;
 const TAG_VEC: u64 = QNAN | 0x0006_0000_0000_0000;
 const TAG_CELL: u64 = QNAN | 0x0007_0000_0000_0000;
 
@@ -41,8 +41,8 @@ impl Value {
         Self(TAG_CLOSURE | (index as u64))
     }
 
-    pub fn dict(index: usize) -> Self {
-        Self(TAG_DICT | (index as u64))
+    pub fn map(index: usize) -> Self {
+        Self(TAG_MAP | (index as u64))
     }
 
     pub fn vec(index: usize) -> Self {
@@ -77,8 +77,8 @@ impl Value {
         self.is_tag(TAG_VEC)
     }
 
-    pub fn is_dict(self) -> bool {
-        self.is_tag(TAG_DICT)
+    pub fn is_map(self) -> bool {
+        self.is_tag(TAG_MAP)
     }
 
     pub fn is_cell(self) -> bool {

@@ -526,22 +526,22 @@ impl<'a> Parser<'a> {
 
                 self.advance_token();
 
-                self.ast.number_literal(value, span)
+                self.ast.number(value, span)
             }
             Token::True => {
                 self.advance_token();
 
-                self.ast.boolean_literal(true, span)
+                self.ast.boolean(true, span)
             }
             Token::False => {
                 self.advance_token();
 
-                self.ast.boolean_literal(false, span)
+                self.ast.boolean(false, span)
             }
             Token::Nil => {
                 self.advance_token();
 
-                self.ast.nil_literal(span)
+                self.ast.nil(span)
             }
             Token::StringLiteral => {
                 let span = self.peek_span();
@@ -553,14 +553,14 @@ impl<'a> Parser<'a> {
 
                 self.advance_token();
 
-                self.ast.string_literal(index, span)
+                self.ast.string(index, span)
             }
             Token::Identifier => {
                 let identifier = self.parse_identifier()?;
 
                 self.parse_postfix_unary(identifier)?
             }
-            Token::Hash => self.parse_dict_literal()?,
+            Token::Hash => self.parse_map_literal()?,
             _ => {
                 let span = self.peek_span();
 
@@ -591,7 +591,7 @@ impl<'a> Parser<'a> {
         Ok(self.ast.identifier(name))
     }
 
-    fn parse_dict_literal_field(&mut self) -> Result<(ExprId, ExprId), Error> {
+    fn parse_map_entry(&mut self) -> Result<(ExprId, ExprId), Error> {
         let key = self.parse_expression()?;
         self.consume(Token::Colon)?;
         let value = self.parse_expression()?;
@@ -599,18 +599,17 @@ impl<'a> Parser<'a> {
         Ok((key, value))
     }
 
-    fn parse_dict_literal(&mut self) -> Result<ExprId, Error> {
+    fn parse_map_literal(&mut self) -> Result<ExprId, Error> {
         let hash_span = self.consume(Token::Hash)?;
         self.consume(Token::LeftBrace)?;
 
-        let fields =
-            self.parse_comma_separator(Self::parse_dict_literal_field, Token::RightBrace)?;
+        let entries = self.parse_comma_separator(Self::parse_map_entry, Token::RightBrace)?;
 
         let rbrace_span = self.consume(Token::RightBrace)?;
 
         let span = hash_span.merge(rbrace_span);
 
-        Ok(self.ast.dict_literal(fields, span))
+        Ok(self.ast.map(entries, span))
     }
 
     fn parse_postfix_unary(&mut self, operand: ExprId) -> Result<ExprId, Error> {

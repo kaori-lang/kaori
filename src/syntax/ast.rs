@@ -64,10 +64,10 @@ pub enum Expr {
         right: ExprId,
     },
     Identifier(Spanned<Symbol>),
-    StringLiteral(Symbol),
-    NumberLiteral(f64),
-    BooleanLiteral(bool),
-    NilLiteral,
+    String(Symbol),
+    Number(f64),
+    Boolean(bool),
+    Nil,
     FunctionCall {
         callee: ExprId,
         arguments: Vec<ExprId>,
@@ -76,8 +76,8 @@ pub enum Expr {
         object: ExprId,
         property: Spanned<Symbol>,
     },
-    DictLiteral {
-        fields: Vec<(ExprId, ExprId)>,
+    Map {
+        entries: Vec<(ExprId, ExprId)>,
     },
     NativeFunction {
         name: Spanned<Symbol>,
@@ -198,20 +198,20 @@ impl Ast {
         self.insert(Expr::Identifier(name), name.span)
     }
 
-    pub fn string_literal(&mut self, index: Symbol, span: Span) -> ExprId {
-        self.insert(Expr::StringLiteral(index), span)
+    pub fn string(&mut self, index: Symbol, span: Span) -> ExprId {
+        self.insert(Expr::String(index), span)
     }
 
-    pub fn number_literal(&mut self, value: f64, span: Span) -> ExprId {
-        self.insert(Expr::NumberLiteral(value), span)
+    pub fn number(&mut self, value: f64, span: Span) -> ExprId {
+        self.insert(Expr::Number(value), span)
     }
 
-    pub fn boolean_literal(&mut self, value: bool, span: Span) -> ExprId {
-        self.insert(Expr::BooleanLiteral(value), span)
+    pub fn boolean(&mut self, value: bool, span: Span) -> ExprId {
+        self.insert(Expr::Boolean(value), span)
     }
 
-    pub fn nil_literal(&mut self, span: Span) -> ExprId {
-        self.insert(Expr::NilLiteral, span)
+    pub fn nil(&mut self, span: Span) -> ExprId {
+        self.insert(Expr::Nil, span)
     }
 
     pub fn function_call(&mut self, callee: ExprId, arguments: Vec<ExprId>, span: Span) -> ExprId {
@@ -227,8 +227,8 @@ impl Ast {
         self.insert(Expr::MemberAccess { object, property }, span)
     }
 
-    pub fn dict_literal(&mut self, fields: Vec<(ExprId, ExprId)>, span: Span) -> ExprId {
-        self.insert(Expr::DictLiteral { fields }, span)
+    pub fn map(&mut self, entries: Vec<(ExprId, ExprId)>, span: Span) -> ExprId {
+        self.insert(Expr::Map { entries }, span)
     }
 
     pub fn native_function(

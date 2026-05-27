@@ -19,7 +19,7 @@ use crate::{
 
 fn as_number_const(ast: &Ast, function: &mut Function, id: ExprId) -> Option<Const> {
     match *ast.node(id) {
-        Expr::NumberLiteral(value) => Some(function.store_number_const(value)),
+        Expr::Number(value) => Some(function.store_number_const(value)),
         _ => None,
     }
 }
@@ -247,7 +247,7 @@ fn lower_effect(
 
                 return Err(report_error!(
                     span,
-                    "expected `;`, only the last expression in a block expression can omit it"
+                    "expected `;` after expression, only block expressions can produce values"
                 ));
             }
 
@@ -273,7 +273,7 @@ fn lower_expression(
     dest: Option<Register>,
 ) -> Result<Register, Error> {
     let register = match *ast.node(id) {
-        Expr::NumberLiteral(value) => {
+        Expr::Number(value) => {
             let src = function.store_number_const(value);
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
@@ -284,7 +284,7 @@ fn lower_expression(
 
             dest
         }
-        Expr::StringLiteral(value) => {
+        Expr::String(value) => {
             let src = function.store_string_const(value);
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
@@ -295,7 +295,7 @@ fn lower_expression(
 
             dest
         }
-        Expr::BooleanLiteral(value) => {
+        Expr::Boolean(value) => {
             let src = function.store_boolean_const(value);
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
@@ -306,7 +306,7 @@ fn lower_expression(
 
             dest
         }
-        Expr::NilLiteral => emit_nil(function, regalloc, dest),
+        Expr::Nil => emit_nil(function, regalloc, dest),
         Expr::Identifier(name) => {
             let Some(Local { register, kind, .. }) = env.lookup(name.value) else {
                 let slice = INTERNER.lock().unwrap().resolve(name.value);
@@ -825,12 +825,12 @@ fn lower_expression(
 
             dest
         }
-        Expr::DictLiteral { ref fields } => {
+        Expr::Map { ref entries } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
 
-            function.emit_instruction(Instruction::CreateDict { dest: dest.into() });
+            function.emit_instruction(Instruction::CreateMap { dest: dest.into() });
 
-            for (key, value) in fields.iter().copied() {
+            for (key, value) in entries.iter().copied() {
                 let key = lower_expression(ast, functions, function, env, regalloc, key, None)?;
 
                 let value = lower_expression(ast, functions, function, env, regalloc, value, None)?;
@@ -857,7 +857,10 @@ fn lower_expression(
         | Expr::Break
         | Expr::Continue
         | Expr::NativeFunction { .. } => {
-            return Err(report_error!(ast.span(id), "cannot use this as a value"));
+            return Err(report_error!(
+                ast.span(id),
+                "expression does not produce a value and cannot be used in value position"
+            ));
         }
     };
 

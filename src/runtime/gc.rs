@@ -15,12 +15,12 @@ pub struct Closure {
 #[derive(Default)]
 pub struct Gc {
     vecs: Vec<Vec<Value>>,
-    dicts: Vec<HashMap<Value, Value>>,
+    maps: Vec<HashMap<Value, Value>>,
     closures: Vec<Closure>,
     cells: Vec<Value>,
 
     free_vecs: Vec<usize>,
-    free_dicts: Vec<usize>,
+    free_maps: Vec<usize>,
     free_closures: Vec<usize>,
     free_cells: Vec<usize>,
 }
@@ -48,10 +48,10 @@ impl Gc {
     }
 
     #[inline(always)]
-    pub fn allocate_dict(&mut self) -> Value {
-        let index = Self::alloc(&mut self.dicts, &mut self.free_dicts, HashMap::default());
+    pub fn allocate_map(&mut self) -> Value {
+        let index = Self::alloc(&mut self.maps, &mut self.free_maps, HashMap::default());
 
-        Value::dict(index)
+        Value::map(index)
     }
 
     #[inline(always)]
@@ -79,13 +79,13 @@ impl Gc {
     }
 
     #[inline(always)]
-    pub fn get_dict(&self, value: Value) -> &HashMap<Value, Value> {
-        unsafe { self.dicts.get_unchecked(value.as_index()) }
+    pub fn get_map(&self, value: Value) -> &HashMap<Value, Value> {
+        unsafe { self.maps.get_unchecked(value.as_index()) }
     }
 
     #[inline(always)]
-    pub fn get_mut_dict(&mut self, value: Value) -> &mut HashMap<Value, Value> {
-        unsafe { self.dicts.get_unchecked_mut(value.as_index()) }
+    pub fn get_mut_map(&mut self, value: Value) -> &mut HashMap<Value, Value> {
+        unsafe { self.maps.get_unchecked_mut(value.as_index()) }
     }
 
     #[inline(always)]

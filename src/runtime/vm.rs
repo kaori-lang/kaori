@@ -50,7 +50,7 @@ static HANDLERS: [Handler; 54] = [
     opcode_negate,
     opcode_move,
     opcode_load_const,
-    opcode_create_dict,
+    opcode_create_map,
     opcode_set_field,
     opcode_get_field,
     opcode_create_closure,
@@ -981,7 +981,7 @@ unsafe extern "rust-preserve-none" fn opcode_load_const(
 }
 
 #[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_create_dict(
+unsafe extern "rust-preserve-none" fn opcode_create_map(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
@@ -989,14 +989,14 @@ unsafe extern "rust-preserve-none" fn opcode_create_dict(
     frame_size: u8,
 ) -> Result<Value, Box<Error>> {
     let dest = unsafe {
-        let Instruction::CreateDict { dest } = *ip else {
+        let Instruction::CreateMap { dest } = *ip else {
             unreachable_unchecked()
         };
 
         dest
     };
 
-    let value = state.gc.allocate_dict();
+    let value = state.gc.allocate_map();
 
     unsafe { registers.set_value(dest, value) };
 
@@ -1023,9 +1023,9 @@ unsafe extern "rust-preserve-none" fn opcode_set_field(
     let key = unsafe { registers.get_value(key) };
     let value = unsafe { registers.get_value(value) };
 
-    type_check!(object.is_dict(), "cannot set field, value is not a dict",);
+    type_check!(object.is_map(), "cannot set field, value is not a map",);
 
-    state.gc.get_mut_dict(object).insert(key, value);
+    state.gc.get_mut_map(object).insert(key, value);
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -1049,11 +1049,11 @@ unsafe extern "rust-preserve-none" fn opcode_get_field(
     let object = unsafe { registers.get_value(object) };
     let key = unsafe { registers.get_value(key) };
 
-    type_check!(object.is_dict(), "cannot get field, value is not a dict",);
+    type_check!(object.is_map(), "cannot get field, value is not a map",);
 
     let value = state
         .gc
-        .get_dict(object)
+        .get_map(object)
         .get(&key)
         .copied()
         .unwrap_or_default();

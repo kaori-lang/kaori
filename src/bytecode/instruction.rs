@@ -52,7 +52,7 @@ pub enum Instruction {
     Negate { dest: Reg, src: Reg },
     Move { dest: Reg, src: Reg },
     LoadConst { dest: Reg, src: Const },
-    CreateDict { dest: Reg },
+    CreateMap { dest: Reg },
     SetField { object: Reg, key: Reg, value: Reg },
     GetField { dest: Reg, object: Reg, key: Reg },
     CreateClosure { dest: Reg, src: u32 },
@@ -129,9 +129,13 @@ impl fmt::Display for Instruction {
             Self::Negate { dest, src } => write!(f, "NEG {} {}", dest, src),
             Self::Move { dest, src } => write!(f, "MOV {} {}", dest, src),
             Self::LoadConst { dest, src } => write!(f, "LOAD_CONST {} {}", dest, src),
-            Self::CreateDict { dest } => write!(f, "DICT {}", dest),
-            Self::SetField { object, key, value } => write!(f, "SET {} {} {}", object, key, value),
-            Self::GetField { dest, object, key } => write!(f, "GET {} {} {}", dest, object, key),
+            Self::CreateMap { dest } => write!(f, "CREATE_MAP {}", dest),
+            Self::SetField { object, key, value } => {
+                write!(f, "SET_FIELD {} {} {}", object, key, value)
+            }
+            Self::GetField { dest, object, key } => {
+                write!(f, "GET_FIELD {} {} {}", dest, object, key)
+            }
             Self::CreateClosure { dest, src } => {
                 write!(f, "CREATE_CLOSURE {} FUNCTIONS[{}]", dest, src)
             }

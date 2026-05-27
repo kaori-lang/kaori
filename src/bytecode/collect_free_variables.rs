@@ -111,8 +111,8 @@ fn collect(
             }
         }
         Expr::MemberAccess { object, .. } => collect(ast, object, bound, free_variables),
-        Expr::DictLiteral { ref fields } => {
-            for (key, value) in fields.iter().copied() {
+        Expr::Map { ref entries } => {
+            for (key, value) in entries.iter().copied() {
                 collect(ast, key, bound, free_variables);
                 collect(ast, value, bound, free_variables);
             }
@@ -120,10 +120,10 @@ fn collect(
         Expr::Break
         | Expr::Continue
         | Expr::NativeFunction { .. }
-        | Expr::NumberLiteral(_)
-        | Expr::StringLiteral(_)
-        | Expr::BooleanLiteral(_)
-        | Expr::NilLiteral => {}
+        | Expr::Number(_)
+        | Expr::String(_)
+        | Expr::Boolean(_)
+        | Expr::Nil => {}
         Expr::ForLoop { .. } => {}
     }
 }
