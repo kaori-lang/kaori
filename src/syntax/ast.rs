@@ -82,7 +82,7 @@ pub enum Expr {
     If {
         condition: ExprId,
         then_branch: ExprId,
-        else_branch: Option<ExprId>,
+        else_branch: ExprId,
     },
     WhileLoop {
         condition: ExprId,
@@ -222,7 +222,7 @@ impl Ast {
         &mut self,
         condition: ExprId,
         then_branch: ExprId,
-        else_branch: Option<ExprId>,
+        else_branch: ExprId,
         span: Span,
     ) -> ExprId {
         self.insert(

@@ -90,10 +90,7 @@ fn collect(
         } => {
             collect(ast, condition, bound, free_variables);
             collect(ast, then_branch, bound, free_variables);
-
-            if let Some(id) = else_branch {
-                collect(ast, id, bound, free_variables);
-            }
+            collect(ast, else_branch, bound, free_variables);
         }
         Expr::WhileLoop { condition, block } => {
             collect(ast, condition, bound, free_variables);
