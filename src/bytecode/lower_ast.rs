@@ -616,7 +616,7 @@ fn lower_expression(
             let free_variables = collect_free_variables(ast, id);
 
             for name in free_variables.iter().copied() {
-                if let Some(mut local) = inner_env.lookup_in_parent(name.value) {
+                if inner_env.lookup_in_parent(name.value).is_some() {
                     inner_env.declare_local(name.value);
                 } else {
                     let slice = INTERNER.lock().unwrap().resolve(name.value);

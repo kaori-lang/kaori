@@ -199,8 +199,9 @@ impl<'a> Parser<'a> {
 
         if self.peek_token() != Token::Else {
             let span = if_span.merge(self.ast.span(then_branch));
+            let else_branch = self.ast.block(vec![], None, span);
 
-            return Ok(self.ast.if_(condition, then_branch, None, span));
+            return Ok(self.ast.if_(condition, then_branch, else_branch, span));
         }
 
         self.advance_token();
@@ -210,17 +211,13 @@ impl<'a> Parser<'a> {
 
             let span = if_span.merge(self.ast.span(else_branch));
 
-            return Ok(self
-                .ast
-                .if_(condition, then_branch, Some(else_branch), span));
+            return Ok(self.ast.if_(condition, then_branch, else_branch, span));
         }
 
         let else_branch = self.parse_block()?;
         let span = if_span.merge(self.ast.span(else_branch));
 
-        Ok(self
-            .ast
-            .if_(condition, then_branch, Some(else_branch), span))
+        Ok(self.ast.if_(condition, then_branch, else_branch, span))
     }
 
     fn parse_while_loop(&mut self) -> Result<ExprId, Error> {

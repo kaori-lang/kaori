@@ -2,14 +2,12 @@
 
 **Kaori** is a dynamically typed programming language, implemented in **Rust**
 
-See the full details: [Kaori Documentation](https://kaori-lang.github.io/docs/)
-
 ## Getting Started
 
 ### Prerequisites
 
--   [Rust](https://www.rust-lang.org/) (>= 1.70)
--   Cargo (comes bundled with Rust)
+- [Rust](https://www.rust-lang.org/) (>= 1.70)
+- Cargo (comes bundled with Rust)
 
 ### Installation
 
