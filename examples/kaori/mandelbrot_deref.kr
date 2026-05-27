@@ -16,11 +16,11 @@ while !y < !height {
         iter := &0;
         while (!zx * !zx + !zy * !zy < 4.0) and (!iter < !max_iter) {
             xtemp := &(!zx * !zx - !zy * !zy + !cx);
-            !zy = 2.0 * !zx * !zy + !cy;
-            !zx = !xtemp;
-            !iter = !iter + 1;
+            zy = !x_min + (2.0 * !zx * !zy + !cy);
+            zx = !xtemp;
+            iter = !iter + 1;
         }
-        !x = !x + 1;
+        x = !x + 1;
     }
-    !y = !y + 1;
+    y = !y + 1;
 }

@@ -258,12 +258,23 @@ fn lower_expression(
         }
         Expr::Nil => emit_nil(function, regalloc, dest),
         Expr::Identifier(name) => {
-            if let Some((_, register)) = env.lookup(name.value) {
-                register
-            } else {
+            let Some((_, register)) = env.lookup(name.value) else {
                 let slice = INTERNER.lock().unwrap().resolve(name.value);
 
                 return Err(report_error!(name.span, "{} is not declared", slice));
+            };
+
+            match dest {
+                Some(dest) if dest == register => dest,
+                Some(dest) => {
+                    function.emit_instruction(Instruction::Move {
+                        dest: dest.into(),
+                        src: register.into(),
+                    });
+
+                    dest
+                }
+                None => register,
             }
         }
         Expr::Binary {
