@@ -19,12 +19,3 @@ pub enum UnaryOp {
     Ref,
     Deref,
 }
-
-#[derive(Debug, Clone, Copy)]
-pub enum CompoundOp {
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Modulo,
-}

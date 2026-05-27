@@ -76,8 +76,7 @@ fn collect(
         Expr::Assign { left, right }
         | Expr::Binary { left, right, .. }
         | Expr::LogicalAnd { left, right }
-        | Expr::LogicalOr { left, right }
-        | Expr::CompoundAssign { left, right, .. } => {
+        | Expr::LogicalOr { left, right } => {
             collect(ast, left, bound, free_variables);
             collect(ast, right, bound, free_variables);
         }

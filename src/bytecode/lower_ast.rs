@@ -69,6 +69,31 @@ pub fn lower_ast(ast: Ast) -> Result<Vec<Function>, Error> {
     Ok(functions.into_iter().map(|f| f.unwrap()).collect())
 }
 
+fn lower_assign_lhs(
+    ast: &Ast,
+    functions: &mut Vec<Option<Function>>,
+    function: &mut Function,
+    env: &mut Environment,
+    regalloc: &mut RegisterAllocator,
+    id: ExprId,
+) -> Result<(), Error> {
+    match *ast.node(id) {
+        Expr::MemberAccess { object, property } => {
+            let object = lower_expression(ast, functions, function, env, regalloc, id, None)?;
+            let property = lower_expression(ast, functions, function, env, regalloc, id, None)?;
+
+            function.emit_instruction(Instruction::SetField {
+                object: (),
+                key: (),
+                value: (),
+            })
+        }
+        _ => {
+            panic!("Invalid lhs")
+        }
+    }
+}
+
 fn lower_effect(
     ast: &Ast,
     functions: &mut Vec<Option<Function>>,
@@ -92,75 +117,6 @@ fn lower_effect(
 
             if src != dest {
                 regalloc.free_temp(src);
-            }
-        }
-        Expr::CompoundAssign {
-            operator,
-            left,
-            right,
-        } => {
-            let dest = lower_expression(ast, functions, function, env, regalloc, left, None)?;
-
-            if let Some(src2) = as_number_const(ast, function, right) {
-                function.emit_instruction(match operator {
-                    CompoundOp::Add => Instruction::AddK {
-                        dest: dest.into(),
-                        src1: dest.into(),
-                        src2,
-                    },
-                    CompoundOp::Subtract => Instruction::SubtractRK {
-                        dest: dest.into(),
-                        src1: dest.into(),
-                        src2,
-                    },
-                    CompoundOp::Multiply => Instruction::MultiplyK {
-                        dest: dest.into(),
-                        src1: dest.into(),
-                        src2,
-                    },
-                    CompoundOp::Divide => Instruction::DivideRK {
-                        dest: dest.into(),
-                        src1: dest.into(),
-                        src2,
-                    },
-                    CompoundOp::Modulo => Instruction::ModuloRK {
-                        dest: dest.into(),
-                        src1: dest.into(),
-                        src2,
-                    },
-                });
-            } else {
-                let src2 = lower_expression(ast, functions, function, env, regalloc, right, None)?;
-
-                function.emit_instruction(match operator {
-                    CompoundOp::Add => Instruction::Add {
-                        dest: dest.into(),
-                        src1: dest.into(),
-                        src2: src2.into(),
-                    },
-                    CompoundOp::Subtract => Instruction::Subtract {
-                        dest: dest.into(),
-                        src1: dest.into(),
-                        src2: src2.into(),
-                    },
-                    CompoundOp::Multiply => Instruction::Multiply {
-                        dest: dest.into(),
-                        src1: dest.into(),
-                        src2: src2.into(),
-                    },
-                    CompoundOp::Divide => Instruction::Divide {
-                        dest: dest.into(),
-                        src1: dest.into(),
-                        src2: src2.into(),
-                    },
-                    CompoundOp::Modulo => Instruction::Modulo {
-                        dest: dest.into(),
-                        src1: dest.into(),
-                        src2: src2.into(),
-                    },
-                });
-
-                regalloc.free_temp(src2);
             }
         }
         Expr::WhileLoop { condition, block } => {

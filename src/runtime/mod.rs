@@ -2,5 +2,6 @@
 
 mod gc;
 
+pub mod objects;
 pub mod value;
 pub mod vm;

@@ -1,6 +1,6 @@
 use crate::{
     syntax::{
-        ops::{BinaryOp, CompoundOp, UnaryOp},
+        ops::{BinaryOp, UnaryOp},
         token::Span,
     },
     util::string_interner::Symbol,
@@ -47,11 +47,6 @@ pub enum Expr {
         right: ExprId,
     },
     Assign {
-        left: ExprId,
-        right: ExprId,
-    },
-    CompoundAssign {
-        operator: CompoundOp,
         left: ExprId,
         right: ExprId,
     },
@@ -159,23 +154,6 @@ impl Ast {
 
     pub fn assign(&mut self, left: ExprId, right: ExprId, span: Span) -> ExprId {
         self.insert(Expr::Assign { left, right }, span)
-    }
-
-    pub fn compound_assign(
-        &mut self,
-        operator: CompoundOp,
-        left: ExprId,
-        right: ExprId,
-        span: Span,
-    ) -> ExprId {
-        self.insert(
-            Expr::CompoundAssign {
-                operator,
-                left,
-                right,
-            },
-            span,
-        )
     }
 
     pub fn variable(&mut self, left: Spanned<Symbol>, right: ExprId, span: Span) -> ExprId {
