@@ -6,7 +6,7 @@ use crate::{
     report_error,
     syntax::{
         ast::{Ast, Expr, ExprId, Spanned},
-        ops::{BinaryOp, CompoundOp, UnaryOp},
+        ops::{BinaryOp, UnaryOp},
         token::{Span, Token},
     },
     util::string_interner::Symbol,
@@ -278,11 +278,11 @@ impl<'a> Parser<'a> {
         let token = self.peek_token();
 
         let operator = match token {
-            Token::AddAssign => CompoundOp::Add,
-            Token::SubtractAssign => CompoundOp::Subtract,
-            Token::MultiplyAssign => CompoundOp::Multiply,
-            Token::DivideAssign => CompoundOp::Divide,
-            Token::ModuloAssign => CompoundOp::Modulo,
+            Token::AddAssign => BinaryOp::Add,
+            Token::SubtractAssign => BinaryOp::Subtract,
+            Token::MultiplyAssign => BinaryOp::Multiply,
+            Token::DivideAssign => BinaryOp::Divide,
+            Token::ModuloAssign => BinaryOp::Modulo,
             Token::Assign => {
                 self.advance_token();
 
@@ -301,7 +301,9 @@ impl<'a> Parser<'a> {
 
         let span = self.ast.span(left).merge(self.ast.span(right));
 
-        Ok(self.ast.compound_assign(operator, left, right, span))
+        let right = self.ast.binary(operator, left, right, span);
+
+        Ok(self.ast.assign(left, right, span))
     }
 
     fn parse_or(&mut self) -> Result<ExprId, Error> {

@@ -13,7 +13,7 @@ use crate::{
     report_error,
     syntax::{
         ast::{Ast, Expr, ExprId},
-        ops::{BinaryOp, CompoundOp, UnaryOp},
+        ops::{BinaryOp, UnaryOp},
     },
 };
 
@@ -82,11 +82,13 @@ fn lower_assign_lhs(
             let object = lower_expression(ast, functions, function, env, regalloc, id, None)?;
             let property = lower_expression(ast, functions, function, env, regalloc, id, None)?;
 
-            function.emit_instruction(Instruction::SetField {
+            /* function.emit_instruction(Instruction::SetField {
                 object: (),
                 key: (),
                 value: (),
-            })
+            }); */
+
+            todo!()
         }
         _ => {
             panic!("Invalid lhs")
@@ -773,7 +775,6 @@ fn lower_expression(
         }
         Expr::Variable { .. }
         | Expr::Assign { .. }
-        | Expr::CompoundAssign { .. }
         | Expr::WhileLoop { .. }
         | Expr::ForLoop { .. }
         | Expr::Return(..)
