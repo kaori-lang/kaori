@@ -5,10 +5,11 @@ use crate::{
     interpreter::INTERNER,
     report_error,
     syntax::{
-        ast::{Ast, Expr, ExprId, Name},
+        ast::{Ast, Expr, ExprId, Spanned},
         ops::{BinaryOp, CompoundOp, UnaryOp},
         token::{Span, Token},
     },
+    util::string_interner::Symbol,
 };
 
 pub struct Parser<'a> {
@@ -32,7 +33,7 @@ impl<'a> Parser<'a> {
         let mut expressions = Vec::new();
 
         while !self.at_end() {
-            let expression = self.parse_statement()?;
+            let expression = self.parse_expression()?;
             expressions.push(expression);
 
             if self.requires_semicolon(expression) {
@@ -121,26 +122,6 @@ impl<'a> Parser<'a> {
         Ok(items)
     }
 
-    fn parse_statement(&mut self) -> Result<ExprId, Error> {
-        let token = self.peek_token();
-
-        let expression = match token {
-            Token::Function => self.parse_function(),
-            Token::Native => self.parse_native_function(),
-            Token::While => self.parse_while_loop(),
-            Token::For => self.parse_for_loop(),
-            Token::Break => self.parse_break(),
-            Token::Continue => self.parse_continue(),
-            Token::Return => self.parse_return(),
-            Token::If => self.parse_if(),
-            Token::Let => self.parse_variable(),
-            Token::Mut => self.parse_mut(),
-            _ => self.parse_expression(),
-        }?;
-
-        Ok(expression)
-    }
-
     fn parse_expression(&mut self) -> Result<ExprId, Error> {
         let assign = self.parse_assign()?;
 
@@ -174,7 +155,7 @@ impl<'a> Parser<'a> {
         let mut consumed = false;
 
         while !self.at_end() && self.peek_token() != Token::RightBrace {
-            let expression = self.parse_statement()?;
+            let expression = self.parse_expression()?;
             expressions.push(expression);
 
             consumed = false;
@@ -517,7 +498,15 @@ impl<'a> Parser<'a> {
 
         let primary = match token {
             Token::Function => self.parse_function()?,
+            Token::Native => self.parse_native_function()?,
+            Token::While => self.parse_while_loop()?,
+            Token::For => self.parse_for_loop()?,
+            Token::Break => self.parse_break()?,
+            Token::Continue => self.parse_continue()?,
+            Token::Return => self.parse_return()?,
             Token::If => self.parse_if()?,
+            Token::Let => self.parse_variable()?,
+            Token::Mut => self.parse_mut()?,
             Token::LeftParen => {
                 self.consume(Token::LeftParen)?;
                 let expression = self.parse_expression()?;
@@ -525,6 +514,7 @@ impl<'a> Parser<'a> {
 
                 expression
             }
+            Token::LeftBrace => self.parse_block()?,
             Token::NumberLiteral => {
                 let span = self.peek_span();
                 let lexeme = self.lexeme(span);
@@ -570,7 +560,7 @@ impl<'a> Parser<'a> {
 
                 self.parse_postfix_unary(identifier)?
             }
-            Token::LeftBrace => self.parse_dict_literal()?,
+            Token::Hash => self.parse_dict_literal()?,
             _ => {
                 let span = self.peek_span();
 
@@ -585,14 +575,14 @@ impl<'a> Parser<'a> {
         Ok(primary)
     }
 
-    fn parse_name(&mut self) -> Result<Name, Error> {
+    fn parse_name(&mut self) -> Result<Spanned<Symbol>, Error> {
         let span = self.peek_span();
         let lexeme = self.lexeme(span);
         let symbol = INTERNER.lock().unwrap().get_or_intern(lexeme);
 
         self.consume(Token::Identifier)?;
 
-        Ok(Name { symbol, span })
+        Ok(Spanned::new(symbol, span))
     }
 
     fn parse_identifier(&mut self) -> Result<ExprId, Error> {
@@ -610,14 +600,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_dict_literal(&mut self) -> Result<ExprId, Error> {
-        let lbrace_span = self.consume(Token::LeftBrace)?;
+        let hash_span = self.consume(Token::Hash)?;
+        self.consume(Token::LeftBrace)?;
 
         let fields =
             self.parse_comma_separator(Self::parse_dict_literal_field, Token::RightBrace)?;
 
         let rbrace_span = self.consume(Token::RightBrace)?;
 
-        let span = lbrace_span.merge(rbrace_span);
+        let span = hash_span.merge(rbrace_span);
 
         Ok(self.ast.dict_literal(fields, span))
     }

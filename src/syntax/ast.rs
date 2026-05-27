@@ -9,16 +9,21 @@ use crate::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExprId(u32);
 
-#[derive(Default)]
-pub struct Ast {
-    nodes: Vec<Expr>,
-    spans: Vec<Span>,
+#[derive(Clone, Copy, Debug)]
+pub struct Spanned<T> {
+    pub value: T,
+    pub span: Span,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Name {
-    pub symbol: Symbol,
-    pub span: Span,
+impl<T> Spanned<T> {
+    pub fn new(value: T, span: Span) -> Self {
+        Self { value, span }
+    }
+}
+
+#[derive(Default)]
+pub struct Ast {
+    nodes: Vec<Spanned<Expr>>,
 }
 
 #[derive(Debug)]
@@ -51,14 +56,14 @@ pub enum Expr {
         right: ExprId,
     },
     Variable {
-        left: Name,
+        left: Spanned<Symbol>,
         right: ExprId,
     },
     Mut {
-        left: Name,
+        left: Spanned<Symbol>,
         right: ExprId,
     },
-    Identifier(Name),
+    Identifier(Spanned<Symbol>),
     StringLiteral(Symbol),
     NumberLiteral(f64),
     BooleanLiteral(bool),
@@ -69,18 +74,18 @@ pub enum Expr {
     },
     MemberAccess {
         object: ExprId,
-        property: Name,
+        property: Spanned<Symbol>,
     },
     DictLiteral {
         fields: Vec<(ExprId, ExprId)>,
     },
     NativeFunction {
-        name: Name,
-        parameters: Vec<Name>,
+        name: Spanned<Symbol>,
+        parameters: Vec<Spanned<Symbol>>,
     },
     Function {
-        name: Option<Name>,
-        parameters: Vec<Name>,
+        name: Option<Spanned<Symbol>>,
+        parameters: Vec<Spanned<Symbol>>,
         block: ExprId,
     },
     Block {
@@ -110,8 +115,7 @@ impl Ast {
     fn insert(&mut self, node: Expr, span: Span) -> ExprId {
         let id = ExprId(self.nodes.len() as u32);
 
-        self.nodes.push(node);
-        self.spans.push(span);
+        self.nodes.push(Spanned::new(node, span));
 
         id
     }
@@ -121,11 +125,11 @@ impl Ast {
     }
 
     pub fn node(&self, id: ExprId) -> &Expr {
-        &self.nodes[id.0 as usize]
+        &self.nodes[id.0 as usize].value
     }
 
     pub fn span(&self, id: ExprId) -> Span {
-        self.spans[id.0 as usize]
+        self.nodes[id.0 as usize].span
     }
 
     pub fn binary(
@@ -182,15 +186,15 @@ impl Ast {
         )
     }
 
-    pub fn variable(&mut self, left: Name, right: ExprId, span: Span) -> ExprId {
+    pub fn variable(&mut self, left: Spanned<Symbol>, right: ExprId, span: Span) -> ExprId {
         self.insert(Expr::Variable { left, right }, span)
     }
 
-    pub fn mut_(&mut self, left: Name, right: ExprId, span: Span) -> ExprId {
+    pub fn mut_(&mut self, left: Spanned<Symbol>, right: ExprId, span: Span) -> ExprId {
         self.insert(Expr::Mut { left, right }, span)
     }
 
-    pub fn identifier(&mut self, name: Name) -> ExprId {
+    pub fn identifier(&mut self, name: Spanned<Symbol>) -> ExprId {
         self.insert(Expr::Identifier(name), name.span)
     }
 
@@ -214,7 +218,12 @@ impl Ast {
         self.insert(Expr::FunctionCall { callee, arguments }, span)
     }
 
-    pub fn member_access(&mut self, object: ExprId, property: Name, span: Span) -> ExprId {
+    pub fn member_access(
+        &mut self,
+        object: ExprId,
+        property: Spanned<Symbol>,
+        span: Span,
+    ) -> ExprId {
         self.insert(Expr::MemberAccess { object, property }, span)
     }
 
@@ -222,14 +231,19 @@ impl Ast {
         self.insert(Expr::DictLiteral { fields }, span)
     }
 
-    pub fn native_function(&mut self, name: Name, parameters: Vec<Name>, span: Span) -> ExprId {
+    pub fn native_function(
+        &mut self,
+        name: Spanned<Symbol>,
+        parameters: Vec<Spanned<Symbol>>,
+        span: Span,
+    ) -> ExprId {
         self.insert(Expr::NativeFunction { name, parameters }, span)
     }
 
     pub fn function(
         &mut self,
-        name: Option<Name>,
-        parameters: Vec<Name>,
+        name: Option<Spanned<Symbol>>,
+        parameters: Vec<Spanned<Symbol>>,
         block: ExprId,
         span: Span,
     ) -> ExprId {

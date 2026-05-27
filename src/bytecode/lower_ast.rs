@@ -82,7 +82,7 @@ fn lower_effect(
             let dest = regalloc.allocate_local();
 
             env.insert_local(Local {
-                name: left.symbol,
+                name: left.value,
                 register: dest,
                 kind: LocalKind::Variable,
             });
@@ -93,7 +93,7 @@ fn lower_effect(
             let dest = regalloc.allocate_local();
 
             env.insert_local(Local {
-                name: left.symbol,
+                name: left.value,
                 register: dest,
                 kind: LocalKind::Mut,
             });
@@ -231,7 +231,7 @@ fn lower_effect(
                     let register = regalloc.allocate_local();
 
                     env.insert_local(Local {
-                        name: name.symbol,
+                        name: name.value,
                         register,
                         kind: LocalKind::Variable,
                     });
@@ -308,8 +308,8 @@ fn lower_expression(
         }
         Expr::NilLiteral => emit_nil(function, regalloc, dest),
         Expr::Identifier(name) => {
-            let Some(Local { register, kind, .. }) = env.lookup(name.symbol) else {
-                let slice = INTERNER.lock().unwrap().resolve(name.symbol);
+            let Some(Local { register, kind, .. }) = env.lookup(name.value) else {
+                let slice = INTERNER.lock().unwrap().resolve(name.value);
 
                 return Err(report_error!(name.span, "{} is not declared", slice));
             };
@@ -665,7 +665,7 @@ fn lower_expression(
                     let register = regalloc.allocate_local();
 
                     env.insert_local(Local {
-                        name: name.symbol,
+                        name: name.value,
                         register,
                         kind: LocalKind::Variable,
                     });
@@ -703,7 +703,7 @@ fn lower_expression(
                 let register = inner_regalloc.allocate_local();
 
                 inner_env.insert_local(Local {
-                    name: parameter.symbol,
+                    name: parameter.value,
                     register,
                     kind: LocalKind::Variable,
                 });
@@ -712,12 +712,12 @@ fn lower_expression(
             let free_variables = collect_free_variables(ast, id);
 
             for name in free_variables.iter().copied() {
-                if let Some(mut local) = inner_env.lookup_in_parent(name.symbol) {
+                if let Some(mut local) = inner_env.lookup_in_parent(name.value) {
                     let register = inner_regalloc.allocate_local();
                     local.register = register;
                     inner_env.insert_local(local);
                 } else {
-                    let slice = INTERNER.lock().unwrap().resolve(name.symbol);
+                    let slice = INTERNER.lock().unwrap().resolve(name.value);
 
                     return Err(report_error!(name.span, "{} is not declared", slice));
                 }
@@ -742,7 +742,7 @@ fn lower_expression(
             *env = std::mem::take(&mut inner_env.parent.unwrap_or_default());
 
             let dest = match name {
-                Some(name) => env.lookup(name.symbol).unwrap().register,
+                Some(name) => env.lookup(name.value).unwrap().register,
                 None => dest.unwrap_or_else(|| regalloc.allocate_temp()),
             };
 
@@ -753,7 +753,7 @@ fn lower_expression(
 
             for name in free_variables.iter().copied() {
                 let Local { register, .. } = env
-                    .lookup(name.symbol)
+                    .lookup(name.value)
                     .expect("name must've been declared to reach this point of the code");
 
                 function.emit_instruction(Instruction::CaptureValue {
@@ -804,7 +804,7 @@ fn lower_expression(
 
             let key = {
                 let dest = regalloc.allocate_temp();
-                let src = function.store_string_const(property.symbol);
+                let src = function.store_string_const(property.value);
 
                 function.emit_instruction(Instruction::LoadConst {
                     dest: dest.into(),
@@ -857,12 +857,7 @@ fn lower_expression(
         | Expr::Break
         | Expr::Continue
         | Expr::NativeFunction { .. } => {
-            let span = ast.span(id);
-
-            return Err(report_error!(
-                span,
-                "this expression cannot be used as a value"
-            ));
+            return Err(report_error!(ast.span(id), "cannot use this as a value"));
         }
     };
 

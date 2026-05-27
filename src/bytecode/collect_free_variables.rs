@@ -1,6 +1,9 @@
-use crate::syntax::ast::{Ast, Expr, ExprId, Name};
+use crate::{
+    syntax::ast::{Ast, Expr, ExprId, Spanned},
+    util::string_interner::Symbol,
+};
 
-pub fn collect_free_variables(ast: &Ast, id: ExprId) -> Vec<Name> {
+pub fn collect_free_variables(ast: &Ast, id: ExprId) -> Vec<Spanned<Symbol>> {
     let Expr::Function {
         ref parameters,
         block,
@@ -18,13 +21,16 @@ pub fn collect_free_variables(ast: &Ast, id: ExprId) -> Vec<Name> {
     free_variables
 }
 
-fn collect(ast: &Ast, id: ExprId, bound: &mut Vec<Name>, free_variables: &mut Vec<Name>) {
+fn collect(
+    ast: &Ast,
+    id: ExprId,
+    bound: &mut Vec<Spanned<Symbol>>,
+    free_variables: &mut Vec<Spanned<Symbol>>,
+) {
     match *ast.node(id) {
         Expr::Identifier(name) => {
-            if !bound.iter().any(|found| found.symbol == name.symbol)
-                && !free_variables
-                    .iter()
-                    .any(|found| found.symbol == name.symbol)
+            if !bound.iter().any(|found| found.value == name.value)
+                && !free_variables.iter().any(|found| found.value == name.value)
             {
                 free_variables.push(name);
             }
