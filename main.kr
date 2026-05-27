@@ -1,37 +1,7 @@
 
-fun Cat(name, age) {
-    self := #{ age, name, set_age };
+x := &0;
 
-    fun set_age(self, age) {
-        self.age = age;
-    }
-
-    self
+fun foo() {
+    *x += 1;
 }
 
-fun set_age(self, age) {
-    self.age = age;
-}
-
-cat := Cat("cat", 5);
-cat |> set_age(5);
-
-fun increment() {
-    x := &0;
-
-    fun () {
-        *x += 1;
-
-        x
-    }
-}
-
-x := increment();
-
-x();
-x();
-
-x := cell(0);
-y : 2;
-
-x + y;
