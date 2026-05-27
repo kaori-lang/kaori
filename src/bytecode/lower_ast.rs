@@ -131,7 +131,7 @@ fn lower_effect(
                     src: src.into(),
                 });
             }
-            _ => {}
+            _ => return Err(report_error!(ast.span(left), "expected a valid lhs")),
         },
         Expr::WhileLoop { condition, block } => {
             let src = lower_expression(ast, functions, function, env, regalloc, condition, None)?;
@@ -676,7 +676,7 @@ fn lower_expression(
 
             let dest = match name {
                 Some(name) => {
-                    let (_, register) = env.lookup(name.value).unwrap();
+                    let (_, register) = env.lookup(name.value).expect("function must be declared");
 
                     register
                 }

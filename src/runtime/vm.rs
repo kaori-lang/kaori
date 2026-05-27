@@ -8,6 +8,7 @@ use crate::bytecode::function::Function;
 use crate::bytecode::instruction::{Const, Instruction, Reg};
 use crate::report_error;
 
+use crate::runtime::debug_value::DebugValue;
 use crate::runtime::gc::Closure;
 
 use crate::runtime::value::Value;
@@ -129,6 +130,7 @@ pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
         HANDLERS[index](ip, registers, constants, &mut state, frame_size).map_err(|e| *e)?
     };
 
+    println!("{:?}", DebugValue::new(value, &state.gc));
     Ok(value)
 }
 
@@ -1049,7 +1051,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_field(
     let object = unsafe { registers.get_value(object) };
     let key = unsafe { registers.get_value(key) };
 
-    type_check!(object.is_map(), "cannot get field, value is not a map",);
+    type_check!(object.is_map(), "cannot get field, value is not a map");
 
     let value = state
         .gc
@@ -1171,6 +1173,8 @@ unsafe extern "rust-preserve-none" fn opcode_set_cell(
     };
 
     let cell = unsafe { registers.get_value(dest) };
+    type_check!(cell.is_cell(), "cannot dereference a non cell");
+
     let value = unsafe { registers.get_value(src) };
 
     state.gc.set_cell(cell, value);
@@ -1194,8 +1198,10 @@ unsafe extern "rust-preserve-none" fn opcode_get_cell(
         (dest, src)
     };
 
-    let cell = unsafe { registers.get_value(src) };
-    let value = state.gc.get_cell(cell);
+    let src = unsafe { registers.get_value(src) };
+    type_check!(src.is_cell(), "cannot dereference a non cell");
+
+    let value = state.gc.get_cell(src);
 
     unsafe { registers.set_value(dest, value) };
 

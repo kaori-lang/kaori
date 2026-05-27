@@ -28,6 +28,9 @@ impl<'a> fmt::Debug for DebugValue<'a> {
         if self.value.is_nil() {
             return write!(f, "nil");
         }
+        if self.value.is_cell() {
+            return write!(f, "Cell({:p})", &self.value);
+        }
         if self.value.is_closure() {
             return write!(f, "Closure({:p})", self.gc.get_closure(self.value));
         }
@@ -43,10 +46,10 @@ impl<'a> fmt::Debug for DebugValue<'a> {
             }
             return list.finish();
         }
-        if self.value.is_dict() {
+        if self.value.is_map() {
             let mut map = f.debug_map();
 
-            for (&key, &val) in self.gc.get_dict(self.value) {
+            for (&key, &val) in self.gc.get_map(self.value) {
                 map.entry(
                     &DebugValue::new(key, self.gc),
                     &DebugValue::new(val, self.gc),

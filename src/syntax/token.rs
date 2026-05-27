@@ -56,6 +56,8 @@ pub enum Token {
     Multiply,
     #[token("&")]
     Ampersand,
+    #[token("!")]
+    Bang,
     #[token("/")]
     Divide,
     #[token("%")]
@@ -147,6 +149,7 @@ impl fmt::Display for Token {
             Self::Divide => "`/`",
             Self::Modulo => "`%`",
             Self::Ampersand => "`&`",
+            Self::Bang => "`!`",
             Self::NotEqual => "`!=`",
             Self::Equal => "`==`",
             Self::GreaterEqual => "`>=`",

@@ -1,5 +1,13 @@
 x := &0;
 
 fun foo() {
-    *x += 1;
+ 
 }
+
+fun bar() {
+ 
+}
+
+!x = 5;
+
+return !x;
