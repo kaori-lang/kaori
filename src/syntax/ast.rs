@@ -44,7 +44,7 @@ pub enum Expr {
     LogicalNot(ExprId),
     Unary {
         operator: UnaryOp,
-        right: ExprId,
+        operand: ExprId,
     },
     Assign {
         left: ExprId,
@@ -148,8 +148,8 @@ impl Ast {
         self.insert(Expr::LogicalNot(expression), span)
     }
 
-    pub fn unary(&mut self, operator: UnaryOp, right: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::Unary { operator, right }, span)
+    pub fn unary(&mut self, operator: UnaryOp, operand: ExprId, span: Span) -> ExprId {
+        self.insert(Expr::Unary { operator, operand }, span)
     }
 
     pub fn assign(&mut self, left: ExprId, right: ExprId, span: Span) -> ExprId {

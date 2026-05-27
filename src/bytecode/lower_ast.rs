@@ -69,33 +69,6 @@ pub fn lower_ast(ast: Ast) -> Result<Vec<Function>, Error> {
     Ok(functions.into_iter().map(|f| f.unwrap()).collect())
 }
 
-fn lower_assign_lhs(
-    ast: &Ast,
-    functions: &mut Vec<Option<Function>>,
-    function: &mut Function,
-    env: &mut Environment,
-    regalloc: &mut RegisterAllocator,
-    id: ExprId,
-) -> Result<(), Error> {
-    match *ast.node(id) {
-        Expr::MemberAccess { object, property } => {
-            let object = lower_expression(ast, functions, function, env, regalloc, id, None)?;
-            let property = lower_expression(ast, functions, function, env, regalloc, id, None)?;
-
-            /* function.emit_instruction(Instruction::SetField {
-                object: (),
-                key: (),
-                value: (),
-            }); */
-
-            todo!()
-        }
-        _ => {
-            panic!("Invalid lhs")
-        }
-    }
-}
-
 fn lower_effect(
     ast: &Ast,
     functions: &mut Vec<Option<Function>>,
@@ -112,15 +85,54 @@ fn lower_effect(
 
             lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
         }
-        Expr::Assign { left, right } => {
-            let dest = lower_expression(ast, functions, function, env, regalloc, left, None)?;
+        Expr::Assign { left, right } => match *ast.node(left) {
+            Expr::Identifier(..) => {
+                let dest = lower_expression(ast, functions, function, env, regalloc, left, None)?;
 
-            let src = lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
+                let src =
+                    lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
 
-            if src != dest {
-                regalloc.free_temp(src);
+                if src != dest {
+                    regalloc.free_temp(src);
+                }
             }
-        }
+            Expr::MemberAccess { object, property } => {
+                let value = lower_expression(ast, functions, function, env, regalloc, right, None)?;
+                let object =
+                    lower_expression(ast, functions, function, env, regalloc, object, None)?;
+                let key = {
+                    let dest = regalloc.allocate_temp();
+                    let src = function.store_string_const(property.value);
+
+                    function.emit_instruction(Instruction::LoadConst {
+                        dest: dest.into(),
+                        src,
+                    });
+
+                    dest
+                };
+
+                function.emit_instruction(Instruction::SetField {
+                    object: object.into(),
+                    key: key.into(),
+                    value: value.into(),
+                });
+            }
+            Expr::Unary {
+                operator: UnaryOp::Deref,
+                operand,
+            } => {
+                let dest =
+                    lower_expression(ast, functions, function, env, regalloc, operand, None)?;
+                let src = lower_expression(ast, functions, function, env, regalloc, right, None)?;
+
+                function.emit_instruction(Instruction::SetCell {
+                    dest: dest.into(),
+                    src: src.into(),
+                });
+            }
+            _ => {}
+        },
         Expr::WhileLoop { condition, block } => {
             let src = lower_expression(ast, functions, function, env, regalloc, condition, None)?;
 
@@ -246,13 +258,13 @@ fn lower_expression(
         }
         Expr::Nil => emit_nil(function, regalloc, dest),
         Expr::Identifier(name) => {
-            let Some((_, register)) = env.lookup(name.value) else {
+            if let Some((_, register)) = env.lookup(name.value) {
+                register
+            } else {
                 let slice = INTERNER.lock().unwrap().resolve(name.value);
 
                 return Err(report_error!(name.span, "{} is not declared", slice));
-            };
-
-            register
+            }
         }
         Expr::Binary {
             operator,
@@ -457,10 +469,9 @@ fn lower_expression(
                 dest
             }
         }
-        Expr::Unary { operator, right } => {
+        Expr::Unary { operator, operand } => {
             let dest = dest.unwrap_or_else(|| regalloc.allocate_temp());
-
-            let src = lower_expression(ast, functions, function, env, regalloc, right, None)?;
+            let src = lower_expression(ast, functions, function, env, regalloc, operand, None)?;
 
             function.emit_instruction(match operator {
                 UnaryOp::Negate => Instruction::Negate {

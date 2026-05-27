@@ -80,7 +80,7 @@ fn collect(
             collect(ast, left, bound, free_variables);
             collect(ast, right, bound, free_variables);
         }
-        Expr::Unary { right, .. } => collect(ast, right, bound, free_variables),
+        Expr::Unary { operand, .. } => collect(ast, operand, bound, free_variables),
         Expr::LogicalNot(expr) => collect(ast, expr, bound, free_variables),
         Expr::Return(expr) => collect(ast, expr, bound, free_variables),
         Expr::If {

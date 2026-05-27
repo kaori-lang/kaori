@@ -471,11 +471,11 @@ impl<'a> Parser<'a> {
 
         self.advance_token();
 
-        let right = self.parse_prefix_unary()?;
+        let operand = self.parse_prefix_unary()?;
 
-        let span = span.merge(self.ast.span(right));
+        let span = span.merge(self.ast.span(operand));
 
-        Ok(self.ast.unary(operator, right, span))
+        Ok(self.ast.unary(operator, operand, span))
     }
 
     fn parse_primary(&mut self) -> Result<ExprId, Error> {
