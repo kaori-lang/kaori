@@ -1,23 +1,9 @@
 use crate::{bytecode::register_allocator::Register, util::string_interner::Symbol};
 
-#[derive(Clone, Copy)]
-pub struct Local {
-    pub name: Symbol,
-    pub register: Register,
-    pub kind: LocalKind,
-}
-
-#[derive(Clone, Copy)]
-pub enum LocalKind {
-    Variable,
-    Mut,
-    Constant,
-}
-
 #[derive(Default)]
 pub struct Environment {
     pub parent: Option<Box<Environment>>,
-    scopes: Vec<Vec<Local>>,
+    scopes: Vec<Vec<(Symbol, Register)>>,
 }
 
 impl Environment {
@@ -47,37 +33,30 @@ impl Environment {
         self.scopes.pop();
     }
 
-    pub fn insert_local(&mut self, local: Local) {
+    pub fn insert_local(&mut self, name: Symbol, register: Register) {
         self.scopes
             .last_mut()
             .expect("scopes must never be empty")
-            .push(local);
+            .push((name, register));
     }
 
-    pub fn lookup(&self, name: Symbol) -> Option<Local> {
+    pub fn lookup(&self, name: Symbol) -> Option<(Symbol, Register)> {
         for scope in self.scopes.iter().rev() {
             for local in scope.iter().copied().rev() {
-                if local.name == name {
+                if local.0 == name {
                     return Some(local);
                 }
             }
         }
 
         if let Some(parent) = &self.parent {
-            if let Some(mut local) = parent.lookup(name) {
-                if let LocalKind::Variable = local.kind {
-                    local.kind = LocalKind::Constant;
-                }
-                Some(local)
-            } else {
-                None
-            }
+            parent.lookup(name)
         } else {
             None
         }
     }
 
-    pub fn lookup_in_parent(&self, name: Symbol) -> Option<Local> {
+    pub fn lookup_in_parent(&self, name: Symbol) -> Option<(Symbol, Register)> {
         self.parent.as_ref()?.lookup(name)
     }
 }

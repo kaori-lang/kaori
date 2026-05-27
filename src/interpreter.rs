@@ -30,6 +30,8 @@ fn compile_source_code(source: &str) -> Result<Vec<Function>, Error> {
     let parser = Parser::new(source, tokens);
 
     let ast = parser.parse()?;
+
+    println!("{:#?}", ast);
     let functions = lower_ast(ast)?;
 
     for function in functions.iter() {

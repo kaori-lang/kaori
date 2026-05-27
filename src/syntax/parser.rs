@@ -238,23 +238,6 @@ impl<'a> Parser<'a> {
         todo!()
     }
 
-    fn parse_native_function(&mut self) -> Result<ExprId, Error> {
-        let function_span = self.consume(Token::Native)?;
-        self.consume(Token::Function)?;
-
-        let name = self.parse_name()?;
-
-        self.consume(Token::LeftParen)?;
-
-        let parameters = self.parse_comma_separator(Self::parse_name, Token::RightParen)?;
-
-        let rparen_span = self.consume(Token::RightParen)?;
-
-        let span = function_span.merge(rparen_span);
-
-        Ok(self.ast.native_function(name, parameters, span))
-    }
-
     fn parse_function(&mut self) -> Result<ExprId, Error> {
         let function_span = self.consume(Token::Function)?;
 
@@ -496,7 +479,6 @@ impl<'a> Parser<'a> {
 
         let primary = match token {
             Token::Function => self.parse_function()?,
-            Token::Native => self.parse_native_function()?,
             Token::While => self.parse_while_loop()?,
             Token::For => self.parse_for_loop()?,
             Token::Break => self.parse_break()?,

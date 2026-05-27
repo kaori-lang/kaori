@@ -3,7 +3,7 @@ use core::panic;
 use crate::{
     bytecode::{
         collect_free_variables::collect_free_variables,
-        environment::{Environment, Local, LocalKind},
+        environment::Environment,
         function::Function,
         instruction::{Const, Instruction},
         register_allocator::{Register, RegisterAllocator},
@@ -81,11 +81,7 @@ fn lower_effect(
         Expr::Variable { left, right } => {
             let dest = regalloc.allocate_local();
 
-            env.insert_local(Local {
-                name: left.value,
-                register: dest,
-                kind: LocalKind::Variable,
-            });
+            env.insert_local(left.value, dest);
 
             lower_expression(ast, functions, function, env, regalloc, right, Some(dest))?;
         }
@@ -203,9 +199,6 @@ fn lower_effect(
 
             regalloc.free_temp(src);
         }
-        Expr::Break => todo!(),
-        Expr::Continue => todo!(),
-        Expr::NativeFunction { .. } => todo!(),
         Expr::Block {
             ref expressions,
             tail,
@@ -219,11 +212,7 @@ fn lower_effect(
                 {
                     let register = regalloc.allocate_local();
 
-                    env.insert_local(Local {
-                        name: name.value,
-                        register,
-                        kind: LocalKind::Variable,
-                    });
+                    env.insert_local(name.value, register);
                 }
             }
 
@@ -242,6 +231,8 @@ fn lower_effect(
 
             env.pop_scope();
         }
+        Expr::Break => todo!(),
+        Expr::Continue => todo!(),
         _ => {
             let register = lower_expression(ast, functions, function, env, regalloc, id, None)?;
 
@@ -297,29 +288,13 @@ fn lower_expression(
         }
         Expr::Nil => emit_nil(function, regalloc, dest),
         Expr::Identifier(name) => {
-            let Some(Local { register, kind, .. }) = env.lookup(name.value) else {
+            let Some((_, register)) = env.lookup(name.value) else {
                 let slice = INTERNER.lock().unwrap().resolve(name.value);
 
                 return Err(report_error!(name.span, "{} is not declared", slice));
             };
 
-            match kind {
-                LocalKind::Constant | LocalKind::Variable => {
-                    if let Some(dest) = dest
-                        && dest != register
-                    {
-                        function.emit_instruction(Instruction::Move {
-                            dest: dest.into(),
-                            src: register.into(),
-                        });
-
-                        dest
-                    } else {
-                        register
-                    }
-                }
-                LocalKind::Mut => todo!(),
-            }
+            register
         }
         Expr::Binary {
             operator,
@@ -653,11 +628,7 @@ fn lower_expression(
                 {
                     let register = regalloc.allocate_local();
 
-                    env.insert_local(Local {
-                        name: name.value,
-                        register,
-                        kind: LocalKind::Variable,
-                    });
+                    env.insert_local(name.value, register);
                 }
             }
 
@@ -691,11 +662,7 @@ fn lower_expression(
             for parameter in parameters.iter().copied() {
                 let register = inner_regalloc.allocate_local();
 
-                inner_env.insert_local(Local {
-                    name: parameter.value,
-                    register,
-                    kind: LocalKind::Variable,
-                });
+                inner_env.insert_local(parameter.value, register);
             }
 
             let free_variables = collect_free_variables(ast, id);
@@ -703,8 +670,8 @@ fn lower_expression(
             for name in free_variables.iter().copied() {
                 if let Some(mut local) = inner_env.lookup_in_parent(name.value) {
                     let register = inner_regalloc.allocate_local();
-                    local.register = register;
-                    inner_env.insert_local(local);
+
+                    inner_env.insert_local(name.value, register);
                 } else {
                     let slice = INTERNER.lock().unwrap().resolve(name.value);
 
@@ -731,7 +698,11 @@ fn lower_expression(
             *env = std::mem::take(&mut inner_env.parent.unwrap_or_default());
 
             let dest = match name {
-                Some(name) => env.lookup(name.value).unwrap().register,
+                Some(name) => {
+                    let (_, register) = env.lookup(name.value).unwrap();
+
+                    register
+                }
                 None => dest.unwrap_or_else(|| regalloc.allocate_temp()),
             };
 
@@ -741,7 +712,7 @@ fn lower_expression(
             });
 
             for name in free_variables.iter().copied() {
-                let Local { register, .. } = env
+                let (_, register) = env
                     .lookup(name.value)
                     .expect("name must've been declared to reach this point of the code");
 
@@ -843,8 +814,7 @@ fn lower_expression(
         | Expr::ForLoop { .. }
         | Expr::Return(..)
         | Expr::Break
-        | Expr::Continue
-        | Expr::NativeFunction { .. } => {
+        | Expr::Continue => {
             return Err(report_error!(
                 ast.span(id),
                 "expression does not produce a value and cannot be used in value position"

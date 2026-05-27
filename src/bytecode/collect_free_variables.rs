@@ -119,7 +119,6 @@ fn collect(
         }
         Expr::Break
         | Expr::Continue
-        | Expr::NativeFunction { .. }
         | Expr::Number(_)
         | Expr::String(_)
         | Expr::Boolean(_)

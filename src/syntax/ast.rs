@@ -21,7 +21,7 @@ impl<T> Spanned<T> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Ast {
     nodes: Vec<Spanned<Expr>>,
 }
@@ -74,10 +74,6 @@ pub enum Expr {
     },
     Map {
         entries: Vec<(ExprId, ExprId)>,
-    },
-    NativeFunction {
-        name: Spanned<Symbol>,
-        parameters: Vec<Spanned<Symbol>>,
     },
     Function {
         name: Option<Spanned<Symbol>>,
@@ -221,15 +217,6 @@ impl Ast {
 
     pub fn map(&mut self, entries: Vec<(ExprId, ExprId)>, span: Span) -> ExprId {
         self.insert(Expr::Map { entries }, span)
-    }
-
-    pub fn native_function(
-        &mut self,
-        name: Spanned<Symbol>,
-        parameters: Vec<Spanned<Symbol>>,
-        span: Span,
-    ) -> ExprId {
-        self.insert(Expr::NativeFunction { name, parameters }, span)
     }
 
     pub fn function(
