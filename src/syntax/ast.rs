@@ -54,6 +54,10 @@ pub enum Expr {
         left: Spanned<Symbol>,
         right: ExprId,
     },
+    Ref {
+        left: Spanned<Symbol>,
+        right: ExprId,
+    },
     Identifier(Spanned<Symbol>),
     String(Symbol),
     Number(f64),
@@ -156,6 +160,10 @@ impl Ast {
 
     pub fn variable(&mut self, left: Spanned<Symbol>, right: ExprId, span: Span) -> ExprId {
         self.insert(Expr::Variable { left, right }, span)
+    }
+
+    pub fn ref_(&mut self, left: Spanned<Symbol>, right: ExprId, span: Span) -> ExprId {
+        self.insert(Expr::Ref { left, right }, span)
     }
 
     pub fn identifier(&mut self, name: Spanned<Symbol>) -> ExprId {

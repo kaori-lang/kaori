@@ -52,8 +52,6 @@ pub enum Token {
     Minus,
     #[token("*")]
     Multiply,
-    #[token("&")]
-    Ampersand,
     #[token("^")]
     Caret,
     #[token("/")]
@@ -98,6 +96,8 @@ pub enum Token {
     Not,
     #[token("let")]
     Let,
+    #[token("ref")]
+    Ref,
     #[token("fun")]
     Function,
     #[token("for")]
@@ -147,7 +147,6 @@ impl fmt::Display for Token {
             Self::Multiply => "`*`",
             Self::Divide => "`/`",
             Self::Modulo => "`%`",
-            Self::Ampersand => "`&`",
             Self::Caret => "`^`",
             Self::NotEqual => "`!=`",
             Self::Equal => "`==`",
@@ -169,6 +168,7 @@ impl fmt::Display for Token {
             Self::Or => "`or`",
             Self::Not => "`not`",
             Self::Let => "`let`",
+            Self::Ref => "`ref`",
             Self::Function => "`fun`",
             Self::For => "`for`",
             Self::While => "`while`",

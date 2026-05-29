@@ -287,6 +287,20 @@ impl<'a> Parser<'a> {
         Ok(self.ast.variable(left, right, span))
     }
 
+    fn parse_ref(&mut self) -> Result<ExprId, Error> {
+        let ref_span = self.consume(Token::Ref)?;
+
+        let left = self.parse_name()?;
+
+        self.consume(Token::Assign)?;
+
+        let right = self.parse_expression()?;
+
+        let span = ref_span.merge(self.ast.span(right));
+
+        Ok(self.ast.ref_(left, right, span))
+    }
+
     fn parse_assign(&mut self) -> Result<ExprId, Error> {
         let left = self.parse_or()?;
 
@@ -476,7 +490,6 @@ impl<'a> Parser<'a> {
             }
             Token::Minus => UnaryOp::Negate,
             Token::Caret => UnaryOp::Deref,
-            Token::Ampersand => UnaryOp::Ref,
             _ => {
                 let primary = self.parse_primary()?;
 
