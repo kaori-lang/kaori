@@ -13,10 +13,9 @@ impl From<Register> for Reg {
         let register = match register {
             Register::Local(register) => register,
             Register::Temp(register) => register,
-            Register::Nil => unreachable!("Tried to use a invalid register to emit instruction"),
         };
 
-        Reg(register)
+        Reg(register as u8)
     }
 }
 
@@ -55,12 +54,12 @@ pub enum Instruction {
     CreateMap { dest: Reg },
     SetField { object: Reg, key: Reg, value: Reg },
     GetField { dest: Reg, object: Reg, key: Reg },
-    CreateClosure { dest: Reg, src: u32 },
-    CaptureValue { dest: Reg, src: Reg },
+    CreateClosure { dest: Reg, captures: u8 },
+    CaptureValue { src: Reg },
     CreateCell { dest: Reg, src: Reg },
     SetCell { dest: Reg, src: Reg },
     GetCell { dest: Reg, src: Reg },
-    Call { dest: Reg, src: Reg, arity: u8 },
+    Call { dest: Reg, src: Reg },
     Return { src: Reg },
     Jump { offset: i32 },
     JumpIfFalse { src: Reg, offset: i32 },
@@ -136,14 +135,14 @@ impl fmt::Display for Instruction {
             Self::GetField { dest, object, key } => {
                 write!(f, "GET_FIELD {} {} {}", dest, object, key)
             }
-            Self::CreateClosure { dest, src } => {
-                write!(f, "CREATE_CLOSURE {} FUNCTIONS[{}]", dest, src)
+            Self::CreateClosure { dest, captures } => {
+                write!(f, "CREATE_CLOSURE {} CAPTURES: {}", dest, captures)
             }
-            Self::CaptureValue { dest, src } => write!(f, "CAPTURE_VALUE {} {}", dest, src),
+            Self::CaptureValue { src } => write!(f, "CAPTURE_VALUE  {}", src),
             Self::CreateCell { dest, src } => write!(f, "CREATE_CELL {} {}", dest, src),
             Self::SetCell { dest, src } => write!(f, "SET_CELL {} {}", dest, src),
             Self::GetCell { dest, src } => write!(f, "GET_CELL {} {}", dest, src),
-            Self::Call { dest, src, arity } => write!(f, "CALL {} {} ARITY({})", dest, src, arity),
+            Self::Call { dest, src } => write!(f, "CALL {} {}", dest, src),
             Self::Return { src } => write!(f, "RET {}", src),
             Self::Jump { offset } => write!(f, "JMP {}", offset),
             Self::JumpIfTrue { src, offset } => write!(f, "JMP_IF_TRUE {} {}", src, offset),

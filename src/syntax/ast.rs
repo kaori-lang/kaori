@@ -88,14 +88,12 @@ pub enum Expr {
         condition: ExprId,
         block: ExprId,
     },
-    ForLoop {
-        start: ExprId,
-        end: ExprId,
-        block: ExprId,
-    },
     Return(ExprId),
     Break,
     Continue,
+    Import {
+        path: Vec<Spanned<Symbol>>,
+    },
 }
 
 impl Ast {
@@ -239,10 +237,6 @@ impl Ast {
         self.insert(Expr::WhileLoop { condition, block }, span)
     }
 
-    pub fn for_loop(&mut self, start: ExprId, end: ExprId, block: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::ForLoop { start, end, block }, span)
-    }
-
     pub fn return_(&mut self, expression: ExprId, span: Span) -> ExprId {
         self.insert(Expr::Return(expression), span)
     }
@@ -253,5 +247,9 @@ impl Ast {
 
     pub fn continue_(&mut self, span: Span) -> ExprId {
         self.insert(Expr::Continue, span)
+    }
+
+    pub fn import(&mut self, path: Vec<Spanned<Symbol>>, span: Span) -> ExprId {
+        self.insert(Expr::Import { path }, span)
     }
 }

@@ -3,16 +3,16 @@ use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Register {
-    Temp(u8),
-    Local(u8),
-    Nil,
+    Temp(usize),
+    Local(usize),
 }
 
 #[derive(Default)]
 pub struct Environment {
     pub parent: Option<Box<Environment>>,
-    scopes: Vec<Vec<(Symbol, Register)>>,
-    registers: BinaryHeap<Reverse<u8>>,
+    pub scopes: Vec<Vec<(Symbol, Register)>>,
+    pub registers: BinaryHeap<Reverse<usize>>,
+    pub frame_size: usize,
 }
 
 impl Environment {
@@ -20,14 +20,16 @@ impl Environment {
         Self {
             parent: None,
             scopes: vec![Vec::new()],
-            registers: (0..=255).map(Reverse).collect(),
+            registers: (1..=255).map(Reverse).collect(),
+            frame_size: 0,
         }
     }
     pub fn with_parent(parent: Environment) -> Self {
         Self {
             parent: Some(Box::new(parent)),
             scopes: vec![Vec::new()],
-            registers: (0..=255).map(Reverse).collect(),
+            registers: (1..=255).map(Reverse).collect(),
+            frame_size: 0,
         }
     }
     pub fn push_scope(&mut self) {
@@ -50,6 +52,18 @@ impl Environment {
 
         register
     }
+
+    pub fn declare_function(&mut self, name: Symbol) -> Register {
+        let register = Register::Local(0);
+
+        self.scopes
+            .last_mut()
+            .expect("scopes must never be empty")
+            .push((name, register));
+
+        register
+    }
+
     pub fn lookup(&self, name: Symbol) -> Option<(Symbol, Register)> {
         for scope in self.scopes.iter().rev() {
             for local in scope.iter().copied().rev() {
@@ -75,17 +89,21 @@ impl Environment {
     pub fn allocate_temp(&mut self) -> Register {
         Register::Temp(self.pop())
     }
-    fn pop(&mut self) -> u8 {
-        self.registers.pop().expect("exceeded register limit").0
+    fn pop(&mut self) -> usize {
+        let register = self.registers.pop().expect("exceeded register limit").0;
+
+        self.frame_size = (register + 1).max(self.frame_size);
+
+        register
     }
     pub fn free_temp(&mut self, register: Register) {
-        if let Register::Temp(r) = register {
-            self.registers.push(Reverse(r));
+        if let Register::Temp(register) = register {
+            self.registers.push(Reverse(register));
         }
     }
     pub fn free_local(&mut self, register: Register) {
-        if let Register::Local(r) = register {
-            self.registers.push(Reverse(r));
+        if let Register::Local(register) = register {
+            self.registers.push(Reverse(register));
         }
     }
 }

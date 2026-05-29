@@ -107,11 +107,7 @@ impl<'a> Parser<'a> {
     fn requires_semicolon(&mut self, id: ExprId) -> bool {
         !matches!(
             self.ast.node(id),
-            Expr::Block { .. }
-                | Expr::If { .. }
-                | Expr::Function { .. }
-                | Expr::ForLoop { .. }
-                | Expr::WhileLoop { .. }
+            Expr::Block { .. } | Expr::If { .. } | Expr::Function { .. } | Expr::WhileLoop { .. }
         )
     }
 
@@ -140,6 +136,26 @@ impl<'a> Parser<'a> {
         let assign = self.parse_assign()?;
 
         Ok(assign)
+    }
+
+    fn parse_import(&mut self) -> Result<ExprId, Error> {
+        let import_span = self.consume(Token::Import)?;
+
+        let mut path = Vec::new();
+
+        while !self.at_end() {
+            let name = self.parse_name()?;
+
+            path.push(name);
+
+            if self.peek_token() != Token::Dot {
+                break;
+            }
+
+            self.consume(Token::Dot)?;
+        }
+
+        Ok(self.ast.import(path, import_span))
     }
 
     fn parse_return(&mut self) -> Result<ExprId, Error> {
@@ -258,13 +274,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_variable(&mut self) -> Result<ExprId, Error> {
+        let let_span = self.consume(Token::Let)?;
+
         let left = self.parse_name()?;
 
-        self.consume(Token::Walrus)?;
+        self.consume(Token::Assign)?;
 
         let right = self.parse_expression()?;
 
-        let span = left.span.merge(self.ast.span(right));
+        let span = let_span.merge(self.ast.span(right));
 
         Ok(self.ast.variable(left, right, span))
     }
@@ -457,7 +475,7 @@ impl<'a> Parser<'a> {
                 return Ok(self.ast.logical_not(right, span));
             }
             Token::Minus => UnaryOp::Negate,
-            Token::Bang => UnaryOp::Deref,
+            Token::Caret => UnaryOp::Deref,
             Token::Ampersand => UnaryOp::Ref,
             _ => {
                 let primary = self.parse_primary()?;
@@ -486,9 +504,8 @@ impl<'a> Parser<'a> {
             Token::Continue => self.parse_continue()?,
             Token::Return => self.parse_return()?,
             Token::If => self.parse_if()?,
-            Token::Identifier if self.lookahead(&[Token::Identifier, Token::Walrus]) => {
-                self.parse_variable()?
-            }
+            Token::Let => self.parse_variable()?,
+            Token::Import => self.parse_import()?,
             Token::LeftParen => {
                 self.consume(Token::LeftParen)?;
                 let expression = self.parse_expression()?;

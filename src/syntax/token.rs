@@ -34,8 +34,6 @@ impl From<Span> for Range<usize> {
 #[derive(Logos, Debug, PartialEq, Copy, Clone)]
 #[logos(skip r"[ \t\f\r\n]+")]
 pub enum Token {
-    #[token(":=")]
-    Walrus,
     #[token("=")]
     Assign,
     #[token("+=")]
@@ -56,8 +54,8 @@ pub enum Token {
     Multiply,
     #[token("&")]
     Ampersand,
-    #[token("!")]
-    Bang,
+    #[token("^")]
+    Caret,
     #[token("/")]
     Divide,
     #[token("%")]
@@ -98,8 +96,8 @@ pub enum Token {
     Or,
     #[token("not")]
     Not,
-    #[token("native")]
-    Native,
+    #[token("let")]
+    Let,
     #[token("fun")]
     Function,
     #[token("for")]
@@ -116,6 +114,8 @@ pub enum Token {
     Else,
     #[token("return")]
     Return,
+    #[token("import")]
+    Import,
     #[token("true")]
     True,
     #[token("false")]
@@ -136,7 +136,6 @@ pub enum Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            Self::Walrus => "`:=`",
             Self::Assign => "`=`",
             Self::AddAssign => "`+=`",
             Self::SubtractAssign => "`-=`",
@@ -149,7 +148,7 @@ impl fmt::Display for Token {
             Self::Divide => "`/`",
             Self::Modulo => "`%`",
             Self::Ampersand => "`&`",
-            Self::Bang => "`!`",
+            Self::Caret => "`^`",
             Self::NotEqual => "`!=`",
             Self::Equal => "`==`",
             Self::GreaterEqual => "`>=`",
@@ -169,7 +168,7 @@ impl fmt::Display for Token {
             Self::And => "`and`",
             Self::Or => "`or`",
             Self::Not => "`not`",
-            Self::Native => "`native`",
+            Self::Let => "`let`",
             Self::Function => "`fun`",
             Self::For => "`for`",
             Self::While => "`while`",
@@ -178,6 +177,7 @@ impl fmt::Display for Token {
             Self::If => "`if`",
             Self::Else => "`else`",
             Self::Return => "`return`",
+            Self::Import => "`import`",
             Self::True => "`true`",
             Self::False => "`false`",
             Self::Nil => "`nil`",

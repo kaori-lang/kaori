@@ -13,7 +13,8 @@ scripts = [
 ]
 
 benchmarks = [
-    ("Mandelbrot",    "mandelbrot"),
+    #("Mandelbrot",    "mandelbrot"),
+    ("Fibonnaci",    "recursive_fib"),
 ]
 
 for bench_name, bench_slug in benchmarks:

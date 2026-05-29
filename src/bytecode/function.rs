@@ -6,12 +6,13 @@ use std::fmt::{self, Display, Formatter};
 pub struct Function {
     pub instructions: Vec<Instruction>,
     pub constants: Vec<Value>,
-    pub arity: u8,
-    pub frame_size: u8,
+    pub frame_size: usize,
+    pub arity: usize,
 }
 
 impl Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "FRAME_SIZE: {}", self.frame_size)?;
         writeln!(f, "ARITY: {}", self.arity)?;
 
         for (ip, instr) in self.instructions.iter().enumerate() {
@@ -24,12 +25,12 @@ impl Display for Function {
 }
 
 impl Function {
-    pub fn new(arity: u8) -> Self {
+    pub fn new(arity: usize) -> Self {
         Self {
             instructions: Vec::new(),
             constants: Vec::new(),
-            arity,
             frame_size: 0,
+            arity,
         }
     }
 
@@ -72,6 +73,12 @@ impl Function {
 
     pub fn store_boolean_const(&mut self, value: bool) -> Const {
         let index = self.get_or_insert(Value::bool(value));
+
+        Const(index)
+    }
+
+    pub fn store_function_const(&mut self, value: usize) -> Const {
+        let index = self.get_or_insert(Value::function(value));
 
         Const(index)
     }

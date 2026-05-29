@@ -7,7 +7,7 @@ pub fn collect_free_variables(ast: &Ast, id: ExprId) -> Vec<Spanned<Symbol>> {
     let Expr::Function {
         ref parameters,
         block,
-        ..
+        name,
     } = *ast.node(id)
     else {
         unreachable!("collect_free_variables should be called on a function node")
@@ -15,6 +15,10 @@ pub fn collect_free_variables(ast: &Ast, id: ExprId) -> Vec<Spanned<Symbol>> {
 
     let mut free_variables = Vec::new();
     let mut bound = parameters.to_vec();
+
+    if let Some(name) = name {
+        bound.push(name);
+    }
 
     collect(ast, block, &mut bound, &mut free_variables);
 
@@ -118,7 +122,7 @@ fn collect(
         | Expr::Number(_)
         | Expr::String(_)
         | Expr::Boolean(_)
-        | Expr::Nil => {}
-        Expr::ForLoop { .. } => {}
+        | Expr::Nil
+        | Expr::Import { .. } => {}
     }
 }

@@ -4,19 +4,11 @@ use crate::bytecode::{function::Function, instruction::Instruction};
 
 use super::value::Value;
 
-pub struct Closure {
-    pub captured: Vec<Value>,
-    pub instructions: *const Instruction,
-    pub constants: *const Value,
-    pub arity: u8,
-    pub frame_size: u8,
-}
-
 #[derive(Default)]
 pub struct Gc {
     vecs: Vec<Vec<Value>>,
     maps: Vec<HashMap<Value, Value>>,
-    closures: Vec<Closure>,
+    closures: Vec<Vec<Value>>,
     cells: Vec<Value>,
 
     free_vecs: Vec<usize>,
@@ -55,7 +47,7 @@ impl Gc {
     }
 
     #[inline(always)]
-    pub fn allocate_closure(&mut self, closure: Closure) -> Value {
+    pub fn allocate_closure(&mut self, closure: Vec<Value>) -> Value {
         let index = Self::alloc(&mut self.closures, &mut self.free_closures, closure);
 
         Value::closure(index)
@@ -89,12 +81,12 @@ impl Gc {
     }
 
     #[inline(always)]
-    pub fn get_closure(&self, value: Value) -> &Closure {
+    pub fn get_closure(&self, value: Value) -> &Vec<Value> {
         unsafe { self.closures.get_unchecked(value.as_index()) }
     }
 
     #[inline(always)]
-    pub fn get_mut_closure(&mut self, value: Value) -> &mut Closure {
+    pub fn get_mut_closure(&mut self, value: Value) -> &mut Vec<Value> {
         unsafe { self.closures.get_unchecked_mut(value.as_index()) }
     }
 

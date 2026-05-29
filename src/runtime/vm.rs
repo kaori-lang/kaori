@@ -9,7 +9,6 @@ use crate::bytecode::instruction::{Const, Instruction, Reg};
 use crate::report_error;
 
 use crate::runtime::debug_value::DebugValue;
-use crate::runtime::gc::Closure;
 
 use crate::runtime::value::Value;
 
@@ -18,7 +17,7 @@ type Handler = unsafe extern "rust-preserve-none" fn(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>>;
 
 static HANDLERS: [Handler; 54] = [
@@ -130,7 +129,7 @@ pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
         HANDLERS[index](ip, registers, constants, &mut state, frame_size).map_err(|e| *e)?
     };
 
-    //println!("{:?}", DebugValue::new(value, &state.gc));
+    println!("{:?}", DebugValue::new(value, &state.gc));
     Ok(value)
 }
 
@@ -187,7 +186,7 @@ unsafe extern "rust-preserve-none" fn opcode_add_rr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Add { dest, src1, src2 } = *ip else {
@@ -216,7 +215,7 @@ unsafe extern "rust-preserve-none" fn opcode_add_rk(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::AddK { dest, src1, src2 } = *ip else {
@@ -245,7 +244,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Subtract { dest, src1, src2 } = *ip else {
@@ -274,7 +273,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rk(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::SubtractRK { dest, src1, src2 } = *ip else {
@@ -303,7 +302,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_kr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::SubtractKR { dest, src1, src2 } = *ip else {
@@ -332,7 +331,7 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Multiply { dest, src1, src2 } = *ip else {
@@ -361,7 +360,7 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rk(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::MultiplyK { dest, src1, src2 } = *ip else {
@@ -390,7 +389,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Divide { dest, src1, src2 } = *ip else {
@@ -419,7 +418,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rk(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::DivideRK { dest, src1, src2 } = *ip else {
@@ -448,7 +447,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_kr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::DivideKR { dest, src1, src2 } = *ip else {
@@ -477,7 +476,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Modulo { dest, src1, src2 } = *ip else {
@@ -506,7 +505,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rk(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::ModuloRK { dest, src1, src2 } = *ip else {
@@ -535,7 +534,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_kr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::ModuloKR { dest, src1, src2 } = *ip else {
@@ -564,7 +563,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Equal { dest, src1, src2 } = *ip else {
@@ -588,7 +587,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rk(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::EqualK { dest, src1, src2 } = *ip else {
@@ -612,7 +611,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::NotEqual { dest, src1, src2 } = *ip else {
@@ -636,7 +635,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rk(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::NotEqualK { dest, src1, src2 } = *ip else {
@@ -660,7 +659,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_rr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Less { dest, src1, src2 } = *ip else {
@@ -689,7 +688,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_rk(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::LessK { dest, src1, src2 } = *ip else {
@@ -718,7 +717,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::LessEqual { dest, src1, src2 } = *ip else {
@@ -747,7 +746,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rk(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::LessEqualK { dest, src1, src2 } = *ip else {
@@ -776,7 +775,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Greater { dest, src1, src2 } = *ip else {
@@ -805,7 +804,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rk(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::GreaterK { dest, src1, src2 } = *ip else {
@@ -834,7 +833,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rr(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::GreaterEqual { dest, src1, src2 } = *ip else {
@@ -863,7 +862,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rk(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src1, src2) = unsafe {
         let Instruction::GreaterEqualK { dest, src1, src2 } = *ip else {
@@ -892,7 +891,7 @@ unsafe extern "rust-preserve-none" fn opcode_not(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src) = unsafe {
         let Instruction::Not { dest, src } = *ip else {
@@ -917,7 +916,7 @@ unsafe extern "rust-preserve-none" fn opcode_negate(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src) = unsafe {
         let Instruction::Negate { dest, src } = *ip else {
@@ -942,7 +941,7 @@ unsafe extern "rust-preserve-none" fn opcode_move(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src) = unsafe {
         let Instruction::Move { dest, src } = *ip else {
@@ -965,7 +964,7 @@ unsafe extern "rust-preserve-none" fn opcode_load_const(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src) = unsafe {
         let Instruction::LoadConst { dest, src } = *ip else {
@@ -988,7 +987,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_map(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let dest = unsafe {
         let Instruction::CreateMap { dest } = *ip else {
@@ -1011,7 +1010,7 @@ unsafe extern "rust-preserve-none" fn opcode_set_field(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (object, key, value) = unsafe {
         let Instruction::SetField { object, key, value } = *ip else {
@@ -1038,7 +1037,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_field(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, object, key) = unsafe {
         let Instruction::GetField { dest, object, key } = *ip else {
@@ -1071,37 +1070,38 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
-    let (dest, src) = unsafe {
-        let Instruction::CreateClosure { dest, src } = *ip else {
+    let (dest, captures) = unsafe {
+        let Instruction::CreateClosure { dest, captures } = *ip else {
             unreachable_unchecked()
         };
 
-        (dest, src)
+        (dest, captures)
     };
 
-    let closure = {
-        let Function {
-            ref instructions,
-            frame_size,
-            arity,
-            ref constants,
-            ..
-        } = state.functions[src as usize];
+    let function = unsafe { registers.get_value(dest) };
+    let mut closure = vec![function];
 
-        Closure {
-            instructions: instructions.as_ptr(),
-            constants: constants.as_ptr(),
-            arity,
-            frame_size,
-            captured: Vec::new(),
-        }
-    };
+    for offset in 1..(captures + 1) as usize {
+        let ip = unsafe { ip.add(offset) };
+        let src = unsafe {
+            let Instruction::CaptureValue { src } = *ip else {
+                unreachable_unchecked()
+            };
 
-    let closure = state.gc.allocate_closure(closure);
+            src
+        };
 
-    unsafe { registers.set_value(dest, closure) };
+        let value = unsafe { registers.get_value(src) };
+        closure.push(value);
+    }
+
+    let value = state.gc.allocate_closure(closure);
+
+    unsafe { registers.set_value(dest, value) };
+
+    let ip = unsafe { ip.add(captures as usize) };
 
     dispatch_next!(ip, registers, constants, state, frame_size)
 }
@@ -1112,23 +1112,9 @@ unsafe extern "rust-preserve-none" fn opcode_capture_value(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
-    let (dest, src) = unsafe {
-        let Instruction::CaptureValue { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-
-        (dest, src)
-    };
-
-    let value = unsafe { registers.get_value(src) };
-    let index = unsafe { registers.get_value(dest) };
-    let closure = state.gc.get_mut_closure(index);
-
-    closure.captured.push(value);
-
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    unreachable!("Handler capture by value should not be reached!")
 }
 
 #[inline(never)]
@@ -1137,7 +1123,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_cell(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src) = unsafe {
         let Instruction::CreateCell { dest, src } = *ip else {
@@ -1162,7 +1148,7 @@ unsafe extern "rust-preserve-none" fn opcode_set_cell(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src) = unsafe {
         let Instruction::SetCell { dest, src } = *ip else {
@@ -1188,7 +1174,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_cell(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src) = unsafe {
         let Instruction::GetCell { dest, src } = *ip else {
@@ -1214,63 +1200,87 @@ unsafe extern "rust-preserve-none" fn opcode_call(
     mut registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
-    let (dest, src, call_arity) = unsafe {
-        let Instruction::Call { dest, src, arity } = *ip else {
+    let (dest, src) = unsafe {
+        let Instruction::Call { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
-        (dest, src, arity)
+        (dest, src)
     };
 
     let src = unsafe { registers.get_value(src) };
 
-    type_check!(src.is_closure(), "cannot call, value is not a function",);
+    type_check!(
+        src.is_closure() || src.is_function(),
+        "value is not a callable",
+    );
 
     let return_value = {
-        let Closure {
-            instructions,
-            constants,
-            arity: closure_arity,
-            ref captured,
-            frame_size: new_frame_size,
-        } = *state.gc.get_closure(src);
+        state.remaining_registers -= frame_size;
 
-        if call_arity != closure_arity {
-            return Err(Box::new(report_error!(
-                "the number of arguments must match the number of parameters in a function call"
-            )));
-        }
+        const MAX_REGISTERS: usize = 256;
 
-        state.remaining_registers -= frame_size as usize;
-
-        if state.remaining_registers < new_frame_size as usize {
+        if state.remaining_registers < MAX_REGISTERS {
             return Err(Box::new(report_error!("the call stack ran out of memory")));
         };
 
-        let mut callee_registers = unsafe { Registers(registers.0.add(frame_size as usize)) };
-        let constants = Constants(constants);
+        let mut callee_registers = unsafe { Registers(registers.0.add(frame_size)) };
 
-        for (i, value) in captured.iter().copied().enumerate() {
-            let dest = Reg(closure_arity + i as u8);
-            unsafe { callee_registers.set_value(dest, value) };
-        }
+        // SET FUNCTION / CLOSURE ON THE FIRST REGISTER
+        unsafe { callee_registers.set_value(Reg(0), src) };
 
-        unsafe {
-            let index = (*instructions).discriminant();
+        if src.is_closure() {
+            let closure = state.gc.get_closure(src);
+            let index = closure[0].as_index();
 
-            HANDLERS.get_unchecked(index)(
-                instructions,
-                callee_registers,
-                constants,
-                state,
-                new_frame_size,
-            )?
+            let Function {
+                ref instructions,
+                ref constants,
+                frame_size,
+                arity,
+            } = state.functions[index];
+
+            for (index, value) in closure.iter().copied().enumerate().skip(1) {
+                let offset = arity + index;
+                let dest = Reg(offset as u8);
+
+                unsafe { callee_registers.set_value(dest, value) };
+            }
+
+            let constants: Constants = constants.into();
+
+            unsafe {
+                let ip = instructions.as_ptr();
+
+                let index = (*ip).discriminant();
+
+                HANDLERS.get_unchecked(index)(ip, callee_registers, constants, state, frame_size)?
+            }
+        } else {
+            let index = src.as_index();
+
+            let Function {
+                ref instructions,
+                ref constants,
+                frame_size,
+                arity,
+            } = state.functions[index];
+
+            let constants: Constants = constants.into();
+
+            unsafe {
+                let ip = instructions.as_ptr();
+
+                let index = (*ip).discriminant();
+
+                HANDLERS.get_unchecked(index)(ip, callee_registers, constants, state, frame_size)?
+            }
         }
     };
 
-    state.remaining_registers += frame_size as usize;
+    state.remaining_registers += frame_size;
 
     unsafe { registers.set_value(dest, return_value) };
 
@@ -1280,10 +1290,10 @@ unsafe extern "rust-preserve-none" fn opcode_call(
 #[inline(never)]
 unsafe extern "rust-preserve-none" fn opcode_return(
     ip: *const Instruction,
-    registers: Registers,
+    mut registers: Registers,
     _constants: Constants,
     _state: &mut VmState,
-    _frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let src = unsafe {
         let Instruction::Return { src } = *ip else {
@@ -1295,6 +1305,12 @@ unsafe extern "rust-preserve-none" fn opcode_return(
 
     let value = unsafe { registers.get_value(src) };
 
+    for index in 0..frame_size {
+        let dest = Reg(index as u8);
+
+        unsafe { registers.set_value(dest, Value::nil()) };
+    }
+
     Ok(value)
 }
 
@@ -1304,7 +1320,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let offset = unsafe {
         let Instruction::Jump { offset } = *ip else {
@@ -1323,7 +1339,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_false(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src, offset) = unsafe {
         let Instruction::JumpIfFalse { src, offset } = *ip else {
@@ -1353,7 +1369,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_true(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src, offset) = unsafe {
         let Instruction::JumpIfTrue { src, offset } = *ip else {
@@ -1383,7 +1399,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rr(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfLess { src1, src2, offset } = *ip else {
@@ -1414,7 +1430,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rk(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfLessK { src1, src2, offset } = *ip else {
@@ -1445,7 +1461,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rr(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfLessEqual { src1, src2, offset } = *ip else {
@@ -1476,7 +1492,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rk(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfLessEqualK { src1, src2, offset } = *ip else {
@@ -1507,7 +1523,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rr(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfGreater { src1, src2, offset } = *ip else {
@@ -1538,7 +1554,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rk(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfGreaterK { src1, src2, offset } = *ip else {
@@ -1569,7 +1585,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rr(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfGreaterEqual { src1, src2, offset } = *ip else {
@@ -1600,7 +1616,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rk(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfGreaterEqualK { src1, src2, offset } = *ip else {
@@ -1631,7 +1647,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rr(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfEqual { src1, src2, offset } = *ip else {
@@ -1657,7 +1673,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rk(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfEqualK { src1, src2, offset } = *ip else {
@@ -1683,7 +1699,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rr(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfNotEqual { src1, src2, offset } = *ip else {
@@ -1709,7 +1725,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rk(
     registers: Registers,
     constants: Constants,
     state: &mut VmState,
-    frame_size: u8,
+    frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfNotEqualK { src1, src2, offset } = *ip else {

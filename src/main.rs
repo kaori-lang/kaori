@@ -25,8 +25,8 @@ use std::path::PathBuf;
         }
         Err(_) => eprintln!("Error: Could not read the file by the given path."),
     };
-}
- */
+} */
+
 fn main() {
     let source = fs::read_to_string("main.kr").expect("could not read main.kr");
 
