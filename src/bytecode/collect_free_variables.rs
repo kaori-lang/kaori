@@ -44,6 +44,11 @@ fn collect(
 
             bound.push(left);
         }
+        Expr::Ref { left, right } => {
+            collect(ast, right, bound, free_variables);
+
+            bound.push(left);
+        }
         Expr::Function { name, .. } => {
             if let Some(name) = name {
                 bound.push(name);

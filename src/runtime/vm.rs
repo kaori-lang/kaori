@@ -55,9 +55,9 @@ static HANDLERS: [Handler; 54] = [
     opcode_get_field,
     opcode_create_closure,
     opcode_capture_value,
-    opcode_create_cell,
-    opcode_set_cell,
-    opcode_get_cell,
+    opcode_create_ref,
+    opcode_deref_set,
+    opcode_deref,
     opcode_call,
     opcode_return,
     opcode_jump,
@@ -1118,7 +1118,7 @@ unsafe extern "rust-preserve-none" fn opcode_capture_value(
 }
 
 #[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_create_cell(
+unsafe extern "rust-preserve-none" fn opcode_create_ref(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
@@ -1126,7 +1126,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_cell(
     frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src) = unsafe {
-        let Instruction::CreateCell { dest, src } = *ip else {
+        let Instruction::CreateRef { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
@@ -1143,7 +1143,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_cell(
 }
 
 #[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_set_cell(
+unsafe extern "rust-preserve-none" fn opcode_deref_set(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
@@ -1151,7 +1151,7 @@ unsafe extern "rust-preserve-none" fn opcode_set_cell(
     frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src) = unsafe {
-        let Instruction::SetCell { dest, src } = *ip else {
+        let Instruction::DerefSet { dest, src } = *ip else {
             unreachable_unchecked()
         };
 
@@ -1169,7 +1169,7 @@ unsafe extern "rust-preserve-none" fn opcode_set_cell(
 }
 
 #[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_get_cell(
+unsafe extern "rust-preserve-none" fn opcode_deref(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
@@ -1177,7 +1177,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_cell(
     frame_size: usize,
 ) -> Result<Value, Box<Error>> {
     let (dest, src) = unsafe {
-        let Instruction::GetCell { dest, src } = *ip else {
+        let Instruction::Deref { dest, src } = *ip else {
             unreachable_unchecked()
         };
 

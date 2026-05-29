@@ -78,6 +78,16 @@ fn lower_effect(
                 Some(dest),
             )?;
         }
+        Expr::Ref { left, right } => {
+            let dest = env.declare_local(left.value);
+
+            let src = lower_expression(ast, functions, function, env, pending_args, right, None)?;
+
+            function.emit_instruction(Instruction::CreateRef {
+                dest: dest.into(),
+                src: src.into(),
+            });
+        }
         Expr::Assign { left, right } => match *ast.node(left) {
             Expr::Identifier(..) => {
                 let dest =
@@ -129,7 +139,7 @@ fn lower_effect(
                 let src =
                     lower_expression(ast, functions, function, env, pending_args, right, None)?;
 
-                function.emit_instruction(Instruction::SetCell {
+                function.emit_instruction(Instruction::DerefSet {
                     dest: dest.into(),
                     src: src.into(),
                 });
@@ -511,11 +521,7 @@ fn lower_expression(
                     dest: dest.into(),
                     src: src.into(),
                 },
-                UnaryOp::Ref => Instruction::CreateCell {
-                    dest: dest.into(),
-                    src: src.into(),
-                },
-                UnaryOp::Deref => Instruction::GetCell {
+                UnaryOp::Deref => Instruction::Deref {
                     dest: dest.into(),
                     src: src.into(),
                 },
@@ -880,6 +886,7 @@ fn lower_expression(
         }
         Expr::Import { .. } => dest.unwrap_or_else(|| env.allocate_temp()),
         Expr::Variable { .. }
+        | Expr::Ref { .. }
         | Expr::Assign { .. }
         | Expr::WhileLoop { .. }
         | Expr::Return(..)
@@ -1190,8 +1197,8 @@ fn patch_pending_args(function: &mut Function, pending_args: &[usize], frame_siz
             | Instruction::CreateMap { dest }
             | Instruction::GetField { dest, .. }
             | Instruction::CreateClosure { dest, .. }
-            | Instruction::CreateCell { dest, .. }
-            | Instruction::GetCell { dest, .. }
+            | Instruction::CreateRef { dest, .. }
+            | Instruction::Deref { dest, .. }
             | Instruction::Call { dest, .. } => {
                 let new_dest = Register::Temp(dest.0 as usize + frame_size);
                 *dest = new_dest.into();

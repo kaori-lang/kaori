@@ -28,8 +28,7 @@ use std::path::PathBuf;
 } */
 
 fn main() {
-    let source =
-        fs::read_to_string("./examples/kaori/mandelbrot.kr").expect("could not read main.kr");
+    let source = fs::read_to_string("main.kr").expect("could not read main.kr");
 
     if let Err(error) = compile_and_run(&source) {
         error.report(&source);

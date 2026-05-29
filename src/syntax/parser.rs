@@ -518,6 +518,7 @@ impl<'a> Parser<'a> {
             Token::Return => self.parse_return()?,
             Token::If => self.parse_if()?,
             Token::Let => self.parse_variable()?,
+            Token::Ref => self.parse_ref()?,
             Token::Import => self.parse_import()?,
             Token::LeftParen => {
                 self.consume(Token::LeftParen)?;
