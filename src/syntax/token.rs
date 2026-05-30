@@ -122,7 +122,7 @@ pub enum Token {
     False,
     #[token("nil")]
     Nil,
-    #[regex(r"[0-9]+(\.[0-9]+)?")]
+    #[regex(r"[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?")]
     NumberLiteral,
     #[token(";")]
     Semicolon,

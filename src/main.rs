@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::hint::black_box;
 #[allow(unused_imports)]
 use std::{env::args, process::ExitCode};
@@ -5,8 +6,7 @@ use std::{env::args, process::ExitCode};
 use std::{fs, time::Instant};
 
 use clap::{Arg, Command};
-use foldhash::HashMap;
-use kaori::interpreter::compile_and_run;
+use kaori::compiler::{Compiler, compile_and_run};
 
 use std::path::PathBuf;
 
@@ -28,9 +28,7 @@ use std::path::PathBuf;
 } */
 
 fn main() {
-    let source = fs::read_to_string("main.kr").expect("could not read main.kr");
-
-    if let Err(error) = compile_and_run(&source) {
-        error.report(&source);
-    }
+    let mut compiler = Compiler::default();
+    compiler.compile();
+    //compile_and_run();
 }

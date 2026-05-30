@@ -21,7 +21,7 @@ impl<T> Spanned<T> {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 pub struct Ast {
     nodes: Vec<Spanned<Expr>>,
 }
@@ -96,7 +96,7 @@ pub enum Expr {
     Break,
     Continue,
     Import {
-        path: Vec<Spanned<Symbol>>,
+        path: Spanned<Symbol>,
     },
 }
 
@@ -257,7 +257,7 @@ impl Ast {
         self.insert(Expr::Continue, span)
     }
 
-    pub fn import(&mut self, path: Vec<Spanned<Symbol>>, span: Span) -> ExprId {
+    pub fn import(&mut self, path: Spanned<Symbol>, span: Span) -> ExprId {
         self.insert(Expr::Import { path }, span)
     }
 }

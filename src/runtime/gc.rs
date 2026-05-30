@@ -1,7 +1,5 @@
 use foldhash::HashMap;
 
-use crate::bytecode::{function::Function, instruction::Instruction};
-
 use super::value::Value;
 
 #[derive(Default)]

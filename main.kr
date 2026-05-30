@@ -1,7 +1,1 @@
-let x = 5;
-
-ref x = 2;
-
-^x += 10;
-
-return ^x;
+import "./test.kr";

@@ -8,7 +8,7 @@ pub mod bytecode;
 pub mod diagnostics;
 pub mod syntax;
 
-pub mod interpreter;
+pub mod compiler;
 pub mod runtime;
 
 pub mod std;

@@ -1,8 +1,8 @@
 use std::ops::Range;
 
 use crate::{
+    compiler::{Compiler, INTERNER},
     diagnostics::error::Error,
-    interpreter::INTERNER,
     report_error,
     syntax::{
         ast::{Ast, Expr, ExprId, Spanned},
@@ -17,15 +17,17 @@ pub struct Parser<'a> {
     tokens: Vec<(Token, Span)>,
     pos: usize,
     ast: Ast,
+    compiler: &'a Compiler,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(source: &'a str, tokens: Vec<(Token, Span)>) -> Self {
+    pub fn new(source: &'a str, tokens: Vec<(Token, Span)>, compiler: &'a Compiler) -> Self {
         Self {
             source,
             tokens,
             pos: 0,
             ast: Ast::default(),
+            compiler,
         }
     }
 
@@ -79,6 +81,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(report_error!(
                 span,
+                self.compiler.path,
                 "expected {} and found {}",
                 expected,
                 token
@@ -88,20 +91,6 @@ impl<'a> Parser<'a> {
 
     fn advance_token(&mut self) {
         self.pos += 1;
-    }
-
-    fn lookahead(&self, tokens: &[Token]) -> bool {
-        for (offset, expected) in tokens.iter().enumerate() {
-            match self.tokens.get(self.pos + offset) {
-                Some((token, _)) => {
-                    if token != expected {
-                        return false;
-                    }
-                }
-                None => return false,
-            }
-        }
-        true
     }
 
     fn requires_semicolon(&mut self, id: ExprId) -> bool {
@@ -141,21 +130,20 @@ impl<'a> Parser<'a> {
     fn parse_import(&mut self) -> Result<ExprId, Error> {
         let import_span = self.consume(Token::Import)?;
 
-        let mut path = Vec::new();
+        let span = self.peek_span();
+        let lexeme = self.lexeme(span);
 
-        while !self.at_end() {
-            let name = self.parse_name()?;
+        let symbol = INTERNER
+            .lock()
+            .unwrap()
+            .get_or_intern(&lexeme[1..lexeme.len() - 1]);
+        let path = Spanned::new(symbol, span);
 
-            path.push(name);
+        self.consume(Token::StringLiteral)?;
 
-            if self.peek_token() != Token::Dot {
-                break;
-            }
+        let span = import_span.merge(span);
 
-            self.consume(Token::Dot)?;
-        }
-
-        Ok(self.ast.import(path, import_span))
+        Ok(self.ast.import(path, span))
     }
 
     fn parse_return(&mut self) -> Result<ExprId, Error> {
@@ -534,7 +522,11 @@ impl<'a> Parser<'a> {
 
                 let value = match lexeme.parse::<f64>() {
                     Ok(value) => Ok(value),
-                    Err(..) => Err(report_error!(span, "failed to parse float")),
+                    Err(..) => Err(report_error!(
+                        span,
+                        self.compiler.path,
+                        "failed to parse float"
+                    )),
                 }?;
 
                 self.advance_token();
@@ -579,6 +571,7 @@ impl<'a> Parser<'a> {
 
                 return Err(report_error!(
                     span,
+                    self.compiler.path,
                     "expected a <operand> and found: {}",
                     token
                 ));

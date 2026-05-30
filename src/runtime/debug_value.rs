@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::{
-    interpreter::INTERNER,
+    compiler::INTERNER,
     runtime::{gc::Gc, value::Value},
     util::string_interner::Symbol,
 };

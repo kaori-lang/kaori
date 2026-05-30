@@ -2,42 +2,75 @@ use std::ops::Range;
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 
-use crate::syntax::token::Span;
+use crate::{compiler::INTERNER, syntax::token::Span, util::string_interner::Symbol};
 
 #[macro_export]
 macro_rules! report_error {
+    ($span:expr, $path:expr, $msg:literal $(, $arg:expr)* $(,)?) => {
+        $crate::diagnostics::error::Error::new(
+            $span,
+            Some($path),
+            format!($msg $(, $arg)*)
+        )
+    };
     ($span:expr, $msg:literal $(, $arg:expr)* $(,)?) => {
-        Error::new(Some($span), format!($msg $(, $arg)*))
+        $crate::diagnostics::error::Error::new(
+            $span,
+            None,
+            format!($msg $(, $arg)*)
+        )
     };
     ($msg:literal $(, $arg:expr)* $(,)?) => {
-        Error::new(None, format!($msg $(, $arg)*))
+        $crate::diagnostics::error::Error::new(
+            $crate::syntax::token::Span::default(),
+            None,
+            format!($msg $(, $arg)*)
+        )
     };
 }
 
 #[derive(Clone, Debug)]
-pub struct Error {
-    pub span: Option<Span>,
+pub struct Error(Box<InnerError>);
+
+#[derive(Clone, Debug)]
+pub struct InnerError {
+    pub span: Span,
     pub message: String,
+    pub path: Option<Symbol>,
 }
 
 impl Error {
-    pub fn new(span: Option<Span>, message: String) -> Self {
-        Self { span, message }
+    pub fn new(span: Span, path: Option<Symbol>, message: String) -> Self {
+        Self(Box::new(InnerError {
+            span,
+            message,
+            path,
+        }))
     }
 
-    pub fn report(&self, source: &str) {
-        let file_id = "source";
-        let span: Range<usize> = self.span.unwrap_or_default().into();
+    pub fn report(&self) {
+        let (file_name, source) = match self.0.path {
+            Some(path) => {
+                let file_name = INTERNER.lock().unwrap().resolve(path).to_string();
+                let source = std::fs::read_to_string(&file_name).unwrap_or_default();
+                (file_name, source)
+            }
+            None => ("unknown".to_string(), String::new()),
+        };
 
-        let report = Report::build(ReportKind::Error, (file_id, span.clone())).with_label(
-            Label::new((file_id, span))
-                .with_message(&self.message)
-                .with_color(Color::Red),
-        );
+        let span: Range<usize> = self.0.span.into();
+
+        let report = Report::build(ReportKind::Error, (file_name.as_str(), span.clone()))
+            .with_message(&self.0.message)
+            .with_label(
+                Label::new((file_name.as_str(), span))
+                    .with_message(&self.0.message)
+                    .with_color(Color::Red),
+            );
 
         report
             .finish()
-            .print((file_id, Source::from(source)))
+            .print((file_name.as_str(), Source::from(&source)))
             .unwrap();
     }
 }
