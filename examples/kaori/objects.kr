@@ -1,16 +1,1 @@
-cat := {
-    "sound": "meow",
-    "age": 5,
-    "color": "black"
-};
-
-sum := 0;
-i := 0;
-
-while i < 100000000 {
-    sum += cat.age;
-
-    i += 1;
-}
-
-sum;
+let cat = #{ age: 5 };

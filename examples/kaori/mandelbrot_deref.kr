@@ -1,26 +1,31 @@
-width := &800;
-height := &800;
-max_iter := &1000;
-x_min := &-2.5;
-x_max := &1.0;
-y_min := &-1.25;
-y_max := &1.25;
-y := &0;
-while !y < !height {
-    x := &0;
-    while !x < !width {
-        cx := &(!x_min + (!x * (!x_max - !x_min) / !width));
-        cy := &(!y_min + (!y * (!y_max - !y_min) / !height));
-        zx := &0.0;
-        zy := &0.0;
-        iter := &0;
-        while (!zx * !zx + !zy * !zy < 4.0) and (!iter < !max_iter) {
-            xtemp := &(!zx * !zx - !zy * !zy + !cx);
-            zy = !x_min + (2.0 * !zx * !zy + !cy);
-            zx = !xtemp;
-            iter = !iter + 1;
+ref width = 800;
+ref height = 800;
+ref max_iter = 1000;
+ref x_min = -2.5;
+ref x_max = 1.0;
+ref y_min = -1.25;
+ref y_max = 1.25;
+ref y = 0;
+
+while ^y < ^height {
+    ref x = 0;
+
+    while ^x < ^width {
+        ref cx = ^x_min + (^x * (^x_max - ^x_min) / ^width);
+        ref cy = ^y_min + (^y * (^y_max - ^y_min) / ^height);
+        ref zx = 0.0;
+        ref zy = 0.0;
+        ref iter = 0;
+
+        while (^zx * ^zx + ^zy * ^zy < 4.0) and (^iter < ^max_iter) {
+            ref xtemp = ^zx * ^zx - ^zy * ^zy + ^cx;
+            ^zy = 2.0 * ^zx * ^zy + ^cy;
+            ^zx = ^xtemp;
+            ^iter += 1;
         }
-        x = !x + 1;
+
+        ^x += 1;
     }
-    y = !y + 1;
+
+    ^y += 1;
 }

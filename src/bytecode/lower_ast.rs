@@ -4,12 +4,14 @@ use crate::{
     bytecode::{
         collect_free_variables::collect_free_variables,
         environment::{Environment, Register},
-        function::Function,
-        instruction::{Const, Instruction},
     },
     compiler::{Compiler, INTERNER},
     diagnostics::error::Error,
     report_error,
+    runtime::{
+        function::Function,
+        instruction::{Const, Instruction},
+    },
     syntax::{
         ast::{Ast, Expr, ExprId},
         ops::{BinaryOp, UnaryOp},
@@ -881,17 +883,26 @@ fn lower_expression(
 
             dest
         }
-        Expr::Variable { .. }
-        | Expr::Ref { .. }
-        | Expr::Assign { .. }
-        | Expr::WhileLoop { .. }
-        | Expr::Return(..)
-        | Expr::Break
-        | Expr::Continue => {
+        Expr::Variable { .. } | Expr::Ref { .. } | Expr::Assign { .. } | Expr::WhileLoop { .. } => {
+            lower_effect(ast, compiler, function, env, pending_args, id)?;
+
+            let dest = dest.unwrap_or_else(|| env.allocate_temp());
+
+            let src = function.store_nil_const();
+
+            function.emit_instruction(Instruction::LoadConst {
+                dest: dest.into(),
+                src,
+            });
+
+            dest
+        }
+
+        Expr::Return(..) | Expr::Break | Expr::Continue => {
             return Err(report_error!(
                 ast.span(id),
                 compiler.path,
-                "expression does not produce a value and cannot be used in value position"
+                "expression produces a value of type never"
             ));
         }
     };

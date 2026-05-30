@@ -1,4 +1,7 @@
-use crate::{bytecode::instruction::Const, runtime::value::Value, util::string_interner::Symbol};
+use crate::{
+    runtime::{instruction::Const, value::Value},
+    util::string_interner::Symbol,
+};
 
 use super::instruction::Instruction;
 use std::fmt::{self, Display, Formatter};

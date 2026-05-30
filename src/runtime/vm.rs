@@ -3,13 +3,12 @@ use std::hint::unreachable_unchecked;
 use super::gc::Gc;
 use crate::diagnostics::error::Error;
 
-use crate::bytecode::function::Function;
-
-use crate::bytecode::instruction::{Const, Instruction, Reg};
 use crate::report_error;
 
 use crate::runtime::debug_value::DebugValue;
 
+use crate::runtime::function::Function;
+use crate::runtime::instruction::{Const, Instruction, Reg};
 use crate::runtime::value::Value;
 
 type Handler = unsafe extern "rust-preserve-none" fn(
@@ -109,13 +108,13 @@ macro_rules! type_check {
     }};
 }
 
-pub fn run_vm(functions: Vec<Function>) -> Result<Value, Error> {
+pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<Value, Error> {
     let Function {
         ref instructions,
         ref constants,
         frame_size,
         ..
-    } = functions[0];
+    } = functions[index];
 
     let ip = instructions.as_ptr();
     let index = unsafe { (*ip).discriminant() };
@@ -1305,11 +1304,11 @@ unsafe extern "rust-preserve-none" fn opcode_return(
 
     let value = unsafe { registers.get_value(src) };
 
-    for index in 0..frame_size {
+    /*  for index in 0..frame_size {
         let dest = Reg(index as u8);
 
         unsafe { registers.set_value(dest, Value::nil()) };
-    }
+    } */
 
     Ok(value)
 }

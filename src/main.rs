@@ -28,7 +28,8 @@ use std::path::PathBuf;
 } */
 
 fn main() {
-    let mut compiler = Compiler::default();
-    compiler.compile();
-    //compile_and_run();
+    match compile_and_run() {
+        Ok(value) => {}
+        Err(error) => error.report(),
+    }
 }

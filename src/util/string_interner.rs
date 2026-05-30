@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Default)]
 pub struct Symbol(pub u32);
 
 #[derive(Default, Debug)]

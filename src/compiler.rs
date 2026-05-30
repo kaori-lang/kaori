@@ -7,11 +7,16 @@ use std::{
 use logos::Logos;
 
 use crate::{
-    bytecode::{function::Function, lower_ast::lower_ast},
+    bytecode::lower_ast::lower_ast,
     diagnostics::error::Error,
     report_error,
+    runtime::{
+        function::{self, Function},
+        value::Value,
+        vm::run_vm,
+    },
     syntax::{
-        ast::{Ast, Spanned},
+        ast::Spanned,
         parser::Parser,
         token::{Span, Token},
     },
@@ -21,6 +26,7 @@ use crate::{
 pub static INTERNER: LazyLock<Mutex<StringInterner>> =
     LazyLock::new(|| Mutex::new(StringInterner::default()));
 
+#[derive(Default)]
 pub struct Compiler {
     pub functions: Vec<Function>,
     pub compiled_imports: HashMap<Symbol, usize>,
@@ -28,32 +34,18 @@ pub struct Compiler {
     pub path: Symbol,
 }
 
-impl Default for Compiler {
-    fn default() -> Self {
-        let path = INTERNER.lock().unwrap().get_or_intern("main.kr");
-
-        Self {
-            functions: Vec::new(),
-            compiled_imports: HashMap::new(),
-            visited: HashSet::new(),
-            path,
-        }
-    }
-}
 impl Compiler {
-    pub fn compile(&mut self) {
+    pub fn compile(&mut self) -> Result<usize, Error> {
+        let path = INTERNER.lock().unwrap().get_or_intern("main.kr");
         let span = Span::default();
 
-        let index = match self.compile_file(Spanned::new(self.path, span)) {
-            Ok(index) => index,
-            Err(error) => {
-                return error.report();
-            }
-        };
+        let index = self.compile_file(Spanned::new(path, span))?;
 
         for function in self.functions.iter() {
             println!("{}", function);
         }
+
+        Ok(index)
     }
 
     pub fn compile_file(&mut self, path: Spanned<Symbol>) -> Result<usize, Error> {
@@ -64,7 +56,7 @@ impl Compiler {
         if self.visited.contains(&path.value) {
             return Err(report_error!(
                 path.span,
-                path.value,
+                self.path,
                 "circular import detected"
             ));
         }
@@ -75,7 +67,7 @@ impl Compiler {
                 return Err(report_error!(
                     path.span,
                     self.path,
-                    "tried to import an invalid file path"
+                    "expected a valid file path"
                 ));
             }
         };
@@ -84,19 +76,21 @@ impl Compiler {
 
         let previous_path = self.path;
         self.path = path.value;
-        let index = self.compile_source_code(path.value, &src)?;
 
-        self.compiled_imports.insert(path.value, index);
+        let function_index = self.compile_source(&src)?;
+
+        self.compiled_imports.insert(path.value, function_index);
         self.path = previous_path;
-        Ok(index)
+
+        Ok(function_index)
     }
 
-    pub fn compile_source_code(&mut self, path: Symbol, src: &str) -> Result<usize, Error> {
+    fn compile_source(&mut self, src: &str) -> Result<usize, Error> {
         let mut tokens = Token::lexer(src)
             .spanned()
             .map(|(token, span)| match token {
                 Ok(token) => Ok((token, span.into())),
-                Err(()) => Err(report_error!(span.into(), path, "unexpected token")),
+                Err(()) => Err(report_error!(span.into(), self.path, "unexpected token")),
             })
             .collect::<Result<Vec<(Token, Span)>, Error>>()?;
         tokens.push((Token::Eof, Span::from(src.len()..src.len())));
@@ -105,7 +99,9 @@ impl Compiler {
 
         let ast = parser.parse()?;
 
-        lower_ast(ast, self)
+        let function_index = lower_ast(ast, self)?;
+
+        Ok(function_index)
     }
 
     pub fn push_function(&mut self, function: Function) -> usize {
@@ -117,6 +113,10 @@ impl Compiler {
     }
 }
 
-pub fn compile_and_run() {
-    //run_vm(functions)?;
+pub fn compile_and_run() -> Result<Value, Error> {
+    let mut compiler = Compiler::default();
+    let index = compiler.compile()?;
+    let value = run_vm(index, compiler.functions)?;
+
+    Ok(value)
 }
