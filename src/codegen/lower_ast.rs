@@ -2,7 +2,7 @@ use core::panic;
 
 use crate::{
     codegen::{
-        collect_free_variables::{self, collect_free_variables},
+        collect_free_variables::collect_free_variables,
         environment::{Environment, Register},
     },
     compiler::{Compiler, INTERNER},
@@ -219,6 +219,7 @@ fn lower_effect(
             ref parameters,
             block,
             name,
+            ref captures,
         } => {
             let arity = parameters.len();
             let mut inner_function = Function::new(arity);
@@ -235,7 +236,7 @@ fn lower_effect(
             let mut bound = parameters.to_vec();
             bound.push(name);
 
-            collect_free_variables(ast, id, &mut bound, &mut free_variables);
+            collect_free_variables(ast, block, &mut bound, &mut free_variables);
 
             for name in free_variables.iter().copied() {
                 if inner_env.lookup_in_parent(name.value).is_some() {
@@ -270,9 +271,11 @@ fn lower_effect(
             inner_function.frame_size = inner_env.frame_size;
             let index = compiler.push_function(inner_function);
 
-            *env = std::mem::take(&mut inner_env.parent.unwrap_or_default());
+            let (_, dest) = inner_env
+                .lookup(name.value)
+                .expect("function must be declared");
 
-            let (_, dest) = env.lookup(name.value).expect("function must be declared");
+            *env = std::mem::take(&mut inner_env.parent.unwrap_or_default());
 
             let src = function.store_function_const(index);
 
@@ -855,6 +858,7 @@ fn lower_expression(
         Expr::Lambda {
             ref parameters,
             block,
+            ref captures,
         } => {
             let arity = parameters.len();
             let mut inner_function = Function::new(arity);

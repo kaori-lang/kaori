@@ -6,7 +6,7 @@ use crate::{
     util::string_interner::Symbol,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ExprId(u32);
 
 #[derive(Clone, Copy, Debug)]
@@ -54,6 +54,10 @@ pub enum Expr {
         left: Spanned<Symbol>,
         right: ExprId,
     },
+    Constant {
+        left: Spanned<Symbol>,
+        right: ExprId,
+    },
     Ref {
         left: Spanned<Symbol>,
         right: ExprId,
@@ -78,10 +82,12 @@ pub enum Expr {
         name: Spanned<Symbol>,
         parameters: Vec<Spanned<Symbol>>,
         block: ExprId,
+        captures: Vec<ExprId>,
     },
     Lambda {
         parameters: Vec<Spanned<Symbol>>,
         block: ExprId,
+        captures: Vec<ExprId>,
     },
     Block {
         expressions: Vec<ExprId>,
@@ -119,6 +125,10 @@ impl Ast {
 
     pub fn node(&self, id: ExprId) -> &Expr {
         &self.nodes[id.0 as usize].value
+    }
+
+    pub fn node_mut(&mut self, id: ExprId) -> &mut Expr {
+        &mut self.nodes[id.0 as usize].value
     }
 
     pub fn span(&self, id: ExprId) -> Span {
@@ -164,6 +174,10 @@ impl Ast {
 
     pub fn variable(&mut self, left: Spanned<Symbol>, right: ExprId, span: Span) -> ExprId {
         self.insert(Expr::Variable { left, right }, span)
+    }
+
+    pub fn constant(&mut self, left: Spanned<Symbol>, right: ExprId, span: Span) -> ExprId {
+        self.insert(Expr::Constant { left, right }, span)
     }
 
     pub fn ref_(&mut self, left: Spanned<Symbol>, right: ExprId, span: Span) -> ExprId {
@@ -219,6 +233,7 @@ impl Ast {
                 name,
                 parameters,
                 block,
+                captures: Vec::new(),
             },
             span,
         )
@@ -230,7 +245,14 @@ impl Ast {
         block: ExprId,
         span: Span,
     ) -> ExprId {
-        self.insert(Expr::Lambda { parameters, block }, span)
+        self.insert(
+            Expr::Lambda {
+                parameters,
+                block,
+                captures: Vec::new(),
+            },
+            span,
+        )
     }
 
     pub fn block(&mut self, expressions: Vec<ExprId>, tail: Option<ExprId>, span: Span) -> ExprId {

@@ -96,6 +96,8 @@ pub enum Token {
     Not,
     #[token("let")]
     Let,
+    #[token("const")]
+    Const,
     #[token("ref")]
     Ref,
     #[token("fun")]
@@ -168,6 +170,7 @@ impl fmt::Display for Token {
             Self::Or => "`or`",
             Self::Not => "`not`",
             Self::Let => "`let`",
+            Self::Const => "`const`",
             Self::Ref => "`ref`",
             Self::Function => "`fun`",
             Self::For => "`for`",

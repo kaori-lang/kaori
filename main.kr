@@ -1,13 +1,9 @@
+let x = 2;
 
-let x = 5;
-if true {
-    if true {
-        
-    } else {
-        while true {
-            return 1;
-        }
+fun foo() {
+    fun bar() {
+        x;
     }
 }
 
-1 *  2 * 5 + 7 / x;
+

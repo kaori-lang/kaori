@@ -283,6 +283,20 @@ impl<'a> Parser<'a> {
         Ok(self.ast.variable(left, right, span))
     }
 
+    fn parse_constant(&mut self) -> Result<ExprId, Error> {
+        let let_span = self.consume(Token::Const)?;
+
+        let left = self.parse_name()?;
+
+        self.consume(Token::Assign)?;
+
+        let right = self.parse_expression()?;
+
+        let span = let_span.merge(self.ast.span(right));
+
+        Ok(self.ast.constant(left, right, span))
+    }
+
     fn parse_ref(&mut self) -> Result<ExprId, Error> {
         let ref_span = self.consume(Token::Ref)?;
 
@@ -514,6 +528,7 @@ impl<'a> Parser<'a> {
             Token::Return => self.parse_return()?,
             Token::If => self.parse_if()?,
             Token::Let => self.parse_variable()?,
+            Token::Const => self.parse_constant()?,
             Token::Ref => self.parse_ref()?,
             Token::Import => self.parse_import()?,
             Token::LeftParen => {
