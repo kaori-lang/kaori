@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::bytecode::environment::Register;
+use crate::codegen::environment::Register;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Const(pub u16);

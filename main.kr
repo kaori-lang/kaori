@@ -1,3 +1,13 @@
-let x = import "./test.kr";
 
-return x;
+let x = 5;
+if true {
+    if true {
+        
+    } else {
+        while true {
+            return 1;
+        }
+    }
+}
+
+1 *  2 * 5 + 7 / x;

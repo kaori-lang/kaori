@@ -151,6 +151,8 @@ impl<'a> Parser<'a> {
 
         let expression = self.parse_expression()?;
 
+        let span = span.merge(self.ast.span(expression));
+
         Ok(self.ast.return_(expression, span))
     }
 
@@ -258,7 +260,13 @@ impl<'a> Parser<'a> {
 
         let span = function_span.merge(self.ast.span(block));
 
-        Ok(self.ast.function(name, parameters, block, span))
+        let expression = if let Some(name) = name {
+            self.ast.function(name, parameters, block, span)
+        } else {
+            self.ast.lambda(parameters, block, span)
+        };
+
+        Ok(expression)
     }
 
     fn parse_variable(&mut self) -> Result<ExprId, Error> {

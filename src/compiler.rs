@@ -7,14 +7,10 @@ use std::{
 use logos::Logos;
 
 use crate::{
-    bytecode::lower_ast::lower_ast,
+    codegen::lower_ast::lower_ast,
     diagnostics::error::Error,
     report_error,
-    runtime::{
-        function::{self, Function},
-        value::Value,
-        vm::run_vm,
-    },
+    runtime::{function::Function, value::Value, vm::run_vm},
     syntax::{
         ast::Spanned,
         parser::Parser,

@@ -3,29 +3,7 @@ use crate::{
     util::string_interner::Symbol,
 };
 
-pub fn collect_free_variables(ast: &Ast, id: ExprId) -> Vec<Spanned<Symbol>> {
-    let Expr::Function {
-        ref parameters,
-        block,
-        name,
-    } = *ast.node(id)
-    else {
-        unreachable!("collect_free_variables should be called on a function node")
-    };
-
-    let mut free_variables = Vec::new();
-    let mut bound = parameters.to_vec();
-
-    if let Some(name) = name {
-        bound.push(name);
-    }
-
-    collect(ast, block, &mut bound, &mut free_variables);
-
-    free_variables
-}
-
-fn collect(
+pub fn collect_free_variables(
     ast: &Ast,
     id: ExprId,
     bound: &mut Vec<Spanned<Symbol>>,
@@ -40,19 +18,17 @@ fn collect(
             }
         }
         Expr::Variable { left, right } => {
-            collect(ast, right, bound, free_variables);
+            collect_free_variables(ast, right, bound, free_variables);
 
             bound.push(left);
         }
         Expr::Ref { left, right } => {
-            collect(ast, right, bound, free_variables);
+            collect_free_variables(ast, right, bound, free_variables);
 
             bound.push(left);
         }
         Expr::Function { name, .. } => {
-            if let Some(name) = name {
-                bound.push(name);
-            }
+            bound.push(name);
         }
         Expr::Block {
             ref expressions,
@@ -62,22 +38,22 @@ fn collect(
 
             for id in expressions.iter().copied() {
                 if let Expr::Function { .. } = ast.node(id) {
-                    collect(ast, id, bound, free_variables);
+                    collect_free_variables(ast, id, bound, free_variables);
                 }
             }
 
             if let Some(id) = tail
                 && let Expr::Function { .. } = ast.node(id)
             {
-                collect(ast, id, bound, free_variables);
+                collect_free_variables(ast, id, bound, free_variables);
             }
 
             for id in expressions.iter().copied() {
-                collect(ast, id, bound, free_variables);
+                collect_free_variables(ast, id, bound, free_variables);
             }
 
             if let Some(id) = tail {
-                collect(ast, id, bound, free_variables);
+                collect_free_variables(ast, id, bound, free_variables);
             }
 
             bound.truncate(size);
@@ -86,40 +62,42 @@ fn collect(
         | Expr::Binary { left, right, .. }
         | Expr::LogicalAnd { left, right }
         | Expr::LogicalOr { left, right } => {
-            collect(ast, left, bound, free_variables);
-            collect(ast, right, bound, free_variables);
+            collect_free_variables(ast, left, bound, free_variables);
+            collect_free_variables(ast, right, bound, free_variables);
         }
-        Expr::Unary { operand, .. } => collect(ast, operand, bound, free_variables),
-        Expr::LogicalNot(expr) => collect(ast, expr, bound, free_variables),
-        Expr::Return(expr) => collect(ast, expr, bound, free_variables),
+        Expr::Unary { operand, .. } => collect_free_variables(ast, operand, bound, free_variables),
+        Expr::LogicalNot(expr) => collect_free_variables(ast, expr, bound, free_variables),
+        Expr::Return(expr) => collect_free_variables(ast, expr, bound, free_variables),
         Expr::If {
             condition,
             then_branch,
             else_branch,
         } => {
-            collect(ast, condition, bound, free_variables);
-            collect(ast, then_branch, bound, free_variables);
-            collect(ast, else_branch, bound, free_variables);
+            collect_free_variables(ast, condition, bound, free_variables);
+            collect_free_variables(ast, then_branch, bound, free_variables);
+            collect_free_variables(ast, else_branch, bound, free_variables);
         }
         Expr::WhileLoop { condition, block } => {
-            collect(ast, condition, bound, free_variables);
-            collect(ast, block, bound, free_variables);
+            collect_free_variables(ast, condition, bound, free_variables);
+            collect_free_variables(ast, block, bound, free_variables);
         }
         Expr::FunctionCall {
             callee,
             ref arguments,
         } => {
-            collect(ast, callee, bound, free_variables);
+            collect_free_variables(ast, callee, bound, free_variables);
 
             for argument in arguments.iter().copied() {
-                collect(ast, argument, bound, free_variables);
+                collect_free_variables(ast, argument, bound, free_variables);
             }
         }
-        Expr::MemberAccess { object, .. } => collect(ast, object, bound, free_variables),
+        Expr::MemberAccess { object, .. } => {
+            collect_free_variables(ast, object, bound, free_variables)
+        }
         Expr::Map { ref entries } => {
             for (key, value) in entries.iter().copied() {
-                collect(ast, key, bound, free_variables);
-                collect(ast, value, bound, free_variables);
+                collect_free_variables(ast, key, bound, free_variables);
+                collect_free_variables(ast, value, bound, free_variables);
             }
         }
         Expr::Break
@@ -128,6 +106,7 @@ fn collect(
         | Expr::String(_)
         | Expr::Boolean(_)
         | Expr::Nil
-        | Expr::Import { .. } => {}
+        | Expr::Import { .. }
+        | Expr::Lambda { .. } => {}
     }
 }

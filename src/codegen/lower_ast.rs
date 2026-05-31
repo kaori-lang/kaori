@@ -1,8 +1,8 @@
 use core::panic;
 
 use crate::{
-    bytecode::{
-        collect_free_variables::collect_free_variables,
+    codegen::{
+        collect_free_variables::{self, collect_free_variables},
         environment::{Environment, Register},
     },
     compiler::{Compiler, INTERNER},
@@ -43,9 +43,9 @@ pub fn lower_ast(ast: Ast, compiler: &mut Compiler) -> Result<usize, Error> {
         None,
     )?;
 
-    if !block_returns(&ast, id) {
-        function.emit_instruction(Instruction::Return { src: src.into() });
-    }
+    prevent_return(&ast, id, compiler)?;
+
+    function.emit_instruction(Instruction::Return { src: src.into() });
 
     patch_pending_args(&mut function, &pending_args, env.frame_size);
     function.frame_size = env.frame_size;
@@ -194,10 +194,7 @@ fn lower_effect(
             env.push_scope();
 
             for id in expressions.iter().copied() {
-                if let Expr::Function {
-                    name: Some(name), ..
-                } = ast.node(id)
-                {
+                if let Expr::Function { name, .. } = ast.node(id) {
                     env.declare_local(name.value);
                 }
             }
@@ -217,6 +214,90 @@ fn lower_effect(
             }
 
             env.pop_scope();
+        }
+        Expr::Function {
+            ref parameters,
+            block,
+            name,
+        } => {
+            let arity = parameters.len();
+            let mut inner_function = Function::new(arity);
+            let mut inner_env = Environment::with_parent(std::mem::take(env));
+            let mut pending_args = Vec::new();
+
+            inner_env.declare_function(name.value);
+
+            for parameter in parameters.iter().copied() {
+                inner_env.declare_local(parameter.value);
+            }
+
+            let mut free_variables = Vec::new();
+            let mut bound = parameters.to_vec();
+            bound.push(name);
+
+            collect_free_variables(ast, id, &mut bound, &mut free_variables);
+
+            for name in free_variables.iter().copied() {
+                if inner_env.lookup_in_parent(name.value).is_some() {
+                    inner_env.declare_local(name.value);
+                } else {
+                    let slice = INTERNER.lock().unwrap().resolve(name.value);
+
+                    return Err(report_error!(
+                        name.span,
+                        compiler.path,
+                        "{} is not declared",
+                        slice
+                    ));
+                }
+            }
+
+            let src = lower_expression(
+                ast,
+                compiler,
+                &mut inner_function,
+                &mut inner_env,
+                &mut pending_args,
+                block,
+                None,
+            )?;
+
+            if !block_returns(ast, block) {
+                inner_function.emit_instruction(Instruction::Return { src: src.into() });
+            }
+
+            patch_pending_args(&mut inner_function, &pending_args, inner_env.frame_size);
+            inner_function.frame_size = inner_env.frame_size;
+            let index = compiler.push_function(inner_function);
+
+            *env = std::mem::take(&mut inner_env.parent.unwrap_or_default());
+
+            let (_, dest) = env.lookup(name.value).expect("function must be declared");
+
+            let src = function.store_function_const(index);
+
+            function.emit_instruction(Instruction::LoadConst {
+                dest: dest.into(),
+                src,
+            });
+
+            // CREATE CLOSURE IF ANY NAME WAS CAPTURED OVERRIDING THE LOADED CONST
+            if !free_variables.is_empty() {
+                function.emit_instruction(Instruction::CreateClosure {
+                    dest: dest.into(),
+                    captures: free_variables.len() as u8,
+                });
+            }
+
+            for name in free_variables.iter().copied() {
+                let (_, register) = env
+                    .lookup(name.value)
+                    .expect("name must've been declared to reach this point of the code");
+
+                function.emit_instruction(Instruction::CaptureValue {
+                    src: register.into(),
+                });
+            }
         }
         Expr::Break => todo!(),
         Expr::Continue => todo!(),
@@ -656,10 +737,7 @@ fn lower_expression(
             env.push_scope();
 
             for id in expressions.iter().copied() {
-                if let Expr::Function {
-                    name: Some(name), ..
-                } = ast.node(id)
-                {
+                if let Expr::Function { name, .. } = ast.node(id) {
                     env.declare_local(name.value);
                 }
             }
@@ -684,97 +762,6 @@ fn lower_expression(
             };
 
             env.pop_scope();
-
-            dest
-        }
-        Expr::Function {
-            ref parameters,
-            block,
-            name,
-        } => {
-            let arity = parameters.len();
-            let mut inner_function = Function::new(arity);
-            let mut inner_env = Environment::with_parent(std::mem::take(env));
-            let mut pending_args = Vec::new();
-
-            if let Some(name) = name {
-                inner_env.declare_function(name.value);
-            }
-
-            for parameter in parameters.iter().copied() {
-                inner_env.declare_local(parameter.value);
-            }
-
-            let free_variables = collect_free_variables(ast, id);
-
-            for name in free_variables.iter().copied() {
-                if inner_env.lookup_in_parent(name.value).is_some() {
-                    inner_env.declare_local(name.value);
-                } else {
-                    let slice = INTERNER.lock().unwrap().resolve(name.value);
-
-                    return Err(report_error!(
-                        name.span,
-                        compiler.path,
-                        "{} is not declared",
-                        slice
-                    ));
-                }
-            }
-
-            let src = lower_expression(
-                ast,
-                compiler,
-                &mut inner_function,
-                &mut inner_env,
-                &mut pending_args,
-                block,
-                None,
-            )?;
-
-            if !block_returns(ast, block) {
-                inner_function.emit_instruction(Instruction::Return { src: src.into() });
-            }
-
-            patch_pending_args(&mut inner_function, &pending_args, inner_env.frame_size);
-            inner_function.frame_size = inner_env.frame_size;
-            let index = compiler.push_function(inner_function);
-
-            *env = std::mem::take(&mut inner_env.parent.unwrap_or_default());
-
-            let dest = match name {
-                Some(name) => {
-                    let (_, register) = env.lookup(name.value).expect("function must be declared");
-
-                    register
-                }
-                None => dest.unwrap_or_else(|| env.allocate_temp()),
-            };
-
-            let src = function.store_function_const(index);
-
-            function.emit_instruction(Instruction::LoadConst {
-                dest: dest.into(),
-                src,
-            });
-
-            // CREATE CLOSURE IF ANY NAME WAS CAPTURED OVERRIDING THE LOADED CONST
-            if !free_variables.is_empty() {
-                function.emit_instruction(Instruction::CreateClosure {
-                    dest: dest.into(),
-                    captures: free_variables.len() as u8,
-                });
-            }
-
-            for name in free_variables.iter().copied() {
-                let (_, register) = env
-                    .lookup(name.value)
-                    .expect("name must've been declared to reach this point of the code");
-
-                function.emit_instruction(Instruction::CaptureValue {
-                    src: register.into(),
-                });
-            }
 
             dest
         }
@@ -865,6 +852,88 @@ fn lower_expression(
 
             dest
         }
+        Expr::Lambda {
+            ref parameters,
+            block,
+        } => {
+            let arity = parameters.len();
+            let mut inner_function = Function::new(arity);
+            let mut inner_env = Environment::with_parent(std::mem::take(env));
+            let mut pending_args = Vec::new();
+
+            for parameter in parameters.iter().copied() {
+                inner_env.declare_local(parameter.value);
+            }
+
+            let mut free_variables = Vec::new();
+            let mut bound = parameters.to_vec();
+
+            collect_free_variables(ast, id, &mut bound, &mut free_variables);
+
+            for name in free_variables.iter().copied() {
+                if inner_env.lookup_in_parent(name.value).is_some() {
+                    inner_env.declare_local(name.value);
+                } else {
+                    let slice = INTERNER.lock().unwrap().resolve(name.value);
+
+                    return Err(report_error!(
+                        name.span,
+                        compiler.path,
+                        "{} is not declared",
+                        slice
+                    ));
+                }
+            }
+
+            let src = lower_expression(
+                ast,
+                compiler,
+                &mut inner_function,
+                &mut inner_env,
+                &mut pending_args,
+                block,
+                None,
+            )?;
+
+            if !block_returns(ast, block) {
+                inner_function.emit_instruction(Instruction::Return { src: src.into() });
+            }
+
+            patch_pending_args(&mut inner_function, &pending_args, inner_env.frame_size);
+            inner_function.frame_size = inner_env.frame_size;
+            let index = compiler.push_function(inner_function);
+
+            *env = std::mem::take(&mut inner_env.parent.unwrap_or_default());
+
+            let dest = dest.unwrap_or_else(|| env.allocate_temp());
+
+            let src = function.store_function_const(index);
+
+            function.emit_instruction(Instruction::LoadConst {
+                dest: dest.into(),
+                src,
+            });
+
+            // CREATE CLOSURE IF ANY NAME WAS CAPTURED OVERRIDING THE LOADED CONST
+            if !free_variables.is_empty() {
+                function.emit_instruction(Instruction::CreateClosure {
+                    dest: dest.into(),
+                    captures: free_variables.len() as u8,
+                });
+            }
+
+            for name in free_variables.iter().copied() {
+                let (_, register) = env
+                    .lookup(name.value)
+                    .expect("name must've been declared to reach this point of the code");
+
+                function.emit_instruction(Instruction::CaptureValue {
+                    src: register.into(),
+                });
+            }
+
+            dest
+        }
         Expr::Import { path } => {
             let index = compiler.compile_file(path)?;
 
@@ -883,7 +952,11 @@ fn lower_expression(
 
             dest
         }
-        Expr::Variable { .. } | Expr::Ref { .. } | Expr::Assign { .. } | Expr::WhileLoop { .. } => {
+        Expr::Variable { .. }
+        | Expr::Ref { .. }
+        | Expr::Assign { .. }
+        | Expr::WhileLoop { .. }
+        | Expr::Function { .. } => {
             lower_effect(ast, compiler, function, env, pending_args, id)?;
 
             let dest = dest.unwrap_or_else(|| env.allocate_temp());
@@ -897,42 +970,16 @@ fn lower_expression(
 
             dest
         }
-
         Expr::Return(..) | Expr::Break | Expr::Continue => {
             return Err(report_error!(
                 ast.span(id),
                 compiler.path,
-                "expression produces a value of type never"
+                "expression of type never does not produce a value"
             ));
         }
     };
 
     Ok(register)
-}
-
-fn block_returns(ast: &Ast, id: ExprId) -> bool {
-    match *ast.node(id) {
-        Expr::Return(..) => true,
-        Expr::Block {
-            ref expressions,
-            tail,
-        } => {
-            let expressions = expressions.iter().copied().any(|e| block_returns(ast, e));
-            let tail = if let Some(id) = tail {
-                block_returns(ast, id)
-            } else {
-                false
-            };
-
-            expressions || tail
-        }
-        Expr::If {
-            then_branch,
-            else_branch,
-            ..
-        } => block_returns(ast, then_branch) && block_returns(ast, else_branch),
-        _ => false,
-    }
 }
 
 fn lower_jump_if_true(function: &mut Function, register: Register) -> usize {
@@ -1214,4 +1261,65 @@ fn patch_pending_args(function: &mut Function, pending_args: &[usize], frame_siz
             _ => unreachable!("instruction at index {index} has no dest to patch"),
         }
     }
+}
+
+fn block_returns(ast: &Ast, id: ExprId) -> bool {
+    match *ast.node(id) {
+        Expr::Return(..) => true,
+        Expr::Block {
+            ref expressions,
+            tail,
+        } => {
+            let expressions = expressions.iter().copied().any(|e| block_returns(ast, e));
+            let tail = if let Some(id) = tail {
+                block_returns(ast, id)
+            } else {
+                false
+            };
+
+            expressions || tail
+        }
+        Expr::If {
+            then_branch,
+            else_branch,
+            ..
+        } => block_returns(ast, then_branch) && block_returns(ast, else_branch),
+        _ => false,
+    }
+}
+
+fn prevent_return(ast: &Ast, id: ExprId, compiler: &Compiler) -> Result<(), Error> {
+    match *ast.node(id) {
+        Expr::Return(..) => {
+            return Err(report_error!(
+                ast.span(id),
+                compiler.path,
+                "return is not allowed in the global scope"
+            ));
+        }
+        Expr::Block {
+            ref expressions,
+            tail,
+        } => {
+            for id in expressions.iter().copied() {
+                prevent_return(ast, id, compiler)?;
+            }
+
+            if let Some(id) = tail {
+                prevent_return(ast, id, compiler)?;
+            }
+        }
+        Expr::If {
+            then_branch,
+            else_branch,
+            ..
+        } => {
+            prevent_return(ast, then_branch, compiler)?;
+            prevent_return(ast, else_branch, compiler)?;
+        }
+        Expr::WhileLoop { block, .. } => prevent_return(ast, block, compiler)?,
+        _ => {}
+    };
+
+    Ok(())
 }

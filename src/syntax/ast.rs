@@ -75,7 +75,11 @@ pub enum Expr {
         entries: Vec<(ExprId, ExprId)>,
     },
     Function {
-        name: Option<Spanned<Symbol>>,
+        name: Spanned<Symbol>,
+        parameters: Vec<Spanned<Symbol>>,
+        block: ExprId,
+    },
+    Lambda {
         parameters: Vec<Spanned<Symbol>>,
         block: ExprId,
     },
@@ -205,7 +209,7 @@ impl Ast {
 
     pub fn function(
         &mut self,
-        name: Option<Spanned<Symbol>>,
+        name: Spanned<Symbol>,
         parameters: Vec<Spanned<Symbol>>,
         block: ExprId,
         span: Span,
@@ -218,6 +222,15 @@ impl Ast {
             },
             span,
         )
+    }
+
+    pub fn lambda(
+        &mut self,
+        parameters: Vec<Spanned<Symbol>>,
+        block: ExprId,
+        span: Span,
+    ) -> ExprId {
+        self.insert(Expr::Lambda { parameters, block }, span)
     }
 
     pub fn block(&mut self, expressions: Vec<ExprId>, tail: Option<ExprId>, span: Span) -> ExprId {
