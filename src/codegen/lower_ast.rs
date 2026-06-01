@@ -16,13 +16,41 @@ use crate::{
     },
 };
 
+pub fn lower_ast(ast: Ast, compiler: &mut Compiler) -> Result<usize, Error> {
+    let id = ast.last();
+
+    let mut free_variables = FreeVariables::default();
+    let mut env = Environment::new();
+    let mut function = Function::new(0);
+
+    let mut lowerer = Lower::new(&ast, compiler, &mut free_variables, &mut env, &mut function);
+
+    let src = lowerer.lower_expression(id, None)?;
+
+    lowerer.prevent_return(id)?;
+
+    lowerer
+        .function
+        .emit_instruction(Instruction::Return { src: src.into() });
+
+    lowerer.patch_arguments();
+
+    function.frame_size = env.frame_size;
+
+    let index = compiler.functions.len();
+
+    compiler.functions.push(function);
+
+    Ok(index)
+}
+
 struct Lower<'a> {
     ast: &'a Ast,
     compiler: &'a mut Compiler,
     free_variables: &'a mut FreeVariables,
     env: &'a mut Environment,
     function: &'a mut Function,
-    pending_args: &'a mut Vec<usize>,
+    unpatched_arguments: Vec<usize>,
 }
 
 impl<'a> Lower<'a> {
@@ -32,7 +60,6 @@ impl<'a> Lower<'a> {
         free_variables: &'a mut FreeVariables,
         env: &'a mut Environment,
         function: &'a mut Function,
-        pending_args: &'a mut Vec<usize>,
     ) -> Self {
         Self {
             ast,
@@ -40,7 +67,7 @@ impl<'a> Lower<'a> {
             free_variables,
             env,
             function,
-            pending_args,
+            unpatched_arguments: Vec::new(),
         }
     }
 
@@ -120,7 +147,7 @@ impl<'a> Lower<'a> {
             Expr::WhileLoop { condition, block } => {
                 let src = self.lower_expression(condition, None)?;
 
-                let jump_if_false = lower_jump_if_false(self.function, src);
+                let jump_if_false = self.lower_jump_if_false(src);
                 self.env.free_temp(src);
 
                 let loop_body = self.function.instructions.len();
@@ -129,16 +156,11 @@ impl<'a> Lower<'a> {
 
                 let src = self.lower_expression(condition, None)?;
 
-                let jump_if_true = lower_jump_if_true(self.function, src);
+                let jump_if_true = self.lower_jump_if_true(src);
                 self.env.free_temp(src);
 
-                patch_jump(
-                    self.function,
-                    jump_if_true,
-                    loop_body as i32 - jump_if_true as i32,
-                );
-                patch_jump(
-                    self.function,
+                self.patch_jump(jump_if_true, loop_body as i32 - jump_if_true as i32);
+                self.patch_jump(
                     jump_if_false,
                     self.function.instructions.len() as i32 - jump_if_false as i32,
                 );
@@ -184,61 +206,56 @@ impl<'a> Lower<'a> {
                 block,
                 name,
             } => {
-                let arity = parameters.len();
-                let mut inner_function = Function::new(arity);
-                let mut inner_env = Environment::with_parent(std::mem::take(self.env));
-                let mut inner_pending_args = Vec::new();
+                let mut function = Function::new(parameters.len());
+                let mut env = Environment::with_parent(std::mem::take(self.env));
 
-                inner_env.declare_function(name.value);
+                let mut inner_self = Lower::new(
+                    self.ast,
+                    self.compiler,
+                    self.free_variables,
+                    &mut env,
+                    &mut function,
+                );
+
+                inner_self.env.declare_function(name.value);
 
                 for parameter in parameters.iter().copied() {
-                    inner_env.declare_local(parameter.value);
+                    inner_self.env.declare_local(parameter.value);
                 }
 
-                let captured_values = self.free_variables.analyze_function(self.ast, id);
+                let captured_values = inner_self.free_variables.analyze_function(self.ast, id);
 
                 for capture in captured_values.iter().copied() {
-                    if inner_env.lookup_in_parent(capture.value).is_some() {
-                        inner_env.declare_local(capture.value);
+                    if inner_self.env.lookup_in_parent(capture.value).is_some() {
+                        inner_self.env.declare_local(capture.value);
                     } else {
-                        let slice = INTERNER.lock().unwrap().resolve(capture.value);
-
                         return Err(report_error!(
                             capture.span,
-                            self.compiler.path,
-                            "{} is not declared",
-                            slice
+                            inner_self.compiler.path,
+                            "undeclared variable",
                         ));
                     }
                 }
 
-                let src = Lower::new(
-                    self.ast,
-                    self.compiler,
-                    self.free_variables,
-                    &mut inner_env,
-                    &mut inner_function,
-                    &mut inner_pending_args,
-                )
-                .lower_expression(block, None)?;
+                let src = inner_self.lower_expression(block, None)?;
 
-                if !block_returns(self.ast, block) {
-                    inner_function.emit_instruction(Instruction::Return { src: src.into() });
+                if !inner_self.block_returns(block) {
+                    inner_self
+                        .function
+                        .emit_instruction(Instruction::Return { src: src.into() });
                 }
 
-                patch_pending_args(
-                    &mut inner_function,
-                    &inner_pending_args,
-                    inner_env.frame_size,
-                );
-                inner_function.frame_size = inner_env.frame_size;
-                let index = self.compiler.push_function(inner_function);
+                inner_self.patch_arguments();
 
-                let (_, dest) = inner_env
+                *self.env = std::mem::take(&mut env.parent.unwrap_or_default());
+
+                let (_, dest) = self
+                    .env
                     .lookup(name.value)
                     .expect("function must be declared");
 
-                *self.env = std::mem::take(&mut inner_env.parent.unwrap_or_default());
+                let index = self.compiler.functions.len();
+                self.compiler.functions.push(function);
 
                 let src = self.function.store_function_const(index);
 
@@ -324,10 +341,13 @@ impl<'a> Lower<'a> {
             }
             Expr::Identifier(name) => {
                 let Some((_, register)) = self.env.lookup(name.value) else {
+                    let slice = INTERNER.lock().unwrap().resolve(name.value);
+
                     return Err(report_error!(
                         name.span,
                         self.compiler.path,
-                        "undeclared variable",
+                        "{} is not declared",
+                        slice
                     ));
                 };
 
@@ -351,7 +371,7 @@ impl<'a> Lower<'a> {
             } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                if let Some(src2) = as_number_const(self.ast, self.function, right) {
+                if let Some(src2) = self.as_number_const(right) {
                     let src1 = self.lower_expression(left, None)?;
 
                     self.function.emit_instruction(match operator {
@@ -415,7 +435,7 @@ impl<'a> Lower<'a> {
                     self.env.free_temp(src1);
 
                     dest
-                } else if let Some(src1) = as_number_const(self.ast, self.function, left) {
+                } else if let Some(src1) = self.as_number_const(left) {
                     let src2 = self.lower_expression(right, None)?;
 
                     self.function.emit_instruction(match operator {
@@ -584,12 +604,11 @@ impl<'a> Lower<'a> {
 
                 self.lower_expression(left, Some(dest))?;
 
-                let jump_if_false = lower_jump_if_false(self.function, dest);
+                let jump_if_false = self.lower_jump_if_false(dest);
 
                 self.lower_expression(right, Some(dest))?;
 
-                patch_jump(
-                    self.function,
+                self.patch_jump(
                     jump_if_false,
                     self.function.instructions.len() as i32 - jump_if_false as i32,
                 );
@@ -601,12 +620,11 @@ impl<'a> Lower<'a> {
 
                 self.lower_expression(left, Some(dest))?;
 
-                let jump_if_true = lower_jump_if_true(self.function, dest);
+                let jump_if_true = self.lower_jump_if_true(dest);
 
                 self.lower_expression(right, Some(dest))?;
 
-                patch_jump(
-                    self.function,
+                self.patch_jump(
                     jump_if_true,
                     self.function.instructions.len() as i32 - jump_if_true as i32,
                 );
@@ -621,7 +639,7 @@ impl<'a> Lower<'a> {
                 let src = self.lower_expression(condition, None)?;
                 self.env.free_temp(src);
 
-                let jump_if_false = lower_jump_if_false(self.function, src);
+                let jump_if_false = self.lower_jump_if_false(src);
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
@@ -631,16 +649,14 @@ impl<'a> Lower<'a> {
                     .function
                     .emit_instruction(Instruction::Jump { offset: 0 });
 
-                patch_jump(
-                    self.function,
+                self.patch_jump(
                     jump_if_false,
                     self.function.instructions.len() as i32 - jump_if_false as i32,
                 );
 
                 self.lower_expression(else_branch, Some(dest))?;
 
-                patch_jump(
-                    self.function,
+                self.patch_jump(
                     jump_end,
                     self.function.instructions.len() as i32 - jump_end as i32,
                 );
@@ -655,7 +671,8 @@ impl<'a> Lower<'a> {
 
                 for id in expressions.iter().copied() {
                     if let Expr::Function { name, .. } = self.ast.node(id) {
-                        self.env.declare_local(name.value);
+                        let reg = self.env.declare_local(name.value);
+                        println!("{:?}", reg);
                     }
                 }
 
@@ -695,7 +712,7 @@ impl<'a> Lower<'a> {
 
                     let index = self.function.instructions.len() - 1;
 
-                    self.pending_args.push(index);
+                    self.unpatched_arguments.push(index);
                 }
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
@@ -763,57 +780,50 @@ impl<'a> Lower<'a> {
                 ref parameters,
                 block,
             } => {
-                let arity = parameters.len();
-                let mut inner_function = Function::new(arity);
-                let mut inner_env = Environment::with_parent(std::mem::take(self.env));
-                let mut inner_pending_args = Vec::new();
-
+                let mut function = Function::new(parameters.len());
+                let mut env = Environment::with_parent(std::mem::take(self.env));
+                let mut inner_self = Lower::new(
+                    self.ast,
+                    self.compiler,
+                    self.free_variables,
+                    &mut env,
+                    &mut function,
+                );
                 for parameter in parameters.iter().copied() {
-                    inner_env.declare_local(parameter.value);
+                    inner_self.env.declare_local(parameter.value);
                 }
 
-                let captured_values = self.free_variables.analyze_function(self.ast, id);
+                let captured_values = inner_self.free_variables.analyze_function(self.ast, id);
 
                 for capture in captured_values.iter().copied() {
-                    if inner_env.lookup_in_parent(capture.value).is_some() {
-                        inner_env.declare_local(capture.value);
+                    if inner_self.env.lookup_in_parent(capture.value).is_some() {
+                        inner_self.env.declare_local(capture.value);
                     } else {
-                        let slice = INTERNER.lock().unwrap().resolve(capture.value);
-
                         return Err(report_error!(
                             capture.span,
                             self.compiler.path,
-                            "{} is not declared",
-                            slice
+                            "undeclared variable",
                         ));
                     }
                 }
 
-                let src = Lower::new(
-                    self.ast,
-                    self.compiler,
-                    self.free_variables,
-                    &mut inner_env,
-                    &mut inner_function,
-                    &mut inner_pending_args,
-                )
-                .lower_expression(block, None)?;
+                let src = inner_self.lower_expression(block, None)?;
 
-                if !block_returns(self.ast, block) {
-                    inner_function.emit_instruction(Instruction::Return { src: src.into() });
+                if !inner_self.block_returns(block) {
+                    inner_self
+                        .function
+                        .emit_instruction(Instruction::Return { src: src.into() });
                 }
 
-                patch_pending_args(
-                    &mut inner_function,
-                    &inner_pending_args,
-                    inner_env.frame_size,
-                );
-                inner_function.frame_size = inner_env.frame_size;
-                let index = self.compiler.push_function(inner_function);
+                inner_self.patch_arguments();
 
-                *self.env = std::mem::take(&mut inner_env.parent.unwrap_or_default());
+                *self.env = std::mem::take(&mut env.parent.unwrap_or_default());
+
+                let index = self.compiler.functions.len();
+                self.compiler.functions.push(function);
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
+
                 let src = self.function.store_function_const(index);
 
                 self.function.emit_instruction(Instruction::LoadConst {
@@ -887,383 +897,365 @@ impl<'a> Lower<'a> {
 
         Ok(register)
     }
-}
-fn as_number_const(ast: &Ast, function: &mut Function, id: ExprId) -> Option<Const> {
-    match *ast.node(id) {
-        Expr::Number(value) => Some(function.store_number_const(value)),
-        _ => None,
+
+    fn as_number_const(&mut self, id: ExprId) -> Option<Const> {
+        match *self.ast.node(id) {
+            Expr::Number(value) => Some(self.function.store_number_const(value)),
+            _ => None,
+        }
     }
-}
 
-pub fn lower_ast(ast: Ast, compiler: &mut Compiler) -> Result<usize, Error> {
-    let id = ast.last();
+    fn lower_jump_if_true(&mut self, register: Register) -> usize {
+        let last = self.function.instructions.last().copied();
 
-    let mut free_variables = FreeVariables::default();
-    let mut env = Environment::new();
-    let arity = 0;
-    let mut function = Function::new(arity);
-    let mut pending_args = Vec::new();
-
-    let src = Lower::new(
-        &ast,
-        compiler,
-        &mut free_variables,
-        &mut env,
-        &mut function,
-        &mut pending_args,
-    )
-    .lower_expression(id, None)?;
-
-    prevent_return(&ast, id, compiler)?;
-
-    function.emit_instruction(Instruction::Return { src: src.into() });
-
-    patch_pending_args(&mut function, &pending_args, env.frame_size);
-    function.frame_size = env.frame_size;
-
-    let entry_index = compiler.push_function(function);
-
-    Ok(entry_index)
-}
-
-fn lower_jump_if_true(function: &mut Function, register: Register) -> usize {
-    let last = function.instructions.last().copied();
-
-    match last {
-        Some(Instruction::Equal { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfEqual {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::NotEqual { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfNotEqual {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::Less { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfLess {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::LessEqual { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfLessEqual {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::Greater { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfGreater {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::GreaterEqual { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfGreaterEqual {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::EqualK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfEqualK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::NotEqualK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfNotEqualK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::LessK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfLessK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::LessEqualK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfLessEqualK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::GreaterK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfGreaterK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::GreaterEqualK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfGreaterEqualK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        _ => function.emit_instruction(Instruction::JumpIfTrue {
-            src: register.into(),
-            offset: 0,
-        }),
-    }
-}
-
-fn lower_jump_if_false(function: &mut Function, register: Register) -> usize {
-    let last = function.instructions.last().copied();
-
-    match last {
-        Some(Instruction::Equal { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfNotEqual {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::NotEqual { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfEqual {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::Less { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfGreaterEqual {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::LessEqual { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfGreater {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::Greater { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfLessEqual {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::GreaterEqual { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfLess {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::EqualK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfNotEqualK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::NotEqualK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfEqualK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::LessK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfGreaterEqualK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::LessEqualK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfGreaterK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::GreaterK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfLessEqualK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        Some(Instruction::GreaterEqualK { src1, src2, .. }) => {
-            function.instructions.pop();
-            function.emit_instruction(Instruction::JumpIfLessK {
-                src1,
-                src2,
-                offset: 0,
-            })
-        }
-        _ => function.emit_instruction(Instruction::JumpIfFalse {
-            src: register.into(),
-            offset: 0,
-        }),
-    }
-}
-
-fn patch_jump(function: &mut Function, index: usize, new_offset: i32) {
-    match &mut function.instructions[index] {
-        Instruction::Jump { offset }
-        | Instruction::JumpIfTrue { offset, .. }
-        | Instruction::JumpIfFalse { offset, .. }
-        | Instruction::JumpIfEqual { offset, .. }
-        | Instruction::JumpIfNotEqual { offset, .. }
-        | Instruction::JumpIfLess { offset, .. }
-        | Instruction::JumpIfLessK { offset, .. }
-        | Instruction::JumpIfLessEqual { offset, .. }
-        | Instruction::JumpIfLessEqualK { offset, .. }
-        | Instruction::JumpIfGreater { offset, .. }
-        | Instruction::JumpIfGreaterK { offset, .. }
-        | Instruction::JumpIfGreaterEqual { offset, .. }
-        | Instruction::JumpIfGreaterEqualK { offset, .. }
-        | Instruction::JumpIfEqualK { offset, .. }
-        | Instruction::JumpIfNotEqualK { offset, .. } => *offset = new_offset,
-        _ => panic!("tried to patch a non-jump instruction at index {index}"),
-    }
-}
-
-fn patch_pending_args(function: &mut Function, pending_args: &[usize], frame_size: usize) {
-    for index in pending_args.iter().copied() {
-        match &mut function.instructions[index] {
-            Instruction::Add { dest, .. }
-            | Instruction::AddK { dest, .. }
-            | Instruction::Subtract { dest, .. }
-            | Instruction::SubtractRK { dest, .. }
-            | Instruction::SubtractKR { dest, .. }
-            | Instruction::Multiply { dest, .. }
-            | Instruction::MultiplyK { dest, .. }
-            | Instruction::Divide { dest, .. }
-            | Instruction::DivideRK { dest, .. }
-            | Instruction::DivideKR { dest, .. }
-            | Instruction::Modulo { dest, .. }
-            | Instruction::ModuloRK { dest, .. }
-            | Instruction::ModuloKR { dest, .. }
-            | Instruction::Equal { dest, .. }
-            | Instruction::EqualK { dest, .. }
-            | Instruction::NotEqual { dest, .. }
-            | Instruction::NotEqualK { dest, .. }
-            | Instruction::Less { dest, .. }
-            | Instruction::LessK { dest, .. }
-            | Instruction::LessEqual { dest, .. }
-            | Instruction::LessEqualK { dest, .. }
-            | Instruction::Greater { dest, .. }
-            | Instruction::GreaterK { dest, .. }
-            | Instruction::GreaterEqual { dest, .. }
-            | Instruction::GreaterEqualK { dest, .. }
-            | Instruction::Not { dest, .. }
-            | Instruction::Negate { dest, .. }
-            | Instruction::Move { dest, .. }
-            | Instruction::LoadConst { dest, .. }
-            | Instruction::CreateMap { dest }
-            | Instruction::GetField { dest, .. }
-            | Instruction::CreateClosure { dest, .. }
-            | Instruction::CreateRef { dest, .. }
-            | Instruction::Deref { dest, .. }
-            | Instruction::Call { dest, .. } => {
-                let new_dest = Register::Temp(dest.0 as usize + frame_size);
-                *dest = new_dest.into();
+        match last {
+            Some(Instruction::Equal { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
             }
-            _ => unreachable!("instruction at index {index} has no dest to patch"),
-        }
-    }
-}
-
-fn block_returns(ast: &Ast, id: ExprId) -> bool {
-    match *ast.node(id) {
-        Expr::Return(..) => true,
-        Expr::Block {
-            ref expressions,
-            tail,
-        } => {
-            let expressions = expressions.iter().copied().any(|e| block_returns(ast, e));
-            let tail = if let Some(id) = tail {
-                block_returns(ast, id)
-            } else {
-                false
-            };
-
-            expressions || tail
-        }
-        Expr::If {
-            then_branch,
-            else_branch,
-            ..
-        } => block_returns(ast, then_branch) && block_returns(ast, else_branch),
-        _ => false,
-    }
-}
-
-fn prevent_return(ast: &Ast, id: ExprId, compiler: &Compiler) -> Result<(), Error> {
-    match *ast.node(id) {
-        Expr::Return(..) => {
-            return Err(report_error!(
-                ast.span(id),
-                compiler.path,
-                "return is not allowed in the global scope"
-            ));
-        }
-        Expr::Block {
-            ref expressions,
-            tail,
-        } => {
-            for id in expressions.iter().copied() {
-                prevent_return(ast, id, compiler)?;
+            Some(Instruction::NotEqual { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfNotEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
             }
+            Some(Instruction::Less { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfLess {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            Some(Instruction::LessEqual { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function
+                    .emit_instruction(Instruction::JumpIfLessEqual {
+                        src1,
+                        src2,
+                        offset: 0,
+                    })
+            }
+            Some(Instruction::Greater { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfGreater {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            Some(Instruction::GreaterEqual { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function
+                    .emit_instruction(Instruction::JumpIfGreaterEqual {
+                        src1,
+                        src2,
+                        offset: 0,
+                    })
+            }
+            Some(Instruction::EqualK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfEqualK {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            Some(Instruction::NotEqualK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function
+                    .emit_instruction(Instruction::JumpIfNotEqualK {
+                        src1,
+                        src2,
+                        offset: 0,
+                    })
+            }
+            Some(Instruction::LessK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfLessK {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            Some(Instruction::LessEqualK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function
+                    .emit_instruction(Instruction::JumpIfLessEqualK {
+                        src1,
+                        src2,
+                        offset: 0,
+                    })
+            }
+            Some(Instruction::GreaterK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfGreaterK {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            Some(Instruction::GreaterEqualK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function
+                    .emit_instruction(Instruction::JumpIfGreaterEqualK {
+                        src1,
+                        src2,
+                        offset: 0,
+                    })
+            }
+            _ => self.function.emit_instruction(Instruction::JumpIfTrue {
+                src: register.into(),
+                offset: 0,
+            }),
+        }
+    }
 
-            if let Some(id) = tail {
-                prevent_return(ast, id, compiler)?;
+    fn lower_jump_if_false(&mut self, register: Register) -> usize {
+        let last = self.function.instructions.last().copied();
+
+        match last {
+            Some(Instruction::Equal { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfNotEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            Some(Instruction::NotEqual { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfEqual {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            Some(Instruction::Less { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function
+                    .emit_instruction(Instruction::JumpIfGreaterEqual {
+                        src1,
+                        src2,
+                        offset: 0,
+                    })
+            }
+            Some(Instruction::LessEqual { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfGreater {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            Some(Instruction::Greater { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function
+                    .emit_instruction(Instruction::JumpIfLessEqual {
+                        src1,
+                        src2,
+                        offset: 0,
+                    })
+            }
+            Some(Instruction::GreaterEqual { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfLess {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            Some(Instruction::EqualK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function
+                    .emit_instruction(Instruction::JumpIfNotEqualK {
+                        src1,
+                        src2,
+                        offset: 0,
+                    })
+            }
+            Some(Instruction::NotEqualK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfEqualK {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            Some(Instruction::LessK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function
+                    .emit_instruction(Instruction::JumpIfGreaterEqualK {
+                        src1,
+                        src2,
+                        offset: 0,
+                    })
+            }
+            Some(Instruction::LessEqualK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfGreaterK {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            Some(Instruction::GreaterK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function
+                    .emit_instruction(Instruction::JumpIfLessEqualK {
+                        src1,
+                        src2,
+                        offset: 0,
+                    })
+            }
+            Some(Instruction::GreaterEqualK { src1, src2, .. }) => {
+                self.function.instructions.pop();
+                self.function.emit_instruction(Instruction::JumpIfLessK {
+                    src1,
+                    src2,
+                    offset: 0,
+                })
+            }
+            _ => self.function.emit_instruction(Instruction::JumpIfFalse {
+                src: register.into(),
+                offset: 0,
+            }),
+        }
+    }
+
+    fn patch_jump(&mut self, index: usize, new_offset: i32) {
+        match &mut self.function.instructions[index] {
+            Instruction::Jump { offset }
+            | Instruction::JumpIfTrue { offset, .. }
+            | Instruction::JumpIfFalse { offset, .. }
+            | Instruction::JumpIfEqual { offset, .. }
+            | Instruction::JumpIfNotEqual { offset, .. }
+            | Instruction::JumpIfLess { offset, .. }
+            | Instruction::JumpIfLessK { offset, .. }
+            | Instruction::JumpIfLessEqual { offset, .. }
+            | Instruction::JumpIfLessEqualK { offset, .. }
+            | Instruction::JumpIfGreater { offset, .. }
+            | Instruction::JumpIfGreaterK { offset, .. }
+            | Instruction::JumpIfGreaterEqual { offset, .. }
+            | Instruction::JumpIfGreaterEqualK { offset, .. }
+            | Instruction::JumpIfEqualK { offset, .. }
+            | Instruction::JumpIfNotEqualK { offset, .. } => *offset = new_offset,
+            _ => panic!("tried to patch a non-jump instruction at index {index}"),
+        }
+    }
+
+    fn patch_arguments(&mut self) {
+        self.function.frame_size = self.env.frame_size;
+
+        for index in self.unpatched_arguments.iter().copied() {
+            match &mut self.function.instructions[index] {
+                Instruction::Add { dest, .. }
+                | Instruction::AddK { dest, .. }
+                | Instruction::Subtract { dest, .. }
+                | Instruction::SubtractRK { dest, .. }
+                | Instruction::SubtractKR { dest, .. }
+                | Instruction::Multiply { dest, .. }
+                | Instruction::MultiplyK { dest, .. }
+                | Instruction::Divide { dest, .. }
+                | Instruction::DivideRK { dest, .. }
+                | Instruction::DivideKR { dest, .. }
+                | Instruction::Modulo { dest, .. }
+                | Instruction::ModuloRK { dest, .. }
+                | Instruction::ModuloKR { dest, .. }
+                | Instruction::Equal { dest, .. }
+                | Instruction::EqualK { dest, .. }
+                | Instruction::NotEqual { dest, .. }
+                | Instruction::NotEqualK { dest, .. }
+                | Instruction::Less { dest, .. }
+                | Instruction::LessK { dest, .. }
+                | Instruction::LessEqual { dest, .. }
+                | Instruction::LessEqualK { dest, .. }
+                | Instruction::Greater { dest, .. }
+                | Instruction::GreaterK { dest, .. }
+                | Instruction::GreaterEqual { dest, .. }
+                | Instruction::GreaterEqualK { dest, .. }
+                | Instruction::Not { dest, .. }
+                | Instruction::Negate { dest, .. }
+                | Instruction::Move { dest, .. }
+                | Instruction::LoadConst { dest, .. }
+                | Instruction::CreateMap { dest }
+                | Instruction::GetField { dest, .. }
+                | Instruction::CreateClosure { dest, .. }
+                | Instruction::CreateRef { dest, .. }
+                | Instruction::Deref { dest, .. }
+                | Instruction::Call { dest, .. } => {
+                    let new_dest = Register::Temp(dest.0 as usize + self.function.frame_size);
+                    *dest = new_dest.into();
+                }
+                _ => unreachable!("instruction at index {index} has no dest to patch"),
             }
         }
-        Expr::If {
-            then_branch,
-            else_branch,
-            ..
-        } => {
-            prevent_return(ast, then_branch, compiler)?;
-            prevent_return(ast, else_branch, compiler)?;
-        }
-        Expr::WhileLoop { block, .. } => prevent_return(ast, block, compiler)?,
-        _ => {}
-    };
+    }
 
-    Ok(())
+    fn block_returns(&self, id: ExprId) -> bool {
+        match *self.ast.node(id) {
+            Expr::Return(..) => true,
+            Expr::Block {
+                ref expressions,
+                tail,
+            } => {
+                let expressions = expressions.iter().copied().any(|e| self.block_returns(e));
+                let tail = if let Some(id) = tail {
+                    self.block_returns(id)
+                } else {
+                    false
+                };
+
+                expressions || tail
+            }
+            Expr::If {
+                then_branch,
+                else_branch,
+                ..
+            } => self.block_returns(then_branch) && self.block_returns(else_branch),
+            _ => false,
+        }
+    }
+
+    fn prevent_return(&self, id: ExprId) -> Result<(), Error> {
+        match *self.ast.node(id) {
+            Expr::Return(..) => {
+                return Err(report_error!(
+                    self.ast.span(id),
+                    self.compiler.path,
+                    "return is not allowed in the global scope"
+                ));
+            }
+            Expr::Block {
+                ref expressions,
+                tail,
+            } => {
+                for id in expressions.iter().copied() {
+                    self.prevent_return(id)?;
+                }
+
+                if let Some(id) = tail {
+                    self.prevent_return(id)?;
+                }
+            }
+            Expr::If {
+                then_branch,
+                else_branch,
+                ..
+            } => {
+                self.prevent_return(then_branch)?;
+                self.prevent_return(else_branch)?;
+            }
+            Expr::WhileLoop { block, .. } => self.prevent_return(block)?,
+            _ => {}
+        };
+
+        Ok(())
+    }
 }

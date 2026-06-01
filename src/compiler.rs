@@ -99,14 +99,6 @@ impl Compiler {
 
         Ok(function_index)
     }
-
-    pub fn push_function(&mut self, function: Function) -> usize {
-        let index = self.functions.len();
-
-        self.functions.push(function);
-
-        index
-    }
 }
 
 pub fn compile_and_run() -> Result<Value, Error> {

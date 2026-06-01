@@ -33,14 +33,6 @@ impl FreeVariables {
                 }
 
                 self.collect_free_variables(ast, block, &mut bound, &mut free);
-
-                println!("{}", INTERNER.lock().unwrap().resolve(name.value));
-
-                for var in free.iter() {
-                    print!("{} ", INTERNER.lock().unwrap().resolve(var.value));
-                }
-
-                println!("\n");
             }
             Expr::Lambda {
                 ref parameters,

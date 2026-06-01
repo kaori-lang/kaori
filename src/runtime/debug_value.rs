@@ -31,6 +31,9 @@ impl<'a> fmt::Debug for DebugValue<'a> {
         if self.value.is_cell() {
             return write!(f, "Cell({:p})", &self.value);
         }
+        if self.value.is_function() {
+            return write!(f, "Function({:p})", &self.value);
+        }
         if self.value.is_closure() {
             return write!(f, "Closure({:p})", self.gc.get_closure(self.value));
         }
