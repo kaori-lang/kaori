@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ExprId(u32);
+pub struct NodeId(u32);
 
 #[derive(Clone, Copy, Debug)]
 pub struct Spanned<T> {
@@ -39,44 +39,44 @@ impl Eq for Spanned<Symbol> {}
 
 #[derive(Debug, Default)]
 pub struct Ast {
-    nodes: Vec<Spanned<Expr>>,
+    nodes: Vec<Spanned<Node>>,
 }
 
 #[derive(Debug)]
-pub enum Expr {
+pub enum Node {
     Binary {
         operator: BinaryOp,
-        left: ExprId,
-        right: ExprId,
+        left: NodeId,
+        right: NodeId,
     },
     LogicalAnd {
-        left: ExprId,
-        right: ExprId,
+        left: NodeId,
+        right: NodeId,
     },
     LogicalOr {
-        left: ExprId,
-        right: ExprId,
+        left: NodeId,
+        right: NodeId,
     },
-    LogicalNot(ExprId),
+    LogicalNot(NodeId),
     Unary {
         operator: UnaryOp,
-        operand: ExprId,
+        operand: NodeId,
     },
     Assign {
-        left: ExprId,
-        right: ExprId,
+        left: NodeId,
+        right: NodeId,
     },
     Variable {
         left: Spanned<Symbol>,
-        right: ExprId,
+        right: NodeId,
     },
     Constant {
         left: Spanned<Symbol>,
-        right: ExprId,
+        right: NodeId,
     },
     Ref {
         left: Spanned<Symbol>,
-        right: ExprId,
+        right: NodeId,
     },
     Identifier(Spanned<Symbol>),
     String(Symbol),
@@ -84,39 +84,39 @@ pub enum Expr {
     Boolean(bool),
     Nil,
     FunctionCall {
-        callee: ExprId,
-        arguments: Vec<ExprId>,
+        callee: NodeId,
+        arguments: Vec<NodeId>,
     },
     MemberAccess {
-        object: ExprId,
+        object: NodeId,
         property: Spanned<Symbol>,
     },
     Map {
-        entries: Vec<(ExprId, ExprId)>,
+        entries: Vec<(NodeId, NodeId)>,
     },
     Function {
         name: Spanned<Symbol>,
         parameters: Vec<Spanned<Symbol>>,
-        block: ExprId,
+        block: NodeId,
     },
     Lambda {
         parameters: Vec<Spanned<Symbol>>,
-        block: ExprId,
+        block: NodeId,
     },
     Block {
-        expressions: Vec<ExprId>,
-        tail: Option<ExprId>,
+        statements: Vec<NodeId>,
+        expression: Option<NodeId>,
     },
     If {
-        condition: ExprId,
-        then_branch: ExprId,
-        else_branch: ExprId,
+        condition: NodeId,
+        then_branch: NodeId,
+        else_branch: NodeId,
     },
     WhileLoop {
-        condition: ExprId,
-        block: ExprId,
+        condition: NodeId,
+        block: NodeId,
     },
-    Return(ExprId),
+    Return(NodeId),
     Break,
     Continue,
     Import {
@@ -125,39 +125,39 @@ pub enum Expr {
 }
 
 impl Ast {
-    fn insert(&mut self, node: Expr, span: Span) -> ExprId {
-        let id = ExprId(self.nodes.len() as u32);
+    fn insert(&mut self, node: Node, span: Span) -> NodeId {
+        let id = NodeId(self.nodes.len() as u32);
 
         self.nodes.push(Spanned::new(node, span));
 
         id
     }
 
-    pub fn last(&self) -> ExprId {
-        ExprId((self.nodes.len() - 1) as u32)
+    pub fn last(&self) -> NodeId {
+        NodeId((self.nodes.len() - 1) as u32)
     }
 
-    pub fn node(&self, id: ExprId) -> &Expr {
+    pub fn node(&self, id: NodeId) -> &Node {
         &self.nodes[id.0 as usize].value
     }
 
-    pub fn node_mut(&mut self, id: ExprId) -> &mut Expr {
+    pub fn node_mut(&mut self, id: NodeId) -> &mut Node {
         &mut self.nodes[id.0 as usize].value
     }
 
-    pub fn span(&self, id: ExprId) -> Span {
+    pub fn span(&self, id: NodeId) -> Span {
         self.nodes[id.0 as usize].span
     }
 
     pub fn binary(
         &mut self,
         operator: BinaryOp,
-        left: ExprId,
-        right: ExprId,
+        left: NodeId,
+        right: NodeId,
         span: Span,
-    ) -> ExprId {
+    ) -> NodeId {
         self.insert(
-            Expr::Binary {
+            Node::Binary {
                 operator,
                 left,
                 right,
@@ -166,84 +166,84 @@ impl Ast {
         )
     }
 
-    pub fn logical_and(&mut self, left: ExprId, right: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::LogicalAnd { left, right }, span)
+    pub fn logical_and(&mut self, left: NodeId, right: NodeId, span: Span) -> NodeId {
+        self.insert(Node::LogicalAnd { left, right }, span)
     }
 
-    pub fn logical_or(&mut self, left: ExprId, right: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::LogicalOr { left, right }, span)
+    pub fn logical_or(&mut self, left: NodeId, right: NodeId, span: Span) -> NodeId {
+        self.insert(Node::LogicalOr { left, right }, span)
     }
 
-    pub fn logical_not(&mut self, expression: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::LogicalNot(expression), span)
+    pub fn logical_not(&mut self, expression: NodeId, span: Span) -> NodeId {
+        self.insert(Node::LogicalNot(expression), span)
     }
 
-    pub fn unary(&mut self, operator: UnaryOp, operand: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::Unary { operator, operand }, span)
+    pub fn unary(&mut self, operator: UnaryOp, operand: NodeId, span: Span) -> NodeId {
+        self.insert(Node::Unary { operator, operand }, span)
     }
 
-    pub fn assign(&mut self, left: ExprId, right: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::Assign { left, right }, span)
+    pub fn assign(&mut self, left: NodeId, right: NodeId, span: Span) -> NodeId {
+        self.insert(Node::Assign { left, right }, span)
     }
 
-    pub fn variable(&mut self, left: Spanned<Symbol>, right: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::Variable { left, right }, span)
+    pub fn variable(&mut self, left: Spanned<Symbol>, right: NodeId, span: Span) -> NodeId {
+        self.insert(Node::Variable { left, right }, span)
     }
 
-    pub fn constant(&mut self, left: Spanned<Symbol>, right: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::Constant { left, right }, span)
+    pub fn constant(&mut self, left: Spanned<Symbol>, right: NodeId, span: Span) -> NodeId {
+        self.insert(Node::Constant { left, right }, span)
     }
 
-    pub fn ref_(&mut self, left: Spanned<Symbol>, right: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::Ref { left, right }, span)
+    pub fn ref_(&mut self, left: Spanned<Symbol>, right: NodeId, span: Span) -> NodeId {
+        self.insert(Node::Ref { left, right }, span)
     }
 
-    pub fn identifier(&mut self, name: Spanned<Symbol>) -> ExprId {
-        self.insert(Expr::Identifier(name), name.span)
+    pub fn identifier(&mut self, name: Spanned<Symbol>) -> NodeId {
+        self.insert(Node::Identifier(name), name.span)
     }
 
-    pub fn string(&mut self, index: Symbol, span: Span) -> ExprId {
-        self.insert(Expr::String(index), span)
+    pub fn string(&mut self, index: Symbol, span: Span) -> NodeId {
+        self.insert(Node::String(index), span)
     }
 
-    pub fn number(&mut self, value: f64, span: Span) -> ExprId {
-        self.insert(Expr::Number(value), span)
+    pub fn number(&mut self, value: f64, span: Span) -> NodeId {
+        self.insert(Node::Number(value), span)
     }
 
-    pub fn boolean(&mut self, value: bool, span: Span) -> ExprId {
-        self.insert(Expr::Boolean(value), span)
+    pub fn boolean(&mut self, value: bool, span: Span) -> NodeId {
+        self.insert(Node::Boolean(value), span)
     }
 
-    pub fn nil(&mut self, span: Span) -> ExprId {
-        self.insert(Expr::Nil, span)
+    pub fn nil(&mut self, span: Span) -> NodeId {
+        self.insert(Node::Nil, span)
     }
 
-    pub fn function_call(&mut self, callee: ExprId, arguments: Vec<ExprId>, span: Span) -> ExprId {
-        self.insert(Expr::FunctionCall { callee, arguments }, span)
+    pub fn function_call(&mut self, callee: NodeId, arguments: Vec<NodeId>, span: Span) -> NodeId {
+        self.insert(Node::FunctionCall { callee, arguments }, span)
     }
 
     pub fn member_access(
         &mut self,
-        object: ExprId,
+        object: NodeId,
         property: Spanned<Symbol>,
         span: Span,
-    ) -> ExprId {
-        self.insert(Expr::MemberAccess { object, property }, span)
+    ) -> NodeId {
+        self.insert(Node::MemberAccess { object, property }, span)
     }
 
-    pub fn map(&mut self, entries: Vec<(ExprId, ExprId)>, span: Span) -> ExprId {
-        self.insert(Expr::Map { entries }, span)
+    pub fn map(&mut self, entries: Vec<(NodeId, NodeId)>, span: Span) -> NodeId {
+        self.insert(Node::Map { entries }, span)
     }
 
     pub fn function(
         &mut self,
         name: Spanned<Symbol>,
         parameters: Vec<Spanned<Symbol>>,
-        block: ExprId,
+        block: NodeId,
         span: Span,
-    ) -> ExprId {
+    ) -> NodeId {
         self.insert(
-            Expr::Function {
+            Node::Function {
                 name,
                 parameters,
                 block,
@@ -255,25 +255,36 @@ impl Ast {
     pub fn lambda(
         &mut self,
         parameters: Vec<Spanned<Symbol>>,
-        block: ExprId,
+        block: NodeId,
         span: Span,
-    ) -> ExprId {
-        self.insert(Expr::Lambda { parameters, block }, span)
+    ) -> NodeId {
+        self.insert(Node::Lambda { parameters, block }, span)
     }
 
-    pub fn block(&mut self, expressions: Vec<ExprId>, tail: Option<ExprId>, span: Span) -> ExprId {
-        self.insert(Expr::Block { expressions, tail }, span)
+    pub fn block(
+        &mut self,
+        statements: Vec<NodeId>,
+        expression: Option<NodeId>,
+        span: Span,
+    ) -> NodeId {
+        self.insert(
+            Node::Block {
+                statements,
+                expression,
+            },
+            span,
+        )
     }
 
     pub fn if_(
         &mut self,
-        condition: ExprId,
-        then_branch: ExprId,
-        else_branch: ExprId,
+        condition: NodeId,
+        then_branch: NodeId,
+        else_branch: NodeId,
         span: Span,
-    ) -> ExprId {
+    ) -> NodeId {
         self.insert(
-            Expr::If {
+            Node::If {
                 condition,
                 then_branch,
                 else_branch,
@@ -282,23 +293,23 @@ impl Ast {
         )
     }
 
-    pub fn while_loop(&mut self, condition: ExprId, block: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::WhileLoop { condition, block }, span)
+    pub fn while_loop(&mut self, condition: NodeId, block: NodeId, span: Span) -> NodeId {
+        self.insert(Node::WhileLoop { condition, block }, span)
     }
 
-    pub fn return_(&mut self, expression: ExprId, span: Span) -> ExprId {
-        self.insert(Expr::Return(expression), span)
+    pub fn return_(&mut self, expression: NodeId, span: Span) -> NodeId {
+        self.insert(Node::Return(expression), span)
     }
 
-    pub fn break_(&mut self, span: Span) -> ExprId {
-        self.insert(Expr::Break, span)
+    pub fn break_(&mut self, span: Span) -> NodeId {
+        self.insert(Node::Break, span)
     }
 
-    pub fn continue_(&mut self, span: Span) -> ExprId {
-        self.insert(Expr::Continue, span)
+    pub fn continue_(&mut self, span: Span) -> NodeId {
+        self.insert(Node::Continue, span)
     }
 
-    pub fn import(&mut self, path: Spanned<Symbol>, span: Span) -> ExprId {
-        self.insert(Expr::Import { path }, span)
+    pub fn import(&mut self, path: Spanned<Symbol>, span: Span) -> NodeId {
+        self.insert(Node::Import { path }, span)
     }
 }

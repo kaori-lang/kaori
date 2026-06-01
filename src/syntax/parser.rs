@@ -5,7 +5,7 @@ use crate::{
     diagnostics::error::Error,
     report_error,
     syntax::{
-        ast::{Ast, Expr, ExprId, Spanned},
+        ast::{Ast, Node, NodeId, Spanned},
         ops::{BinaryOp, UnaryOp},
         token::{Span, Token},
     },
@@ -93,10 +93,10 @@ impl<'a> Parser<'a> {
         self.pos += 1;
     }
 
-    fn requires_semicolon(&mut self, id: ExprId) -> bool {
+    fn requires_semicolon(&mut self, id: NodeId) -> bool {
         !matches!(
             self.ast.node(id),
-            Expr::Block { .. } | Expr::If { .. } | Expr::Function { .. } | Expr::WhileLoop { .. }
+            Node::Block { .. } | Node::If { .. } | Node::Function { .. } | Node::WhileLoop { .. }
         )
     }
 
@@ -121,13 +121,13 @@ impl<'a> Parser<'a> {
         Ok(items)
     }
 
-    fn parse_expression(&mut self) -> Result<ExprId, Error> {
+    fn parse_expression(&mut self) -> Result<NodeId, Error> {
         let assign = self.parse_assign()?;
 
         Ok(assign)
     }
 
-    fn parse_import(&mut self) -> Result<ExprId, Error> {
+    fn parse_import(&mut self) -> Result<NodeId, Error> {
         let import_span = self.consume(Token::Import)?;
 
         let span = self.peek_span();
@@ -146,7 +146,7 @@ impl<'a> Parser<'a> {
         Ok(self.ast.import(path, span))
     }
 
-    fn parse_return(&mut self) -> Result<ExprId, Error> {
+    fn parse_return(&mut self) -> Result<NodeId, Error> {
         let span = self.consume(Token::Return)?;
 
         let expression = self.parse_expression()?;
@@ -156,19 +156,19 @@ impl<'a> Parser<'a> {
         Ok(self.ast.return_(expression, span))
     }
 
-    fn parse_continue(&mut self) -> Result<ExprId, Error> {
+    fn parse_continue(&mut self) -> Result<NodeId, Error> {
         let span = self.consume(Token::Continue)?;
 
         Ok(self.ast.continue_(span))
     }
 
-    fn parse_break(&mut self) -> Result<ExprId, Error> {
+    fn parse_break(&mut self) -> Result<NodeId, Error> {
         let span = self.consume(Token::Break)?;
 
         Ok(self.ast.break_(span))
     }
 
-    fn parse_block(&mut self) -> Result<ExprId, Error> {
+    fn parse_block(&mut self) -> Result<NodeId, Error> {
         let lbrace_span = self.consume(Token::LeftBrace)?;
 
         let mut expressions = Vec::new();
@@ -197,7 +197,7 @@ impl<'a> Parser<'a> {
         Ok(self.ast.block(expressions, tail, span))
     }
 
-    fn parse_if(&mut self) -> Result<ExprId, Error> {
+    fn parse_if(&mut self) -> Result<NodeId, Error> {
         let if_span = self.consume(Token::If)?;
 
         let condition = self.parse_expression()?;
@@ -226,7 +226,7 @@ impl<'a> Parser<'a> {
         Ok(self.ast.if_(condition, then_branch, else_branch, span))
     }
 
-    fn parse_while_loop(&mut self) -> Result<ExprId, Error> {
+    fn parse_while_loop(&mut self) -> Result<NodeId, Error> {
         let while_span = self.consume(Token::While)?;
 
         let condition = self.parse_expression()?;
@@ -237,11 +237,11 @@ impl<'a> Parser<'a> {
         Ok(self.ast.while_loop(condition, block, span))
     }
 
-    fn parse_for_loop(&mut self) -> Result<ExprId, Error> {
+    fn parse_for_loop(&mut self) -> Result<NodeId, Error> {
         todo!()
     }
 
-    fn parse_function(&mut self) -> Result<ExprId, Error> {
+    fn parse_function(&mut self) -> Result<NodeId, Error> {
         let function_span = self.consume(Token::Function)?;
 
         let name = if self.peek_token() == Token::Identifier {
@@ -269,7 +269,7 @@ impl<'a> Parser<'a> {
         Ok(expression)
     }
 
-    fn parse_variable(&mut self) -> Result<ExprId, Error> {
+    fn parse_variable(&mut self) -> Result<NodeId, Error> {
         let let_span = self.consume(Token::Let)?;
 
         let left = self.parse_name()?;
@@ -283,7 +283,7 @@ impl<'a> Parser<'a> {
         Ok(self.ast.variable(left, right, span))
     }
 
-    fn parse_constant(&mut self) -> Result<ExprId, Error> {
+    fn parse_constant(&mut self) -> Result<NodeId, Error> {
         let let_span = self.consume(Token::Const)?;
 
         let left = self.parse_name()?;
@@ -297,7 +297,7 @@ impl<'a> Parser<'a> {
         Ok(self.ast.constant(left, right, span))
     }
 
-    fn parse_ref(&mut self) -> Result<ExprId, Error> {
+    fn parse_ref(&mut self) -> Result<NodeId, Error> {
         let ref_span = self.consume(Token::Ref)?;
 
         let left = self.parse_name()?;
@@ -311,7 +311,7 @@ impl<'a> Parser<'a> {
         Ok(self.ast.ref_(left, right, span))
     }
 
-    fn parse_assign(&mut self) -> Result<ExprId, Error> {
+    fn parse_assign(&mut self) -> Result<NodeId, Error> {
         let left = self.parse_or()?;
 
         let token = self.peek_token();
@@ -345,7 +345,7 @@ impl<'a> Parser<'a> {
         Ok(self.ast.assign(left, right, span))
     }
 
-    fn parse_or(&mut self) -> Result<ExprId, Error> {
+    fn parse_or(&mut self) -> Result<NodeId, Error> {
         let mut left = self.parse_and()?;
 
         while !self.at_end() {
@@ -366,7 +366,7 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    fn parse_and(&mut self) -> Result<ExprId, Error> {
+    fn parse_and(&mut self) -> Result<NodeId, Error> {
         let mut left = self.parse_equality()?;
 
         while !self.at_end() {
@@ -387,7 +387,7 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    fn parse_equality(&mut self) -> Result<ExprId, Error> {
+    fn parse_equality(&mut self) -> Result<NodeId, Error> {
         let mut left = self.parse_comparison()?;
 
         while !self.at_end() {
@@ -410,7 +410,7 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    fn parse_comparison(&mut self) -> Result<ExprId, Error> {
+    fn parse_comparison(&mut self) -> Result<NodeId, Error> {
         let mut left = self.parse_term()?;
 
         while !self.at_end() {
@@ -435,7 +435,7 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    fn parse_term(&mut self) -> Result<ExprId, Error> {
+    fn parse_term(&mut self) -> Result<NodeId, Error> {
         let mut left = self.parse_factor()?;
 
         while !self.at_end() {
@@ -458,7 +458,7 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    fn parse_factor(&mut self) -> Result<ExprId, Error> {
+    fn parse_factor(&mut self) -> Result<NodeId, Error> {
         let mut left = self.parse_prefix_unary()?;
 
         while !self.at_end() {
@@ -482,7 +482,7 @@ impl<'a> Parser<'a> {
         Ok(left)
     }
 
-    fn parse_prefix_unary(&mut self) -> Result<ExprId, Error> {
+    fn parse_prefix_unary(&mut self) -> Result<NodeId, Error> {
         let (token, span) = self.peek();
 
         let operator = match token {
@@ -516,7 +516,7 @@ impl<'a> Parser<'a> {
         Ok(self.ast.unary(operator, operand, span))
     }
 
-    fn parse_primary(&mut self) -> Result<ExprId, Error> {
+    fn parse_primary(&mut self) -> Result<NodeId, Error> {
         let (token, span) = self.peek();
 
         let primary = match token {
@@ -614,13 +614,13 @@ impl<'a> Parser<'a> {
         Ok(Spanned::new(symbol, span))
     }
 
-    fn parse_identifier(&mut self) -> Result<ExprId, Error> {
+    fn parse_identifier(&mut self) -> Result<NodeId, Error> {
         let name = self.parse_name()?;
 
         Ok(self.ast.identifier(name))
     }
 
-    fn parse_map_entry(&mut self) -> Result<(ExprId, ExprId), Error> {
+    fn parse_map_entry(&mut self) -> Result<(NodeId, NodeId), Error> {
         let key = self.parse_expression()?;
         self.consume(Token::Colon)?;
         let value = self.parse_expression()?;
@@ -628,7 +628,7 @@ impl<'a> Parser<'a> {
         Ok((key, value))
     }
 
-    fn parse_map_literal(&mut self) -> Result<ExprId, Error> {
+    fn parse_map_literal(&mut self) -> Result<NodeId, Error> {
         let hash_span = self.consume(Token::Hash)?;
         self.consume(Token::LeftBrace)?;
 
@@ -641,7 +641,7 @@ impl<'a> Parser<'a> {
         Ok(self.ast.map(entries, span))
     }
 
-    fn parse_postfix_unary(&mut self, operand: ExprId) -> Result<ExprId, Error> {
+    fn parse_postfix_unary(&mut self, operand: NodeId) -> Result<NodeId, Error> {
         let token = self.peek_token();
 
         Ok(match token {
@@ -651,7 +651,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_function_call(&mut self, callee: ExprId) -> Result<ExprId, Error> {
+    fn parse_function_call(&mut self, callee: NodeId) -> Result<NodeId, Error> {
         let lparen_span = self.consume(Token::LeftParen)?;
 
         let arguments = self.parse_comma_separator(Self::parse_expression, Token::RightParen)?;
@@ -665,7 +665,7 @@ impl<'a> Parser<'a> {
         self.parse_postfix_unary(function_call)
     }
 
-    fn parse_member_access(&mut self, object: ExprId) -> Result<ExprId, Error> {
+    fn parse_member_access(&mut self, object: NodeId) -> Result<NodeId, Error> {
         let dot_span = self.consume(Token::Dot)?;
 
         let property = self.parse_name()?;

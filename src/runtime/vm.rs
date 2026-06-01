@@ -1304,11 +1304,11 @@ unsafe extern "rust-preserve-none" fn opcode_return(
 
     let value = unsafe { registers.get_value(src) };
 
-    /*  for index in 0..frame_size {
+    for index in 0..frame_size {
         let dest = Reg(index as u8);
 
         unsafe { registers.set_value(dest, Value::nil()) };
-    } */
+    }
 
     Ok(value)
 }

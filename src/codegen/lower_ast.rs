@@ -11,7 +11,7 @@ use crate::{
         instruction::{Const, Instruction},
     },
     syntax::{
-        ast::{Ast, Expr, ExprId},
+        ast::{Ast, Node, NodeId},
         ops::{BinaryOp, UnaryOp},
     },
 };
@@ -71,19 +71,19 @@ impl<'a> Lower<'a> {
         }
     }
 
-    fn lower_effect(&mut self, id: ExprId) -> Result<(), Error> {
+    fn lower_statement(&mut self, id: NodeId) -> Result<(), Error> {
         match *self.ast.node(id) {
-            Expr::Variable { left, right } => {
+            Node::Variable { left, right } => {
                 let dest = self.env.declare_local(left.value);
 
                 self.lower_expression(right, Some(dest))?;
             }
-            Expr::Constant { left, right } => {
+            Node::Constant { left, right } => {
                 let dest = self.env.declare_local(left.value);
 
                 self.lower_expression(right, Some(dest))?;
             }
-            Expr::Ref { left, right } => {
+            Node::Ref { left, right } => {
                 let dest = self.env.declare_local(left.value);
 
                 let src = self.lower_expression(right, None)?;
@@ -93,8 +93,8 @@ impl<'a> Lower<'a> {
                     src: src.into(),
                 });
             }
-            Expr::Assign { left, right } => match *self.ast.node(left) {
-                Expr::Identifier(..) => {
+            Node::Assign { left, right } => match *self.ast.node(left) {
+                Node::Identifier(..) => {
                     let dest = self.lower_expression(left, None)?;
 
                     let src = self.lower_expression(right, Some(dest))?;
@@ -103,7 +103,7 @@ impl<'a> Lower<'a> {
                         self.env.free_temp(src);
                     }
                 }
-                Expr::MemberAccess { object, property } => {
+                Node::MemberAccess { object, property } => {
                     let value = self.lower_expression(right, None)?;
                     let object = self.lower_expression(object, None)?;
                     let key = {
@@ -124,7 +124,7 @@ impl<'a> Lower<'a> {
                         value: value.into(),
                     });
                 }
-                Expr::Unary {
+                Node::Unary {
                     operator: UnaryOp::Deref,
                     operand,
                 } => {
@@ -144,7 +144,7 @@ impl<'a> Lower<'a> {
                     ));
                 }
             },
-            Expr::WhileLoop { condition, block } => {
+            Node::WhileLoop { condition, block } => {
                 let src = self.lower_expression(condition, None)?;
 
                 let jump_if_false = self.lower_jump_if_false(src);
@@ -152,7 +152,7 @@ impl<'a> Lower<'a> {
 
                 let loop_body = self.function.instructions.len();
 
-                self.lower_effect(block)?;
+                self.lower_statement(block)?;
 
                 let src = self.lower_expression(condition, None)?;
 
@@ -165,7 +165,7 @@ impl<'a> Lower<'a> {
                     self.function.instructions.len() as i32 - jump_if_false as i32,
                 );
             }
-            Expr::Return(expression) => {
+            Node::Return(expression) => {
                 let src = self.lower_expression(expression, None)?;
 
                 self.function
@@ -173,35 +173,35 @@ impl<'a> Lower<'a> {
 
                 self.env.free_temp(src);
             }
-            Expr::Block {
-                ref expressions,
-                tail,
+            Node::Block {
+                ref statements,
+                expression,
             } => {
                 self.env.push_scope();
 
-                for id in expressions.iter().copied() {
-                    if let Expr::Function { name, .. } = self.ast.node(id) {
+                for id in statements.iter().copied() {
+                    if let Node::Function { name, .. } = self.ast.node(id) {
                         self.env.declare_local(name.value);
                     }
                 }
 
-                for id in expressions.iter().copied() {
-                    self.lower_effect(id)?;
+                for id in statements.iter().copied() {
+                    self.lower_statement(id)?;
                 }
 
-                if let Some(id) = tail {
+                if let Some(id) = expression {
                     let span = self.ast.span(id);
 
                     return Err(report_error!(
                         span,
                         self.compiler.path,
-                        "expected `;` after expression, only block expressions can produce values"
+                        "expected `;` after expression, only block statements can produce values"
                     ));
                 }
 
                 self.env.pop_scope();
             }
-            Expr::Function {
+            Node::Function {
                 ref parameters,
                 block,
                 name,
@@ -282,8 +282,8 @@ impl<'a> Lower<'a> {
                     });
                 }
             }
-            Expr::Break => todo!(),
-            Expr::Continue => todo!(),
+            Node::Break => todo!(),
+            Node::Continue => todo!(),
             _ => {
                 let register = self.lower_expression(id, None)?;
                 self.env.free_temp(register);
@@ -293,9 +293,9 @@ impl<'a> Lower<'a> {
         Ok(())
     }
 
-    fn lower_expression(&mut self, id: ExprId, dest: Option<Register>) -> Result<Register, Error> {
+    fn lower_expression(&mut self, id: NodeId, dest: Option<Register>) -> Result<Register, Error> {
         let register = match *self.ast.node(id) {
-            Expr::Number(value) => {
+            Node::Number(value) => {
                 let src = self.function.store_number_const(value);
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
@@ -306,7 +306,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::String(value) => {
+            Node::String(value) => {
                 let src = self.function.store_string_const(value);
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
@@ -317,7 +317,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::Boolean(value) => {
+            Node::Boolean(value) => {
                 let src = self.function.store_boolean_const(value);
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
@@ -328,7 +328,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::Nil => {
+            Node::Nil => {
                 let src = self.function.store_nil_const();
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
@@ -339,7 +339,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::Identifier(name) => {
+            Node::Identifier(name) => {
                 let Some((_, register)) = self.env.lookup(name.value) else {
                     let slice = INTERNER.lock().unwrap().resolve(name.value);
 
@@ -364,7 +364,7 @@ impl<'a> Lower<'a> {
                     None => register,
                 }
             }
-            Expr::Binary {
+            Node::Binary {
                 operator,
                 left,
                 right,
@@ -567,7 +567,7 @@ impl<'a> Lower<'a> {
                     dest
                 }
             }
-            Expr::Unary { operator, operand } => {
+            Node::Unary { operator, operand } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
                 let src = self.lower_expression(operand, None)?;
 
@@ -586,7 +586,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::LogicalNot(expression) => {
+            Node::LogicalNot(expression) => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
                 let src = self.lower_expression(expression, None)?;
 
@@ -599,7 +599,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::LogicalAnd { left, right } => {
+            Node::LogicalAnd { left, right } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
                 self.lower_expression(left, Some(dest))?;
@@ -615,7 +615,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::LogicalOr { left, right } => {
+            Node::LogicalOr { left, right } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
                 self.lower_expression(left, Some(dest))?;
@@ -631,7 +631,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::If {
+            Node::If {
                 condition,
                 then_branch,
                 else_branch,
@@ -663,24 +663,24 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::Block {
-                ref expressions,
-                tail,
+            Node::Block {
+                ref statements,
+                expression,
             } => {
                 self.env.push_scope();
 
-                for id in expressions.iter().copied() {
-                    if let Expr::Function { name, .. } = self.ast.node(id) {
+                for id in statements.iter().copied() {
+                    if let Node::Function { name, .. } = self.ast.node(id) {
                         let reg = self.env.declare_local(name.value);
                         println!("{:?}", reg);
                     }
                 }
 
-                for id in expressions.iter().copied() {
-                    self.lower_effect(id)?;
+                for id in statements.iter().copied() {
+                    self.lower_statement(id)?;
                 }
 
-                let dest = match tail {
+                let dest = match expression {
                     Some(id) => self.lower_expression(id, dest)?,
                     None => {
                         let src = self.function.store_nil_const();
@@ -699,12 +699,10 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::FunctionCall {
+            Node::FunctionCall {
                 callee,
                 ref arguments,
             } => {
-                let src = self.lower_expression(callee, None)?;
-
                 for (index, argument) in arguments.iter().enumerate() {
                     let dest = Register::Local(index + 1);
 
@@ -716,7 +714,7 @@ impl<'a> Lower<'a> {
                 }
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
-
+                let src = self.lower_expression(callee, None)?;
                 self.function.emit_instruction(Instruction::Call {
                     dest: dest.into(),
                     src: src.into(),
@@ -726,7 +724,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::MemberAccess { object, property } => {
+            Node::MemberAccess { object, property } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
                 let object = self.lower_expression(object, None)?;
@@ -754,7 +752,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::Map { ref entries } => {
+            Node::Map { ref entries } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
                 self.function
@@ -776,7 +774,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::Lambda {
+            Node::Lambda {
                 ref parameters,
                 block,
             } => {
@@ -851,7 +849,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::Import { path } => {
+            Node::Import { path } => {
                 let index = self.compiler.compile_file(path)?;
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
@@ -868,13 +866,13 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::Variable { .. }
-            | Expr::Constant { .. }
-            | Expr::Ref { .. }
-            | Expr::Assign { .. }
-            | Expr::WhileLoop { .. }
-            | Expr::Function { .. } => {
-                self.lower_effect(id)?;
+            Node::Variable { .. }
+            | Node::Constant { .. }
+            | Node::Ref { .. }
+            | Node::Assign { .. }
+            | Node::WhileLoop { .. }
+            | Node::Function { .. } => {
+                self.lower_statement(id)?;
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
                 let src = self.function.store_nil_const();
@@ -886,7 +884,7 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Expr::Return(..) | Expr::Break | Expr::Continue => {
+            Node::Return(..) | Node::Break | Node::Continue => {
                 return Err(report_error!(
                     self.ast.span(id),
                     self.compiler.path,
@@ -898,9 +896,9 @@ impl<'a> Lower<'a> {
         Ok(register)
     }
 
-    fn as_number_const(&mut self, id: ExprId) -> Option<Const> {
+    fn as_number_const(&mut self, id: NodeId) -> Option<Const> {
         match *self.ast.node(id) {
-            Expr::Number(value) => Some(self.function.store_number_const(value)),
+            Node::Number(value) => Some(self.function.store_number_const(value)),
             _ => None,
         }
     }
@@ -1198,23 +1196,23 @@ impl<'a> Lower<'a> {
         }
     }
 
-    fn block_returns(&self, id: ExprId) -> bool {
+    fn block_returns(&self, id: NodeId) -> bool {
         match *self.ast.node(id) {
-            Expr::Return(..) => true,
-            Expr::Block {
-                ref expressions,
-                tail,
+            Node::Return(..) => true,
+            Node::Block {
+                ref statements,
+                expression,
             } => {
-                let expressions = expressions.iter().copied().any(|e| self.block_returns(e));
-                let tail = if let Some(id) = tail {
+                let statements = statements.iter().copied().any(|e| self.block_returns(e));
+                let expression = if let Some(id) = expression {
                     self.block_returns(id)
                 } else {
                     false
                 };
 
-                expressions || tail
+                statements || expression
             }
-            Expr::If {
+            Node::If {
                 then_branch,
                 else_branch,
                 ..
@@ -1223,28 +1221,28 @@ impl<'a> Lower<'a> {
         }
     }
 
-    fn prevent_return(&self, id: ExprId) -> Result<(), Error> {
+    fn prevent_return(&self, id: NodeId) -> Result<(), Error> {
         match *self.ast.node(id) {
-            Expr::Return(..) => {
+            Node::Return(..) => {
                 return Err(report_error!(
                     self.ast.span(id),
                     self.compiler.path,
                     "return is not allowed in the global scope"
                 ));
             }
-            Expr::Block {
-                ref expressions,
-                tail,
+            Node::Block {
+                ref statements,
+                expression,
             } => {
-                for id in expressions.iter().copied() {
+                for id in statements.iter().copied() {
                     self.prevent_return(id)?;
                 }
 
-                if let Some(id) = tail {
+                if let Some(id) = expression {
                     self.prevent_return(id)?;
                 }
             }
-            Expr::If {
+            Node::If {
                 then_branch,
                 else_branch,
                 ..
@@ -1252,7 +1250,7 @@ impl<'a> Lower<'a> {
                 self.prevent_return(then_branch)?;
                 self.prevent_return(else_branch)?;
             }
-            Expr::WhileLoop { block, .. } => self.prevent_return(block)?,
+            Node::WhileLoop { block, .. } => self.prevent_return(block)?,
             _ => {}
         };
 
