@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use crate::{
     syntax::{
         ops::{BinaryOp, UnaryOp},
@@ -20,6 +22,20 @@ impl<T> Spanned<T> {
         Self { value, span }
     }
 }
+
+impl Hash for Spanned<Symbol> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
+    }
+}
+
+impl PartialEq for Spanned<Symbol> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl Eq for Spanned<Symbol> {}
 
 #[derive(Debug, Default)]
 pub struct Ast {
@@ -82,12 +98,10 @@ pub enum Expr {
         name: Spanned<Symbol>,
         parameters: Vec<Spanned<Symbol>>,
         block: ExprId,
-        captures: Vec<ExprId>,
     },
     Lambda {
         parameters: Vec<Spanned<Symbol>>,
         block: ExprId,
-        captures: Vec<ExprId>,
     },
     Block {
         expressions: Vec<ExprId>,
@@ -233,7 +247,6 @@ impl Ast {
                 name,
                 parameters,
                 block,
-                captures: Vec::new(),
             },
             span,
         )
@@ -245,14 +258,7 @@ impl Ast {
         block: ExprId,
         span: Span,
     ) -> ExprId {
-        self.insert(
-            Expr::Lambda {
-                parameters,
-                block,
-                captures: Vec::new(),
-            },
-            span,
-        )
+        self.insert(Expr::Lambda { parameters, block }, span)
     }
 
     pub fn block(&mut self, expressions: Vec<ExprId>, tail: Option<ExprId>, span: Span) -> ExprId {
