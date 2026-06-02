@@ -27,7 +27,7 @@ pub fn lower_ast(ast: Ast, compiler: &mut Compiler) -> Result<usize, Error> {
 
     let src = lowerer.lower_expression(id, None)?;
 
-    lowerer.prevent_return(id)?;
+    //lowerer.prevent_return(id)?;
 
     lowerer
         .function
@@ -165,6 +165,34 @@ impl<'a> Lower<'a> {
                     self.function.instructions.len() as i32 - jump_if_false as i32,
                 );
             }
+            Node::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => {
+                let src = self.lower_expression(condition, None)?;
+                self.env.free_temp(src);
+
+                let jump_if_false = self.lower_jump_if_false(src);
+
+                self.lower_statement(then_branch)?;
+
+                let jump_end = self
+                    .function
+                    .emit_instruction(Instruction::Jump { offset: 0 });
+
+                self.patch_jump(
+                    jump_if_false,
+                    self.function.instructions.len() as i32 - jump_if_false as i32,
+                );
+
+                self.lower_statement(else_branch)?;
+
+                self.patch_jump(
+                    jump_end,
+                    self.function.instructions.len() as i32 - jump_end as i32,
+                );
+            }
             Node::Return(expression) => {
                 let src = self.lower_expression(expression, None)?;
 
@@ -195,7 +223,7 @@ impl<'a> Lower<'a> {
                     return Err(report_error!(
                         span,
                         self.compiler.path,
-                        "expected `;` after expression, only block statements can produce values"
+                        "expected `;` after expression, block statements do not produce values"
                     ));
                 }
 
@@ -871,24 +899,14 @@ impl<'a> Lower<'a> {
             | Node::Ref { .. }
             | Node::Assign { .. }
             | Node::WhileLoop { .. }
-            | Node::Function { .. } => {
-                self.lower_statement(id)?;
-
-                let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
-                let src = self.function.store_nil_const();
-
-                self.function.emit_instruction(Instruction::LoadConst {
-                    dest: dest.into(),
-                    src,
-                });
-
-                dest
-            }
-            Node::Return(..) | Node::Break | Node::Continue => {
+            | Node::Function { .. }
+            | Node::Return(..)
+            | Node::Break
+            | Node::Continue => {
                 return Err(report_error!(
                     self.ast.span(id),
                     self.compiler.path,
-                    "expression of type never does not produce a value"
+                    "statements do not produce values"
                 ));
             }
         };
