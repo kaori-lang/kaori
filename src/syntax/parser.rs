@@ -39,7 +39,19 @@ impl<'a> Parser<'a> {
             statements.push(statement);
         }
 
-        self.ast.block(statements, None, Span::default());
+        let tail = if let Some((_, true)) = statements.last() {
+            statements.pop().map(|(tail, _)| tail)
+        } else {
+            None
+        };
+
+        let statements = statements
+            .iter()
+            .copied()
+            .map(|(statement, _)| statement)
+            .collect();
+
+        self.ast.block(statements, tail, Span::default());
 
         Ok(self.ast)
     }
@@ -116,23 +128,11 @@ impl<'a> Parser<'a> {
         Ok(assign)
     }
 
-    fn parse_statement(&mut self) -> Result<NodeId, Error> {
+    fn parse_statement(&mut self) -> Result<(NodeId, bool), Error> {
         let token = self.peek_token();
 
-        let can_be_expression = !matches!(
-            token,
-            Token::Function
-                | Token::While
-                | Token::For
-                | Token::Break
-                | Token::Continue
-                | Token::Return
-                | Token::Let
-                | Token::Const
-                | Token::Ref
-        );
-
         let statement = match token {
+            Token::LeftBrace => self.parse_block(),
             Token::If => self.parse_if(),
             Token::Function => self.parse_function(),
             Token::While => self.parse_while_loop(),
@@ -146,22 +146,21 @@ impl<'a> Parser<'a> {
             _ => self.parse_expression(),
         }?;
 
-        let must_consume_semicolon = !matches!(
+        let consumes_semicolon = (!matches!(
             token,
-            Token::If | Token::Function | Token::While | Token::For
-        );
-
-        let consumes_semicolon = must_consume_semicolon || self.peek_token() == Token::Semicolon;
+            Token::If | Token::Function | Token::While | Token::For | Token::LeftBrace
+        ) && self.peek_token() != Token::RightBrace)
+            || self.peek_token() == Token::Semicolon;
 
         if consumes_semicolon {
             self.consume(Token::Semicolon)?;
         }
 
-        if can_be_expression && self.peek_token() == Token::RightBrace && !consumes_semicolon {
-            // is tail
+        if self.peek_token() == Token::RightBrace && !consumes_semicolon {
+            Ok((statement, true))
+        } else {
+            Ok((statement, false))
         }
-
-        Ok(statement)
     }
 
     fn parse_import(&mut self) -> Result<NodeId, Error> {
@@ -217,7 +216,17 @@ impl<'a> Parser<'a> {
 
         let rbrace_span = self.consume(Token::RightBrace)?;
 
-        let tail = statements.pop();
+        let tail = if let Some((_, true)) = statements.last() {
+            statements.pop().map(|(tail, _)| tail)
+        } else {
+            None
+        };
+
+        let statements = statements
+            .iter()
+            .copied()
+            .map(|(statement, _)| statement)
+            .collect();
 
         let span = lbrace_span.merge(rbrace_span);
 
@@ -554,16 +563,7 @@ impl<'a> Parser<'a> {
         let (token, span) = self.peek();
 
         let primary = match token {
-            Token::While => self.parse_while_loop()?,
-            Token::For => self.parse_for_loop()?,
-            Token::Break => self.parse_break()?,
-            Token::Continue => self.parse_continue()?,
-            Token::Return => self.parse_return()?,
-            Token::Let => self.parse_variable()?,
-            Token::Const => self.parse_constant()?,
-            Token::Ref => self.parse_ref()?,
             Token::If => self.parse_if()?,
-            Token::Function => self.parse_function()?,
             Token::Pipe => self.parse_lambda()?,
             Token::Import => self.parse_import()?,
             Token::LeftParen => {

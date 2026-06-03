@@ -218,13 +218,7 @@ impl<'a> Lower<'a> {
                 }
 
                 if let Some(id) = expression {
-                    let span = self.ast.span(id);
-
-                    return Err(report_error!(
-                        span,
-                        self.compiler.path,
-                        "expected `;` after expression, block statements do not produce values"
-                    ));
+                    self.lower_statement(id)?;
                 }
 
                 self.env.pop_scope();
@@ -699,8 +693,7 @@ impl<'a> Lower<'a> {
 
                 for id in statements.iter().copied() {
                     if let Node::Function { name, .. } = self.ast.node(id) {
-                        let reg = self.env.declare_local(name.value);
-                        println!("{:?}", reg);
+                        self.env.declare_local(name.value);
                     }
                 }
 
@@ -708,18 +701,19 @@ impl<'a> Lower<'a> {
                     self.lower_statement(id)?;
                 }
 
-                let dest = match expression {
-                    Some(id) => self.lower_expression(id, dest)?,
+                let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
+
+                match expression {
+                    Some(id) => {
+                        self.lower_expression(id, Some(dest))?;
+                    }
                     None => {
                         let src = self.function.store_nil_const();
-                        let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
                         self.function.emit_instruction(Instruction::LoadConst {
                             dest: dest.into(),
                             src,
                         });
-
-                        dest
                     }
                 };
 

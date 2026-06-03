@@ -1,12 +1,6 @@
+let z = 0;
 
 
-if true {
-    if true {
-        1;
-    } else {
-        2;
-    }
-} else {
-  2;
+{
+    1
 }
-
