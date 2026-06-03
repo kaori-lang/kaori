@@ -186,7 +186,9 @@ impl<'a> Lower<'a> {
                     self.function.instructions.len() as i32 - jump_if_false as i32,
                 );
 
-                self.lower_statement(else_branch)?;
+                if let Some(id) = else_branch {
+                    self.lower_statement(id)?;
+                }
 
                 self.patch_jump(
                     jump_end,
@@ -682,7 +684,15 @@ impl<'a> Lower<'a> {
                     self.function.instructions.len() as i32 - jump_if_false as i32,
                 );
 
-                self.lower_expression(else_branch, Some(dest))?;
+                if let Some(id) = else_branch {
+                    self.lower_expression(id, Some(dest))?;
+                } else {
+                    return Err(report_error!(
+                        self.ast.span(id),
+                        self.compiler.path,
+                        "if expressions should have else branch"
+                    ));
+                }
 
                 self.patch_jump(
                     jump_end,
@@ -749,6 +759,7 @@ impl<'a> Lower<'a> {
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
                 let src = self.lower_expression(callee, None)?;
+
                 self.function.emit_instruction(Instruction::Call {
                     dest: dest.into(),
                     src: src.into(),
@@ -1246,7 +1257,16 @@ impl<'a> Lower<'a> {
                 then_branch,
                 else_branch,
                 ..
-            } => self.block_returns(then_branch) && self.block_returns(else_branch),
+            } => {
+                let then_returns = self.block_returns(then_branch);
+                let else_returns = if let Some(id) = else_branch {
+                    self.block_returns(id)
+                } else {
+                    false
+                };
+
+                then_returns && else_returns
+            }
             _ => false,
         }
     }
@@ -1278,7 +1298,10 @@ impl<'a> Lower<'a> {
                 ..
             } => {
                 self.prevent_return(then_branch)?;
-                self.prevent_return(else_branch)?;
+
+                if let Some(id) = else_branch {
+                    self.prevent_return(id)?;
+                }
             }
             Node::WhileLoop { block, .. } => self.prevent_return(block)?,
             _ => {}

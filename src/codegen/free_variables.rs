@@ -115,7 +115,10 @@ impl FreeVariables {
             } => {
                 self.collect_free_variables(ast, condition, bound, free);
                 self.collect_free_variables(ast, then_branch, bound, free);
-                self.collect_free_variables(ast, else_branch, bound, free);
+
+                if let Some(id) = else_branch {
+                    self.collect_free_variables(ast, id, bound, free);
+                }
             }
             Node::WhileLoop { condition, block } => {
                 self.collect_free_variables(ast, condition, bound, free);

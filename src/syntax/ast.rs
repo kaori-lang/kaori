@@ -110,7 +110,7 @@ pub enum Node {
     If {
         condition: NodeId,
         then_branch: NodeId,
-        else_branch: NodeId,
+        else_branch: Option<NodeId>,
     },
     WhileLoop {
         condition: NodeId,
@@ -269,7 +269,7 @@ impl Ast {
         &mut self,
         condition: NodeId,
         then_branch: NodeId,
-        else_branch: NodeId,
+        else_branch: Option<NodeId>,
         span: Span,
     ) -> NodeId {
         self.insert(

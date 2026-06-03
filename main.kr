@@ -3,10 +3,9 @@
 
 return {
   
-    fun foo() {
+    if true {
         1
     }
-    
     
 };  
 
