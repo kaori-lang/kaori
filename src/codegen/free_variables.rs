@@ -82,12 +82,11 @@ impl FreeVariables {
             }
             Node::Block {
                 ref statements,
-                expression,
+                tail,
             } => {
                 let mut inner_bound = bound.clone();
 
-                let statements: Vec<NodeId> =
-                    statements.iter().copied().chain(expression).collect();
+                let statements: Vec<NodeId> = statements.iter().copied().chain(tail).collect();
 
                 for id in statements.iter().copied() {
                     if let Node::Function { name, .. } = *ast.node(id) {

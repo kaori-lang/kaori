@@ -105,7 +105,7 @@ pub enum Node {
     },
     Block {
         statements: Vec<NodeId>,
-        expression: Option<NodeId>,
+        tail: Option<NodeId>,
     },
     If {
         condition: NodeId,
@@ -261,19 +261,8 @@ impl Ast {
         self.insert(Node::Lambda { parameters, block }, span)
     }
 
-    pub fn block(
-        &mut self,
-        statements: Vec<NodeId>,
-        expression: Option<NodeId>,
-        span: Span,
-    ) -> NodeId {
-        self.insert(
-            Node::Block {
-                statements,
-                expression,
-            },
-            span,
-        )
+    pub fn block(&mut self, statements: Vec<NodeId>, tail: Option<NodeId>, span: Span) -> NodeId {
+        self.insert(Node::Block { statements, tail }, span)
     }
 
     pub fn if_(

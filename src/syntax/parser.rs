@@ -31,31 +31,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(mut self) -> Result<Ast, Error> {
-        let mut statements = Vec::new();
-
-        while !self.at_end() {
-            let statement = self.parse_statement()?;
-            statements.push(statement);
-        }
-
-        let tail = if let Some((_, true)) = statements.last() {
-            statements.pop().map(|(tail, _)| tail)
-        } else {
-            None
-        };
-
-        let statements = statements
-            .iter()
-            .copied()
-            .map(|(statement, _)| statement)
-            .collect();
-
-        self.ast.block(statements, tail, Span::default());
-
-        Ok(self.ast)
-    }
-
     fn at_end(&mut self) -> bool {
         self.peek_token() == Token::Eof
     }
@@ -99,6 +74,19 @@ impl<'a> Parser<'a> {
 
     fn advance_token(&mut self) {
         self.pos += 1;
+    }
+
+    pub fn parse(mut self) -> Result<Ast, Error> {
+        let mut statements = Vec::new();
+
+        while !self.at_end() {
+            let (statement, _) = self.parse_statement()?;
+            statements.push(statement);
+        }
+
+        self.ast.block(statements, None, Span::default());
+
+        Ok(self.ast)
     }
 
     fn parse_comma_separator<T>(
@@ -146,21 +134,18 @@ impl<'a> Parser<'a> {
             _ => self.parse_expression(),
         }?;
 
-        let consumes_semicolon = (!matches!(
-            token,
-            Token::If | Token::Function | Token::While | Token::For | Token::LeftBrace
-        ) && self.peek_token() != Token::RightBrace)
+        let consumes_semicolon = self.peek_token() != Token::RightBrace
+            && !matches!(
+                token,
+                Token::LeftBrace | Token::If | Token::Function | Token::While
+            )
             || self.peek_token() == Token::Semicolon;
 
         if consumes_semicolon {
             self.consume(Token::Semicolon)?;
         }
 
-        if self.peek_token() == Token::RightBrace && !consumes_semicolon {
-            Ok((statement, true))
-        } else {
-            Ok((statement, false))
-        }
+        Ok((statement, consumes_semicolon))
     }
 
     fn parse_import(&mut self) -> Result<NodeId, Error> {
@@ -211,22 +196,22 @@ impl<'a> Parser<'a> {
 
         while !self.at_end() && self.peek_token() != Token::RightBrace {
             let statement = self.parse_statement()?;
+
             statements.push(statement);
         }
 
-        let rbrace_span = self.consume(Token::RightBrace)?;
-
-        let tail = if let Some((_, true)) = statements.last() {
-            statements.pop().map(|(tail, _)| tail)
+        let tail = if let Some((_, false)) = statements.last() {
+            statements.pop().map(|(statement, _)| statement)
         } else {
             None
         };
 
         let statements = statements
-            .iter()
-            .copied()
+            .into_iter()
             .map(|(statement, _)| statement)
             .collect();
+
+        let rbrace_span = self.consume(Token::RightBrace)?;
 
         let span = lbrace_span.merge(rbrace_span);
 

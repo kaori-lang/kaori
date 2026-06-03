@@ -203,7 +203,7 @@ impl<'a> Lower<'a> {
             }
             Node::Block {
                 ref statements,
-                expression,
+                tail,
             } => {
                 self.env.push_scope();
 
@@ -213,11 +213,17 @@ impl<'a> Lower<'a> {
                     }
                 }
 
+                if let Some(id) = tail
+                    && let Node::Function { name, .. } = self.ast.node(id)
+                {
+                    self.env.declare_local(name.value);
+                }
+
                 for id in statements.iter().copied() {
                     self.lower_statement(id)?;
                 }
 
-                if let Some(id) = expression {
+                if let Some(id) = tail {
                     self.lower_statement(id)?;
                 }
 
@@ -687,7 +693,7 @@ impl<'a> Lower<'a> {
             }
             Node::Block {
                 ref statements,
-                expression,
+                tail,
             } => {
                 self.env.push_scope();
 
@@ -697,13 +703,19 @@ impl<'a> Lower<'a> {
                     }
                 }
 
+                if let Some(id) = tail
+                    && let Node::Function { name, .. } = self.ast.node(id)
+                {
+                    self.env.declare_local(name.value);
+                }
+
                 for id in statements.iter().copied() {
                     self.lower_statement(id)?;
                 }
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                match expression {
+                match tail {
                     Some(id) => {
                         self.lower_expression(id, Some(dest))?;
                     }
@@ -888,20 +900,26 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Node::Variable { .. }
-            | Node::Constant { .. }
-            | Node::Ref { .. }
-            | Node::Assign { .. }
-            | Node::WhileLoop { .. }
+            Node::WhileLoop { .. }
             | Node::Function { .. }
             | Node::Return(..)
             | Node::Break
-            | Node::Continue => {
-                return Err(report_error!(
-                    self.ast.span(id),
-                    self.compiler.path,
-                    "statements do not produce values"
-                ));
+            | Node::Continue
+            | Node::Variable { .. }
+            | Node::Constant { .. }
+            | Node::Ref { .. }
+            | Node::Assign { .. } => {
+                self.lower_statement(id)?;
+
+                let src = self.function.store_nil_const();
+                let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
+
+                self.function.emit_instruction(Instruction::LoadConst {
+                    dest: dest.into(),
+                    src,
+                });
+
+                dest
             }
         };
 
@@ -1213,10 +1231,10 @@ impl<'a> Lower<'a> {
             Node::Return(..) => true,
             Node::Block {
                 ref statements,
-                expression,
+                tail,
             } => {
                 let statements = statements.iter().copied().any(|e| self.block_returns(e));
-                let expression = if let Some(id) = expression {
+                let expression = if let Some(id) = tail {
                     self.block_returns(id)
                 } else {
                     false
@@ -1244,13 +1262,13 @@ impl<'a> Lower<'a> {
             }
             Node::Block {
                 ref statements,
-                expression,
+                tail,
             } => {
                 for id in statements.iter().copied() {
                     self.prevent_return(id)?;
                 }
 
-                if let Some(id) = expression {
+                if let Some(id) = tail {
                     self.prevent_return(id)?;
                 }
             }
