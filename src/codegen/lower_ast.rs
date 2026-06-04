@@ -247,6 +247,7 @@ impl<'a> Lower<'a> {
                     &mut function,
                 );
 
+                // Declare function in itself for recursive calls
                 inner_self.env.declare_function(name.value);
 
                 for parameter in parameters.iter().copied() {

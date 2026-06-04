@@ -1,4 +1,4 @@
-use crate::util::string_interner::Symbol;
+use crate::{runtime::instruction::Reg, util::string_interner::Symbol};
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -10,7 +10,8 @@ pub enum Register {
 #[derive(Default)]
 pub struct Environment {
     pub parent: Option<Box<Environment>>,
-    pub scopes: Vec<Vec<(Symbol, Register)>>,
+    pub locals: Vec<(Symbol, Register)>,
+    pub scopes: Vec<usize>,
     pub registers: BinaryHeap<Reverse<usize>>,
     pub frame_size: usize,
 }
@@ -19,7 +20,8 @@ impl Environment {
     pub fn new() -> Self {
         Self {
             parent: None,
-            scopes: vec![Vec::new()],
+            locals: Vec::new(),
+            scopes: vec![0],
             registers: (1..=255).map(Reverse).collect(),
             frame_size: 0,
         }
@@ -27,28 +29,39 @@ impl Environment {
     pub fn with_parent(parent: Environment) -> Self {
         Self {
             parent: Some(Box::new(parent)),
-            scopes: vec![Vec::new()],
+            locals: Vec::new(),
+            scopes: vec![0],
             registers: (1..=255).map(Reverse).collect(),
             frame_size: 0,
         }
     }
     pub fn push_scope(&mut self) {
-        self.scopes.push(Vec::new());
+        let index = self.locals.len();
+
+        self.scopes.push(index);
     }
+
     pub fn pop_scope(&mut self) {
         assert!(
             self.scopes.len() > 1,
             "tried to pop a scope with empty array"
         );
-        self.scopes.pop();
+
+        let index = self.scopes.pop().unwrap();
+
+        while self.locals.len() > index {
+            let (_, register) = self.locals.pop().unwrap();
+
+            if let Register::Local(register) = register {
+                self.registers.push(Reverse(register));
+            }
+        }
     }
+
     pub fn declare_local(&mut self, name: Symbol) -> Register {
         let register = self.allocate_local();
 
-        self.scopes
-            .last_mut()
-            .expect("scopes must never be empty")
-            .push((name, register));
+        self.locals.push((name, register));
 
         register
     }
@@ -56,22 +69,18 @@ impl Environment {
     pub fn declare_function(&mut self, name: Symbol) -> Register {
         let register = Register::Local(0);
 
-        self.scopes
-            .last_mut()
-            .expect("scopes must never be empty")
-            .push((name, register));
+        self.locals.push((name, register));
 
         register
     }
 
     pub fn lookup(&self, name: Symbol) -> Option<(Symbol, Register)> {
-        for scope in self.scopes.iter().rev() {
-            for local in scope.iter().copied().rev() {
-                if local.0 == name {
-                    return Some(local);
-                }
+        for (symbol, register) in self.locals.iter().copied().rev() {
+            if symbol == name {
+                return Some((symbol, register));
             }
         }
+
         if let Some(parent) = &self.parent {
             parent.lookup(name)
         } else {
@@ -98,11 +107,6 @@ impl Environment {
     }
     pub fn free_temp(&mut self, register: Register) {
         if let Register::Temp(register) = register {
-            self.registers.push(Reverse(register));
-        }
-    }
-    pub fn free_local(&mut self, register: Register) {
-        if let Register::Local(register) = register {
             self.registers.push(Reverse(register));
         }
     }
