@@ -92,7 +92,7 @@ pub enum Node {
         property: Spanned<Symbol>,
     },
     Map {
-        entries: Vec<(NodeId, NodeId)>,
+        entries: Vec<(NodeId, Option<NodeId>)>,
     },
     Function {
         name: Spanned<Symbol>,
@@ -231,7 +231,7 @@ impl Ast {
         self.insert(Node::MemberAccess { object, property }, span)
     }
 
-    pub fn map(&mut self, entries: Vec<(NodeId, NodeId)>, span: Span) -> NodeId {
+    pub fn map(&mut self, entries: Vec<(NodeId, Option<NodeId>)>, span: Span) -> NodeId {
         self.insert(Node::Map { entries }, span)
     }
 

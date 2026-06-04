@@ -803,9 +803,32 @@ impl<'a> Lower<'a> {
                 self.function
                     .emit_instruction(Instruction::CreateMap { dest: dest.into() });
 
-                for (key, value) in entries.iter().copied() {
-                    let key = self.lower_expression(key, None)?;
-                    let value = self.lower_expression(value, None)?;
+                for (key_id, value_id) in entries.iter().copied() {
+                    let key = if let Node::Identifier(symbol) = *self.ast.node(key_id) {
+                        let dest = self.env.allocate_temp();
+                        let src = self.function.store_string_const(symbol.value);
+
+                        self.function.emit_instruction(Instruction::LoadConst {
+                            dest: dest.into(),
+                            src,
+                        });
+
+                        dest
+                    } else if value_id.is_none() {
+                        return report_error!(
+                            self.ast.span(key_id),
+                            self.compiler.path,
+                            "expected a value for that key, only identifier keys can omit value"
+                        );
+                    } else {
+                        self.lower_expression(key_id, None)?
+                    };
+
+                    let value = if let Some(id) = value_id {
+                        self.lower_expression(id, None)
+                    } else {
+                        self.lower_expression(key_id, None)
+                    }?;
 
                     self.function.emit_instruction(Instruction::SetField {
                         object: dest.into(),

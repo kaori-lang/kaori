@@ -13,13 +13,6 @@ macro_rules! report_error {
             format!($msg $(, $arg)*)
         ))
     };
-    ($span:expr, $msg:literal $(, $arg:expr)* $(,)?) => {
-        Err($crate::diagnostics::error::Error::new(
-            $span,
-            None,
-            format!($msg $(, $arg)*)
-        ))
-    };
     ($msg:literal $(, $arg:expr)* $(,)?) => {
         Err($crate::diagnostics::error::Error::new(
             $crate::syntax::token::Span::default(),
@@ -65,7 +58,7 @@ impl Error {
             .with_label(
                 Label::new((file_name.as_str(), span))
                     .with_message(&self.0.message)
-                    .with_color(Color::Red),
+                    .with_color(Color::BrightRed),
             );
 
         report

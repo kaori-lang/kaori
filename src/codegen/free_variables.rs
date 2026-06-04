@@ -140,7 +140,10 @@ impl FreeVariables {
             Node::Map { ref entries } => {
                 for (key, value) in entries.iter().copied() {
                     self.collect_free_variables(ast, key, bound, free);
-                    self.collect_free_variables(ast, value, bound, free);
+
+                    if let Some(id) = value {
+                        self.collect_free_variables(ast, id, bound, free);
+                    }
                 }
             }
             Node::Break

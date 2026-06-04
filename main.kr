@@ -2,10 +2,9 @@
 
 
 return {
-  
-    if true {
-        1
-    }
-    
+    let x = 7.5;
+    let y = 1;
+    let obj = #{ x, z: y, 5: 2};
+    obj.x + obj.z
 };  
 

@@ -639,12 +639,17 @@ impl<'a> Parser<'a> {
         Ok(self.ast.identifier(name))
     }
 
-    fn parse_map_entry(&mut self) -> Result<(NodeId, NodeId), Error> {
+    fn parse_map_entry(&mut self) -> Result<(NodeId, Option<NodeId>), Error> {
         let key = self.parse_expression()?;
-        self.consume(Token::Colon)?;
-        let value = self.parse_expression()?;
 
-        Ok((key, value))
+        if self.peek_token() == Token::Colon {
+            self.consume(Token::Colon)?;
+            let value = self.parse_expression()?;
+
+            return Ok((key, Some(value)));
+        }
+
+        Ok((key, None))
     }
 
     fn parse_map_literal(&mut self) -> Result<NodeId, Error> {
