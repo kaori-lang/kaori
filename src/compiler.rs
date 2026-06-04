@@ -50,21 +50,13 @@ impl Compiler {
         }
 
         if self.visited.contains(&path.value) {
-            return Err(report_error!(
-                path.span,
-                self.path,
-                "circular import detected"
-            ));
+            return report_error!(path.span, self.path, "circular import detected");
         }
 
         let src = match read_to_string(INTERNER.lock().unwrap().resolve(path.value)) {
             Ok(source) => source,
             Err(..) => {
-                return Err(report_error!(
-                    path.span,
-                    self.path,
-                    "expected a valid file path"
-                ));
+                return report_error!(path.span, self.path, "expected a valid file path");
             }
         };
 
@@ -86,7 +78,7 @@ impl Compiler {
             .spanned()
             .map(|(token, span)| match token {
                 Ok(token) => Ok((token, span.into())),
-                Err(()) => Err(report_error!(span.into(), self.path, "unexpected token")),
+                Err(()) => report_error!(span.into(), self.path, "unexpected token"),
             })
             .collect::<Result<Vec<(Token, Span)>, Error>>()?;
         tokens.push((Token::Eof, Span::from(src.len()..src.len())));

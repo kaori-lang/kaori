@@ -5,7 +5,7 @@ use crate::{
     diagnostics::error::Error,
     report_error,
     syntax::{
-        ast::{Ast, Node, NodeId, Spanned},
+        ast::{Ast, NodeId, Spanned},
         ops::{BinaryOp, UnaryOp},
         token::{Span, Token},
     },
@@ -62,13 +62,13 @@ impl<'a> Parser<'a> {
             self.advance_token();
             Ok(span)
         } else {
-            Err(report_error!(
+            report_error!(
                 span,
                 self.compiler.path,
                 "expected {} and found {}",
                 expected,
                 token
-            ))
+            )
         }
     }
 
@@ -568,11 +568,7 @@ impl<'a> Parser<'a> {
 
                 let value = match lexeme.parse::<f64>() {
                     Ok(value) => Ok(value),
-                    Err(..) => Err(report_error!(
-                        span,
-                        self.compiler.path,
-                        "failed to parse float"
-                    )),
+                    Err(..) => report_error!(span, self.compiler.path, "failed to parse float"),
                 }?;
 
                 self.advance_token();
@@ -615,12 +611,12 @@ impl<'a> Parser<'a> {
             _ => {
                 let span = self.peek_span();
 
-                return Err(report_error!(
+                return report_error!(
                     span,
                     self.compiler.path,
                     "expected a <operand> and found: {}",
                     token
-                ));
+                );
             }
         };
 

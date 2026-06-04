@@ -137,11 +137,11 @@ impl<'a> Lower<'a> {
                     });
                 }
                 _ => {
-                    return Err(report_error!(
+                    return report_error!(
                         self.ast.span(left),
                         self.compiler.path,
                         "expected a valid lhs"
-                    ));
+                    );
                 }
             },
             Node::WhileLoop { condition, block } => {
@@ -259,11 +259,11 @@ impl<'a> Lower<'a> {
                     if inner_self.env.lookup_in_parent(capture.value).is_some() {
                         inner_self.env.declare_local(capture.value);
                     } else {
-                        return Err(report_error!(
+                        return report_error!(
                             capture.span,
                             inner_self.compiler.path,
                             "undeclared variable",
-                        ));
+                        );
                     }
                 }
 
@@ -373,12 +373,12 @@ impl<'a> Lower<'a> {
                 let Some((_, register)) = self.env.lookup(name.value) else {
                     let slice = INTERNER.lock().unwrap().resolve(name.value);
 
-                    return Err(report_error!(
+                    return report_error!(
                         name.span,
                         self.compiler.path,
                         "{} is not declared",
                         slice
-                    ));
+                    );
                 };
 
                 match dest {
@@ -687,11 +687,11 @@ impl<'a> Lower<'a> {
                 if let Some(id) = else_branch {
                     self.lower_expression(id, Some(dest))?;
                 } else {
-                    return Err(report_error!(
+                    return report_error!(
                         self.ast.span(id),
                         self.compiler.path,
-                        "if expressions should have else branch"
-                    ));
+                        "if being used as an expression must have `else` branch"
+                    );
                 }
 
                 self.patch_jump(
@@ -842,11 +842,11 @@ impl<'a> Lower<'a> {
                     if inner_self.env.lookup_in_parent(capture.value).is_some() {
                         inner_self.env.declare_local(capture.value);
                     } else {
-                        return Err(report_error!(
+                        return report_error!(
                             capture.span,
                             self.compiler.path,
                             "undeclared variable",
-                        ));
+                        );
                     }
                 }
 
@@ -1274,11 +1274,11 @@ impl<'a> Lower<'a> {
     fn prevent_return(&self, id: NodeId) -> Result<(), Error> {
         match *self.ast.node(id) {
             Node::Return(..) => {
-                return Err(report_error!(
+                return report_error!(
                     self.ast.span(id),
                     self.compiler.path,
                     "return is not allowed in the global scope"
-                ));
+                );
             }
             Node::Block {
                 ref statements,

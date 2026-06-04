@@ -17,7 +17,7 @@ type Handler = unsafe extern "rust-preserve-none" fn(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>>;
+) -> Result<Value, Error>;
 
 static HANDLERS: [Handler; 54] = [
     opcode_add_rr,
@@ -103,7 +103,7 @@ macro_rules! dispatch_offset {
 macro_rules! type_check {
     ($cond:expr, $($arg:tt)*) => {{
         if std::hint::unlikely(!$cond) {
-            return Err(Box::new(report_error!($($arg)*)));
+            return report_error!($($arg)*);
         }
     }};
 }
@@ -124,9 +124,7 @@ pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<Value, Error> {
 
     let registers = Registers(state.registers.as_mut_ptr());
 
-    let value = unsafe {
-        HANDLERS[index](ip, registers, constants, &mut state, frame_size).map_err(|e| *e)?
-    };
+    let value = unsafe { HANDLERS[index](ip, registers, constants, &mut state, frame_size)? };
 
     println!("{:?}", DebugValue::new(value, &state.gc));
     Ok(value)
@@ -186,7 +184,7 @@ unsafe extern "rust-preserve-none" fn opcode_add_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Add { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -215,7 +213,7 @@ unsafe extern "rust-preserve-none" fn opcode_add_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::AddK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -244,7 +242,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Subtract { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -273,7 +271,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::SubtractRK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -302,7 +300,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_kr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::SubtractKR { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -331,7 +329,7 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Multiply { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -360,7 +358,7 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::MultiplyK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -389,7 +387,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Divide { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -418,7 +416,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::DivideRK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -447,7 +445,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_kr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::DivideKR { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -476,7 +474,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Modulo { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -505,7 +503,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::ModuloRK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -534,7 +532,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_kr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::ModuloKR { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -563,7 +561,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Equal { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -587,7 +585,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::EqualK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -611,7 +609,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::NotEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -635,7 +633,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::NotEqualK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -659,7 +657,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Less { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -688,7 +686,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::LessK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -717,7 +715,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::LessEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -746,7 +744,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::LessEqualK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -775,7 +773,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::Greater { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -804,7 +802,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::GreaterK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -833,7 +831,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::GreaterEqual { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -862,7 +860,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src1, src2) = unsafe {
         let Instruction::GreaterEqualK { dest, src1, src2 } = *ip else {
             unreachable_unchecked()
@@ -891,7 +889,7 @@ unsafe extern "rust-preserve-none" fn opcode_not(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src) = unsafe {
         let Instruction::Not { dest, src } = *ip else {
             unreachable_unchecked()
@@ -916,7 +914,7 @@ unsafe extern "rust-preserve-none" fn opcode_negate(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src) = unsafe {
         let Instruction::Negate { dest, src } = *ip else {
             unreachable_unchecked()
@@ -941,7 +939,7 @@ unsafe extern "rust-preserve-none" fn opcode_move(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src) = unsafe {
         let Instruction::Move { dest, src } = *ip else {
             unreachable_unchecked()
@@ -964,7 +962,7 @@ unsafe extern "rust-preserve-none" fn opcode_load_const(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src) = unsafe {
         let Instruction::LoadConst { dest, src } = *ip else {
             unreachable_unchecked()
@@ -987,7 +985,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_map(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let dest = unsafe {
         let Instruction::CreateMap { dest } = *ip else {
             unreachable_unchecked()
@@ -1010,7 +1008,7 @@ unsafe extern "rust-preserve-none" fn opcode_set_field(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (object, key, value) = unsafe {
         let Instruction::SetField { object, key, value } = *ip else {
             unreachable_unchecked()
@@ -1037,7 +1035,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_field(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, object, key) = unsafe {
         let Instruction::GetField { dest, object, key } = *ip else {
             unreachable_unchecked()
@@ -1070,7 +1068,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, captures) = unsafe {
         let Instruction::CreateClosure { dest, captures } = *ip else {
             unreachable_unchecked()
@@ -1112,7 +1110,7 @@ unsafe extern "rust-preserve-none" fn opcode_capture_value(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     unreachable!("Handler capture by value should not be reached!")
 }
 
@@ -1123,7 +1121,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_ref(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src) = unsafe {
         let Instruction::CreateRef { dest, src } = *ip else {
             unreachable_unchecked()
@@ -1148,7 +1146,7 @@ unsafe extern "rust-preserve-none" fn opcode_deref_set(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src) = unsafe {
         let Instruction::DerefSet { dest, src } = *ip else {
             unreachable_unchecked()
@@ -1174,7 +1172,7 @@ unsafe extern "rust-preserve-none" fn opcode_deref(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src) = unsafe {
         let Instruction::Deref { dest, src } = *ip else {
             unreachable_unchecked()
@@ -1200,7 +1198,7 @@ unsafe extern "rust-preserve-none" fn opcode_call(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (dest, src) = unsafe {
         let Instruction::Call { dest, src } = *ip else {
             unreachable_unchecked()
@@ -1222,7 +1220,7 @@ unsafe extern "rust-preserve-none" fn opcode_call(
         const MAX_REGISTERS: usize = 256;
 
         if state.remaining_registers < MAX_REGISTERS {
-            return Err(Box::new(report_error!("the call stack ran out of memory")));
+            return report_error!("the call stack ran out of memory");
         };
 
         let mut callee_registers = unsafe { Registers(registers.0.add(frame_size)) };
@@ -1293,7 +1291,7 @@ unsafe extern "rust-preserve-none" fn opcode_return(
     _constants: Constants,
     _state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let src = unsafe {
         let Instruction::Return { src } = *ip else {
             unreachable_unchecked()
@@ -1320,7 +1318,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let offset = unsafe {
         let Instruction::Jump { offset } = *ip else {
             unreachable_unchecked()
@@ -1339,7 +1337,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_false(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src, offset) = unsafe {
         let Instruction::JumpIfFalse { src, offset } = *ip else {
             unreachable_unchecked()
@@ -1369,7 +1367,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_true(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src, offset) = unsafe {
         let Instruction::JumpIfTrue { src, offset } = *ip else {
             unreachable_unchecked()
@@ -1399,7 +1397,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfLess { src1, src2, offset } = *ip else {
             unreachable_unchecked()
@@ -1430,7 +1428,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfLessK { src1, src2, offset } = *ip else {
             unreachable_unchecked()
@@ -1461,7 +1459,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfLessEqual { src1, src2, offset } = *ip else {
             unreachable_unchecked()
@@ -1492,7 +1490,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfLessEqualK { src1, src2, offset } = *ip else {
             unreachable_unchecked()
@@ -1523,7 +1521,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfGreater { src1, src2, offset } = *ip else {
             unreachable_unchecked()
@@ -1554,7 +1552,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfGreaterK { src1, src2, offset } = *ip else {
             unreachable_unchecked()
@@ -1585,7 +1583,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfGreaterEqual { src1, src2, offset } = *ip else {
             unreachable_unchecked()
@@ -1616,7 +1614,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfGreaterEqualK { src1, src2, offset } = *ip else {
             unreachable_unchecked()
@@ -1647,7 +1645,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfEqual { src1, src2, offset } = *ip else {
             unreachable_unchecked()
@@ -1673,7 +1671,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfEqualK { src1, src2, offset } = *ip else {
             unreachable_unchecked()
@@ -1699,7 +1697,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rr(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfNotEqual { src1, src2, offset } = *ip else {
             unreachable_unchecked()
@@ -1725,7 +1723,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rk(
     constants: Constants,
     state: &mut VmState,
     frame_size: usize,
-) -> Result<Value, Box<Error>> {
+) -> Result<Value, Error> {
     let (src1, src2, offset) = unsafe {
         let Instruction::JumpIfNotEqualK { src1, src2, offset } = *ip else {
             unreachable_unchecked()

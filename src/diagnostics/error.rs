@@ -7,25 +7,25 @@ use crate::{compiler::INTERNER, syntax::token::Span, util::string_interner::Symb
 #[macro_export]
 macro_rules! report_error {
     ($span:expr, $path:expr, $msg:literal $(, $arg:expr)* $(,)?) => {
-        $crate::diagnostics::error::Error::new(
+        Err($crate::diagnostics::error::Error::new(
             $span,
             Some($path),
             format!($msg $(, $arg)*)
-        )
+        ))
     };
     ($span:expr, $msg:literal $(, $arg:expr)* $(,)?) => {
-        $crate::diagnostics::error::Error::new(
+        Err($crate::diagnostics::error::Error::new(
             $span,
             None,
             format!($msg $(, $arg)*)
-        )
+        ))
     };
     ($msg:literal $(, $arg:expr)* $(,)?) => {
-        $crate::diagnostics::error::Error::new(
+        Err($crate::diagnostics::error::Error::new(
             $crate::syntax::token::Span::default(),
             None,
             format!($msg $(, $arg)*)
-        )
+        ))
     };
 }
 
