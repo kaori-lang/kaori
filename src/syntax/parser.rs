@@ -175,6 +175,7 @@ impl<'a> Parser<'a> {
         self.consume(Token::Colon)?;
 
         let bindings = self.parse_comma_separator(Self::parse_name, Token::Semicolon)?;
+
         let span = import_span.merge(self.peek_span());
 
         Ok(self.ast.import(path, bindings, span))

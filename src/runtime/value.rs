@@ -12,6 +12,7 @@ pub const TAG_MAP: u64 = 0b0_111111111111101_00_00000000000000000000000000000000
 pub const TAG_VEC: u64 = 0b0_111111111111110_00_0000000000000000000000000000000000000000000000;
 pub const TAG_CELL: u64 = 0b0_111111111111111_00_0000000000000000000000000000000000000000000000;
 pub const TAG_FUNCTION: u64 = 0b1_111111111111100_10_0000000000000000000000000000000000000000000000;
+pub const TAG_NATIVE: u64 = 0b1_111111111111101_10_0000000000000000000000000000000000000000000000;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[repr(transparent)]
@@ -42,6 +43,9 @@ impl Value {
     pub fn function(index: usize) -> Self {
         Self(TAG_FUNCTION | (index as u64))
     }
+    pub fn native(index: usize) -> Self {
+        Self(TAG_NATIVE | (index as u64))
+    }
     pub fn map(index: usize) -> Self {
         Self(TAG_MAP | (index as u64))
     }
@@ -66,6 +70,9 @@ impl Value {
     }
     pub fn is_function(self) -> bool {
         self.is_tag(TAG_FUNCTION)
+    }
+    pub fn is_native(self) -> bool {
+        self.is_tag(TAG_NATIVE)
     }
     pub fn is_string(self) -> bool {
         self.is_tag(TAG_STRING)

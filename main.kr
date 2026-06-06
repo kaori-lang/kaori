@@ -6,4 +6,4 @@ from foo.bar use idk, idk;
 use foo.bar;
 use foo.bar { foo, bar };
 
-use math : sin, cos;
+import math : sin, cos;
