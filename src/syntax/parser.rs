@@ -120,7 +120,7 @@ impl<'a> Parser<'a> {
         let token = self.peek_token();
 
         let statement = match token {
-            Token::Use => self.parse_use(),
+            Token::Import => self.parse_import(),
             Token::LeftBrace => self.parse_block(),
             Token::If => self.parse_if(),
             Token::Function => self.parse_function(),
@@ -149,13 +149,14 @@ impl<'a> Parser<'a> {
         Ok((statement, consumes_semicolon))
     }
 
-    fn parse_use(&mut self) -> Result<NodeId, Error> {
-        let import_span = self.consume(Token::Use)?;
+    fn parse_import(&mut self) -> Result<NodeId, Error> {
+        let import_span = self.consume(Token::Import)?;
 
-        let path = Vec::new();
+        let mut path = Vec::new();
 
         while !self.at_end() {
             let name = self.parse_name()?;
+            path.push(name);
 
             if self.peek_token() != Token::Dot {
                 break;
@@ -168,7 +169,7 @@ impl<'a> Parser<'a> {
             let bindings = Vec::new();
             let span = import_span.merge(self.peek_span());
 
-            return Ok(self.ast.use_(path, bindings, span));
+            return Ok(self.ast.import(path, bindings, span));
         }
 
         self.consume(Token::Colon)?;
@@ -176,7 +177,7 @@ impl<'a> Parser<'a> {
         let bindings = self.parse_comma_separator(Self::parse_name, Token::Semicolon)?;
         let span = import_span.merge(self.peek_span());
 
-        Ok(self.ast.use_(path, bindings, span))
+        Ok(self.ast.import(path, bindings, span))
     }
 
     fn parse_return(&mut self) -> Result<NodeId, Error> {

@@ -146,7 +146,18 @@ impl FreeVariables {
                     }
                 }
             }
-            Node::Use { path, bindings } => if bindings.is_empty() {},
+            Node::Import {
+                ref path,
+                ref bindings,
+            } => {
+                if bindings.is_empty() {
+                    bound.insert(path.last().copied().unwrap());
+                } else {
+                    for binding in bindings.iter().copied() {
+                        bound.insert(binding);
+                    }
+                }
+            }
             Node::Break
             | Node::Continue
             | Node::Number(_)

@@ -313,6 +313,24 @@ impl<'a> Lower<'a> {
                     });
                 }
             }
+            Node::Import { path, bindings } => {
+                let index = self.compiler.compile_file(path)?;
+
+                let src = self.function.store_function_const(index);
+                let dest = self.env.allocate_temp();
+
+                self.function.emit_instruction(Instruction::LoadConst {
+                    dest: dest.into(),
+                    src,
+                });
+
+                self.function.emit_instruction(Instruction::Call {
+                    dest: dest.into(),
+                    src: dest.into(),
+                });
+
+                // BIND EVERYTHING
+            }
             Node::Break => todo!(),
             Node::Continue => todo!(),
             _ => {
@@ -918,24 +936,8 @@ impl<'a> Lower<'a> {
 
                 dest
             }
-            Node::Import { path } => {
-                let index = self.compiler.compile_file(path)?;
-
-                let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
-                let src = self.function.store_function_const(index);
-
-                self.function.emit_instruction(Instruction::LoadConst {
-                    dest: dest.into(),
-                    src,
-                });
-                self.function.emit_instruction(Instruction::Call {
-                    dest: dest.into(),
-                    src: dest.into(),
-                });
-
-                dest
-            }
-            Node::WhileLoop { .. }
+            Node::Import { .. }
+            | Node::WhileLoop { .. }
             | Node::Function { .. }
             | Node::Return(..)
             | Node::Break
