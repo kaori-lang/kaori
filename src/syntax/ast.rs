@@ -119,8 +119,9 @@ pub enum Node {
     Return(NodeId),
     Break,
     Continue,
-    Import {
-        path: Spanned<Symbol>,
+    Use {
+        path: Vec<Spanned<Symbol>>,
+        bindings: Vec<Spanned<Symbol>>,
     },
 }
 
@@ -298,7 +299,12 @@ impl Ast {
         self.insert(Node::Continue, span)
     }
 
-    pub fn import(&mut self, path: Spanned<Symbol>, span: Span) -> NodeId {
-        self.insert(Node::Import { path }, span)
+    pub fn use_(
+        &mut self,
+        path: Vec<Spanned<Symbol>>,
+        bindings: Vec<Spanned<Symbol>>,
+        span: Span,
+    ) -> NodeId {
+        self.insert(Node::Use { path, bindings }, span)
     }
 }

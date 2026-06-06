@@ -146,13 +146,13 @@ impl FreeVariables {
                     }
                 }
             }
+            Node::Use { path, bindings } => if bindings.is_empty() {},
             Node::Break
             | Node::Continue
             | Node::Number(_)
             | Node::String(_)
             | Node::Boolean(_)
-            | Node::Nil
-            | Node::Import { .. } => {}
+            | Node::Nil => {}
         }
     }
 }

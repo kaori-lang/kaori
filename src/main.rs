@@ -10,26 +10,21 @@ use kaori::compiler::{Compiler, compile_and_run};
 
 use std::path::PathBuf;
 
-/*  fn main() {
+/* fn main() {
     let matches = Command::new("kaori")
         .arg(Arg::new("file").required(true))
         .get_matches();
 
     let file: PathBuf = matches.get_one::<String>("file").unwrap().into();
 
-    match fs::read_to_string(&file) {
-        Ok(source) => {
-            if let Err(error) = compile_and_run(&source) {
-                error.report(&source);
-            }
-        }
-        Err(_) => eprintln!("Error: Could not read the file by the given path."),
-    };
+    match compile_and_run(file.to_str().unwrap()) {
+        Ok(value) => {}
+        Err(error) => error.report(),
+    }
 }
-
  */
 fn main() {
-    match compile_and_run() {
+    match compile_and_run("main.kr") {
         Ok(value) => {}
         Err(error) => error.report(),
     }

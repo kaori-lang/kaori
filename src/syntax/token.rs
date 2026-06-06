@@ -116,8 +116,8 @@ pub enum Token {
     Else,
     #[token("return")]
     Return,
-    #[token("import")]
-    Import,
+    #[token("use")]
+    Use,
     #[token("true")]
     True,
     #[token("false")]
@@ -180,7 +180,7 @@ impl fmt::Display for Token {
             Self::If => "`if`",
             Self::Else => "`else`",
             Self::Return => "`return`",
-            Self::Import => "`import`",
+            Self::Use => "`use`",
             Self::True => "`true`",
             Self::False => "`false`",
             Self::Nil => "`nil`",

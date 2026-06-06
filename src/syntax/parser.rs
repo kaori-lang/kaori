@@ -120,6 +120,7 @@ impl<'a> Parser<'a> {
         let token = self.peek_token();
 
         let statement = match token {
+            Token::Use => self.parse_use(),
             Token::LeftBrace => self.parse_block(),
             Token::If => self.parse_if(),
             Token::Function => self.parse_function(),
@@ -148,23 +149,34 @@ impl<'a> Parser<'a> {
         Ok((statement, consumes_semicolon))
     }
 
-    fn parse_import(&mut self) -> Result<NodeId, Error> {
-        let import_span = self.consume(Token::Import)?;
+    fn parse_use(&mut self) -> Result<NodeId, Error> {
+        let import_span = self.consume(Token::Use)?;
 
-        let span = self.peek_span();
-        let lexeme = self.lexeme(span);
+        let path = Vec::new();
 
-        let symbol = INTERNER
-            .lock()
-            .unwrap()
-            .get_or_intern(&lexeme[1..lexeme.len() - 1]);
-        let path = Spanned::new(symbol, span);
+        while !self.at_end() {
+            let name = self.parse_name()?;
 
-        self.consume(Token::StringLiteral)?;
+            if self.peek_token() != Token::Dot {
+                break;
+            }
 
-        let span = import_span.merge(span);
+            self.consume(Token::Dot)?;
+        }
 
-        Ok(self.ast.import(path, span))
+        if self.peek_token() != Token::Colon {
+            let bindings = Vec::new();
+            let span = import_span.merge(self.peek_span());
+
+            return Ok(self.ast.use_(path, bindings, span));
+        }
+
+        self.consume(Token::Colon)?;
+
+        let bindings = self.parse_comma_separator(Self::parse_name, Token::Semicolon)?;
+        let span = import_span.merge(self.peek_span());
+
+        Ok(self.ast.use_(path, bindings, span))
     }
 
     fn parse_return(&mut self) -> Result<NodeId, Error> {
@@ -553,7 +565,6 @@ impl<'a> Parser<'a> {
         let primary = match token {
             Token::If => self.parse_if()?,
             Token::Pipe => self.parse_lambda()?,
-            Token::Import => self.parse_import()?,
             Token::LeftParen => {
                 self.consume(Token::LeftParen)?;
                 let expression = self.parse_expression()?;

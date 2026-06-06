@@ -1,2 +1,13 @@
 
 
+fun Cat(age) {
+    #{ age }
+}
+
+fun set_age(self, age) {
+    self.age = age;
+}
+
+let cat = Cat(5);
+
+cat |> set_age(11);

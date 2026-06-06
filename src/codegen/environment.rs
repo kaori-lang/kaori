@@ -1,10 +1,16 @@
-use crate::{runtime::instruction::Reg, util::string_interner::Symbol};
+use crate::util::string_interner::Symbol;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Register {
     Temp(usize),
     Local(usize),
+}
+
+pub struct Local {
+    symbol: Symbol,
+    register: Register,
+    
 }
 
 #[derive(Default)]

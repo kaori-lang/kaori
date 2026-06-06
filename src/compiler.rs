@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fs::read_to_string,
+    path::PathBuf,
     sync::{LazyLock, Mutex},
 };
 
@@ -25,14 +26,14 @@ pub static INTERNER: LazyLock<Mutex<StringInterner>> =
 #[derive(Default)]
 pub struct Compiler {
     pub functions: Vec<Function>,
-    pub compiled_imports: HashMap<Symbol, usize>,
+    pub compiled_files: HashMap<Symbol, usize>,
     pub visited: HashSet<Symbol>,
     pub path: Symbol,
 }
 
 impl Compiler {
-    pub fn compile(&mut self) -> Result<usize, Error> {
-        let path = INTERNER.lock().unwrap().get_or_intern("main.kr");
+    pub fn compile(&mut self, file: &str) -> Result<usize, Error> {
+        let path = INTERNER.lock().unwrap().get_or_intern(file);
         let span = Span::default();
 
         let index = self.compile_file(Spanned::new(path, span))?;
@@ -45,7 +46,7 @@ impl Compiler {
     }
 
     pub fn compile_file(&mut self, path: Spanned<Symbol>) -> Result<usize, Error> {
-        if let Some(index) = self.compiled_imports.get(&path.value).copied() {
+        if let Some(index) = self.compiled_files.get(&path.value).copied() {
             return Ok(index);
         }
 
@@ -67,7 +68,7 @@ impl Compiler {
 
         let function_index = self.compile_source(&src)?;
 
-        self.compiled_imports.insert(path.value, function_index);
+        self.compiled_files.insert(path.value, function_index);
         self.path = previous_path;
 
         Ok(function_index)
@@ -93,9 +94,9 @@ impl Compiler {
     }
 }
 
-pub fn compile_and_run() -> Result<Value, Error> {
+pub fn compile_and_run(file: &str) -> Result<Value, Error> {
     let mut compiler = Compiler::default();
-    let index = compiler.compile()?;
+    let index = compiler.compile(file)?;
     let value = run_vm(index, compiler.functions)?;
 
     Ok(value)
