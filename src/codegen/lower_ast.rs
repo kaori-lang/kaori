@@ -3,7 +3,7 @@ use core::panic;
 use crate::{
     codegen::environment::{Environment, Register},
     codegen::free_variables::FreeVariables,
-    compiler::{Compiler, INTERNER},
+    compiler::Compiler,
     diagnostics::error::Error,
     runtime::{
         function::Function,
@@ -319,19 +319,50 @@ impl<'a> Lower<'a> {
                 let index = self.compiler.compile_file(path)?;
 
                 let src = self.function.store_function_const(index);
-                let dest = self.env.allocate_temp();
+                let object = self.env.allocate_temp();
 
                 self.function.emit_instruction(Instruction::LoadConst {
-                    dest: dest.into(),
+                    dest: object.into(),
                     src,
                 });
 
                 self.function.emit_instruction(Instruction::Call {
-                    dest: dest.into(),
-                    src: dest.into(),
+                    dest: object.into(),
+                    src: object.into(),
                 });
 
-                // BIND EVERYTHING
+                if bindings.is_empty() {
+                    let dest = self.env.declare_local(path.last().unwrap().value);
+
+                    self.function.emit_instruction(Instruction::Move {
+                        dest: dest.into(),
+                        src: object.into(),
+                    });
+                } else {
+                    for binding in bindings.iter().copied() {
+                        let dest = self.env.declare_local(binding.value);
+
+                        let key = {
+                            let src = self.function.store_string_const(binding.value);
+                            let dest = self.env.allocate_temp();
+
+                            self.function.emit_instruction(Instruction::LoadConst {
+                                dest: dest.into(),
+                                src,
+                            });
+
+                            dest
+                        };
+
+                        self.function.emit_instruction(Instruction::GetField {
+                            dest: dest.into(),
+                            object: object.into(),
+                            key: key.into(),
+                        });
+
+                        self.env.free_temp(key);
+                    }
+                }
             }
             Node::Break => todo!(),
             Node::Continue => todo!(),

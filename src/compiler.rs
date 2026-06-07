@@ -44,7 +44,7 @@ impl Compiler {
                 return Err(Error::new(
                     Span::default(),
                     self.current_file,
-                    "file not found".to_string(),
+                    format!("{} file not found", file),
                 ));
             }
         };
@@ -64,47 +64,59 @@ impl Compiler {
         Ok(index)
     }
 
-    pub fn compile_file(&mut self, path: &[Spanned<Symbol>]) -> Result<usize, Error> {
-        let mut path_buffer = PathBuf::new();
+    pub fn compile_file(&mut self, interned_path: &[Spanned<Symbol>]) -> Result<usize, Error> {
+        let mut path = PathBuf::new();
 
-        for symbol in path {
-            path_buffer.push(INTERNER.lock().unwrap().resolve(symbol.value));
+        for symbol in interned_path {
+            path.push(INTERNER.lock().unwrap().resolve(symbol.value));
         }
 
-        path_buffer.add_extension("kr");
+        path.add_extension("kr");
 
-        if let Some(s) = path_buffer.to_str() {
-            println!("{}", s);
+        let interned_file = INTERNER
+            .lock()
+            .unwrap()
+            .get_or_intern(path.to_str().unwrap());
+
+        if let Some(compilation) = self.files.get(&interned_file) {
+            match compilation {
+                Compilation::Incomplete => {
+                    let span = interned_path.last().map(|s| s.span).unwrap_or_default();
+                    return Err(Error::new(
+                        span,
+                        interned_file,
+                        "cyclic dependency detected".to_string(),
+                    ));
+                }
+                Compilation::Function(index) => return Ok(*index),
+            }
         }
 
-        /*  if let Some(compilation) = self.compiled_files.get(&path_buffer).copied() {
-                   match compilation {
-                       Compilation::Incomplete => {
-                           return report_error!(path.span, self.path, "circular import detected");
-                       }
-                       Compilation::Function(index) => return Ok(index),
-                   }
-               }
+        let src = match read_to_string(&path) {
+            Ok(source) => source,
+            Err(..) => {
+                let span = interned_path.last().map(|s| s.span).unwrap_or_default();
+                return Err(Error::new(
+                    span,
+                    self.current_file,
+                    "expected a valid file path".to_string(),
+                ));
+            }
+        };
 
-               let src = match read_to_string(path_buffer) {
-                   Ok(source) => source,
-                   Err(..) => {
-                       return report_error!(path.span, self.path, "expected a valid file path");
-                   }
-               };
+        self.files.insert(interned_file, Compilation::Incomplete);
 
-               self.compiled_files.insert(path.value);
+        let previous_file = self.current_file;
 
-               let previous_path = self.path;
-               self.path = path.value;
+        self.current_file = interned_file;
 
-               let function_index = self.compile_source(&src)?;
+        let index = self.compile_source(&src)?;
 
-               self.compiled_files.insert(path.value, function_index);
-               self.path = previous_path;
-        */
-        let function_index = 0;
-        Ok(function_index)
+        self.files
+            .insert(interned_file, Compilation::Function(index));
+        self.current_file = previous_file;
+
+        Ok(index)
     }
 
     fn compile_source(&mut self, src: &str) -> Result<usize, Error> {
@@ -112,9 +124,14 @@ impl Compiler {
             .spanned()
             .map(|(token, span)| match token {
                 Ok(token) => Ok((token, span.into())),
-                Err(()) => report_error!(span.into(), self.current_file, "unexpected token"),
+                Err(()) => Err(Error::new(
+                    span.into(),
+                    self.current_file,
+                    "unexpected token".to_string(),
+                )),
             })
             .collect::<Result<Vec<(Token, Span)>, Error>>()?;
+
         tokens.push((Token::Eof, Span::from(src.len()..src.len())));
 
         let parser = Parser::new(src, tokens, self);
@@ -131,9 +148,7 @@ pub fn compile_and_run(file: &str) -> Result<Value, Error> {
     let mut compiler = Compiler::default();
     let index = compiler.compile(file)?;
 
-    //let value = run_vm(index, compiler.functions)?;
-
-    let value = Value::nil();
+    let value = run_vm(index, compiler.functions)?;
 
     Ok(value)
 }

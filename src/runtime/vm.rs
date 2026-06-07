@@ -129,6 +129,8 @@ pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<Value, Error> {
 
     let value = unsafe { HANDLERS[index](ip, registers, constants, &mut state, frame_size)? };
 
+    println!("{:?}", DebugValue::new(value, &state.gc));
+
     Ok(value)
 }
 
