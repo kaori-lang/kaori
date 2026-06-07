@@ -3,8 +3,6 @@ use std::hint::unreachable_unchecked;
 use super::gc::Gc;
 use crate::diagnostics::error::Error;
 
-use crate::report_error;
-
 use crate::runtime::debug_value::DebugValue;
 
 use crate::runtime::function::Function;
@@ -100,12 +98,17 @@ macro_rules! dispatch_offset {
     };
 }
 
-macro_rules! type_check {
-    ($cond:expr, $($arg:tt)*) => {{
-        if std::hint::unlikely(!$cond) {
-            return report_error!($($arg)*);
-        }
-    }};
+#[inline(always)]
+fn type_check(condition: bool, message: &'static str) -> Result<(), Error> {
+    if std::hint::unlikely(!condition) {
+        Err(Error::new(
+            Default::default(),
+            Default::default(),
+            message.to_string(),
+        ))
+    } else {
+        Ok(())
+    }
 }
 
 pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<Value, Error> {
@@ -195,10 +198,10 @@ unsafe extern "rust-preserve-none" fn opcode_add_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot add, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() + src2.as_number())) };
 
@@ -224,10 +227,10 @@ unsafe extern "rust-preserve-none" fn opcode_add_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot add, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() + src2.as_number())) };
 
@@ -253,10 +256,10 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot subtract, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() - src2.as_number())) };
 
@@ -282,10 +285,10 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot subtract, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() - src2.as_number())) };
 
@@ -311,10 +314,10 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_kr(
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src2.is_number(),
         "cannot subtract, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() - src2.as_number())) };
 
@@ -340,10 +343,10 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot multiply, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() * src2.as_number())) };
 
@@ -369,10 +372,10 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot multiply, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() * src2.as_number())) };
 
@@ -398,10 +401,10 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot divide, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() / src2.as_number())) };
 
@@ -427,10 +430,10 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot divide, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() / src2.as_number())) };
 
@@ -456,10 +459,10 @@ unsafe extern "rust-preserve-none" fn opcode_divide_kr(
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src2.is_number(),
         "cannot divide, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() / src2.as_number())) };
 
@@ -485,10 +488,10 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot compute modulo, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() % src2.as_number())) };
 
@@ -514,10 +517,10 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot compute modulo, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() % src2.as_number())) };
 
@@ -543,10 +546,10 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_kr(
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src2.is_number(),
         "cannot compute modulo, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() % src2.as_number())) };
 
@@ -668,10 +671,10 @@ unsafe extern "rust-preserve-none" fn opcode_less_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::bool(src1.as_number() < src2.as_number())) };
 
@@ -697,10 +700,10 @@ unsafe extern "rust-preserve-none" fn opcode_less_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::bool(src1.as_number() < src2.as_number())) };
 
@@ -726,10 +729,10 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::bool(src1.as_number() <= src2.as_number())) };
 
@@ -755,10 +758,10 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::bool(src1.as_number() <= src2.as_number())) };
 
@@ -784,10 +787,10 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::bool(src1.as_number() > src2.as_number())) };
 
@@ -813,10 +816,10 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::bool(src1.as_number() > src2.as_number())) };
 
@@ -842,10 +845,10 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::bool(src1.as_number() >= src2.as_number())) };
 
@@ -871,10 +874,10 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     unsafe { registers.set_value(dest, Value::bool(src1.as_number() >= src2.as_number())) };
 
@@ -899,7 +902,7 @@ unsafe extern "rust-preserve-none" fn opcode_not(
 
     let src = unsafe { registers.get_value(src) };
 
-    type_check!(src.is_bool(), "cannot apply not, operand must be a boolean",);
+    type_check(src.is_bool(), "cannot apply not, operand must be a boolean")?;
 
     unsafe { registers.set_value(dest, Value::bool(!src.as_bool())) };
 
@@ -924,7 +927,7 @@ unsafe extern "rust-preserve-none" fn opcode_negate(
 
     let src = unsafe { registers.get_value(src) };
 
-    type_check!(src.is_number(), "cannot negate, operand must be a number",);
+    type_check(src.is_number(), "cannot negate, operand must be a number")?;
 
     unsafe { registers.set_value(dest, Value::number(-src.as_number())) };
 
@@ -1020,7 +1023,7 @@ unsafe extern "rust-preserve-none" fn opcode_set_field(
     let key = unsafe { registers.get_value(key) };
     let value = unsafe { registers.get_value(value) };
 
-    type_check!(object.is_map(), "cannot set field, value is not a map",);
+    type_check(object.is_map(), "cannot set field, value is not a map")?;
 
     state.gc.get_mut_map(object).insert(key, value);
 
@@ -1046,7 +1049,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_field(
     let object = unsafe { registers.get_value(object) };
     let key = unsafe { registers.get_value(key) };
 
-    type_check!(object.is_map(), "cannot get field, value is not a map");
+    type_check(object.is_map(), "cannot get field, value is not a map")?;
 
     let value = state
         .gc
@@ -1155,7 +1158,7 @@ unsafe extern "rust-preserve-none" fn opcode_deref_set(
     };
 
     let cell = unsafe { registers.get_value(dest) };
-    type_check!(cell.is_cell(), "cannot dereference a non cell");
+    type_check(cell.is_cell(), "cannot dereference a non cell")?;
 
     let value = unsafe { registers.get_value(src) };
 
@@ -1181,7 +1184,7 @@ unsafe extern "rust-preserve-none" fn opcode_deref(
     };
 
     let src = unsafe { registers.get_value(src) };
-    type_check!(src.is_cell(), "cannot dereference a non cell");
+    type_check(src.is_cell(), "cannot dereference a non cell")?;
 
     let value = state.gc.get_cell(src);
 
@@ -1208,10 +1211,10 @@ unsafe extern "rust-preserve-none" fn opcode_call(
 
     let src = unsafe { registers.get_value(src) };
 
-    type_check!(
+    type_check(
         src.is_closure() || src.is_function(),
         "value is not a callable",
-    );
+    )?;
 
     let return_value = {
         state.remaining_registers -= frame_size;
@@ -1219,7 +1222,11 @@ unsafe extern "rust-preserve-none" fn opcode_call(
         const MAX_REGISTERS: usize = 256;
 
         if state.remaining_registers < MAX_REGISTERS {
-            return report_error!("the call stack ran out of memory");
+            return Err(Error::new(
+                Default::default(),
+                Default::default(),
+                "the call stack ran out of memory".to_string(),
+            ));
         };
 
         let mut callee_registers = unsafe { Registers(registers.0.add(frame_size)) };
@@ -1347,10 +1354,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_false(
 
     let src = unsafe { registers.get_value(src) };
 
-    type_check!(
+    type_check(
         src.is_bool(),
         "cannot use this as a condition, value must be a boolean",
-    );
+    )?;
 
     if !src.as_bool() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
@@ -1377,10 +1384,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_true(
 
     let src = unsafe { registers.get_value(src) };
 
-    type_check!(
+    type_check(
         src.is_bool(),
         "cannot use this as a condition, value must be a boolean",
-    );
+    )?;
 
     if src.as_bool() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
@@ -1408,10 +1415,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     if src1.as_number() < src2.as_number() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
@@ -1439,10 +1446,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     if src1.as_number() < src2.as_number() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
@@ -1470,10 +1477,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     if src1.as_number() <= src2.as_number() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
@@ -1501,10 +1508,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     if src1.as_number() <= src2.as_number() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
@@ -1532,10 +1539,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     if src1.as_number() > src2.as_number() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
@@ -1563,10 +1570,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     if src1.as_number() > src2.as_number() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
@@ -1594,10 +1601,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number() && src2.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     if src1.as_number() >= src2.as_number() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)
@@ -1625,10 +1632,10 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check!(
+    type_check(
         src1.is_number(),
         "cannot compare, both operands must be numbers",
-    );
+    )?;
 
     if src1.as_number() >= src2.as_number() {
         dispatch_offset!(ip, registers, constants, state, frame_size, offset)

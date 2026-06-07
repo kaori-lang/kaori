@@ -3,7 +3,6 @@ use std::ops::Range;
 use crate::{
     compiler::{Compiler, INTERNER},
     diagnostics::error::Error,
-    report_error,
     syntax::{
         ast::{Ast, NodeId, Spanned},
         ops::{BinaryOp, UnaryOp},
@@ -62,13 +61,11 @@ impl<'a> Parser<'a> {
             self.advance_token();
             Ok(span)
         } else {
-            report_error!(
+            Err(Error::new(
                 span,
-                self.compiler.path,
-                "expected {} and found {}",
-                expected,
-                token
-            )
+                self.compiler.current_file,
+                format!("expected {} and found {}", expected, token),
+            ))
         }
     }
 
@@ -581,7 +578,11 @@ impl<'a> Parser<'a> {
 
                 let value = match lexeme.parse::<f64>() {
                     Ok(value) => Ok(value),
-                    Err(..) => report_error!(span, self.compiler.path, "failed to parse float"),
+                    Err(..) => Err(Error::new(
+                        span,
+                        self.compiler.current_file,
+                        format!("failed to parse float"),
+                    )),
                 }?;
 
                 self.advance_token();
@@ -624,12 +625,11 @@ impl<'a> Parser<'a> {
             _ => {
                 let span = self.peek_span();
 
-                return report_error!(
+                return Err(Error::new(
                     span,
-                    self.compiler.path,
-                    "expected a <operand> and found: {}",
-                    token
-                );
+                    self.compiler.current_file,
+                    format!("expected a <operand> and found: {}", token),
+                ));
             }
         };
 

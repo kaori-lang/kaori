@@ -5,7 +5,6 @@ use crate::{
     codegen::free_variables::FreeVariables,
     compiler::{Compiler, INTERNER},
     diagnostics::error::Error,
-    report_error,
     runtime::{
         function::Function,
         instruction::{Const, Instruction},
@@ -137,11 +136,11 @@ impl<'a> Lower<'a> {
                     });
                 }
                 _ => {
-                    return report_error!(
+                    return Err(Error::new(
                         self.ast.span(left),
-                        self.compiler.path,
-                        "expected a valid lhs"
-                    );
+                        self.compiler.current_file,
+                        "expected a valid lhs".to_string(),
+                    ));
                 }
             },
             Node::WhileLoop { condition, block } => {
@@ -260,11 +259,11 @@ impl<'a> Lower<'a> {
                     if inner_self.env.lookup_in_parent(capture.value).is_some() {
                         inner_self.env.declare_local(capture.value);
                     } else {
-                        return report_error!(
+                        return Err(Error::new(
                             capture.span,
-                            inner_self.compiler.path,
-                            "undeclared variable",
-                        );
+                            inner_self.compiler.current_file,
+                            "undeclared variable".to_string(),
+                        ));
                     }
                 }
 
@@ -313,7 +312,10 @@ impl<'a> Lower<'a> {
                     });
                 }
             }
-            Node::Import { path, bindings } => {
+            Node::Import {
+                ref path,
+                ref bindings,
+            } => {
                 let index = self.compiler.compile_file(path)?;
 
                 let src = self.function.store_function_const(index);
@@ -390,14 +392,11 @@ impl<'a> Lower<'a> {
             }
             Node::Identifier(name) => {
                 let Some((_, register)) = self.env.lookup(name.value) else {
-                    let slice = INTERNER.lock().unwrap().resolve(name.value);
-
-                    return report_error!(
+                    return Err(Error::new(
                         name.span,
-                        self.compiler.path,
-                        "{} is not declared",
-                        slice
-                    );
+                        self.compiler.current_file,
+                        "undeclared variable".to_string(),
+                    ));
                 };
 
                 match dest {
@@ -706,11 +705,11 @@ impl<'a> Lower<'a> {
                 if let Some(id) = else_branch {
                     self.lower_expression(id, Some(dest))?;
                 } else {
-                    return report_error!(
+                    return Err(Error::new(
                         self.ast.span(id),
-                        self.compiler.path,
-                        "if being used as an expression must have `else` branch"
-                    );
+                        self.compiler.current_file,
+                        "if being used as an expression must have `else` branch".to_string(),
+                    ));
                 }
 
                 self.patch_jump(
@@ -834,11 +833,12 @@ impl<'a> Lower<'a> {
 
                         dest
                     } else if value_id.is_none() {
-                        return report_error!(
+                        return Err(Error::new(
                             self.ast.span(key_id),
-                            self.compiler.path,
+                            self.compiler.current_file,
                             "expected a value for that key, only identifier keys can omit value"
-                        );
+                                .to_string(),
+                        ));
                     } else {
                         self.lower_expression(key_id, None)?
                     };
@@ -884,11 +884,11 @@ impl<'a> Lower<'a> {
                     if inner_self.env.lookup_in_parent(capture.value).is_some() {
                         inner_self.env.declare_local(capture.value);
                     } else {
-                        return report_error!(
+                        return Err(Error::new(
                             capture.span,
-                            self.compiler.path,
-                            "undeclared variable",
-                        );
+                            self.compiler.current_file,
+                            "undeclared variable".to_string(),
+                        ));
                     }
                 }
 
@@ -1300,11 +1300,11 @@ impl<'a> Lower<'a> {
     fn prevent_return(&self, id: NodeId) -> Result<(), Error> {
         match *self.ast.node(id) {
             Node::Return(..) => {
-                return report_error!(
+                return Err(Error::new(
                     self.ast.span(id),
-                    self.compiler.path,
-                    "return is not allowed in the global scope"
-                );
+                    self.compiler.current_file,
+                    "return is not allowed in the global scope".to_string(),
+                ));
             }
             Node::Block {
                 ref statements,
