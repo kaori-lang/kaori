@@ -148,7 +148,7 @@ impl VmState {
     pub fn new(functions: Vec<Function>) -> Self {
         Self {
             functions,
-            registers: [Value::default(); MAX_REGISTERS],
+            registers: [Value::nil(); MAX_REGISTERS],
             remaining_registers: MAX_REGISTERS,
             stack: Vec::new(),
             gc: Gc::default(),
@@ -1052,7 +1052,8 @@ unsafe extern "rust-preserve-none" fn opcode_get_field(
         .get_map(index)
         .get(&key)
         .copied()
-        .unwrap_or_default();
+        .unwrap_or_else(Value::nil);
+
     unsafe { registers.set_value(dest, value) };
 
     dispatch_next!(ip, registers, constants, state, frame_size)
@@ -1295,11 +1296,6 @@ unsafe extern "rust-preserve-none" fn opcode_return(
 
     let value = unsafe { registers.get_value(src) };
 
-    for index in 0..frame_size {
-        let dest = index.into();
-        unsafe { registers.set_value(dest, Value::nil()) };
-    }
-
     if let Some(Frame {
         dest,
         return_address,
@@ -1321,9 +1317,9 @@ unsafe extern "rust-preserve-none" fn opcode_return(
         }
     } else {
         unsafe { registers.set_value(0.into(), value) };
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
 
 #[inline(never)]

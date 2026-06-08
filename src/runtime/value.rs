@@ -4,6 +4,7 @@ use crate::util::string_interner::Symbol;
 use std::hash::Hash;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(u8)]
 pub enum Value {
     Number(OrderedFloat<f64>),
     Nil,
@@ -15,12 +16,6 @@ pub enum Value {
     Map(usize),
     Vec(usize),
     Cell(usize),
-}
-
-impl Default for Value {
-    fn default() -> Self {
-        Value::Nil
-    }
 }
 
 #[allow(clippy::should_implement_trait)]
