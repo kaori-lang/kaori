@@ -57,9 +57,9 @@ impl Compiler {
 
         self.files.insert(symbol, Compilation::Function(index));
 
-        for function in self.functions.iter() {
+        /*  for function in self.functions.iter() {
             println!("{}", function);
-        }
+        } */
 
         Ok(index)
     }
@@ -114,6 +114,7 @@ impl Compiler {
 
         self.files
             .insert(interned_file, Compilation::Function(index));
+
         self.current_file = previous_file;
 
         Ok(index)

@@ -581,7 +581,7 @@ impl<'a> Parser<'a> {
                     Err(..) => Err(Error::new(
                         span,
                         self.compiler.current_file,
-                        format!("failed to parse float"),
+                        "failed to parse float".to_string(),
                     )),
                 }?;
 

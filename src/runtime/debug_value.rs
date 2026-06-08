@@ -1,4 +1,4 @@
-use std::fmt;
+/* use std::fmt;
 
 use crate::{
     compiler::INTERNER,
@@ -64,3 +64,4 @@ impl<'a> fmt::Debug for DebugValue<'a> {
         unreachable!("Should not be reached, tried to debug invalid tag value")
     }
 }
+ */

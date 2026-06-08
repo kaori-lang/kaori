@@ -6,6 +6,4 @@ fun fib(n) {
     }
 }
 
-let x = fib(40);
-
-return x;
+fib(40);

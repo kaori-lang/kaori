@@ -10,7 +10,7 @@ use kaori::compiler::{Compiler, compile_and_run};
 
 use std::path::PathBuf;
 
-/* fn main() {
+fn main() {
     let matches = Command::new("kaori")
         .arg(Arg::new("file").required(true))
         .get_matches();
@@ -22,10 +22,11 @@ use std::path::PathBuf;
         Err(error) => error.report(),
     }
 }
- */
-fn main() {
+
+/* fn main() {
     match compile_and_run("main.kr") {
         Ok(value) => {}
         Err(error) => error.report(),
     }
 }
+ */
