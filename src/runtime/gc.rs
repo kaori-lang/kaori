@@ -23,80 +23,76 @@ impl Gc {
             index
         } else {
             let index = objects.len();
-
             objects.push(object);
-
             index
         }
     }
 
     #[inline(always)]
     pub fn allocate_vec(&mut self) -> Value {
-        let index = Self::alloc(&mut self.vecs, &mut self.free_vecs, Vec::new());
-
-        Value::vec(index)
+        Value::vec(Self::alloc(&mut self.vecs, &mut self.free_vecs, Vec::new()))
     }
 
     #[inline(always)]
     pub fn allocate_map(&mut self) -> Value {
-        let index = Self::alloc(&mut self.maps, &mut self.free_maps, HashMap::default());
-
-        Value::map(index)
+        Value::map(Self::alloc(
+            &mut self.maps,
+            &mut self.free_maps,
+            HashMap::default(),
+        ))
     }
 
     #[inline(always)]
     pub fn allocate_closure(&mut self, closure: Vec<Value>) -> Value {
-        let index = Self::alloc(&mut self.closures, &mut self.free_closures, closure);
-
-        Value::closure(index)
+        Value::closure(Self::alloc(
+            &mut self.closures,
+            &mut self.free_closures,
+            closure,
+        ))
     }
 
     #[inline(always)]
     pub fn allocate_cell(&mut self, value: Value) -> Value {
-        let index = Self::alloc(&mut self.cells, &mut self.free_cells, value);
-
-        Value::cell(index)
+        Value::cell(Self::alloc(&mut self.cells, &mut self.free_cells, value))
     }
 
     #[inline(always)]
-    pub fn get_vec(&self, value: Value) -> &Vec<Value> {
-        unsafe { self.vecs.get_unchecked(value.as_index()) }
+    pub fn get_vec(&self, index: usize) -> &Vec<Value> {
+        unsafe { self.vecs.get_unchecked(index) }
     }
 
     #[inline(always)]
-    pub fn get_mut_vec(&mut self, value: Value) -> &mut Vec<Value> {
-        unsafe { self.vecs.get_unchecked_mut(value.as_index()) }
+    pub fn get_mut_vec(&mut self, index: usize) -> &mut Vec<Value> {
+        unsafe { self.vecs.get_unchecked_mut(index) }
     }
 
     #[inline(always)]
-    pub fn get_map(&self, value: Value) -> &HashMap<Value, Value> {
-        unsafe { self.maps.get_unchecked(value.as_index()) }
+    pub fn get_map(&self, index: usize) -> &HashMap<Value, Value> {
+        unsafe { self.maps.get_unchecked(index) }
     }
 
     #[inline(always)]
-    pub fn get_mut_map(&mut self, value: Value) -> &mut HashMap<Value, Value> {
-        unsafe { self.maps.get_unchecked_mut(value.as_index()) }
+    pub fn get_mut_map(&mut self, index: usize) -> &mut HashMap<Value, Value> {
+        unsafe { self.maps.get_unchecked_mut(index) }
     }
 
     #[inline(always)]
-    pub fn get_closure(&self, value: Value) -> &Vec<Value> {
-        unsafe { self.closures.get_unchecked(value.as_index()) }
+    pub fn get_closure(&self, index: usize) -> &Vec<Value> {
+        unsafe { self.closures.get_unchecked(index) }
     }
 
     #[inline(always)]
-    pub fn get_mut_closure(&mut self, value: Value) -> &mut Vec<Value> {
-        unsafe { self.closures.get_unchecked_mut(value.as_index()) }
+    pub fn get_mut_closure(&mut self, index: usize) -> &mut Vec<Value> {
+        unsafe { self.closures.get_unchecked_mut(index) }
     }
 
     #[inline(always)]
-    pub fn get_cell(&self, value: Value) -> Value {
-        unsafe { *self.cells.get_unchecked(value.as_index()) }
+    pub fn get_cell(&self, index: usize) -> Value {
+        unsafe { *self.cells.get_unchecked(index) }
     }
 
     #[inline(always)]
-    pub fn set_cell(&mut self, cell: Value, value: Value) {
-        unsafe {
-            *self.cells.get_unchecked_mut(cell.as_index()) = value;
-        }
+    pub fn set_cell(&mut self, index: usize, value: Value) {
+        unsafe { *self.cells.get_unchecked_mut(index) = value }
     }
 }

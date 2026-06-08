@@ -1,4 +1,4 @@
-use crate::runtime::value::Value;
+/* use crate::runtime::value::Value;
 
 pub fn native_sin(args: &[Value]) -> Value {
     let x = args[0].as_number();
@@ -102,3 +102,4 @@ pub fn native_pi(_args: &[Value]) -> Value {
 pub fn native_e(_args: &[Value]) -> Value {
     Value::number(std::f64::consts::E)
 }
+ */

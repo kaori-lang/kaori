@@ -1,3 +1,5 @@
+use ordered_float::OrderedFloat;
+
 use crate::{
     runtime::{instruction::Const, value::Value},
     util::string_interner::Symbol,
@@ -63,7 +65,7 @@ impl Function {
     }
 
     pub fn store_number_const(&mut self, value: f64) -> Const {
-        let index = self.get_or_insert(Value::number(value));
+        let index = self.get_or_insert(Value::number(OrderedFloat(value)));
 
         Const(index)
     }

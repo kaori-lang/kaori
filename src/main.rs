@@ -24,9 +24,8 @@ fn main() {
 }
 
 /* fn main() {
-    match compile_and_run("main.kr") {
-        Ok(value) => {}
-        Err(error) => error.report(),
+    if let Err(error) = compile_and_run("main.kr") {
+        error.report()
     }
 }
  */

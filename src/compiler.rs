@@ -145,11 +145,11 @@ impl Compiler {
     }
 }
 
-pub fn compile_and_run(file: &str) -> Result<Value, Error> {
+pub fn compile_and_run(file: &str) -> Result<(), Error> {
     let mut compiler = Compiler::default();
     let index = compiler.compile(file)?;
 
-    let value = run_vm(index, compiler.functions)?;
+    run_vm(index, compiler.functions)?;
 
-    Ok(value)
+    Ok(())
 }

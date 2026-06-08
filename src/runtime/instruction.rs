@@ -19,6 +19,12 @@ impl From<Register> for Reg {
     }
 }
 
+impl From<usize> for Reg {
+    fn from(value: usize) -> Self {
+        Reg(value as u8)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum Instruction {
@@ -55,7 +61,7 @@ pub enum Instruction {
     SetField { object: Reg, key: Reg, value: Reg },
     GetField { dest: Reg, object: Reg, key: Reg },
     CreateClosure { dest: Reg, captures: u8 },
-    CaptureValue { src: Reg },
+    CaptureValue { dest: Reg, src: Reg },
     CreateRef { dest: Reg, src: Reg },
     DerefSet { dest: Reg, src: Reg },
     Deref { dest: Reg, src: Reg },
@@ -138,7 +144,7 @@ impl fmt::Display for Instruction {
             Self::CreateClosure { dest, captures } => {
                 write!(f, "CREATE_CLOSURE {} CAPTURES: {}", dest, captures)
             }
-            Self::CaptureValue { src } => write!(f, "CAPTURE_VALUE  {}", src),
+            Self::CaptureValue { dest, src } => write!(f, "CAPTURE_VALUE {} {}", dest, src),
             Self::CreateRef { dest, src } => write!(f, "CREATE_REF {} {}", dest, src),
             Self::DerefSet { dest, src } => write!(f, "DEREF_SET {} {}", dest, src),
             Self::Deref { dest, src } => write!(f, "DEREF {} {}", dest, src),

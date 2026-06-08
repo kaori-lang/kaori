@@ -308,6 +308,7 @@ impl<'a> Lower<'a> {
                         .expect("name must've been declared to reach this point of the code");
 
                     self.function.emit_instruction(Instruction::CaptureValue {
+                        dest: dest.into(),
                         src: register.into(),
                     });
                 }
@@ -961,6 +962,7 @@ impl<'a> Lower<'a> {
                         .expect("name must've been declared to reach this point of the code");
 
                     self.function.emit_instruction(Instruction::CaptureValue {
+                        dest: dest.into(),
                         src: register.into(),
                     });
                 }
