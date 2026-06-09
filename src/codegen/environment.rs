@@ -91,6 +91,7 @@ impl Environment {
     pub fn allocate_temp(&mut self) -> Register {
         Register::Temp(self.pop())
     }
+
     fn pop(&mut self) -> usize {
         let register = self.registers.pop().expect("exceeded register limit").0;
 
@@ -98,6 +99,7 @@ impl Environment {
 
         register
     }
+
     pub fn free_temp(&mut self, register: Register) {
         if let Register::Temp(register) = register {
             self.registers.push(Reverse(register));

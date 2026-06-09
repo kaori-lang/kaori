@@ -1062,7 +1062,21 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
 
     let function = unsafe { registers.get_value(dest) };
 
-    let closure = Box::new_uninit_slice(captures as usize + 1);
+    let mut closure = Box::new_uninit_slice(captures as usize + 1);
+
+    closure[0].write(function);
+
+    for index in 1..(captures + 1) as usize {
+        unsafe {
+            let Instruction::CaptureValue { src } = *ip.add(index) else {
+                unreachable_unchecked()
+            };
+
+            let src = registers.get_value(src);
+
+            closure[index].write(src);
+        }
+    }
 
     let closure = unsafe { closure.assume_init() };
     let index = thread.heap.alloc_closure(closure);

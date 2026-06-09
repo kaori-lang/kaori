@@ -1,5 +1,14 @@
-let x = x;
+5;
+
+return {
+    let z = foo;
+
+    fun foo() {
+  
+    }
+
+    z
+};
 
 
 
-return x;

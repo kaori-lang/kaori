@@ -218,6 +218,13 @@ impl<'a> Lower<'a> {
                     if let Node::Function { name, .. } = self.ast.node(id) {
                         let dest = self.env.allocate_local();
                         self.env.declare_local(name.value, dest);
+
+                        let src = self.function.store_nil_const();
+
+                        self.function.emit_instruction(Instruction::LoadConst {
+                            dest: dest.into(),
+                            src,
+                        });
                     }
                 }
 
@@ -226,6 +233,13 @@ impl<'a> Lower<'a> {
                 {
                     let dest = self.env.allocate_local();
                     self.env.declare_local(name.value, dest);
+
+                    let src = self.function.store_nil_const();
+
+                    self.function.emit_instruction(Instruction::LoadConst {
+                        dest: dest.into(),
+                        src,
+                    });
                 }
 
                 for id in statements.iter().copied() {
@@ -258,7 +272,7 @@ impl<'a> Lower<'a> {
                 inner_self.env.declare_local(name.value, Register::Local(0));
 
                 for parameter in parameters.iter().copied() {
-                    let dest = self.env.allocate_local();
+                    let dest = inner_self.env.allocate_local();
 
                     inner_self.env.declare_local(parameter.value, dest);
                 }
@@ -267,7 +281,7 @@ impl<'a> Lower<'a> {
 
                 for capture in captured_values.iter().copied() {
                     if inner_self.env.lookup_in_parent(capture.value).is_some() {
-                        let dest = self.env.allocate_local();
+                        let dest = inner_self.env.allocate_local();
 
                         inner_self.env.declare_local(capture.value, dest);
                     } else {
@@ -777,6 +791,13 @@ impl<'a> Lower<'a> {
                         let dest = self.env.allocate_local();
 
                         self.env.declare_local(name.value, dest);
+
+                        let src = self.function.store_nil_const();
+
+                        self.function.emit_instruction(Instruction::LoadConst {
+                            dest: dest.into(),
+                            src,
+                        });
                     }
                 }
 
@@ -786,6 +807,13 @@ impl<'a> Lower<'a> {
                     let dest = self.env.allocate_local();
 
                     self.env.declare_local(name.value, dest);
+
+                    let src = self.function.store_nil_const();
+
+                    self.function.emit_instruction(Instruction::LoadConst {
+                        dest: dest.into(),
+                        src,
+                    });
                 }
 
                 for id in statements.iter().copied() {
@@ -926,7 +954,7 @@ impl<'a> Lower<'a> {
                     &mut function,
                 );
                 for parameter in parameters.iter().copied() {
-                    let dest = self.env.allocate_local();
+                    let dest = inner_self.env.allocate_local();
 
                     inner_self.env.declare_local(parameter.value, dest);
                 }
@@ -935,7 +963,7 @@ impl<'a> Lower<'a> {
 
                 for capture in captured_values.iter().copied() {
                     if inner_self.env.lookup_in_parent(capture.value).is_some() {
-                        let dest = self.env.allocate_local();
+                        let dest = inner_self.env.allocate_local();
 
                         inner_self.env.declare_local(capture.value, dest);
                     } else {
