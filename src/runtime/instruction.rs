@@ -61,7 +61,6 @@ pub enum Instruction {
     SetField { object: Reg, key: Reg, value: Reg },
     GetField { dest: Reg, object: Reg, key: Reg },
     CreateClosure { dest: Reg, captures: u8 },
-    CaptureValue { dest: Reg, src: Reg },
     CreateRef { dest: Reg, src: Reg },
     DerefSet { dest: Reg, src: Reg },
     Deref { dest: Reg, src: Reg },
@@ -82,9 +81,13 @@ pub enum Instruction {
     JumpIfEqualK { src1: Reg, src2: Const, offset: i32 },
     JumpIfNotEqual { src1: Reg, src2: Reg, offset: i32 },
     JumpIfNotEqualK { src1: Reg, src2: Const, offset: i32 },
+
+    // UNREACHABLE
+    CaptureValue { src: Reg },
 }
 
 impl Instruction {
+    #[inline(always)]
     pub fn discriminant(&self) -> usize {
         unsafe { *(self as *const Instruction as *const u8) as usize }
     }
@@ -144,7 +147,7 @@ impl fmt::Display for Instruction {
             Self::CreateClosure { dest, captures } => {
                 write!(f, "CREATE_CLOSURE {} CAPTURES: {}", dest, captures)
             }
-            Self::CaptureValue { dest, src } => write!(f, "CAPTURE_VALUE {} {}", dest, src),
+            Self::CaptureValue { src } => write!(f, "CAPTURE_VALUE {}", src),
             Self::CreateRef { dest, src } => write!(f, "CREATE_REF {} {}", dest, src),
             Self::DerefSet { dest, src } => write!(f, "DEREF_SET {} {}", dest, src),
             Self::Deref { dest, src } => write!(f, "DEREF {} {}", dest, src),

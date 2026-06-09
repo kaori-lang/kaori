@@ -73,19 +73,25 @@ impl<'a> Lower<'a> {
     fn lower_statement(&mut self, id: NodeId) -> Result<(), Error> {
         match *self.ast.node(id) {
             Node::Variable { left, right } => {
-                let dest = self.env.declare_local(left.value);
+                let dest = self.env.allocate_local();
 
                 self.lower_expression(right, Some(dest))?;
+
+                self.env.declare_local(left.value, dest);
             }
             Node::Constant { left, right } => {
-                let dest = self.env.declare_local(left.value);
+                let dest = self.env.allocate_local();
 
                 self.lower_expression(right, Some(dest))?;
+
+                self.env.declare_local(left.value, dest);
             }
             Node::Ref { left, right } => {
-                let dest = self.env.declare_local(left.value);
+                let dest = self.env.allocate_local();
 
                 let src = self.lower_expression(right, None)?;
+
+                self.env.declare_local(left.value, dest);
 
                 self.function.emit_instruction(Instruction::CreateRef {
                     dest: dest.into(),
@@ -210,14 +216,16 @@ impl<'a> Lower<'a> {
 
                 for id in statements.iter().copied() {
                     if let Node::Function { name, .. } = self.ast.node(id) {
-                        self.env.declare_local(name.value);
+                        let dest = self.env.allocate_local();
+                        self.env.declare_local(name.value, dest);
                     }
                 }
 
                 if let Some(id) = tail
                     && let Node::Function { name, .. } = self.ast.node(id)
                 {
-                    self.env.declare_local(name.value);
+                    let dest = self.env.allocate_local();
+                    self.env.declare_local(name.value, dest);
                 }
 
                 for id in statements.iter().copied() {
@@ -247,17 +255,21 @@ impl<'a> Lower<'a> {
                 );
 
                 // Declare function in itself for recursive calls
-                inner_self.env.declare_function(name.value);
+                inner_self.env.declare_local(name.value, Register::Local(0));
 
                 for parameter in parameters.iter().copied() {
-                    inner_self.env.declare_local(parameter.value);
+                    let dest = self.env.allocate_local();
+
+                    inner_self.env.declare_local(parameter.value, dest);
                 }
 
                 let captured_values = inner_self.free_variables.analyze_function(self.ast, id);
 
                 for capture in captured_values.iter().copied() {
                     if inner_self.env.lookup_in_parent(capture.value).is_some() {
-                        inner_self.env.declare_local(capture.value);
+                        let dest = self.env.allocate_local();
+
+                        inner_self.env.declare_local(capture.value, dest);
                     } else {
                         return Err(Error::new(
                             capture.span,
@@ -308,7 +320,6 @@ impl<'a> Lower<'a> {
                         .expect("name must've been declared to reach this point of the code");
 
                     self.function.emit_instruction(Instruction::CaptureValue {
-                        dest: dest.into(),
                         src: register.into(),
                     });
                 }
@@ -333,7 +344,9 @@ impl<'a> Lower<'a> {
                 });
 
                 if bindings.is_empty() {
-                    let dest = self.env.declare_local(path.last().unwrap().value);
+                    let dest = self.env.allocate_local();
+
+                    self.env.declare_local(path.last().unwrap().value, dest);
 
                     self.function.emit_instruction(Instruction::Move {
                         dest: dest.into(),
@@ -341,7 +354,9 @@ impl<'a> Lower<'a> {
                     });
                 } else {
                     for binding in bindings.iter().copied() {
-                        let dest = self.env.declare_local(binding.value);
+                        let dest = self.env.allocate_local();
+
+                        self.env.declare_local(binding.value, dest);
 
                         let key = {
                             let src = self.function.store_string_const(binding.value);
@@ -759,14 +774,18 @@ impl<'a> Lower<'a> {
 
                 for id in statements.iter().copied() {
                     if let Node::Function { name, .. } = self.ast.node(id) {
-                        self.env.declare_local(name.value);
+                        let dest = self.env.allocate_local();
+
+                        self.env.declare_local(name.value, dest);
                     }
                 }
 
                 if let Some(id) = tail
                     && let Node::Function { name, .. } = self.ast.node(id)
                 {
-                    self.env.declare_local(name.value);
+                    let dest = self.env.allocate_local();
+
+                    self.env.declare_local(name.value, dest);
                 }
 
                 for id in statements.iter().copied() {
@@ -907,14 +926,18 @@ impl<'a> Lower<'a> {
                     &mut function,
                 );
                 for parameter in parameters.iter().copied() {
-                    inner_self.env.declare_local(parameter.value);
+                    let dest = self.env.allocate_local();
+
+                    inner_self.env.declare_local(parameter.value, dest);
                 }
 
                 let captured_values = inner_self.free_variables.analyze_function(self.ast, id);
 
                 for capture in captured_values.iter().copied() {
                     if inner_self.env.lookup_in_parent(capture.value).is_some() {
-                        inner_self.env.declare_local(capture.value);
+                        let dest = self.env.allocate_local();
+
+                        inner_self.env.declare_local(capture.value, dest);
                     } else {
                         return Err(Error::new(
                             capture.span,
@@ -962,7 +985,6 @@ impl<'a> Lower<'a> {
                         .expect("name must've been declared to reach this point of the code");
 
                     self.function.emit_instruction(Instruction::CaptureValue {
-                        dest: dest.into(),
                         src: register.into(),
                     });
                 }

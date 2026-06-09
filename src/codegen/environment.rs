@@ -1,4 +1,4 @@
-use crate::util::string_interner::Symbol;
+use crate::{runtime::instruction::Reg, util::string_interner::Symbol};
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -10,7 +10,6 @@ pub enum Register {
 pub struct Local {
     symbol: Symbol,
     register: Register,
-    
 }
 
 #[derive(Default)]
@@ -64,20 +63,8 @@ impl Environment {
         }
     }
 
-    pub fn declare_local(&mut self, name: Symbol) -> Register {
-        let register = self.allocate_local();
-
+    pub fn declare_local(&mut self, name: Symbol, register: Register) {
         self.locals.push((name, register));
-
-        register
-    }
-
-    pub fn declare_function(&mut self, name: Symbol) -> Register {
-        let register = Register::Local(0);
-
-        self.locals.push((name, register));
-
-        register
     }
 
     pub fn lookup(&self, name: Symbol) -> Option<(Symbol, Register)> {

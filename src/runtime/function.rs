@@ -8,6 +8,7 @@ use crate::{
 use super::instruction::Instruction;
 use std::fmt::{self, Display, Formatter};
 
+#[derive(Debug)]
 pub struct Function {
     pub instructions: Vec<Instruction>,
     pub constants: Vec<Value>,
@@ -83,7 +84,7 @@ impl Function {
     }
 
     pub fn store_function_const(&mut self, value: usize) -> Const {
-        let index = self.get_or_insert(Value::function(value));
+        let index = self.get_or_insert(Value::function(value as u32));
 
         Const(index)
     }

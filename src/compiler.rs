@@ -10,7 +10,7 @@ use logos::Logos;
 use crate::{
     codegen::lower_ast::lower_ast,
     diagnostics::error::Error,
-    runtime::{function::Function, value::Value, vm::run_vm},
+    runtime::{function::Function, vm::run_vm},
     syntax::{
         ast::Spanned,
         parser::Parser,
@@ -57,9 +57,9 @@ impl Compiler {
 
         self.files.insert(symbol, Compilation::Function(index));
 
-        /*  for function in self.functions.iter() {
+        for function in self.functions.iter() {
             println!("{}", function);
-        } */
+        }
 
         Ok(index)
     }

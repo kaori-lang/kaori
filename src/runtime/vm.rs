@@ -1,6 +1,6 @@
 use std::hint::unreachable_unchecked;
 
-use super::gc::Gc;
+use super::heap::Heap;
 use crate::diagnostics::error::Error;
 
 use crate::runtime::function::Function;
@@ -13,7 +13,7 @@ type Handler = unsafe extern "rust-preserve-none" fn(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error>;
 
@@ -51,7 +51,6 @@ static HANDLERS: [Handler; 54] = [
     opcode_set_field,
     opcode_get_field,
     opcode_create_closure,
-    opcode_capture_value,
     opcode_create_ref,
     opcode_deref_set,
     opcode_deref,
@@ -72,26 +71,27 @@ static HANDLERS: [Handler; 54] = [
     opcode_jump_if_equal_rk,
     opcode_jump_if_not_equal_rr,
     opcode_jump_if_not_equal_rk,
+    opcode_unreachable,
 ];
 
 macro_rules! dispatch_next {
-    ($ip:expr, $registers:expr, $constants:expr, $state:expr, $frame_size:expr) => {
+    ($ip:expr, $registers:expr, $constants:expr, $thread:expr, $frame_size:expr) => {
         unsafe {
             let ip: *const Instruction = $ip.add(1);
             let index = (*ip).discriminant();
             let handler = *HANDLERS.get_unchecked(index);
-            become handler(ip, $registers, $constants, $state, $frame_size);
+            become handler(ip, $registers, $constants, $thread, $frame_size);
         }
     };
 }
 
 macro_rules! dispatch_offset {
-    ($ip:expr, $registers:expr, $constants:expr, $state:expr, $frame_size:expr, $offset:expr) => {
+    ($ip:expr, $registers:expr, $constants:expr, $thread:expr, $frame_size:expr, $offset:expr) => {
         unsafe {
             let ip: *const Instruction = $ip.offset($offset as isize);
             let index = (*ip).discriminant();
             let handler = *HANDLERS.get_unchecked(index);
-            become handler(ip, $registers, $constants, $state, $frame_size);
+            become handler(ip, $registers, $constants, $thread, $frame_size);
         }
     };
 }
@@ -100,6 +100,15 @@ macro_rules! dispatch_offset {
 #[inline(never)]
 fn runtime_error(message: &'static str) -> Error {
     Error::new(Span::default(), Symbol::default(), message.to_string())
+}
+
+#[inline(always)]
+fn type_check(condition: bool, message: &'static str) -> Result<(), Error> {
+    if condition {
+        Ok(())
+    } else {
+        Err(runtime_error(message))
+    }
 }
 
 pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
@@ -114,10 +123,10 @@ pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
     let index = unsafe { (*ip).discriminant() };
 
     let constants: Constants = constants.into();
-    let mut state = VmState::new(functions);
-    let registers = Registers(state.registers.as_mut_ptr());
+    let mut thread = Thread::new(functions);
+    let registers = Registers(thread.registers.as_mut_ptr());
 
-    unsafe { HANDLERS[index](ip, registers, constants, &mut state, frame_size)? };
+    unsafe { HANDLERS[index](ip, registers, constants, &mut thread, frame_size)? };
 
     let src = 0.into();
     let value = unsafe { registers.get_value(src) };
@@ -136,22 +145,20 @@ struct Frame {
     pub size: usize,
 }
 
-struct VmState {
+struct Thread {
     pub functions: Vec<Function>,
     pub registers: [Value; MAX_REGISTERS],
-    pub remaining_registers: usize,
     pub stack: Vec<Frame>,
-    pub gc: Gc,
+    pub heap: Heap,
 }
 
-impl VmState {
+impl Thread {
     pub fn new(functions: Vec<Function>) -> Self {
         Self {
             functions,
             registers: [Value::nil(); MAX_REGISTERS],
-            remaining_registers: MAX_REGISTERS,
             stack: Vec::new(),
-            gc: Gc::default(),
+            heap: Heap::default(),
         }
     }
 }
@@ -160,10 +167,12 @@ impl VmState {
 struct Registers(*mut Value);
 
 impl Registers {
+    #[inline(always)]
     unsafe fn set_value(&mut self, dest: Reg, value: Value) {
         unsafe { *self.0.add(dest.0 as usize) = value }
     }
 
+    #[inline(always)]
     unsafe fn get_value(&self, src: Reg) -> Value {
         unsafe { *self.0.add(src.0 as usize) }
     }
@@ -173,6 +182,7 @@ impl Registers {
 struct Constants(*const Value);
 
 impl Constants {
+    #[inline(always)]
     unsafe fn get_value(&self, src: Const) -> Value {
         unsafe { *self.0.add(src.0 as usize) }
     }
@@ -189,7 +199,7 @@ unsafe extern "rust-preserve-none" fn opcode_add_rr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -202,13 +212,14 @@ unsafe extern "rust-preserve-none" fn opcode_add_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error("cannot add, both operands must be numbers"));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot add, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a + b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() + src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -216,7 +227,7 @@ unsafe extern "rust-preserve-none" fn opcode_add_rk(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -229,13 +240,14 @@ unsafe extern "rust-preserve-none" fn opcode_add_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error("cannot add, both operands must be numbers"));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot add, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a + b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() + src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -243,7 +255,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -256,15 +268,14 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot subtract, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot subtract, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a - b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() - src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -272,7 +283,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rk(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -285,15 +296,14 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot subtract, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot subtract, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a - b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() - src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -301,7 +311,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_kr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -314,15 +324,14 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_kr(
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot subtract, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot subtract, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a - b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() - src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -330,7 +339,7 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -343,15 +352,14 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot multiply, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot multiply, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a * b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() * src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -359,7 +367,7 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rk(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -372,15 +380,14 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot multiply, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot multiply, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a * b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() * src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -388,7 +395,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -401,15 +408,14 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot divide, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot divide, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a / b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() / src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -417,7 +423,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rk(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -430,15 +436,14 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot divide, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot divide, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a / b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() / src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -446,7 +451,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_kr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -459,15 +464,14 @@ unsafe extern "rust-preserve-none" fn opcode_divide_kr(
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot divide, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot divide, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a / b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() / src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -475,7 +479,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -488,15 +492,14 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compute modulo, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compute modulo, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a % b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() % src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -504,7 +507,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rk(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -517,15 +520,14 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compute modulo, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compute modulo, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a % b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() % src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -533,7 +535,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_kr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -546,15 +548,14 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_kr(
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compute modulo, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compute modulo, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::number(a % b)) };
+    unsafe { registers.set_value(dest, Value::number(src1.as_number() % src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -562,7 +563,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -577,7 +578,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rr(
 
     unsafe { registers.set_value(dest, Value::bool(src1 == src2)) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -585,7 +586,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rk(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -600,7 +601,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rk(
 
     unsafe { registers.set_value(dest, Value::bool(src1 == src2)) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -608,7 +609,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -623,7 +624,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rr(
 
     unsafe { registers.set_value(dest, Value::bool(src1 != src2)) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -631,7 +632,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rk(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -646,7 +647,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rk(
 
     unsafe { registers.set_value(dest, Value::bool(src1 != src2)) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -654,7 +655,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_rr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -667,15 +668,14 @@ unsafe extern "rust-preserve-none" fn opcode_less_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::bool(a < b)) };
+    unsafe { registers.set_value(dest, Value::bool(src1.as_number() < src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -683,7 +683,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_rk(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -696,15 +696,14 @@ unsafe extern "rust-preserve-none" fn opcode_less_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::bool(a < b)) };
+    unsafe { registers.set_value(dest, Value::bool(src1.as_number() < src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -712,7 +711,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -725,15 +724,14 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::bool(a <= b)) };
+    unsafe { registers.set_value(dest, Value::bool(src1.as_number() <= src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -741,7 +739,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rk(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -754,15 +752,14 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::bool(a <= b)) };
+    unsafe { registers.set_value(dest, Value::bool(src1.as_number() <= src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -770,7 +767,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -783,15 +780,14 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::bool(a > b)) };
+    unsafe { registers.set_value(dest, Value::bool(src1.as_number() > src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -799,7 +795,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rk(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -812,15 +808,14 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::bool(a > b)) };
+    unsafe { registers.set_value(dest, Value::bool(src1.as_number() > src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -828,7 +823,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rr(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -841,15 +836,14 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::bool(a >= b)) };
+    unsafe { registers.set_value(dest, Value::bool(src1.as_number() >= src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -857,7 +851,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rk(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src1, src2) = unsafe {
@@ -870,15 +864,14 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    unsafe { registers.set_value(dest, Value::bool(a >= b)) };
+    unsafe { registers.set_value(dest, Value::bool(src1.as_number() >= src2.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -886,7 +879,7 @@ unsafe extern "rust-preserve-none" fn opcode_not(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src) = unsafe {
@@ -898,13 +891,11 @@ unsafe extern "rust-preserve-none" fn opcode_not(
 
     let src = unsafe { registers.get_value(src) };
 
-    let Value::Bool(b) = src else {
-        return Err(runtime_error("cannot apply not, operand must be a boolean"));
-    };
+    type_check(src.is_bool(), "cannot apply not, operand must be a boolean")?;
 
-    unsafe { registers.set_value(dest, Value::bool(!b)) };
+    unsafe { registers.set_value(dest, Value::bool(!src.as_bool())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -912,7 +903,7 @@ unsafe extern "rust-preserve-none" fn opcode_negate(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src) = unsafe {
@@ -924,13 +915,11 @@ unsafe extern "rust-preserve-none" fn opcode_negate(
 
     let src = unsafe { registers.get_value(src) };
 
-    let Value::Number(a) = src else {
-        return Err(runtime_error("cannot negate, operand must be a number"));
-    };
+    type_check(src.is_number(), "cannot negate, operand must be a number")?;
 
-    unsafe { registers.set_value(dest, Value::number(-a)) };
+    unsafe { registers.set_value(dest, Value::number(-src.as_number())) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -938,7 +927,7 @@ unsafe extern "rust-preserve-none" fn opcode_move(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src) = unsafe {
@@ -951,7 +940,7 @@ unsafe extern "rust-preserve-none" fn opcode_move(
     let src = unsafe { registers.get_value(src) };
     unsafe { registers.set_value(dest, src) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -959,7 +948,7 @@ unsafe extern "rust-preserve-none" fn opcode_load_const(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src) = unsafe {
@@ -972,7 +961,7 @@ unsafe extern "rust-preserve-none" fn opcode_load_const(
     let constant = unsafe { constants.get_value(src) };
     unsafe { registers.set_value(dest, constant) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -980,7 +969,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_map(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let dest = unsafe {
@@ -990,10 +979,10 @@ unsafe extern "rust-preserve-none" fn opcode_create_map(
         dest
     };
 
-    let value = state.gc.allocate_map();
-    unsafe { registers.set_value(dest, value) };
+    let index = thread.heap.alloc_map();
+    unsafe { registers.set_value(dest, Value::map(index)) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -1001,7 +990,7 @@ unsafe extern "rust-preserve-none" fn opcode_set_field(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (object, key, value) = unsafe {
@@ -1013,16 +1002,14 @@ unsafe extern "rust-preserve-none" fn opcode_set_field(
 
     let object = unsafe { registers.get_value(object) };
 
-    let Value::Map(index) = object else {
-        return Err(runtime_error("cannot set field, value is not a map"));
-    };
+    type_check(object.is_map(), "cannot set field, value is not a map")?;
 
     let key = unsafe { registers.get_value(key) };
     let value = unsafe { registers.get_value(value) };
 
-    state.gc.get_mut_map(index).insert(key, value);
+    thread.heap.get_map_mut(object.as_map()).insert(key, value);
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -1030,7 +1017,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_field(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, object, key) = unsafe {
@@ -1042,21 +1029,19 @@ unsafe extern "rust-preserve-none" fn opcode_get_field(
 
     let object = unsafe { registers.get_value(object) };
 
-    let Value::Map(index) = object else {
-        return Err(runtime_error("cannot get field, value is not a map"));
-    };
+    type_check(object.is_map(), "cannot get field, value is not a map")?;
 
     let key = unsafe { registers.get_value(key) };
-    let value = state
-        .gc
-        .get_map(index)
+    let value = thread
+        .heap
+        .get_map(object.as_map())
         .get(&key)
         .copied()
         .unwrap_or_else(Value::nil);
 
     unsafe { registers.set_value(dest, value) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -1064,51 +1049,27 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, captures) = unsafe {
         let Instruction::CreateClosure { dest, captures } = *ip else {
             unreachable_unchecked()
         };
+
         (dest, captures)
     };
 
     let function = unsafe { registers.get_value(dest) };
-    let closure = vec![function];
 
-    let value = state.gc.allocate_closure(closure);
-    unsafe { registers.set_value(dest, value) };
+    let closure = Box::new_uninit_slice(captures as usize + 1);
 
-    let ip = unsafe { ip.add(captures as usize) };
+    let closure = unsafe { closure.assume_init() };
+    let index = thread.heap.alloc_closure(closure);
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
-}
+    unsafe { registers.set_value(dest, Value::closure(index)) };
 
-#[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_capture_value(
-    ip: *const Instruction,
-    registers: Registers,
-    constants: Constants,
-    state: &mut VmState,
-    frame_size: usize,
-) -> Result<(), Error> {
-    let (dest, src) = unsafe {
-        let Instruction::CaptureValue { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src)
-    };
-
-    let value = unsafe { registers.get_value(src) };
-
-    let Value::Closure(index) = (unsafe { registers.get_value(dest) }) else {
-        unsafe { unreachable_unchecked() }
-    };
-
-    state.gc.get_mut_closure(index).push(value);
-
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -1116,21 +1077,24 @@ unsafe extern "rust-preserve-none" fn opcode_create_ref(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src) = unsafe {
         let Instruction::CreateRef { dest, src } = *ip else {
             unreachable_unchecked()
         };
+
         (dest, src)
     };
 
-    let value = unsafe { registers.get_value(src) };
-    let cell = state.gc.allocate_cell(value);
-    unsafe { registers.set_value(dest, cell) };
+    let src = unsafe { registers.get_value(src) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    let index = thread.heap.alloc_cell(src);
+
+    unsafe { registers.set_value(dest, Value::cell(index)) };
+
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -1138,7 +1102,7 @@ unsafe extern "rust-preserve-none" fn opcode_deref_set(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src) = unsafe {
@@ -1148,16 +1112,17 @@ unsafe extern "rust-preserve-none" fn opcode_deref_set(
         (dest, src)
     };
 
-    let cell = unsafe { registers.get_value(dest) };
+    let dest = unsafe { registers.get_value(dest) };
 
-    let Value::Cell(index) = cell else {
-        return Err(runtime_error("cannot dereference a non cell"));
-    };
+    type_check(dest.is_cell(), "cannot dereference a non cell")?;
 
-    let value = unsafe { registers.get_value(src) };
-    state.gc.set_cell(index, value);
+    let index = dest.as_cell();
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    let src = unsafe { registers.get_value(src) };
+
+    *thread.heap.get_cell_mut(index) = src;
+
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -1165,7 +1130,7 @@ unsafe extern "rust-preserve-none" fn opcode_deref(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src) = unsafe {
@@ -1177,14 +1142,15 @@ unsafe extern "rust-preserve-none" fn opcode_deref(
 
     let src = unsafe { registers.get_value(src) };
 
-    let Value::Cell(index) = src else {
-        return Err(runtime_error("cannot dereference a non cell"));
-    };
+    type_check(src.is_cell(), "cannot dereference a non cell")?;
 
-    let value = state.gc.get_cell(index);
+    let index = src.as_cell();
+
+    let value = *thread.heap.get_cell(index);
+
     unsafe { registers.set_value(dest, value) };
 
-    dispatch_next!(ip, registers, constants, state, frame_size)
+    dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
@@ -1192,7 +1158,7 @@ unsafe extern "rust-preserve-none" fn opcode_call(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (dest, src) = unsafe {
@@ -1213,69 +1179,75 @@ unsafe extern "rust-preserve-none" fn opcode_call(
         size: frame_size,
     };
 
-    match src {
-        Value::Closure(closure_index) => {
-            let mut inner_registers = unsafe { Registers(registers.0.add(frame_size)) };
-            unsafe { inner_registers.set_value(0.into(), src) };
+    if src.is_closure() {
+        let index = src.as_closure();
+        let mut inner_registers = unsafe { Registers(registers.0.add(frame_size)) };
+        unsafe { inner_registers.set_value(0.into(), src) };
 
-            let closure = state.gc.get_closure(closure_index);
-            let Value::Function(fn_index) = closure[0] else {
-                unsafe { unreachable_unchecked() }
-            };
+        let closure = thread.heap.get_closure(index);
+        let fn_value = closure[0];
+        println!("{:?}", closure);
+        type_check(
+            fn_value.is_function(),
+            "closure does not contain a function",
+        )?;
 
-            let Function {
-                ref instructions,
-                ref constants,
-                frame_size: inner_frame_size,
-                arity,
-            } = state.functions[fn_index];
+        let fn_index = fn_value.as_function();
 
-            for (i, value) in closure.iter().copied().enumerate().skip(1) {
-                unsafe { inner_registers.set_value((arity + i).into(), value) };
-            }
+        let Function {
+            ref instructions,
+            ref constants,
+            frame_size: inner_frame_size,
+            arity,
+        } = thread.functions[fn_index as usize];
 
-            let constants: Constants = constants.into();
-            state.stack.push(frame);
-
-            unsafe {
-                let ip = instructions.as_ptr();
-                let index = (*ip).discriminant();
-                become (*HANDLERS.get_unchecked(index))(
-                    ip,
-                    inner_registers,
-                    constants,
-                    state,
-                    inner_frame_size,
-                )
-            }
+        let closure = thread.heap.get_closure(index);
+        for (i, value) in closure.iter().copied().enumerate().skip(1) {
+            unsafe { inner_registers.set_value((arity + i).into(), value) };
         }
-        Value::Function(fn_index) => {
-            let mut inner_registers = unsafe { Registers(registers.0.add(frame_size)) };
-            unsafe { inner_registers.set_value(0.into(), src) };
 
-            let Function {
-                ref instructions,
-                ref constants,
-                frame_size: inner_frame_size,
-                ..
-            } = state.functions[fn_index];
+        let constants: Constants = constants.into();
+        thread.stack.push(frame);
 
-            let constants: Constants = constants.into();
-            state.stack.push(frame);
-
-            unsafe {
-                let ip = instructions.as_ptr();
-                let index = (*ip).discriminant();
-                become (*HANDLERS.get_unchecked(index))(
-                    ip,
-                    inner_registers,
-                    constants,
-                    state,
-                    inner_frame_size,
-                )
-            }
+        unsafe {
+            let ip = instructions.as_ptr();
+            let index = (*ip).discriminant();
+            become (*HANDLERS.get_unchecked(index))(
+                ip,
+                inner_registers,
+                constants,
+                thread,
+                inner_frame_size,
+            )
         }
-        _ => Err(runtime_error("value is not a callable")),
+    } else if src.is_function() {
+        let index = src.as_function();
+        let mut inner_registers = unsafe { Registers(registers.0.add(frame_size)) };
+        unsafe { inner_registers.set_value(0.into(), src) };
+
+        let Function {
+            instructions,
+            constants,
+            frame_size: inner_frame_size,
+            ..
+        } = unsafe { thread.functions.get_unchecked(index as usize) };
+
+        let constants: Constants = constants.into();
+        thread.stack.push(frame);
+
+        unsafe {
+            let ip = instructions.as_ptr();
+            let index = (*ip).discriminant();
+            become (*HANDLERS.get_unchecked(index))(
+                ip,
+                inner_registers,
+                constants,
+                thread,
+                *inner_frame_size,
+            )
+        }
+    } else {
+        Err(runtime_error("value is not a callable"))
     }
 }
 
@@ -1284,8 +1256,8 @@ unsafe extern "rust-preserve-none" fn opcode_return(
     ip: *const Instruction,
     mut registers: Registers,
     _constants: Constants,
-    state: &mut VmState,
-    frame_size: usize,
+    thread: &mut Thread,
+    _frame_size: usize,
 ) -> Result<(), Error> {
     let src = unsafe {
         let Instruction::Return { src } = *ip else {
@@ -1302,7 +1274,7 @@ unsafe extern "rust-preserve-none" fn opcode_return(
         mut registers,
         constants,
         size,
-    }) = state.stack.pop()
+    }) = thread.stack.pop()
     {
         unsafe { registers.set_value(dest, value) };
 
@@ -1311,7 +1283,7 @@ unsafe extern "rust-preserve-none" fn opcode_return(
                 return_address,
                 registers,
                 constants,
-                state,
+                thread,
                 size,
             )
         }
@@ -1327,7 +1299,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let offset = unsafe {
@@ -1337,7 +1309,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump(
         offset
     };
 
-    dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
 }
 
 #[inline(never)]
@@ -1345,7 +1317,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_false(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src, offset) = unsafe {
@@ -1357,16 +1329,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_false(
 
     let src = unsafe { registers.get_value(src) };
 
-    let Value::Bool(b) = src else {
-        return Err(runtime_error(
-            "cannot use this as a condition, value must be a boolean",
-        ));
-    };
+    type_check(
+        src.is_bool(),
+        "cannot use this as a condition, value must be a boolean",
+    )?;
 
-    if !b {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    if !src.as_bool() {
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1375,7 +1346,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_true(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src, offset) = unsafe {
@@ -1387,16 +1358,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_true(
 
     let src = unsafe { registers.get_value(src) };
 
-    let Value::Bool(b) = src else {
-        return Err(runtime_error(
-            "cannot use this as a condition, value must be a boolean",
-        ));
-    };
+    type_check(
+        src.is_bool(),
+        "cannot use this as a condition, value must be a boolean",
+    )?;
 
-    if b {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    if src.as_bool() {
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1405,7 +1375,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rr(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1418,16 +1388,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    if a < b {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    if src1.as_number() < src2.as_number() {
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1436,7 +1405,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rk(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1449,16 +1418,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    if a < b {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    if src1.as_number() < src2.as_number() {
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1467,7 +1435,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rr(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1480,16 +1448,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    if a <= b {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    if src1.as_number() <= src2.as_number() {
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1498,7 +1465,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rk(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1511,16 +1478,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    if a <= b {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    if src1.as_number() <= src2.as_number() {
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1529,7 +1495,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rr(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1542,16 +1508,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    if a > b {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    if src1.as_number() > src2.as_number() {
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1560,7 +1525,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rk(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1573,16 +1538,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    if a > b {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    if src1.as_number() > src2.as_number() {
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1591,7 +1555,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rr(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1604,16 +1568,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    if a >= b {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    if src1.as_number() >= src2.as_number() {
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1622,7 +1585,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rk(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1635,16 +1598,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    let (Value::Number(a), Value::Number(b)) = (src1, src2) else {
-        return Err(runtime_error(
-            "cannot compare, both operands must be numbers",
-        ));
-    };
+    type_check(
+        src1.is_number() && src2.is_number(),
+        "cannot compare, both operands must be numbers",
+    )?;
 
-    if a >= b {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+    if src1.as_number() >= src2.as_number() {
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1653,7 +1615,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rr(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1667,9 +1629,9 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rr(
     let src2 = unsafe { registers.get_value(src2) };
 
     if src1 == src2 {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1678,7 +1640,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rk(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1692,9 +1654,9 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rk(
     let src2 = unsafe { constants.get_value(src2) };
 
     if src1 == src2 {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1703,7 +1665,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rr(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1717,9 +1679,9 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rr(
     let src2 = unsafe { registers.get_value(src2) };
 
     if src1 != src2 {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
 }
 
@@ -1728,7 +1690,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rk(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
-    state: &mut VmState,
+    thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
     let (src1, src2, offset) = unsafe {
@@ -1742,8 +1704,22 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rk(
     let src2 = unsafe { constants.get_value(src2) };
 
     if src1 != src2 {
-        dispatch_offset!(ip, registers, constants, state, frame_size, offset)
+        dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
-        dispatch_next!(ip, registers, constants, state, frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
     }
+}
+
+#[inline(never)]
+unsafe extern "rust-preserve-none" fn opcode_unreachable(
+    ip: *const Instruction,
+    _registers: Registers,
+    _constants: Constants,
+    _thread: &mut Thread,
+    _frame_size: usize,
+) -> Result<(), Error> {
+    unreachable!(
+        "Instruction should never be reached on dispatch: {}",
+        unsafe { *ip }
+    )
 }
