@@ -1,14 +1,9 @@
-5;
-
-return {
-    let z = foo;
-
-    fun foo() {
-  
+fun fib(n, x, y, z) {
+    if n < 2 { 
+        n 
+    } else {
+        fib(n - 1, 0, 0, 0) + fib(n - 2,0, 0, 0) 
     }
+}
 
-    z
-};
-
-
-
+fib(40, 0, 0, 0);

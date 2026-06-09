@@ -25,6 +25,12 @@ impl From<usize> for Reg {
     }
 }
 
+impl From<usize> for Const {
+    fn from(value: usize) -> Self {
+        Const(value as u16)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum Instruction {
