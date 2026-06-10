@@ -1,10 +1,10 @@
-use std::hint::unreachable_unchecked;
-
 use super::heap::Heap;
 use crate::diagnostics::error::Error;
 
 use crate::runtime::function::Function;
-use crate::runtime::instruction::{Const, Instruction, Reg};
+use crate::runtime::heap::Closure;
+use crate::runtime::instruction::Instruction;
+use crate::runtime::operands::{Const, Reg};
 use crate::runtime::value::Value;
 use crate::syntax::token::Span;
 use crate::util::string_interner::Symbol;
@@ -130,8 +130,7 @@ pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
 
     let src = 0.into();
     let value = unsafe { registers.get_value(src) };
-
-    //println!("{:?}", value);
+    println!("{:?}", value);
     Ok(())
 }
 
@@ -202,12 +201,7 @@ unsafe extern "rust-preserve-none" fn opcode_add_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::Add { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_add(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -230,12 +224,7 @@ unsafe extern "rust-preserve-none" fn opcode_add_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::AddK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_add_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -258,12 +247,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::Subtract { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_subtract(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -286,12 +270,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::SubtractRK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_subtract_rk(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -314,12 +293,7 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_kr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::SubtractKR { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_subtract_kr(ip) };
 
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -342,12 +316,7 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::Multiply { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_multiply(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -370,12 +339,7 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::MultiplyK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_multiply_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -398,12 +362,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::Divide { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_divide(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -426,12 +385,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::DivideRK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_divide_rk(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -454,12 +408,7 @@ unsafe extern "rust-preserve-none" fn opcode_divide_kr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::DivideKR { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_divide_kr(ip) };
 
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -482,12 +431,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::Modulo { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_modulo(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -510,12 +454,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::ModuloRK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_modulo_rk(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -538,12 +477,7 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_kr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::ModuloKR { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_modulo_kr(ip) };
 
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -566,12 +500,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::Equal { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_equal(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -589,12 +518,7 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::EqualK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_equal_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -612,12 +536,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::NotEqual { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_not_equal(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -635,12 +554,7 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::NotEqualK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_not_equal_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -658,12 +572,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::Less { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_less(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -686,12 +595,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::LessK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_less_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -714,12 +618,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::LessEqual { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_less_equal(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -742,12 +641,7 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::LessEqualK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_less_equal_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -770,12 +664,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::Greater { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_greater(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -798,12 +687,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::GreaterK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_greater_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -826,12 +710,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::GreaterEqual { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_greater_equal(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -854,12 +733,7 @@ unsafe extern "rust-preserve-none" fn opcode_greater_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe {
-        let Instruction::GreaterEqualK { dest, src1, src2 } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src1, src2)
-    };
+    let (dest, src1, src2) = unsafe { Instruction::decode_greater_equal_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -882,12 +756,7 @@ unsafe extern "rust-preserve-none" fn opcode_not(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe {
-        let Instruction::Not { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src)
-    };
+    let (dest, src) = unsafe { Instruction::decode_not(ip) };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -906,12 +775,7 @@ unsafe extern "rust-preserve-none" fn opcode_negate(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe {
-        let Instruction::Negate { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src)
-    };
+    let (dest, src) = unsafe { Instruction::decode_negate(ip) };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -930,12 +794,7 @@ unsafe extern "rust-preserve-none" fn opcode_move(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe {
-        let Instruction::Move { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src)
-    };
+    let (dest, src) = unsafe { Instruction::decode_move(ip) };
 
     let src = unsafe { registers.get_value(src) };
     unsafe { registers.set_value(dest, src) };
@@ -951,12 +810,7 @@ unsafe extern "rust-preserve-none" fn opcode_load_const(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe {
-        let Instruction::LoadConst { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src)
-    };
+    let (dest, src) = unsafe { Instruction::decode_load_const(ip) };
 
     let constant = unsafe { constants.get_value(src) };
     unsafe { registers.set_value(dest, constant) };
@@ -972,12 +826,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_map(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let dest = unsafe {
-        let Instruction::CreateMap { dest } = *ip else {
-            unreachable_unchecked()
-        };
-        dest
-    };
+    let dest = unsafe { Instruction::decode_create_map(ip) };
 
     let index = thread.heap.alloc_map();
     unsafe { registers.set_value(dest, Value::map(index)) };
@@ -993,12 +842,7 @@ unsafe extern "rust-preserve-none" fn opcode_set_field(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (object, key, value) = unsafe {
-        let Instruction::SetField { object, key, value } = *ip else {
-            unreachable_unchecked()
-        };
-        (object, key, value)
-    };
+    let (object, key, value) = unsafe { Instruction::decode_set_field(ip) };
 
     let object = unsafe { registers.get_value(object) };
 
@@ -1020,12 +864,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_field(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, object, key) = unsafe {
-        let Instruction::GetField { dest, object, key } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, object, key)
-    };
+    let (dest, object, key) = unsafe { Instruction::decode_get_field(ip) };
 
     let object = unsafe { registers.get_value(object) };
 
@@ -1052,38 +891,30 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, captures) = unsafe {
-        let Instruction::CreateClosure { dest, captures } = *ip else {
-            unreachable_unchecked()
-        };
+    let (dest, src, captures) = unsafe { Instruction::decode_create_closure(ip) };
 
-        (dest, captures)
-    };
+    let function = unsafe { thread.functions.get_unchecked(src as usize) };
 
-    let function = unsafe { registers.get_value(dest) };
-
-    let mut closure = Box::new_uninit_slice(captures as usize + 1);
-
-    closure[0].write(function);
-
-    for index in 1..(captures + 1) as usize {
-        unsafe {
-            let Instruction::CaptureValue { src } = *ip.add(index) else {
-                unreachable_unchecked()
-            };
-
-            let src = registers.get_value(src);
-
-            closure[index].write(src);
-        }
-    }
-
-    let closure = unsafe { closure.assume_init() };
-    let index = thread.heap.alloc_closure(closure);
+    let index = thread.heap.alloc_closure(Closure::default());
 
     unsafe { registers.set_value(dest, Value::closure(index)) };
 
-    let ip = unsafe { ip.add(captures as usize) };
+    let mut captures = Box::new_uninit_slice(captures as usize);
+    let len = captures.len();
+
+    for index in 0..len {
+        let src = unsafe { Instruction::decode_capture_value(ip.add(index + 1)) };
+        let src = unsafe { registers.get_value(src) };
+        captures[index].write(src);
+    }
+
+    let captures = unsafe { captures.assume_init() };
+
+    let closure = Closure::new(function, captures);
+
+    *thread.heap.get_closure_mut(index) = closure;
+
+    let ip = unsafe { ip.add(len) };
 
     dispatch_next!(ip, registers, constants, thread, frame_size)
 }
@@ -1096,13 +927,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_ref(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe {
-        let Instruction::CreateRef { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-
-        (dest, src)
-    };
+    let (dest, src) = unsafe { Instruction::decode_create_ref(ip) };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -1121,19 +946,13 @@ unsafe extern "rust-preserve-none" fn opcode_deref_set(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe {
-        let Instruction::DerefSet { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src)
-    };
+    let (dest, src) = unsafe { Instruction::decode_deref_set(ip) };
 
     let dest = unsafe { registers.get_value(dest) };
 
     type_check(dest.is_cell(), "cannot dereference a non cell")?;
 
     let index = dest.as_cell();
-
     let src = unsafe { registers.get_value(src) };
 
     *thread.heap.get_cell_mut(index) = src;
@@ -1149,19 +968,13 @@ unsafe extern "rust-preserve-none" fn opcode_deref(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe {
-        let Instruction::Deref { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src)
-    };
+    let (dest, src) = unsafe { Instruction::decode_deref(ip) };
 
     let src = unsafe { registers.get_value(src) };
 
     type_check(src.is_cell(), "cannot dereference a non cell")?;
 
     let index = src.as_cell();
-
     let value = *thread.heap.get_cell(index);
 
     unsafe { registers.set_value(dest, value) };
@@ -1177,14 +990,11 @@ unsafe extern "rust-preserve-none" fn opcode_call(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe {
-        let Instruction::Call { dest, src } = *ip else {
-            unreachable_unchecked()
-        };
-        (dest, src)
-    };
+    let (dest, src) = unsafe { Instruction::decode_call(ip) };
 
     let src = unsafe { registers.get_value(src) };
+
+    type_check(src.is_closure(), "value is not a callable")?;
 
     let return_address = unsafe { ip.add(1) };
     let frame = Frame {
@@ -1195,75 +1005,35 @@ unsafe extern "rust-preserve-none" fn opcode_call(
         size: frame_size,
     };
 
-    if src.is_closure() {
-        let index = src.as_closure();
-        let mut inner_registers = unsafe { Registers(registers.0.add(frame_size)) };
-        unsafe { inner_registers.set_value(0.into(), src) };
+    let index = src.as_closure();
+    let registers = unsafe { registers.0.add(frame_size) };
 
-        let closure = thread.heap.get_closure(index);
-        let fn_value = closure[0];
-        println!("{:?}", closure);
-        type_check(
-            fn_value.is_function(),
-            "closure does not contain a function",
-        )?;
+    let Closure { function, captures } = thread.heap.get_closure(index);
 
-        let fn_index = fn_value.as_function();
+    let Function {
+        instructions,
+        constants,
+        frame_size,
+        arity,
+    } = unsafe { &**function };
 
-        let Function {
-            ref instructions,
-            ref constants,
-            frame_size: inner_frame_size,
-            arity,
-        } = thread.functions[fn_index as usize];
+    unsafe {
+        let registers = registers.add(*arity);
 
-        let closure = thread.heap.get_closure(index);
-        for (i, value) in closure.iter().copied().enumerate().skip(1) {
-            unsafe { inner_registers.set_value((arity + i).into(), value) };
+        for index in 0..captures.len() {
+            let value = captures.get_unchecked(index);
+            *registers.add(index) = *value;
         }
+    };
 
-        let constants: Constants = constants.into();
-        thread.stack.push(frame);
+    let constants: Constants = constants.into();
+    let registers = Registers(registers);
+    thread.stack.push(frame);
 
-        unsafe {
-            let ip = instructions.as_ptr();
-            let index = (*ip).discriminant();
-            become (*HANDLERS.get_unchecked(index))(
-                ip,
-                inner_registers,
-                constants,
-                thread,
-                inner_frame_size,
-            )
-        }
-    } else if src.is_function() {
-        let index = src.as_function();
-        let mut inner_registers = unsafe { Registers(registers.0.add(frame_size)) };
-        unsafe { inner_registers.set_value(0.into(), src) };
-
-        let Function {
-            instructions,
-            constants,
-            frame_size: inner_frame_size,
-            ..
-        } = unsafe { thread.functions.get_unchecked(index as usize) };
-
-        let constants: Constants = constants.into();
-        thread.stack.push(frame);
-
-        unsafe {
-            let ip = instructions.as_ptr();
-            let index = (*ip).discriminant();
-            become (*HANDLERS.get_unchecked(index))(
-                ip,
-                inner_registers,
-                constants,
-                thread,
-                *inner_frame_size,
-            )
-        }
-    } else {
-        Err(runtime_error("value is not a callable"))
+    unsafe {
+        let ip = instructions.as_ptr();
+        let index = (*ip).discriminant();
+        become (*HANDLERS.get_unchecked(index))(ip, registers, constants, thread, *frame_size)
     }
 }
 
@@ -1275,12 +1045,7 @@ unsafe extern "rust-preserve-none" fn opcode_return(
     thread: &mut Thread,
     _frame_size: usize,
 ) -> Result<(), Error> {
-    let src = unsafe {
-        let Instruction::Return { src } = *ip else {
-            unreachable_unchecked()
-        };
-        src
-    };
+    let src = unsafe { Instruction::decode_return(ip) };
 
     let value = unsafe { registers.get_value(src) };
 
@@ -1304,7 +1069,7 @@ unsafe extern "rust-preserve-none" fn opcode_return(
             )
         }
     } else {
-        unsafe { registers.set_value(0.into(), value) };
+        unsafe { registers.set_value(Reg(0), value) };
 
         Ok(())
     }
@@ -1318,12 +1083,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let offset = unsafe {
-        let Instruction::Jump { offset } = *ip else {
-            unreachable_unchecked()
-        };
-        offset
-    };
+    let offset = unsafe { Instruction::decode_jump(ip) };
 
     dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
 }
@@ -1336,12 +1096,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_false(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src, offset) = unsafe {
-        let Instruction::JumpIfFalse { src, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src, offset)
-    };
+    let (src, offset) = unsafe { Instruction::decode_jump_if_false(ip) };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -1365,12 +1120,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_true(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src, offset) = unsafe {
-        let Instruction::JumpIfTrue { src, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src, offset)
-    };
+    let (src, offset) = unsafe { Instruction::decode_jump_if_true(ip) };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -1394,12 +1144,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfLess { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_less(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1424,12 +1169,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfLessK { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_less_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -1454,12 +1194,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfLessEqual { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_less_equal(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1484,12 +1219,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfLessEqualK { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_less_equal_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -1514,12 +1244,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfGreater { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_greater(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1544,12 +1269,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfGreaterK { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_greater_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -1574,12 +1294,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfGreaterEqual { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_greater_equal(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1604,12 +1319,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_greater_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfGreaterEqualK { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_greater_equal_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -1634,12 +1344,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfEqual { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_equal(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1659,12 +1364,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfEqualK { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_equal_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -1684,12 +1384,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfNotEqual { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_not_equal(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1709,12 +1404,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe {
-        let Instruction::JumpIfNotEqualK { src1, src2, offset } = *ip else {
-            unreachable_unchecked()
-        };
-        (src1, src2, offset)
-    };
+    let (src1, src2, offset) = unsafe { Instruction::decode_jump_if_not_equal_k(ip) };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };

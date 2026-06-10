@@ -1,4 +1,9 @@
-use std::{collections::HashMap, mem::ManuallyDrop};
+use std::{
+    collections::HashMap,
+    mem::{ManuallyDrop, MaybeUninit},
+};
+
+use crate::runtime::function::Function;
 
 use super::value::Value;
 
@@ -44,13 +49,33 @@ impl<T> Arena<T> {
     fn get_mut(&mut self, index: u32) -> &mut T {
         unsafe { &mut self.objects.get_unchecked_mut(index as usize).data }
     }
+
+    fn next_free_index(&self) -> u32 {
+        if let Some(index) = self.free_list.last().copied() {
+            index
+        } else {
+            self.objects.len() as u32
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Closure {
+    pub function: *const Function,
+    pub captures: Box<[Value]>,
+}
+
+impl Closure {
+    pub fn new(function: *const Function, captures: Box<[Value]>) -> Self {
+        Self { function, captures }
+    }
 }
 
 #[derive(Default)]
 pub struct Heap {
     maps: Arena<HashMap<Value, Value>>,
     arrays: Arena<Vec<Value>>,
-    closures: Arena<Box<[Value]>>,
+    closures: Arena<Closure>,
     cells: Arena<Value>,
 }
 
@@ -63,8 +88,8 @@ impl Heap {
         self.arrays.alloc(Vec::new())
     }
 
-    pub fn alloc_closure(&mut self, slice: Box<[Value]>) -> u32 {
-        self.closures.alloc(slice)
+    pub fn alloc_closure(&mut self, closure: Closure) -> u32 {
+        self.closures.alloc(closure)
     }
 
     pub fn alloc_cell(&mut self, value: Value) -> u32 {
@@ -87,11 +112,11 @@ impl Heap {
         self.arrays.get_mut(index)
     }
 
-    pub fn get_closure(&self, index: u32) -> &[Value] {
+    pub fn get_closure(&self, index: u32) -> &Closure {
         self.closures.get(index)
     }
 
-    pub fn get_closure_mut(&mut self, index: u32) -> &mut [Value] {
+    pub fn get_closure_mut(&mut self, index: u32) -> &mut Closure {
         self.closures.get_mut(index)
     }
 

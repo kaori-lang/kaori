@@ -1,4 +1,4 @@
-use crate::{runtime::instruction::Reg, util::string_interner::Symbol};
+use crate::util::string_interner::Symbol;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -27,7 +27,7 @@ impl Environment {
             parent: None,
             locals: Vec::new(),
             scopes: vec![0],
-            registers: (1..=255).map(Reverse).collect(),
+            registers: (0..=255).map(Reverse).collect(),
             frame_size: 0,
         }
     }
@@ -36,7 +36,7 @@ impl Environment {
             parent: Some(Box::new(parent)),
             locals: Vec::new(),
             scopes: vec![0],
-            registers: (1..=255).map(Reverse).collect(),
+            registers: (0..=255).map(Reverse).collect(),
             frame_size: 0,
         }
     }

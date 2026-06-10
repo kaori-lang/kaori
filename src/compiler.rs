@@ -57,10 +57,10 @@ impl Compiler {
 
         self.files.insert(symbol, Compilation::Function(index));
 
-        /*   for function in self.functions.iter() {
-                   println!("{}", function);
-               }
-        */
+        for function in self.functions.iter() {
+            println!("{}", function);
+        }
+
         Ok(index)
     }
 

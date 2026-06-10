@@ -25,8 +25,6 @@ impl FreeVariables {
                 ref parameters,
                 block,
             } => {
-                bound.insert(name);
-
                 for parameter in parameters.iter().copied() {
                     bound.insert(parameter);
                 }

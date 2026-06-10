@@ -1,35 +1,6 @@
 use std::fmt;
 
-use crate::codegen::environment::Register;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Const(pub u16);
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Reg(pub u8);
-
-impl From<Register> for Reg {
-    fn from(register: Register) -> Self {
-        let register = match register {
-            Register::Local(register) => register,
-            Register::Temp(register) => register,
-        };
-
-        Reg(register as u8)
-    }
-}
-
-impl From<usize> for Reg {
-    fn from(value: usize) -> Self {
-        Reg(value as u8)
-    }
-}
-
-impl From<usize> for Const {
-    fn from(value: usize) -> Self {
-        Const(value as u16)
-    }
-}
+use crate::runtime::operands::{Const, Reg};
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
@@ -66,7 +37,7 @@ pub enum Instruction {
     CreateMap { dest: Reg },
     SetField { object: Reg, key: Reg, value: Reg },
     GetField { dest: Reg, object: Reg, key: Reg },
-    CreateClosure { dest: Reg, captures: u8 },
+    CreateClosure { dest: Reg, src: u16, captures: u8 },
     CreateRef { dest: Reg, src: Reg },
     DerefSet { dest: Reg, src: Reg },
     Deref { dest: Reg, src: Reg },
@@ -96,18 +67,6 @@ impl Instruction {
     #[inline(always)]
     pub fn discriminant(&self) -> usize {
         unsafe { *(self as *const Instruction as *const u8) as usize }
-    }
-}
-
-impl fmt::Display for Reg {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "R{}", self.0)
-    }
-}
-
-impl fmt::Display for Const {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "C{}", self.0)
     }
 }
 
@@ -150,8 +109,16 @@ impl fmt::Display for Instruction {
             Self::GetField { dest, object, key } => {
                 write!(f, "GET_FIELD {} {} {}", dest, object, key)
             }
-            Self::CreateClosure { dest, captures } => {
-                write!(f, "CREATE_CLOSURE {} CAPTURES: {}", dest, captures)
+            Self::CreateClosure {
+                dest,
+                captures,
+                src,
+            } => {
+                write!(
+                    f,
+                    "CREATE_CLOSURE {} FUNCTION: {} CAPTURES: {}",
+                    dest, src, captures
+                )
             }
             Self::CaptureValue { src } => write!(f, "CAPTURE_VALUE {}", src),
             Self::CreateRef { dest, src } => write!(f, "CREATE_REF {} {}", dest, src),
