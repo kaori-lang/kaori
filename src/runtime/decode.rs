@@ -392,7 +392,7 @@ impl Instruction {
     }
 
     #[inline(always)]
-    pub unsafe fn decode_create_closure(ip: *const Self) -> (Reg, u16, u8) {
+    pub unsafe fn decode_create_closure(ip: *const Self) -> (Reg, u32, u8) {
         let Instruction::CreateClosure {
             dest,
             src,

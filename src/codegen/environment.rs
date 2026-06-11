@@ -7,11 +7,6 @@ pub enum Register {
     Local(usize),
 }
 
-pub struct Local {
-    symbol: Symbol,
-    register: Register,
-}
-
 #[derive(Default)]
 pub struct Environment {
     pub parent: Option<Box<Environment>>,

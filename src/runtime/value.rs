@@ -10,12 +10,10 @@ pub enum Value {
     Nil,
     Bool(bool),
     String(Symbol),
-    Closure(u32),
-    Function(u32),
-    Native(u32),
-    Map(u32),
-    Vec(u32),
-    Cell(u32),
+    Closure(usize),
+    Map(usize),
+    Vec(usize),
+    Cell(usize),
 }
 
 #[allow(clippy::derivable_impls)]
@@ -38,22 +36,17 @@ impl Value {
     pub fn string(index: Symbol) -> Self {
         Value::String(index)
     }
-    pub fn closure(index: u32) -> Self {
+    pub fn closure(index: usize) -> Self {
         Value::Closure(index)
     }
-    pub fn function(index: u32) -> Self {
-        Value::Function(index)
-    }
-    pub fn native(index: u32) -> Self {
-        Value::Native(index)
-    }
-    pub fn map(index: u32) -> Self {
+
+    pub fn map(index: usize) -> Self {
         Value::Map(index)
     }
-    pub fn vec(index: u32) -> Self {
+    pub fn vec(index: usize) -> Self {
         Value::Vec(index)
     }
-    pub fn cell(index: u32) -> Self {
+    pub fn cell(index: usize) -> Self {
         Value::Cell(index)
     }
 
@@ -72,12 +65,7 @@ impl Value {
     pub fn is_closure(&self) -> bool {
         matches!(self, Value::Closure(_))
     }
-    pub fn is_function(&self) -> bool {
-        matches!(self, Value::Function(_))
-    }
-    pub fn is_native(&self) -> bool {
-        matches!(self, Value::Native(_))
-    }
+
     pub fn is_map(&self) -> bool {
         matches!(self, Value::Map(_))
     }
@@ -114,7 +102,7 @@ impl Value {
         }
     }
 
-    pub fn as_closure(&self) -> u32 {
+    pub fn as_closure(&self) -> usize {
         match self {
             Value::Closure(v) => *v,
             // SAFETY: caller guarantees this is Value::Closure
@@ -122,23 +110,7 @@ impl Value {
         }
     }
 
-    pub fn as_function(&self) -> u32 {
-        match self {
-            Value::Function(v) => *v,
-            // SAFETY: caller guarantees this is Value::Function
-            _ => unsafe { std::hint::unreachable_unchecked() },
-        }
-    }
-
-    pub fn as_native(&self) -> u32 {
-        match self {
-            Value::Native(v) => *v,
-            // SAFETY: caller guarantees this is Value::Native
-            _ => unsafe { std::hint::unreachable_unchecked() },
-        }
-    }
-
-    pub fn as_map(&self) -> u32 {
+    pub fn as_map(&self) -> usize {
         match self {
             Value::Map(v) => *v,
             // SAFETY: caller guarantees this is Value::Map
@@ -146,7 +118,7 @@ impl Value {
         }
     }
 
-    pub fn as_vec(&self) -> u32 {
+    pub fn as_vec(&self) -> usize {
         match self {
             Value::Vec(v) => *v,
             // SAFETY: caller guarantees this is Value::Vec
@@ -154,7 +126,7 @@ impl Value {
         }
     }
 
-    pub fn as_cell(&self) -> u32 {
+    pub fn as_cell(&self) -> usize {
         match self {
             Value::Cell(v) => *v,
             // SAFETY: caller guarantees this is Value::Cell

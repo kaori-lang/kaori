@@ -1,35 +1,31 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use crate::{
-    syntax::ast::{Ast, Node, NodeId, Spanned},
+    codegen::lower_ast::Lower,
+    syntax::ast::{Node, NodeId, Spanned},
     util::string_interner::Symbol,
 };
 
-#[derive(Default)]
-pub struct FreeVariables {
-    cache: HashMap<NodeId, HashSet<Spanned<Symbol>>>,
-}
-
-impl FreeVariables {
-    pub fn analyze_function(&mut self, ast: &Ast, id: NodeId) -> HashSet<Spanned<Symbol>> {
-        if let Some(free) = self.cache.get(&id) {
-            return free.clone();
+impl<'a> Lower<'a> {
+    pub fn analyze_function(&mut self, id: NodeId) -> HashSet<Spanned<Symbol>> {
+        if let Some(free_variables) = self.free_variables.get(&id) {
+            return free_variables.clone();
         }
 
         let mut bound = HashSet::new();
         let mut free = HashSet::new();
 
-        match *ast.node(id) {
+        match *self.ast.node(id) {
             Node::Function {
-                name,
                 ref parameters,
                 block,
+                ..
             } => {
                 for parameter in parameters.iter().copied() {
                     bound.insert(parameter);
                 }
 
-                self.collect_free_variables(ast, block, &mut bound, &mut free);
+                self.collect_free_variables(block, &mut bound, &mut free);
             }
             Node::Lambda {
                 ref parameters,
@@ -39,43 +35,42 @@ impl FreeVariables {
                     bound.insert(parameter);
                 }
 
-                self.collect_free_variables(ast, block, &mut bound, &mut free);
+                self.collect_free_variables(block, &mut bound, &mut free);
             }
             _ => unreachable!("analyze_function should only be called on function nodes"),
         }
 
-        self.cache.insert(id, free.clone());
+        self.free_variables.insert(id, free.clone());
 
         free
     }
 
     fn collect_free_variables(
         &mut self,
-        ast: &Ast,
         id: NodeId,
         bound: &mut HashSet<Spanned<Symbol>>,
         free: &mut HashSet<Spanned<Symbol>>,
     ) {
-        match *ast.node(id) {
+        match *self.ast.node(id) {
             Node::Identifier(name) => {
                 if !bound.contains(&name) {
                     free.insert(name);
                 }
             }
             Node::Variable { left, right } => {
-                self.collect_free_variables(ast, right, bound, free);
+                self.collect_free_variables(right, bound, free);
                 bound.insert(left);
             }
             Node::Constant { left, right } => {
-                self.collect_free_variables(ast, right, bound, free);
+                self.collect_free_variables(right, bound, free);
                 bound.insert(left);
             }
             Node::Ref { left, right } => {
-                self.collect_free_variables(ast, right, bound, free);
+                self.collect_free_variables(right, bound, free);
                 bound.insert(left);
             }
             Node::Lambda { .. } | Node::Function { .. } => {
-                let inner_free = self.analyze_function(ast, id);
+                let inner_free = self.analyze_function(id);
                 free.extend(inner_free.difference(bound).cloned());
             }
             Node::Block {
@@ -87,60 +82,58 @@ impl FreeVariables {
                 let statements: Vec<NodeId> = statements.iter().copied().chain(tail).collect();
 
                 for id in statements.iter().copied() {
-                    if let Node::Function { name, .. } = *ast.node(id) {
+                    if let Node::Function { name, .. } = *self.ast.node(id) {
                         inner_bound.insert(name);
                     }
                 }
 
                 for id in statements.iter().copied() {
-                    self.collect_free_variables(ast, id, &mut inner_bound, free);
+                    self.collect_free_variables(id, &mut inner_bound, free);
                 }
             }
             Node::Assign { left, right }
             | Node::Binary { left, right, .. }
             | Node::LogicalAnd { left, right }
             | Node::LogicalOr { left, right } => {
-                self.collect_free_variables(ast, left, bound, free);
-                self.collect_free_variables(ast, right, bound, free);
+                self.collect_free_variables(left, bound, free);
+                self.collect_free_variables(right, bound, free);
             }
-            Node::Unary { operand, .. } => self.collect_free_variables(ast, operand, bound, free),
-            Node::LogicalNot(expr) => self.collect_free_variables(ast, expr, bound, free),
-            Node::Return(expr) => self.collect_free_variables(ast, expr, bound, free),
+            Node::Unary { operand, .. } => self.collect_free_variables(operand, bound, free),
+            Node::LogicalNot(expr) => self.collect_free_variables(expr, bound, free),
+            Node::Return(expr) => self.collect_free_variables(expr, bound, free),
             Node::If {
                 condition,
                 then_branch,
                 else_branch,
             } => {
-                self.collect_free_variables(ast, condition, bound, free);
-                self.collect_free_variables(ast, then_branch, bound, free);
+                self.collect_free_variables(condition, bound, free);
+                self.collect_free_variables(then_branch, bound, free);
 
                 if let Some(id) = else_branch {
-                    self.collect_free_variables(ast, id, bound, free);
+                    self.collect_free_variables(id, bound, free);
                 }
             }
             Node::WhileLoop { condition, block } => {
-                self.collect_free_variables(ast, condition, bound, free);
-                self.collect_free_variables(ast, block, bound, free);
+                self.collect_free_variables(condition, bound, free);
+                self.collect_free_variables(block, bound, free);
             }
             Node::FunctionCall {
                 callee,
                 ref arguments,
             } => {
-                self.collect_free_variables(ast, callee, bound, free);
+                self.collect_free_variables(callee, bound, free);
 
                 for argument in arguments.iter().copied() {
-                    self.collect_free_variables(ast, argument, bound, free);
+                    self.collect_free_variables(argument, bound, free);
                 }
             }
-            Node::MemberAccess { object, .. } => {
-                self.collect_free_variables(ast, object, bound, free)
-            }
+            Node::MemberAccess { object, .. } => self.collect_free_variables(object, bound, free),
             Node::Map { ref entries } => {
                 for (key, value) in entries.iter().copied() {
-                    self.collect_free_variables(ast, key, bound, free);
+                    self.collect_free_variables(key, bound, free);
 
                     if let Some(id) = value {
-                        self.collect_free_variables(ast, id, bound, free);
+                        self.collect_free_variables(id, bound, free);
                     }
                 }
             }

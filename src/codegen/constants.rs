@@ -29,8 +29,4 @@ impl<'a> Lower<'a> {
     pub fn store_boolean_const(&mut self, value: bool) -> usize {
         self.get_or_insert(Value::bool(value))
     }
-
-    pub fn store_function_const(&mut self, value: usize) -> usize {
-        self.get_or_insert(Value::function(value as u32))
-    }
 }

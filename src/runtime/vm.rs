@@ -130,7 +130,7 @@ pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
 
     let src = 0.into();
     let value = unsafe { registers.get_value(src) };
-    println!("{:?}", value);
+    //println!("{:?}", value);
     Ok(())
 }
 
@@ -829,6 +829,7 @@ unsafe extern "rust-preserve-none" fn opcode_create_map(
     let dest = unsafe { Instruction::decode_create_map(ip) };
 
     let index = thread.heap.alloc_map();
+
     unsafe { registers.set_value(dest, Value::map(index)) };
 
     dispatch_next!(ip, registers, constants, thread, frame_size)

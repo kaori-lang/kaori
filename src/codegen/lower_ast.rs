@@ -1,23 +1,22 @@
 use core::panic;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
-    codegen::{
-        environment::{Environment, Register},
-        free_variables::FreeVariables,
-    },
+    codegen::environment::{Environment, Register},
     compiler::Compiler,
     diagnostics::error::Error,
     runtime::{function::Function, instruction::Instruction, value::Value},
     syntax::{
-        ast::{Ast, Node, NodeId},
+        ast::{Ast, Node, NodeId, Spanned},
         ops::{BinaryOp, UnaryOp},
     },
+    util::string_interner::Symbol,
 };
 
 pub fn lower_ast(ast: Ast, compiler: &mut Compiler) -> Result<usize, Error> {
     let id = ast.last();
 
-    let mut free_variables = FreeVariables::default();
+    let mut free_variables = HashMap::new();
     let mut env = Environment::new();
 
     let mut constants = Vec::new();
@@ -32,9 +31,9 @@ pub fn lower_ast(ast: Ast, compiler: &mut Compiler) -> Result<usize, Error> {
         &mut instructions,
     );
 
-    let src = lowerer.lower_expression(id, None)?;
+    lowerer.prevent_return(id)?;
 
-    //lowerer.prevent_return(id)?;
+    let src = lowerer.lower_expression(id, None)?;
 
     lowerer.emit_instruction(Instruction::Return { src: src.into() });
 
@@ -57,7 +56,7 @@ pub fn lower_ast(ast: Ast, compiler: &mut Compiler) -> Result<usize, Error> {
 pub struct Lower<'a> {
     pub ast: &'a Ast,
     pub compiler: &'a mut Compiler,
-    pub free_variables: &'a mut FreeVariables,
+    pub free_variables: &'a mut HashMap<NodeId, HashSet<Spanned<Symbol>>>,
     pub env: &'a mut Environment,
     pub constants: &'a mut Vec<Value>,
     pub instructions: &'a mut Vec<Instruction>,
@@ -68,7 +67,7 @@ impl<'a> Lower<'a> {
     fn new(
         ast: &'a Ast,
         compiler: &'a mut Compiler,
-        free_variables: &'a mut FreeVariables,
+        free_variables: &'a mut HashMap<NodeId, HashSet<Spanned<Symbol>>>,
         env: &'a mut Environment,
         constants: &'a mut Vec<Value>,
         instructions: &'a mut Vec<Instruction>,
@@ -287,15 +286,15 @@ impl<'a> Lower<'a> {
                     &mut instructions,
                 );
 
+                let free_variables = inner_self.analyze_function(id);
+
                 for parameter in parameters.iter().copied() {
                     let dest = inner_self.env.allocate_local();
 
                     inner_self.env.declare_local(parameter.value, dest);
                 }
 
-                let captured_values = inner_self.free_variables.analyze_function(self.ast, id);
-
-                for capture in captured_values.iter().copied() {
+                for capture in free_variables.iter().copied() {
                     if inner_self.env.lookup_in_parent(capture.value).is_some() {
                         let dest = inner_self.env.allocate_local();
 
@@ -337,11 +336,11 @@ impl<'a> Lower<'a> {
 
                 self.emit_instruction(Instruction::CreateClosure {
                     dest: dest.into(),
-                    src: index as u16,
-                    captures: captured_values.len() as u8,
+                    src: index as u32,
+                    captures: free_variables.len() as u8,
                 });
 
-                for capture in captured_values.iter().copied() {
+                for capture in free_variables.iter().copied() {
                     let (_, register) = self
                         .env
                         .lookup(capture.value)
@@ -358,12 +357,12 @@ impl<'a> Lower<'a> {
             } => {
                 let index = self.compiler.compile_file(path)?;
 
-                let src = self.store_function_const(index);
                 let object = self.env.allocate_temp();
 
-                self.emit_instruction(Instruction::LoadConst {
+                self.emit_instruction(Instruction::CreateClosure {
                     dest: object.into(),
-                    src: src.into(),
+                    src: index as u32,
+                    captures: 0,
                 });
 
                 self.emit_instruction(Instruction::Call {
@@ -964,15 +963,16 @@ impl<'a> Lower<'a> {
                     &mut constants,
                     &mut instructions,
                 );
+
+                let free_variables = inner_self.analyze_function(id);
+
                 for parameter in parameters.iter().copied() {
                     let dest = inner_self.env.allocate_local();
 
                     inner_self.env.declare_local(parameter.value, dest);
                 }
 
-                let captured_values = inner_self.free_variables.analyze_function(self.ast, id);
-
-                for capture in captured_values.iter().copied() {
+                for capture in free_variables.iter().copied() {
                     if inner_self.env.lookup_in_parent(capture.value).is_some() {
                         let dest = inner_self.env.allocate_local();
 
@@ -1011,11 +1011,11 @@ impl<'a> Lower<'a> {
 
                 self.emit_instruction(Instruction::CreateClosure {
                     dest: dest.into(),
-                    src: index as u16,
-                    captures: captured_values.len() as u8,
+                    src: index as u32,
+                    captures: free_variables.len() as u8,
                 });
 
-                for capture in captured_values.iter().copied() {
+                for capture in free_variables.iter().copied() {
                     let (_, register) = self
                         .env
                         .lookup(capture.value)

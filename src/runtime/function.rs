@@ -1,9 +1,4 @@
-use ordered_float::OrderedFloat;
-
-use crate::{
-    runtime::{operands::Const, value::Value},
-    util::string_interner::Symbol,
-};
+use crate::runtime::value::Value;
 
 use super::instruction::Instruction;
 use std::fmt::{self, Display, Formatter};

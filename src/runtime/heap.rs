@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    mem::{ManuallyDrop, MaybeUninit},
-};
+use std::{collections::HashMap, mem::ManuallyDrop};
 
 use crate::runtime::function::Function;
 
@@ -24,17 +21,17 @@ impl<T> Object<T> {
 #[derive(Default)]
 struct Arena<T> {
     objects: Vec<Object<T>>,
-    free_list: Vec<u32>,
+    free_list: Vec<usize>,
 }
 
 impl<T> Arena<T> {
-    fn alloc(&mut self, data: T) -> u32 {
+    fn alloc(&mut self, data: T) -> usize {
         if let Some(index) = self.free_list.pop() {
             self.objects[index as usize] = Object::new(data);
 
             index
         } else {
-            let index = self.objects.len() as u32;
+            let index = self.objects.len() as usize;
 
             self.objects.push(Object::new(data));
 
@@ -42,20 +39,12 @@ impl<T> Arena<T> {
         }
     }
 
-    fn get(&self, index: u32) -> &T {
+    fn get(&self, index: usize) -> &T {
         unsafe { &self.objects.get_unchecked(index as usize).data }
     }
 
-    fn get_mut(&mut self, index: u32) -> &mut T {
+    fn get_mut(&mut self, index: usize) -> &mut T {
         unsafe { &mut self.objects.get_unchecked_mut(index as usize).data }
-    }
-
-    fn next_free_index(&self) -> u32 {
-        if let Some(index) = self.free_list.last().copied() {
-            index
-        } else {
-            self.objects.len() as u32
-        }
     }
 }
 
@@ -80,51 +69,51 @@ pub struct Heap {
 }
 
 impl Heap {
-    pub fn alloc_map(&mut self) -> u32 {
+    pub fn alloc_map(&mut self) -> usize {
         self.maps.alloc(HashMap::new())
     }
 
-    pub fn alloc_array(&mut self) -> u32 {
+    pub fn alloc_array(&mut self) -> usize {
         self.arrays.alloc(Vec::new())
     }
 
-    pub fn alloc_closure(&mut self, closure: Closure) -> u32 {
+    pub fn alloc_closure(&mut self, closure: Closure) -> usize {
         self.closures.alloc(closure)
     }
 
-    pub fn alloc_cell(&mut self, value: Value) -> u32 {
+    pub fn alloc_cell(&mut self, value: Value) -> usize {
         self.cells.alloc(value)
     }
 
-    pub fn get_map(&self, index: u32) -> &HashMap<Value, Value> {
+    pub fn get_map(&self, index: usize) -> &HashMap<Value, Value> {
         self.maps.get(index)
     }
 
-    pub fn get_map_mut(&mut self, index: u32) -> &mut HashMap<Value, Value> {
+    pub fn get_map_mut(&mut self, index: usize) -> &mut HashMap<Value, Value> {
         self.maps.get_mut(index)
     }
 
-    pub fn get_array(&self, index: u32) -> &[Value] {
+    pub fn get_array(&self, index: usize) -> &[Value] {
         self.arrays.get(index)
     }
 
-    pub fn get_array_mut(&mut self, index: u32) -> &mut Vec<Value> {
+    pub fn get_array_mut(&mut self, index: usize) -> &mut Vec<Value> {
         self.arrays.get_mut(index)
     }
 
-    pub fn get_closure(&self, index: u32) -> &Closure {
+    pub fn get_closure(&self, index: usize) -> &Closure {
         self.closures.get(index)
     }
 
-    pub fn get_closure_mut(&mut self, index: u32) -> &mut Closure {
+    pub fn get_closure_mut(&mut self, index: usize) -> &mut Closure {
         self.closures.get_mut(index)
     }
 
-    pub fn get_cell(&self, index: u32) -> &Value {
+    pub fn get_cell(&self, index: usize) -> &Value {
         self.cells.get(index)
     }
 
-    pub fn get_cell_mut(&mut self, index: u32) -> &mut Value {
+    pub fn get_cell_mut(&mut self, index: usize) -> &mut Value {
         self.cells.get_mut(index)
     }
 }

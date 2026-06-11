@@ -37,7 +37,7 @@ pub enum Instruction {
     CreateMap { dest: Reg },
     SetField { object: Reg, key: Reg, value: Reg },
     GetField { dest: Reg, object: Reg, key: Reg },
-    CreateClosure { dest: Reg, src: u16, captures: u8 },
+    CreateClosure { dest: Reg, captures: u8, src: u32 },
     CreateRef { dest: Reg, src: Reg },
     DerefSet { dest: Reg, src: Reg },
     Deref { dest: Reg, src: Reg },
