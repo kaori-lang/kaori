@@ -8,3 +8,4 @@ fun fib(n) {
 
 
 
+return fib(40);

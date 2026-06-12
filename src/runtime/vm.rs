@@ -111,20 +111,11 @@ fn runtime_error(message: &'static str) -> Error {
 
 #[inline(always)]
 fn type_check(condition: bool, message: &'static str) -> Result<(), Error> {
-    if condition {
-        Ok(())
-    } else {
-        Err(runtime_error(message))
-    }
+    if condition { Ok(()) } else { Err(runtime_error(message)) }
 }
 
 pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
-    let Function {
-        ref instructions,
-        ref constants,
-        frame_size,
-        ..
-    } = functions[index];
+    let Function { ref instructions, ref constants, frame_size, .. } = functions[index];
 
     let ip = instructions.as_ptr();
     let index = unsafe { (*ip).discriminant() };
@@ -138,7 +129,7 @@ pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
     let src = 0.into();
     let value = unsafe { registers.get_value(src) };
 
-    //println!("{:?}", value);
+    println!("{:?}", value);
     Ok(())
 }
 
@@ -214,10 +205,7 @@ unsafe extern "rust-preserve-none" fn opcode_add_rr(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
 
-    type_check(
-        src1.is_number() && src2.is_number(),
-        "cannot add, both operands must be numbers",
-    )?;
+    type_check(src1.is_number() && src2.is_number(), "cannot add, both operands must be numbers")?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() + src2.as_number())) };
 
@@ -237,10 +225,7 @@ unsafe extern "rust-preserve-none" fn opcode_add_rk(
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
 
-    type_check(
-        src1.is_number() && src2.is_number(),
-        "cannot add, both operands must be numbers",
-    )?;
+    type_check(src1.is_number() && src2.is_number(), "cannot add, both operands must be numbers")?;
 
     unsafe { registers.set_value(dest, Value::number(src1.as_number() + src2.as_number())) };
 
@@ -834,12 +819,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_field(
     type_check(object.is_map(), "cannot get field, value is not a map")?;
 
     let key = unsafe { registers.get_value(key) };
-    let value = thread
-        .heap
-        .get_map(object.as_map())
-        .get(&key)
-        .copied()
-        .unwrap_or_else(Value::nil);
+    let value = thread.heap.get_map(object.as_map()).get(&key).copied().unwrap_or_else(Value::nil);
 
     unsafe { registers.set_value(dest, value) };
 
@@ -959,25 +939,14 @@ unsafe extern "rust-preserve-none" fn opcode_call(
 
     type_check(src.is_closure(), "value is not a callable")?;
 
-    let frame = Frame {
-        dest,
-        return_address: ip,
-        registers,
-        constants,
-        size: frame_size,
-    };
+    let frame = Frame { dest, return_address: ip, registers, constants, size: frame_size };
 
     let index = src.as_closure();
     let registers = unsafe { registers.0.add(frame_size) };
 
     let Closure { function, captures } = thread.heap.get_closure(index);
 
-    let Function {
-        instructions,
-        constants,
-        frame_size,
-        arity,
-    } = unsafe { &**function };
+    let Function { instructions, constants, frame_size, arity } = unsafe { &**function };
 
     unsafe {
         let registers = registers.add(*arity);
@@ -1009,13 +978,7 @@ unsafe extern "rust-preserve-none" fn opcode_return(
 
     let value = unsafe { registers.get_value(src) };
 
-    if let Some(Frame {
-        dest,
-        return_address,
-        mut registers,
-        constants,
-        size,
-    }) = thread.stack.pop()
+    if let Some(Frame { dest, return_address, mut registers, constants, size }) = thread.stack.pop()
     {
         unsafe { registers.set_value(dest, value) };
 
@@ -1052,10 +1015,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_false(
 
     let src = unsafe { registers.get_value(src) };
 
-    type_check(
-        src.is_bool(),
-        "cannot use this as a condition, value must be a boolean",
-    )?;
+    type_check(src.is_bool(), "cannot use this as a condition, value must be a boolean")?;
 
     if !src.as_bool() {
         dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
@@ -1076,10 +1036,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_true(
 
     let src = unsafe { registers.get_value(src) };
 
-    type_check(
-        src.is_bool(),
-        "cannot use this as a condition, value must be a boolean",
-    )?;
+    type_check(src.is_bool(), "cannot use this as a condition, value must be a boolean")?;
 
     if src.as_bool() {
         dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
@@ -1326,8 +1283,5 @@ unsafe extern "rust-preserve-none" fn opcode_unreachable(
     _thread: &mut Thread,
     _frame_size: usize,
 ) -> Result<(), Error> {
-    unreachable!(
-        "Instruction should never be reached on dispatch: {}",
-        unsafe { *ip }
-    )
+    unreachable!("Instruction should never be reached on dispatch: {}", unsafe { *ip })
 }

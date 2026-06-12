@@ -16,28 +16,23 @@ impl<'a> Lower<'a> {
         let mut free = HashSet::new();
 
         match *self.ast.node(id) {
-            Node::Function {
-                ref parameters,
-                block,
-                ..
-            } => {
+            Node::Function { ref parameters, block, .. } => {
                 for parameter in parameters.iter().copied() {
                     bound.insert(parameter);
                 }
 
                 self.collect_free_variables(block, &mut bound, &mut free);
             }
-            Node::Lambda {
-                ref parameters,
-                block,
-            } => {
+            Node::Lambda { ref parameters, block } => {
                 for parameter in parameters.iter().copied() {
                     bound.insert(parameter);
                 }
 
                 self.collect_free_variables(block, &mut bound, &mut free);
             }
-            _ => unreachable!("analyze_function should only be called on function nodes"),
+            _ => unreachable!(
+                "analyze_function should only be called on function nodes"
+            ),
         }
 
         self.free_variables.insert(id, free.clone());
@@ -73,13 +68,11 @@ impl<'a> Lower<'a> {
                 let inner_free = self.analyze_function(id);
                 free.extend(inner_free.difference(bound).cloned());
             }
-            Node::Block {
-                ref statements,
-                tail,
-            } => {
+            Node::Block { ref statements, tail } => {
                 let mut inner_bound = bound.clone();
 
-                let statements: Vec<NodeId> = statements.iter().copied().chain(tail).collect();
+                let statements: Vec<NodeId> =
+                    statements.iter().copied().chain(tail).collect();
 
                 for id in statements.iter().copied() {
                     if let Node::Function { name, .. } = *self.ast.node(id) {
@@ -98,14 +91,16 @@ impl<'a> Lower<'a> {
                 self.collect_free_variables(left, bound, free);
                 self.collect_free_variables(right, bound, free);
             }
-            Node::Unary { operand, .. } => self.collect_free_variables(operand, bound, free),
-            Node::LogicalNot(expr) => self.collect_free_variables(expr, bound, free),
-            Node::Return(expr) => self.collect_free_variables(expr, bound, free),
-            Node::If {
-                condition,
-                then_branch,
-                else_branch,
-            } => {
+            Node::Unary { operand, .. } => {
+                self.collect_free_variables(operand, bound, free)
+            }
+            Node::LogicalNot(expr) => {
+                self.collect_free_variables(expr, bound, free)
+            }
+            Node::Return(expr) => {
+                self.collect_free_variables(expr, bound, free)
+            }
+            Node::If { condition, then_branch, else_branch } => {
                 self.collect_free_variables(condition, bound, free);
                 self.collect_free_variables(then_branch, bound, free);
 
@@ -117,17 +112,16 @@ impl<'a> Lower<'a> {
                 self.collect_free_variables(condition, bound, free);
                 self.collect_free_variables(block, bound, free);
             }
-            Node::FunctionCall {
-                callee,
-                ref arguments,
-            } => {
+            Node::FunctionCall { callee, ref arguments } => {
                 self.collect_free_variables(callee, bound, free);
 
                 for argument in arguments.iter().copied() {
                     self.collect_free_variables(argument, bound, free);
                 }
             }
-            Node::MemberAccess { object, .. } => self.collect_free_variables(object, bound, free),
+            Node::MemberAccess { object, .. } => {
+                self.collect_free_variables(object, bound, free)
+            }
             Node::Map { ref entries } => {
                 for (key, value) in entries.iter().copied() {
                     self.collect_free_variables(key, bound, free);
@@ -137,10 +131,7 @@ impl<'a> Lower<'a> {
                     }
                 }
             }
-            Node::Import {
-                ref path,
-                ref bindings,
-            } => {
+            Node::Import { ref path, ref bindings } => {
                 if bindings.is_empty() {
                     bound.insert(path.last().copied().unwrap());
                 } else {

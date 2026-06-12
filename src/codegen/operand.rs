@@ -1,4 +1,4 @@
-use crate::{codegen::environment::Register, diagnostics::error::Error, runtime::operands::Reg, util::string_interner::Symbol};
+use crate::{codegen::environment::Register, util::string_interner::Symbol};
 
 pub enum Operand {
     Register(Register),

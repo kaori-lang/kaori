@@ -1,1 +1,15 @@
-1 + 2;
+let total = 0.0;
+let i = 1;
+
+while i < 1000 {
+    let j = 1;
+    let row = 0.0;
+    while j < 1000 {
+        row = row + (i * j) / ((i + j) * (i + j) * (i * i + j * j));
+        j += 1;
+    }
+    total = total + row;
+    i += 1;
+}
+
+return total;

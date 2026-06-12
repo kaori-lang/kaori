@@ -20,14 +20,12 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(source: &'a str, tokens: Vec<(Token, Span)>, compiler: &'a Compiler) -> Self {
-        Self {
-            source,
-            tokens,
-            pos: 0,
-            ast: Ast::default(),
-            compiler,
-        }
+    pub fn new(
+        source: &'a str,
+        tokens: Vec<(Token, Span)>,
+        compiler: &'a Compiler,
+    ) -> Self {
+        Self { source, tokens, pos: 0, ast: Ast::default(), compiler }
     }
 
     fn at_end(&mut self) -> bool {
@@ -107,12 +105,6 @@ impl<'a> Parser<'a> {
         Ok(items)
     }
 
-    fn parse_expression(&mut self) -> Result<NodeId, Error> {
-        let assign = self.parse_assign()?;
-
-        Ok(assign)
-    }
-
     fn parse_statement(&mut self) -> Result<(NodeId, bool), Error> {
         let token = self.peek_token();
 
@@ -129,7 +121,7 @@ impl<'a> Parser<'a> {
             Token::Let => self.parse_variable(),
             Token::Const => self.parse_constant(),
             Token::Ref => self.parse_ref(),
-            _ => self.parse_expression(),
+            _ => self.parse_assign(),
         }?;
 
         let consumes_semicolon = self.peek_token() != Token::RightBrace
@@ -144,6 +136,25 @@ impl<'a> Parser<'a> {
         }
 
         Ok((statement, consumes_semicolon))
+    }
+
+    fn parse_assign(&mut self) -> Result<NodeId, Error> {
+        let left = self.parse_expression()?;
+
+        let token = self.peek_token();
+
+        match token {
+            Token::Assign => {
+                self.advance_token();
+
+                let right = self.parse_expression()?;
+
+                let span = self.ast.span(left).merge(self.ast.span(right));
+
+                Ok(self.ast.assign(left, right, span))
+            }
+            _ => Ok(left),
+        }
     }
 
     fn parse_import(&mut self) -> Result<NodeId, Error> {
@@ -171,7 +182,8 @@ impl<'a> Parser<'a> {
 
         self.consume(Token::Colon)?;
 
-        let bindings = self.parse_comma_separator(Self::parse_name, Token::Semicolon)?;
+        let bindings =
+            self.parse_comma_separator(Self::parse_name, Token::Semicolon)?;
 
         let span = import_span.merge(self.peek_span());
 
@@ -217,10 +229,8 @@ impl<'a> Parser<'a> {
             None
         };
 
-        let statements = statements
-            .into_iter()
-            .map(|(statement, _)| statement)
-            .collect();
+        let statements =
+            statements.into_iter().map(|(statement, _)| statement).collect();
 
         let rbrace_span = self.consume(Token::RightBrace)?;
 
@@ -248,17 +258,18 @@ impl<'a> Parser<'a> {
 
             let span = if_span.merge(self.ast.span(else_branch));
 
-            return Ok(self
-                .ast
-                .if_(condition, then_branch, Some(else_branch), span));
+            return Ok(self.ast.if_(
+                condition,
+                then_branch,
+                Some(else_branch),
+                span,
+            ));
         }
 
         let else_branch = self.parse_block()?;
         let span = if_span.merge(self.ast.span(else_branch));
 
-        Ok(self
-            .ast
-            .if_(condition, then_branch, Some(else_branch), span))
+        Ok(self.ast.if_(condition, then_branch, Some(else_branch), span))
     }
 
     fn parse_while_loop(&mut self) -> Result<NodeId, Error> {
@@ -283,7 +294,8 @@ impl<'a> Parser<'a> {
 
         self.consume(Token::LeftParen)?;
 
-        let parameters = self.parse_comma_separator(Self::parse_name, Token::RightParen)?;
+        let parameters =
+            self.parse_comma_separator(Self::parse_name, Token::RightParen)?;
 
         self.consume(Token::RightParen)?;
 
@@ -292,23 +304,6 @@ impl<'a> Parser<'a> {
         let span = function_span.merge(self.ast.span(block));
 
         Ok(self.ast.function(name, parameters, block, span))
-    }
-
-    fn parse_lambda(&mut self) -> Result<NodeId, Error> {
-        let pipe_span = self.consume(Token::Pipe)?;
-
-        let parameters = self.parse_comma_separator(Self::parse_name, Token::Pipe)?;
-
-        self.consume(Token::Pipe)?;
-
-        let block = match self.peek_token() {
-            Token::LeftBrace => self.parse_block()?,
-            _ => self.parse_expression()?,
-        };
-
-        let span = pipe_span.merge(self.ast.span(block));
-
-        Ok(self.ast.lambda(parameters, block, span))
     }
 
     fn parse_variable(&mut self) -> Result<NodeId, Error> {
@@ -353,38 +348,10 @@ impl<'a> Parser<'a> {
         Ok(self.ast.ref_(left, right, span))
     }
 
-    fn parse_assign(&mut self) -> Result<NodeId, Error> {
-        let left = self.parse_or()?;
+    fn parse_expression(&mut self) -> Result<NodeId, Error> {
+        let expression = self.parse_or()?;
 
-        let token = self.peek_token();
-
-        let operator = match token {
-            Token::AddAssign => BinaryOp::Add,
-            Token::SubtractAssign => BinaryOp::Subtract,
-            Token::MultiplyAssign => BinaryOp::Multiply,
-            Token::DivideAssign => BinaryOp::Divide,
-            Token::ModuloAssign => BinaryOp::Modulo,
-            Token::Assign => {
-                self.advance_token();
-
-                let right = self.parse_or()?;
-
-                let span = self.ast.span(left).merge(self.ast.span(right));
-
-                return Ok(self.ast.assign(left, right, span));
-            }
-            _ => return Ok(left),
-        };
-
-        self.advance_token();
-
-        let right = self.parse_or()?;
-
-        let span = self.ast.span(left).merge(self.ast.span(right));
-
-        let right = self.ast.binary(operator, left, right, span);
-
-        Ok(self.ast.assign(left, right, span))
+        Ok(expression)
     }
 
     fn parse_or(&mut self) -> Result<NodeId, Error> {
@@ -669,7 +636,8 @@ impl<'a> Parser<'a> {
         let hash_span = self.consume(Token::Hash)?;
         self.consume(Token::LeftBrace)?;
 
-        let entries = self.parse_comma_separator(Self::parse_map_entry, Token::RightBrace)?;
+        let entries = self
+            .parse_comma_separator(Self::parse_map_entry, Token::RightBrace)?;
 
         let rbrace_span = self.consume(Token::RightBrace)?;
 
@@ -678,7 +646,28 @@ impl<'a> Parser<'a> {
         Ok(self.ast.map(entries, span))
     }
 
-    fn parse_postfix_unary(&mut self, operand: NodeId) -> Result<NodeId, Error> {
+    fn parse_lambda(&mut self) -> Result<NodeId, Error> {
+        let pipe_span = self.consume(Token::Pipe)?;
+
+        let parameters =
+            self.parse_comma_separator(Self::parse_name, Token::Pipe)?;
+
+        self.consume(Token::Pipe)?;
+
+        let block = match self.peek_token() {
+            Token::LeftBrace => self.parse_block()?,
+            _ => self.parse_expression()?,
+        };
+
+        let span = pipe_span.merge(self.ast.span(block));
+
+        Ok(self.ast.lambda(parameters, block, span))
+    }
+
+    fn parse_postfix_unary(
+        &mut self,
+        operand: NodeId,
+    ) -> Result<NodeId, Error> {
         let token = self.peek_token();
 
         Ok(match token {
@@ -691,7 +680,8 @@ impl<'a> Parser<'a> {
     fn parse_function_call(&mut self, callee: NodeId) -> Result<NodeId, Error> {
         let lparen_span = self.consume(Token::LeftParen)?;
 
-        let arguments = self.parse_comma_separator(Self::parse_expression, Token::RightParen)?;
+        let arguments = self
+            .parse_comma_separator(Self::parse_expression, Token::RightParen)?;
 
         let rparen_span = self.consume(Token::RightParen)?;
 
@@ -706,8 +696,9 @@ impl<'a> Parser<'a> {
         let dot_span = self.consume(Token::Dot)?;
 
         let property = self.parse_name()?;
+        let property = self.ast.string(property.value, property.span);
 
-        let span = dot_span.merge(property.span);
+        let span = dot_span.merge(self.ast.span(property));
 
         let member_access = self.ast.member_access(object, property, span);
 
