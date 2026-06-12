@@ -9,19 +9,13 @@ pub struct Span {
 
 impl Span {
     pub fn merge(self, other: Span) -> Self {
-        Self {
-            start: self.start,
-            end: other.end,
-        }
+        Self { start: self.start, end: other.end }
     }
 }
 
 impl From<Range<usize>> for Span {
     fn from(value: Range<usize>) -> Self {
-        Self {
-            start: value.start as u32,
-            end: value.end as u32,
-        }
+        Self { start: value.start as u32, end: value.end as u32 }
     }
 }
 
@@ -36,16 +30,6 @@ impl From<Span> for Range<usize> {
 pub enum Token {
     #[token("=")]
     Assign,
-    #[token("+=")]
-    AddAssign,
-    #[token("-=")]
-    SubtractAssign,
-    #[token("*=")]
-    MultiplyAssign,
-    #[token("/=")]
-    DivideAssign,
-    #[token("%=")]
-    ModuloAssign,
     #[token("+")]
     Plus,
     #[token("-")]
@@ -139,11 +123,6 @@ impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             Self::Assign => "`=`",
-            Self::AddAssign => "`+=`",
-            Self::SubtractAssign => "`-=`",
-            Self::MultiplyAssign => "`*=`",
-            Self::DivideAssign => "`/=`",
-            Self::ModuloAssign => "`%=`",
             Self::Plus => "`+`",
             Self::Minus => "`-`",
             Self::Multiply => "`*`",

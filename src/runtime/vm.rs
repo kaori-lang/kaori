@@ -1,7 +1,6 @@
 use super::heap::Heap;
 use crate::diagnostics::error::Error;
 
-use crate::runtime::decode::{self};
 use crate::runtime::function::Function;
 use crate::runtime::heap::Closure;
 use crate::runtime::instruction::Instruction;
@@ -9,6 +8,7 @@ use crate::runtime::operands::{Const, Reg};
 use crate::runtime::value::Value;
 use crate::syntax::token::Span;
 use crate::util::string_interner::Symbol;
+use std::hint::unreachable_unchecked;
 
 type Handler = unsafe extern "rust-preserve-none" fn(
     ip: *const Instruction,
@@ -18,7 +18,7 @@ type Handler = unsafe extern "rust-preserve-none" fn(
     frame_size: usize,
 ) -> Result<(), Error>;
 
-static HANDLERS: [Handler; 50] = [
+static HANDLERS: [Handler; 51] = [
     opcode_add_rr,
     opcode_add_rk,
     opcode_subtract_rr,
@@ -47,8 +47,9 @@ static HANDLERS: [Handler; 50] = [
     opcode_move,
     opcode_load_const,
     opcode_create_map,
-    opcode_set_field,
-    opcode_get_field,
+    opcode_map_set,
+    opcode_map_get,
+    opcode_map_get_k,
     opcode_create_closure,
     opcode_create_ref,
     opcode_deref_set,
@@ -129,7 +130,6 @@ pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
     let src = 0.into();
     let value = unsafe { registers.get_value(src) };
 
-    println!("{:?}", value);
     Ok(())
 }
 
@@ -200,7 +200,13 @@ unsafe extern "rust-preserve-none" fn opcode_add_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::add(ip) };
+    let Instruction::Add { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_add_rr called on non-Add instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -220,7 +226,13 @@ unsafe extern "rust-preserve-none" fn opcode_add_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::add_k(ip) };
+    let Instruction::AddK { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_add_rk called on non-AddK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -240,7 +252,13 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::subtract(ip) };
+    let Instruction::Subtract { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_subtract_rr called on non-Subtract instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -263,7 +281,13 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::subtract_rk(ip) };
+    let Instruction::SubtractRK { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_subtract_rk called on non-SubtractRK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -286,7 +310,13 @@ unsafe extern "rust-preserve-none" fn opcode_subtract_kr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::subtract_kr(ip) };
+    let Instruction::SubtractKR { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_subtract_kr called on non-SubtractKR instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -309,7 +339,13 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::multiply(ip) };
+    let Instruction::Multiply { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_multiply_rr called on non-Multiply instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -332,7 +368,13 @@ unsafe extern "rust-preserve-none" fn opcode_multiply_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::multiply_k(ip) };
+    let Instruction::MultiplyK { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_multiply_rk called on non-MultiplyK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -355,7 +397,13 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::divide(ip) };
+    let Instruction::Divide { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_divide_rr called on non-Divide instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -378,7 +426,13 @@ unsafe extern "rust-preserve-none" fn opcode_divide_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::divide_rk(ip) };
+    let Instruction::DivideRK { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_divide_rk called on non-DivideRK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -401,7 +455,13 @@ unsafe extern "rust-preserve-none" fn opcode_divide_kr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::divide_kr(ip) };
+    let Instruction::DivideKR { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_divide_kr called on non-DivideKR instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -424,7 +484,13 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::modulo(ip) };
+    let Instruction::Modulo { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_modulo_rr called on non-Modulo instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -447,7 +513,13 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::modulo_rk(ip) };
+    let Instruction::ModuloRK { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_modulo_rk called on non-ModuloRK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -470,7 +542,13 @@ unsafe extern "rust-preserve-none" fn opcode_modulo_kr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::modulo_kr(ip) };
+    let Instruction::ModuloKR { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_modulo_kr called on non-ModuloKR instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -493,7 +571,13 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::equal(ip) };
+    let Instruction::Equal { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_equal_rr called on non-Equal instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -511,7 +595,13 @@ unsafe extern "rust-preserve-none" fn opcode_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::equal_k(ip) };
+    let Instruction::EqualK { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_equal_rk called on non-EqualK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -529,7 +619,13 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::not_equal(ip) };
+    let Instruction::NotEqual { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_not_equal_rr called on non-NotEqual instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -547,7 +643,13 @@ unsafe extern "rust-preserve-none" fn opcode_not_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::not_equal_k(ip) };
+    let Instruction::NotEqualK { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_not_equal_rk called on non-NotEqualK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -565,7 +667,13 @@ unsafe extern "rust-preserve-none" fn opcode_less_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::less(ip) };
+    let Instruction::Less { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_less_rr called on non-Less instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -588,7 +696,13 @@ unsafe extern "rust-preserve-none" fn opcode_less_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::less_rk(ip) };
+    let Instruction::LessRK { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_less_rk called on non-LessRK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -611,7 +725,13 @@ unsafe extern "rust-preserve-none" fn opcode_less_kr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::less_kr(ip) };
+    let Instruction::LessKR { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_less_kr called on non-LessKR instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -634,7 +754,13 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::less_equal(ip) };
+    let Instruction::LessEqual { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_less_equal_rr called on non-LessEqual instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -657,7 +783,13 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::less_equal_rk(ip) };
+    let Instruction::LessEqualRK { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_less_equal_rk called on non-LessEqualRK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -680,7 +812,13 @@ unsafe extern "rust-preserve-none" fn opcode_less_equal_kr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src1, src2) = unsafe { decode::less_equal_kr(ip) };
+    let Instruction::LessEqualKR { dest, src1, src2 } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_less_equal_kr called on non-LessEqualKR instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -703,7 +841,13 @@ unsafe extern "rust-preserve-none" fn opcode_not(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe { decode::not(ip) };
+    let Instruction::Not { dest, src } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_not called on non-Not instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -722,7 +866,13 @@ unsafe extern "rust-preserve-none" fn opcode_negate(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe { decode::negate(ip) };
+    let Instruction::Negate { dest, src } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_negate called on non-Negate instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -741,7 +891,13 @@ unsafe extern "rust-preserve-none" fn opcode_move(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe { decode::move_(ip) };
+    let Instruction::Move { dest, src } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_move called on non-Move instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src = unsafe { registers.get_value(src) };
     unsafe { registers.set_value(dest, src) };
@@ -757,7 +913,13 @@ unsafe extern "rust-preserve-none" fn opcode_load_const(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe { decode::load_const(ip) };
+    let Instruction::LoadConst { dest, src } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_load_const called on non-LoadConst instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let constant = unsafe { constants.get_value(src) };
     unsafe { registers.set_value(dest, constant) };
@@ -773,24 +935,35 @@ unsafe extern "rust-preserve-none" fn opcode_create_map(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let dest = unsafe { decode::create_map(ip) };
+    let Instruction::CreateMap { dest } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_create_map called on non-CreateMap instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let index = thread.heap.alloc_map();
-
     unsafe { registers.set_value(dest, Value::map(index)) };
 
     dispatch_next!(ip, registers, constants, thread, frame_size)
 }
 
 #[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_set_field(
+unsafe extern "rust-preserve-none" fn opcode_map_set(
     ip: *const Instruction,
     registers: Registers,
     constants: Constants,
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (object, key, value) = unsafe { decode::set_field(ip) };
+    let Instruction::MapSet { object, key, value } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_map_set called on non-MapSet instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let object = unsafe { registers.get_value(object) };
 
@@ -805,20 +978,54 @@ unsafe extern "rust-preserve-none" fn opcode_set_field(
 }
 
 #[inline(never)]
-unsafe extern "rust-preserve-none" fn opcode_get_field(
+unsafe extern "rust-preserve-none" fn opcode_map_get(
     ip: *const Instruction,
     mut registers: Registers,
     constants: Constants,
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, object, key) = unsafe { decode::get_field(ip) };
+    let Instruction::MapGet { dest, object, key } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_map_get called on non-MapGet instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let object = unsafe { registers.get_value(object) };
 
     type_check(object.is_map(), "cannot get field, value is not a map")?;
 
     let key = unsafe { registers.get_value(key) };
+    let value = thread.heap.get_map(object.as_map()).get(&key).copied().unwrap_or_else(Value::nil);
+
+    unsafe { registers.set_value(dest, value) };
+
+    dispatch_next!(ip, registers, constants, thread, frame_size)
+}
+
+#[inline(never)]
+unsafe extern "rust-preserve-none" fn opcode_map_get_k(
+    ip: *const Instruction,
+    mut registers: Registers,
+    constants: Constants,
+    thread: &mut Thread,
+    frame_size: usize,
+) -> Result<(), Error> {
+    let Instruction::MapGetK { dest, object, key } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_map_get_k called on non-MapGetK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
+
+    let object = unsafe { registers.get_value(object) };
+
+    type_check(object.is_map(), "cannot get field, value is not a map")?;
+
+    let key = unsafe { constants.get_value(key) };
     let value = thread.heap.get_map(object.as_map()).get(&key).copied().unwrap_or_else(Value::nil);
 
     unsafe { registers.set_value(dest, value) };
@@ -834,7 +1041,13 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src, captures) = unsafe { decode::create_closure(ip) };
+    let Instruction::CreateClosure { dest, src, captures } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_create_closure called on non-CreateClosure instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let function = unsafe { thread.functions.get_unchecked(src as usize) };
 
@@ -842,18 +1055,24 @@ unsafe extern "rust-preserve-none" fn opcode_create_closure(
 
     unsafe { registers.set_value(dest, Value::closure(index)) };
 
-    let mut captures = Box::new_uninit_slice(captures as usize);
-    let len = captures.len();
+    let mut capture_values = Box::new_uninit_slice(captures as usize);
+    let len = capture_values.len();
 
-    for index in 0..len {
-        let src = unsafe { decode::capture_value(ip.add(index + 1)) };
+    for i in 0..len {
+        let Instruction::CaptureValue { src } = (unsafe { *ip.add(i + 1) }) else {
+            if cfg!(debug_assertions) {
+                unreachable!("expected CaptureValue instruction after CreateClosure");
+            } else {
+                unsafe { unreachable_unchecked() }
+            }
+        };
         let src = unsafe { registers.get_value(src) };
-        captures[index].write(src);
+        capture_values[i].write(src);
     }
 
-    let captures = unsafe { captures.assume_init() };
+    let capture_values = unsafe { capture_values.assume_init() };
 
-    let closure = Closure::new(function, captures);
+    let closure = Closure::new(function, capture_values);
 
     *thread.heap.get_closure_mut(index) = closure;
 
@@ -870,7 +1089,13 @@ unsafe extern "rust-preserve-none" fn opcode_create_ref(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe { decode::create_ref(ip) };
+    let Instruction::CreateRef { dest, src } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_create_ref called on non-CreateRef instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -889,7 +1114,13 @@ unsafe extern "rust-preserve-none" fn opcode_deref_set(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe { decode::deref_set(ip) };
+    let Instruction::DerefSet { dest, src } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_deref_set called on non-DerefSet instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let dest = unsafe { registers.get_value(dest) };
 
@@ -911,7 +1142,13 @@ unsafe extern "rust-preserve-none" fn opcode_deref(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe { decode::deref(ip) };
+    let Instruction::Deref { dest, src } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_deref called on non-Deref instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -933,7 +1170,13 @@ unsafe extern "rust-preserve-none" fn opcode_call(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (dest, src) = unsafe { decode::call(ip) };
+    let Instruction::Call { dest, src } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_call called on non-Call instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -974,7 +1217,13 @@ unsafe extern "rust-preserve-none" fn opcode_return(
     thread: &mut Thread,
     _frame_size: usize,
 ) -> Result<(), Error> {
-    let src = unsafe { decode::return_(ip) };
+    let Instruction::Return { src } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_return called on non-Return instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let value = unsafe { registers.get_value(src) };
 
@@ -998,7 +1247,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let offset = unsafe { decode::jump(ip) };
+    let Instruction::Jump { offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_jump called on non-Jump instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
 }
@@ -1011,7 +1266,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_false(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src, offset) = unsafe { decode::jump_if_false(ip) };
+    let Instruction::JumpIfFalse { src, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_jump_if_false called on non-JumpIfFalse instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -1032,7 +1293,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_true(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src, offset) = unsafe { decode::jump_if_true(ip) };
+    let Instruction::JumpIfTrue { src, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_jump_if_true called on non-JumpIfTrue instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src = unsafe { registers.get_value(src) };
 
@@ -1053,7 +1320,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe { decode::jump_if_less(ip) };
+    let Instruction::JumpIfLess { src1, src2, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_jump_if_less_rr called on non-JumpIfLess instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1078,7 +1351,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe { decode::jump_if_less_rk(ip) };
+    let Instruction::JumpIfLessRK { src1, src2, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_jump_if_less_rk called on non-JumpIfLessRK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -1103,7 +1382,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_kr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe { decode::jump_if_less_kr(ip) };
+    let Instruction::JumpIfLessKR { src1, src2, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_jump_if_less_kr called on non-JumpIfLessKR instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1128,7 +1413,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe { decode::jump_if_less_equal(ip) };
+    let Instruction::JumpIfLessEqual { src1, src2, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_jump_if_less_equal_rr called on non-JumpIfLessEqual instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1153,7 +1444,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe { decode::jump_if_less_equal_rk(ip) };
+    let Instruction::JumpIfLessEqualRK { src1, src2, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!(
+                "opcode_jump_if_less_equal_rk called on non-JumpIfLessEqualRK instruction"
+            );
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -1178,7 +1477,15 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_less_equal_kr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe { decode::jump_if_less_equal_kr(ip) };
+    let Instruction::JumpIfLessEqualKR { src1, src2, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!(
+                "opcode_jump_if_less_equal_kr called on non-JumpIfLessEqualKR instruction"
+            );
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { constants.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1203,7 +1510,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe { decode::jump_if_equal(ip) };
+    let Instruction::JumpIfEqual { src1, src2, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_jump_if_equal_rr called on non-JumpIfEqual instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1223,7 +1536,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe { decode::jump_if_equal_k(ip) };
+    let Instruction::JumpIfEqualK { src1, src2, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_jump_if_equal_rk called on non-JumpIfEqualK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };
@@ -1243,7 +1562,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rr(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe { decode::jump_if_not_equal(ip) };
+    let Instruction::JumpIfNotEqual { src1, src2, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_jump_if_not_equal_rr called on non-JumpIfNotEqual instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { registers.get_value(src2) };
@@ -1263,7 +1588,13 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_not_equal_rk(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let (src1, src2, offset) = unsafe { decode::jump_if_not_equal_k(ip) };
+    let Instruction::JumpIfNotEqualK { src1, src2, offset } = (unsafe { *ip }) else {
+        if cfg!(debug_assertions) {
+            unreachable!("opcode_jump_if_not_equal_rk called on non-JumpIfNotEqualK instruction");
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    };
 
     let src1 = unsafe { registers.get_value(src1) };
     let src2 = unsafe { constants.get_value(src2) };

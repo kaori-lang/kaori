@@ -1,15 +1,11 @@
-let total = 0.0;
-let i = 1;
+let data = #{
+    "a": 0,
+    "i": 5000000
+};
 
-while i < 1000 {
-    let j = 1;
-    let row = 0.0;
-    while j < 1000 {
-        row = row + (i * j) / ((i + j) * (i + j) * (i * i + j * j));
-        j += 1;
-    }
-    total = total + row;
-    i += 1;
+
+while data.i > 0 {
+    data.a = data.a + data.i;
+    data.i = data.i - 1;   
 }
 
-return total;

@@ -21,11 +21,11 @@ while ^y < ^height {
             ref xtemp = ^zx * ^zx - ^zy * ^zy + ^cx;
             ^zy = 2.0 * ^zx * ^zy + ^cy;
             ^zx = ^xtemp;
-            ^iter += 1;
+            ^iter = ^iter + 1;
         }
 
-        ^x += 1;
+        ^x = ^x + 1;
     }
 
-    ^y += 1;
+    ^y = ^y + 1;
 }

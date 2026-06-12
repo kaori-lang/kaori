@@ -158,7 +158,7 @@ impl<'a> Lower<'a> {
                     let object = self.lower_materializing(object, None)?;
                     let key = self.lower_materializing(property, None)?;
 
-                    self.emit_instruction(Instruction::SetField {
+                    self.emit_instruction(Instruction::MapSet {
                         object: object.into(),
                         key: key.into(),
                         value: value.into(),
@@ -406,7 +406,7 @@ impl<'a> Lower<'a> {
                             dest
                         };
 
-                        self.emit_instruction(Instruction::GetField {
+                        self.emit_instruction(Instruction::MapGet {
                             dest: dest.into(),
                             object: object.into(),
                             key: key.into(),
@@ -931,7 +931,7 @@ impl<'a> Lower<'a> {
                 let object = self.lower_materializing(object, None)?;
                 let key = self.lower_materializing(property, None)?;
 
-                self.emit_instruction(Instruction::GetField {
+                self.emit_instruction(Instruction::MapGet {
                     dest: dest.into(),
                     object: object.into(),
                     key: key.into(),
@@ -979,7 +979,7 @@ impl<'a> Lower<'a> {
                         self.lower_materializing(key_id, None)
                     }?;
 
-                    self.emit_instruction(Instruction::SetField {
+                    self.emit_instruction(Instruction::MapSet {
                         object: dest.into(),
                         key: key.into(),
                         value: value.into(),
@@ -1344,7 +1344,7 @@ impl<'a> Lower<'a> {
                 | Instruction::Move { dest, .. }
                 | Instruction::LoadConst { dest, .. }
                 | Instruction::CreateMap { dest }
-                | Instruction::GetField { dest, .. }
+                | Instruction::MapGet { dest, .. }
                 | Instruction::CreateClosure { dest, .. }
                 | Instruction::CreateRef { dest, .. }
                 | Instruction::Deref { dest, .. }

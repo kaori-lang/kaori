@@ -8,8 +8,8 @@ use kaori::compiler::compile_and_run;
 use kaori::runtime::value::Value;
 
 use std::path::PathBuf;
-/*
-fn main() {
+
+/* fn main() {
     let matches = Command::new("kaori")
         .arg(Arg::new("file").required(true))
         .get_matches();

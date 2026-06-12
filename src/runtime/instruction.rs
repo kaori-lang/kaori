@@ -33,8 +33,9 @@ pub enum Instruction {
     Move { dest: Reg, src: Reg },
     LoadConst { dest: Reg, src: Const },
     CreateMap { dest: Reg },
-    SetField { object: Reg, key: Reg, value: Reg },
-    GetField { dest: Reg, object: Reg, key: Reg },
+    MapSet { object: Reg, key: Reg, value: Reg },
+    MapGet { dest: Reg, object: Reg, key: Reg },
+    MapGetK { dest: Reg, object: Reg, key: Const },
     CreateClosure { dest: Reg, captures: u8, src: u32 },
     CreateRef { dest: Reg, src: Reg },
     DerefSet { dest: Reg, src: Reg },
@@ -145,18 +146,17 @@ impl fmt::Display for Instruction {
                 write!(f, "LOAD_CONST {} {}", dest, src)
             }
             Self::CreateMap { dest } => write!(f, "CREATE_MAP {}", dest),
-            Self::SetField { object, key, value } => {
-                write!(f, "SET_FIELD {} {} {}", object, key, value)
+            Self::MapSet { object, key, value } => {
+                write!(f, "MAP_SET {} {} {}", object, key, value)
             }
-            Self::GetField { dest, object, key } => {
-                write!(f, "GET_FIELD {} {} {}", dest, object, key)
+            Self::MapGet { dest, object, key } => {
+                write!(f, "MAP_GET {} {} {}", dest, object, key)
+            }
+            Self::MapGetK { dest, object, key } => {
+                write!(f, "MAP_GET {} {} {}", dest, object, key)
             }
             Self::CreateClosure { dest, captures, src } => {
-                write!(
-                    f,
-                    "CREATE_CLOSURE {} FUNCTION: {} CAPTURES: {}",
-                    dest, src, captures
-                )
+                write!(f, "CREATE_CLOSURE {} FUNCTION: {} CAPTURES: {}", dest, src, captures)
             }
             Self::CaptureValue { src } => write!(f, "CAPTURE_VALUE {}", src),
             Self::CreateRef { dest, src } => {

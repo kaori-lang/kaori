@@ -503,7 +503,7 @@ impl<'a> Parser<'a> {
             Token::Not => {
                 self.advance_token();
 
-                let right = self.parse_or()?;
+                let right = self.parse_expression()?;
 
                 return Ok(self.ast.logical_not(right, span));
             }

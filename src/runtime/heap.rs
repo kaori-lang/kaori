@@ -1,4 +1,6 @@
-use std::{collections::HashMap, mem::ManuallyDrop};
+use std::mem::ManuallyDrop;
+
+use foldhash::{HashMap, HashMapExt};
 
 use crate::runtime::function::Function;
 
@@ -11,10 +13,7 @@ struct Object<T> {
 
 impl<T> Object<T> {
     fn new(data: T) -> Self {
-        Self {
-            marked: false,
-            data: ManuallyDrop::new(data),
-        }
+        Self { marked: false, data: ManuallyDrop::new(data) }
     }
 }
 
@@ -27,11 +26,11 @@ struct Arena<T> {
 impl<T> Arena<T> {
     fn alloc(&mut self, data: T) -> usize {
         if let Some(index) = self.free_list.pop() {
-            self.objects[index as usize] = Object::new(data);
+            self.objects[index] = Object::new(data);
 
             index
         } else {
-            let index = self.objects.len() as usize;
+            let index = self.objects.len();
 
             self.objects.push(Object::new(data));
 
@@ -40,11 +39,11 @@ impl<T> Arena<T> {
     }
 
     fn get(&self, index: usize) -> &T {
-        unsafe { &self.objects.get_unchecked(index as usize).data }
+        unsafe { &self.objects.get_unchecked(index).data }
     }
 
     fn get_mut(&mut self, index: usize) -> &mut T {
-        unsafe { &mut self.objects.get_unchecked_mut(index as usize).data }
+        unsafe { &mut self.objects.get_unchecked_mut(index).data }
     }
 }
 
