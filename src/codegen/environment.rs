@@ -18,22 +18,10 @@ pub struct Environment {
 
 impl Environment {
     pub fn new() -> Self {
-        Self {
-            parent: None,
-            locals: Vec::new(),
-            scopes: vec![0],
-            registers: (0..=255).map(Reverse).collect(),
-            frame_size: 0,
-        }
+        Self { parent: None, locals: Vec::new(), scopes: vec![0], registers: (0..=255).map(Reverse).collect(), frame_size: 0 }
     }
     pub fn with_parent(parent: Environment) -> Self {
-        Self {
-            parent: Some(Box::new(parent)),
-            locals: Vec::new(),
-            scopes: vec![0],
-            registers: (0..=255).map(Reverse).collect(),
-            frame_size: 0,
-        }
+        Self { parent: Some(Box::new(parent)), locals: Vec::new(), scopes: vec![0], registers: (0..=255).map(Reverse).collect(), frame_size: 0 }
     }
     pub fn push_scope(&mut self) {
         let index = self.locals.len();
@@ -42,10 +30,7 @@ impl Environment {
     }
 
     pub fn pop_scope(&mut self) {
-        assert!(
-            self.scopes.len() > 1,
-            "tried to pop a scope with empty array"
-        );
+        assert!(self.scopes.len() > 1, "tried to pop a scope with empty array");
 
         let index = self.scopes.pop().unwrap();
 
@@ -69,11 +54,7 @@ impl Environment {
             }
         }
 
-        if let Some(parent) = &self.parent {
-            parent.lookup(name)
-        } else {
-            None
-        }
+        if let Some(parent) = &self.parent { parent.lookup(name) } else { None }
     }
     pub fn lookup_in_parent(&self, name: Symbol) -> Option<(Symbol, Register)> {
         self.parent.as_ref()?.lookup(name)

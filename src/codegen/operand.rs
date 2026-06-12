@@ -11,15 +11,9 @@ impl From<Register> for Operand {
     }
 }
 
-impl From<Constant> for Operand {
-    fn from(value: Constant) -> Self {
-        Operand::Constant(value)
-    }
-}
-
 pub enum Constant {
     String(Symbol),
     Number(f64),
-    Boolean(bool),
     Nil,
+    Boolean(bool),
 }

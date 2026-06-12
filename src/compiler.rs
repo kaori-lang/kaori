@@ -57,10 +57,10 @@ impl Compiler {
 
         self.files.insert(symbol, Compilation::Function(index));
 
-        /*      for function in self.functions.iter() {
-                   println!("{}", function);
-               }
-        */
+        for function in self.functions.iter() {
+            println!("{}", function);
+        }
+
         Ok(index)
     }
 
@@ -73,10 +73,7 @@ impl Compiler {
 
         path.add_extension("kr");
 
-        let interned_file = INTERNER
-            .lock()
-            .unwrap()
-            .get_or_intern(path.to_str().unwrap());
+        let interned_file = INTERNER.lock().unwrap().get_or_intern(path.to_str().unwrap());
 
         if let Some(compilation) = self.files.get(&interned_file) {
             match compilation {
@@ -112,8 +109,7 @@ impl Compiler {
 
         let index = self.compile_source(&src)?;
 
-        self.files
-            .insert(interned_file, Compilation::Function(index));
+        self.files.insert(interned_file, Compilation::Function(index));
 
         self.current_file = previous_file;
 
@@ -125,11 +121,9 @@ impl Compiler {
             .spanned()
             .map(|(token, span)| match token {
                 Ok(token) => Ok((token, span.into())),
-                Err(()) => Err(Error::new(
-                    span.into(),
-                    self.current_file,
-                    "unexpected token".to_string(),
-                )),
+                Err(()) => {
+                    Err(Error::new(span.into(), self.current_file, "unexpected token".to_string()))
+                }
             })
             .collect::<Result<Vec<(Token, Span)>, Error>>()?;
 

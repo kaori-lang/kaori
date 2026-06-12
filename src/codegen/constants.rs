@@ -1,6 +1,10 @@
 use ordered_float::OrderedFloat;
 
-use crate::{codegen::lower_ast::Lower, runtime::value::Value, util::string_interner::Symbol};
+use crate::{
+    codegen::{lower_ast::Lower, operand::Constant},
+    runtime::value::Value,
+    util::string_interner::Symbol,
+};
 
 impl<'a> Lower<'a> {
     fn get_or_insert(&mut self, value: Value) -> usize {

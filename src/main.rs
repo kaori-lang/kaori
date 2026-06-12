@@ -8,7 +8,7 @@ use kaori::compiler::compile_and_run;
 use kaori::runtime::value::Value;
 
 use std::path::PathBuf;
-
+/*
 fn main() {
     let matches = Command::new("kaori")
         .arg(Arg::new("file").required(true))
@@ -20,10 +20,9 @@ fn main() {
         error.report()
     }
 }
-
-/* fn main() {
+ */
+fn main() {
     if let Err(error) = compile_and_run("main.kr") {
         error.report()
     }
 }
- */

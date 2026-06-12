@@ -2,7 +2,10 @@ use core::panic;
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    codegen::environment::{Environment, Register},
+    codegen::{
+        environment::{Environment, Register},
+        operand::{Constant, Operand},
+    },
     compiler::Compiler,
     diagnostics::error::Error,
     runtime::{function::Function, instruction::Instruction, value::Value},
@@ -22,11 +25,18 @@ pub fn lower_ast(ast: Ast, compiler: &mut Compiler) -> Result<usize, Error> {
     let mut constants = Vec::new();
     let mut instructions = Vec::new();
 
-    let mut lowerer = Lower::new(&ast, compiler, &mut free_variables, &mut env, &mut constants, &mut instructions);
+    let mut lowerer = Lower::new(
+        &ast,
+        compiler,
+        &mut free_variables,
+        &mut env,
+        &mut constants,
+        &mut instructions,
+    );
 
     //lowerer.prevent_return(id)?;
 
-    let src = lowerer.lower_expression(id, None)?;
+    let src = lowerer.lower_materializing(id, None)?;
 
     lowerer.emit_instruction(Instruction::Return { src: src.into() });
 
@@ -60,7 +70,15 @@ impl<'a> Lower<'a> {
         constants: &'a mut Vec<Value>,
         instructions: &'a mut Vec<Instruction>,
     ) -> Self {
-        Self { ast, compiler, free_variables, env, constants, instructions, unpatched_arguments: Vec::new() }
+        Self {
+            ast,
+            compiler,
+            free_variables,
+            env,
+            constants,
+            instructions,
+            unpatched_arguments: Vec::new(),
+        }
     }
 
     pub fn emit_instruction(&mut self, instruction: Instruction) -> usize {
@@ -71,67 +89,116 @@ impl<'a> Lower<'a> {
         index
     }
 
+    fn store_constant(&mut self, constant: Constant) -> usize {
+        match constant {
+            Constant::Boolean(value) => self.store_boolean_const(value),
+            Constant::Nil => self.store_nil_const(),
+            Constant::Number(value) => self.store_number_const(value),
+            Constant::String(value) => self.store_string_const(value),
+        }
+    }
+
+    fn lower_materializing(
+        &mut self,
+        id: NodeId,
+        dest: Option<Register>,
+    ) -> Result<Register, Error> {
+        let src = self.lower_expression(id, dest)?;
+
+        Ok(match src {
+            Operand::Constant(src) => {
+                let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
+                let src = self.store_constant(src);
+
+                self.emit_instruction(Instruction::LoadConst {
+                    dest: dest.into(),
+                    src: src.into(),
+                });
+
+                dest
+            }
+            Operand::Register(src) => src,
+        })
+    }
+
     fn lower_statement(&mut self, id: NodeId) -> Result<(), Error> {
         match *self.ast.node(id) {
             Node::Variable { left, right } => {
                 let dest = self.env.allocate_local();
 
-                self.lower_expression(right, Some(dest))?;
+                self.lower_materializing(right, Some(dest))?;
 
                 self.env.declare_local(left.value, dest);
             }
             Node::Constant { left, right } => {
                 let dest = self.env.allocate_local();
 
-                self.lower_expression(right, Some(dest))?;
+                self.lower_materializing(right, Some(dest))?;
 
                 self.env.declare_local(left.value, dest);
             }
             Node::Ref { left, right } => {
                 let dest = self.env.allocate_local();
 
-                let src = self.lower_expression(right, None)?;
+                let src = self.lower_materializing(right, Some(dest))?;
 
                 self.env.declare_local(left.value, dest);
 
-                self.emit_instruction(Instruction::CreateRef { dest: dest.into(), src: src.into() });
+                self.emit_instruction(Instruction::CreateRef {
+                    dest: dest.into(),
+                    src: src.into(),
+                });
             }
             Node::Assign { left, right } => match *self.ast.node(left) {
                 Node::Identifier(..) => {
-                    let dest = self.lower_expression(left, None)?;
+                    let dest = self.lower_materializing(left, None)?;
 
-                    let src = self.lower_expression(right, Some(dest))?;
+                    let src = self.lower_materializing(right, Some(dest))?;
 
                     if src != dest {
                         self.env.free_temp(src);
                     }
                 }
                 Node::MemberAccess { object, property } => {
-                    let value = self.lower_expression(right, None)?;
-                    let object = self.lower_expression(object, None)?;
+                    let value = self.lower_materializing(right, None)?;
+                    let object = self.lower_materializing(object, None)?;
                     let key = {
                         let dest = self.env.allocate_temp();
                         let src = self.store_string_const(property.value);
 
-                        self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
+                        self.emit_instruction(Instruction::LoadConst {
+                            dest: dest.into(),
+                            src: src.into(),
+                        });
 
                         dest
                     };
 
-                    self.emit_instruction(Instruction::SetField { object: object.into(), key: key.into(), value: value.into() });
+                    self.emit_instruction(Instruction::SetField {
+                        object: object.into(),
+                        key: key.into(),
+                        value: value.into(),
+                    });
                 }
                 Node::Unary { operator: UnaryOp::Deref, operand } => {
-                    let dest = self.lower_expression(operand, None)?;
-                    let src = self.lower_expression(right, None)?;
+                    let dest = self.lower_materializing(operand, None)?;
+                    let src = self.lower_materializing(right, None)?;
 
-                    self.emit_instruction(Instruction::DerefSet { dest: dest.into(), src: src.into() });
+                    self.emit_instruction(Instruction::DerefSet {
+                        dest: dest.into(),
+                        src: src.into(),
+                    });
                 }
                 _ => {
-                    return Err(Error::new(self.ast.span(left), self.compiler.current_file, "expected a valid lhs".to_string()));
+                    return Err(Error::new(
+                        self.ast.span(left),
+                        self.compiler.current_file,
+                        "expected a valid lhs".to_string(),
+                    ));
                 }
             },
             Node::WhileLoop { condition, block } => {
-                let src = self.lower_expression(condition, None)?;
+                let src = self.lower_materializing(condition, None)?;
 
                 let jump_if_false = self.lower_jump_if_false(src);
                 self.env.free_temp(src);
@@ -140,16 +207,20 @@ impl<'a> Lower<'a> {
 
                 self.lower_statement(block)?;
 
-                let src = self.lower_expression(condition, None)?;
+                let src = self.lower_materializing(condition, None)?;
 
                 let jump_if_true = self.lower_jump_if_true(src);
                 self.env.free_temp(src);
 
                 self.patch_jump(jump_if_true, loop_body as i32 - jump_if_true as i32);
-                self.patch_jump(jump_if_false, self.instructions.len() as i32 - jump_if_false as i32);
+                self.patch_jump(
+                    jump_if_false,
+                    self.instructions.len() as i32 - jump_if_false as i32,
+                );
             }
             Node::If { condition, then_branch, else_branch } => {
-                let src = self.lower_expression(condition, None)?;
+                let src = self.lower_materializing(condition, None)?;
+
                 self.env.free_temp(src);
 
                 let jump_if_false = self.lower_jump_if_false(src);
@@ -158,7 +229,10 @@ impl<'a> Lower<'a> {
 
                 let jump_end = self.emit_instruction(Instruction::Jump { offset: 0 });
 
-                self.patch_jump(jump_if_false, self.instructions.len() as i32 - jump_if_false as i32);
+                self.patch_jump(
+                    jump_if_false,
+                    self.instructions.len() as i32 - jump_if_false as i32,
+                );
 
                 if let Some(id) = else_branch {
                     self.lower_statement(id)?;
@@ -167,7 +241,7 @@ impl<'a> Lower<'a> {
                 self.patch_jump(jump_end, self.instructions.len() as i32 - jump_end as i32);
             }
             Node::Return(expression) => {
-                let src = self.lower_expression(expression, None)?;
+                let src = self.lower_materializing(expression, None)?;
 
                 self.emit_instruction(Instruction::Return { src: src.into() });
 
@@ -183,7 +257,10 @@ impl<'a> Lower<'a> {
 
                         let src = self.store_nil_const();
 
-                        self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
+                        self.emit_instruction(Instruction::LoadConst {
+                            dest: dest.into(),
+                            src: src.into(),
+                        });
                     }
                 }
 
@@ -195,7 +272,10 @@ impl<'a> Lower<'a> {
 
                     let src = self.store_nil_const();
 
-                    self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
+                    self.emit_instruction(Instruction::LoadConst {
+                        dest: dest.into(),
+                        src: src.into(),
+                    });
                 }
 
                 for id in statements.iter().copied() {
@@ -214,7 +294,14 @@ impl<'a> Lower<'a> {
                 let mut constants = Vec::new();
                 let mut instructions = Vec::new();
 
-                let mut inner_self = Lower::new(self.ast, self.compiler, self.free_variables, &mut env, &mut constants, &mut instructions);
+                let mut inner_self = Lower::new(
+                    self.ast,
+                    self.compiler,
+                    self.free_variables,
+                    &mut env,
+                    &mut constants,
+                    &mut instructions,
+                );
 
                 let free_variables = inner_self.analyze_function(id);
 
@@ -230,11 +317,15 @@ impl<'a> Lower<'a> {
 
                         inner_self.env.declare_local(capture.value, dest);
                     } else {
-                        return Err(Error::new(capture.span, inner_self.compiler.current_file, "undeclared variable".to_string()));
+                        return Err(Error::new(
+                            capture.span,
+                            inner_self.compiler.current_file,
+                            "undeclared variable".to_string(),
+                        ));
                     }
                 }
 
-                let src = inner_self.lower_expression(block, None)?;
+                let src = inner_self.lower_materializing(block, None)?;
 
                 if !inner_self.block_returns(block) {
                     inner_self.emit_instruction(Instruction::Return { src: src.into() });
@@ -243,7 +334,8 @@ impl<'a> Lower<'a> {
                 inner_self.patch_arguments();
 
                 let frame_size = inner_self.env.frame_size;
-                let function = Function { instructions, constants, frame_size, arity: parameters.len() };
+                let function =
+                    Function { instructions, constants, frame_size, arity: parameters.len() };
 
                 *self.env = std::mem::take(&mut env.parent.unwrap_or_default());
 
@@ -252,10 +344,17 @@ impl<'a> Lower<'a> {
                 let index = self.compiler.functions.len();
                 self.compiler.functions.push(function);
 
-                self.emit_instruction(Instruction::CreateClosure { dest: dest.into(), src: index as u32, captures: free_variables.len() as u8 });
+                self.emit_instruction(Instruction::CreateClosure {
+                    dest: dest.into(),
+                    src: index as u32,
+                    captures: free_variables.len() as u8,
+                });
 
                 for capture in free_variables.iter().copied() {
-                    let (_, register) = self.env.lookup(capture.value).expect("name must've been declared to reach this point of the code");
+                    let (_, register) = self
+                        .env
+                        .lookup(capture.value)
+                        .expect("name must've been declared to reach this point of the code");
 
                     self.emit_instruction(Instruction::CaptureValue { src: register.into() });
                 }
@@ -265,16 +364,26 @@ impl<'a> Lower<'a> {
 
                 let object = self.env.allocate_temp();
 
-                self.emit_instruction(Instruction::CreateClosure { dest: object.into(), src: index as u32, captures: 0 });
+                self.emit_instruction(Instruction::CreateClosure {
+                    dest: object.into(),
+                    src: index as u32,
+                    captures: 0,
+                });
 
-                self.emit_instruction(Instruction::Call { dest: object.into(), src: object.into() });
+                self.emit_instruction(Instruction::Call {
+                    dest: object.into(),
+                    src: object.into(),
+                });
 
                 if bindings.is_empty() {
                     let dest = self.env.allocate_local();
 
                     self.env.declare_local(path.last().unwrap().value, dest);
 
-                    self.emit_instruction(Instruction::Move { dest: dest.into(), src: object.into() });
+                    self.emit_instruction(Instruction::Move {
+                        dest: dest.into(),
+                        src: object.into(),
+                    });
                 } else {
                     for binding in bindings.iter().copied() {
                         let dest = self.env.allocate_local();
@@ -285,12 +394,19 @@ impl<'a> Lower<'a> {
                             let src = self.store_string_const(binding.value);
                             let dest = self.env.allocate_temp();
 
-                            self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
+                            self.emit_instruction(Instruction::LoadConst {
+                                dest: dest.into(),
+                                src: src.into(),
+                            });
 
                             dest
                         };
 
-                        self.emit_instruction(Instruction::GetField { dest: dest.into(), object: object.into(), key: key.into() });
+                        self.emit_instruction(Instruction::GetField {
+                            dest: dest.into(),
+                            object: object.into(),
+                            key: key.into(),
+                        });
 
                         self.env.free_temp(key);
                     }
@@ -299,7 +415,7 @@ impl<'a> Lower<'a> {
             Node::Break => todo!(),
             Node::Continue => todo!(),
             _ => {
-                let register = self.lower_expression(id, None)?;
+                let register = self.lower_materializing(id, None)?;
                 self.env.free_temp(register);
             }
         }
@@ -307,125 +423,320 @@ impl<'a> Lower<'a> {
         Ok(())
     }
 
-    fn lower_expression(&mut self, id: NodeId, dest: Option<Register>) -> Result<Register, Error> {
+    fn lower_expression(&mut self, id: NodeId, dest: Option<Register>) -> Result<Operand, Error> {
         let register = match *self.ast.node(id) {
             Node::Number(value) => {
-                let src = self.store_number_const(value);
-                let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
+                let constant = Constant::Number(value);
 
-                self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
-
-                dest
+                Operand::Constant(constant)
             }
             Node::String(value) => {
-                let src = self.store_string_const(value);
-                let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
+                let constant = Constant::String(value);
 
-                self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
-
-                dest
+                Operand::Constant(constant)
             }
             Node::Boolean(value) => {
-                let src = self.store_boolean_const(value);
-                let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
+                let constant = Constant::Boolean(value);
 
-                self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
-
-                dest
+                Operand::Constant(constant)
             }
             Node::Nil => {
-                let src = self.store_nil_const();
-                let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
+                let constant = Constant::Nil;
 
-                self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
-
-                dest
+                Operand::Constant(constant)
             }
             Node::Identifier(name) => {
                 let Some((_, register)) = self.env.lookup(name.value) else {
-                    return Err(Error::new(name.span, self.compiler.current_file, "undeclared variable".to_string()));
+                    return Err(Error::new(
+                        name.span,
+                        self.compiler.current_file,
+                        "undeclared variable".to_string(),
+                    ));
                 };
 
-                match dest {
+                let register = match dest {
                     Some(dest) if dest == register => dest,
                     Some(dest) => {
-                        self.emit_instruction(Instruction::Move { dest: dest.into(), src: register.into() });
+                        self.emit_instruction(Instruction::Move {
+                            dest: dest.into(),
+                            src: register.into(),
+                        });
 
                         dest
                     }
                     None => register,
-                }
+                };
+
+                Operand::Register(register)
             }
             Node::Binary { operator, left, right } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                if let Some(src2) = self.as_number_const(right) {
-                    let src1 = self.lower_expression(left, None)?;
+                let src1 = self.lower_expression(left, None)?;
+                let src2 = self.lower_expression(right, None)?;
 
-                    self.emit_instruction(match operator {
-                        BinaryOp::Add => Instruction::AddK { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Subtract => Instruction::SubtractRK { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Multiply => Instruction::MultiplyK { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Divide => Instruction::DivideRK { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Modulo => Instruction::ModuloRK { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Equal => Instruction::EqualK { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::NotEqual => Instruction::NotEqualK { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Less => Instruction::LessRK { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::LessEqual => Instruction::LessEqualRK { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Greater => Instruction::LessKR { dest: dest.into(), src1: src2.into(), src2: src1.into() },
-                        BinaryOp::GreaterEqual => Instruction::LessEqualKR { dest: dest.into(), src1: src2.into(), src2: src1.into() },
-                    });
+                match (src1, src2) {
+                    (Operand::Constant(src1), Operand::Constant(src2)) => {
+                        // TODO CONST FOLD INSTEAD OF MATERIALIZING LOAD CONST
+                        let src1 = self.lower_materializing(left, None)?;
+                        let src2 = self.lower_materializing(right, None)?;
 
-                    self.env.free_temp(src1);
+                        self.emit_instruction(match operator {
+                            BinaryOp::Add => Instruction::Add {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Subtract => Instruction::Subtract {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Multiply => Instruction::Multiply {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Divide => Instruction::Divide {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Modulo => Instruction::Modulo {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Equal => Instruction::Equal {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::NotEqual => Instruction::NotEqual {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Less => Instruction::Less {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::LessEqual => Instruction::LessEqual {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Greater => Instruction::Less {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                            BinaryOp::GreaterEqual => Instruction::LessEqual {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                        });
 
-                    dest
-                } else if let Some(src1) = self.as_number_const(left) {
-                    let src2 = self.lower_expression(right, None)?;
+                        self.env.free_temp(src1);
+                        self.env.free_temp(src2);
+                    }
+                    (Operand::Register(src1), Operand::Constant(src2)) => {
+                        let src2 = self.store_constant(src2);
 
-                    self.emit_instruction(match operator {
-                        BinaryOp::Add => Instruction::AddK { dest: dest.into(), src1: src2.into(), src2: src1.into() },
-                        BinaryOp::Multiply => Instruction::MultiplyK { dest: dest.into(), src1: src2.into(), src2: src1.into() },
-                        BinaryOp::Equal => Instruction::EqualK { dest: dest.into(), src1: src2.into(), src2: src1.into() },
-                        BinaryOp::NotEqual => Instruction::NotEqualK { dest: dest.into(), src1: src2.into(), src2: src1.into() },
-                        BinaryOp::Subtract => Instruction::SubtractKR { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Divide => Instruction::DivideKR { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Modulo => Instruction::ModuloKR { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Less => Instruction::LessKR { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::LessEqual => Instruction::LessEqualKR { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Greater => Instruction::LessRK { dest: dest.into(), src1: src2.into(), src2: src1.into() },
-                        BinaryOp::GreaterEqual => Instruction::LessEqualRK { dest: dest.into(), src1: src2.into(), src2: src1.into() },
-                    });
+                        self.emit_instruction(match operator {
+                            BinaryOp::Add => Instruction::AddK {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Subtract => Instruction::SubtractRK {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Multiply => Instruction::MultiplyK {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Divide => Instruction::DivideRK {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Modulo => Instruction::ModuloRK {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Equal => Instruction::EqualK {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::NotEqual => Instruction::NotEqualK {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Less => Instruction::LessRK {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::LessEqual => Instruction::LessEqualRK {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Greater => Instruction::LessKR {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                            BinaryOp::GreaterEqual => Instruction::LessEqualKR {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                        });
 
-                    self.env.free_temp(src2);
+                        self.env.free_temp(src1);
+                    }
+                    (Operand::Constant(src1), Operand::Register(src2)) => {
+                        let src1 = self.store_constant(src1);
 
-                    dest
-                } else {
-                    let src1 = self.lower_expression(left, None)?;
-                    let src2 = self.lower_expression(right, None)?;
+                        self.emit_instruction(match operator {
+                            BinaryOp::Add => Instruction::AddK {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                            BinaryOp::Multiply => Instruction::MultiplyK {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                            BinaryOp::Equal => Instruction::EqualK {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                            BinaryOp::NotEqual => Instruction::NotEqualK {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                            BinaryOp::Subtract => Instruction::SubtractKR {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Divide => Instruction::DivideKR {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Modulo => Instruction::ModuloKR {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Less => Instruction::LessKR {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::LessEqual => Instruction::LessEqualKR {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Greater => Instruction::LessRK {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                            BinaryOp::GreaterEqual => Instruction::LessEqualRK {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                        });
 
-                    self.emit_instruction(match operator {
-                        BinaryOp::Add => Instruction::Add { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Subtract => Instruction::Subtract { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Multiply => Instruction::Multiply { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Divide => Instruction::Divide { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Modulo => Instruction::Modulo { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Equal => Instruction::Equal { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::NotEqual => Instruction::NotEqual { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Less => Instruction::Less { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::LessEqual => Instruction::LessEqual { dest: dest.into(), src1: src1.into(), src2: src2.into() },
-                        BinaryOp::Greater => Instruction::Less { dest: dest.into(), src1: src2.into(), src2: src1.into() },
-                        BinaryOp::GreaterEqual => Instruction::LessEqual { dest: dest.into(), src1: src2.into(), src2: src1.into() },
-                    });
+                        self.env.free_temp(src2);
+                    }
+                    (Operand::Register(src1), Operand::Register(src2)) => {
+                        self.emit_instruction(match operator {
+                            BinaryOp::Add => Instruction::Add {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Subtract => Instruction::Subtract {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Multiply => Instruction::Multiply {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Divide => Instruction::Divide {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Modulo => Instruction::Modulo {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Equal => Instruction::Equal {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::NotEqual => Instruction::NotEqual {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Less => Instruction::Less {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::LessEqual => Instruction::LessEqual {
+                                dest: dest.into(),
+                                src1: src1.into(),
+                                src2: src2.into(),
+                            },
+                            BinaryOp::Greater => Instruction::Less {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                            BinaryOp::GreaterEqual => Instruction::LessEqual {
+                                dest: dest.into(),
+                                src1: src2.into(),
+                                src2: src1.into(),
+                            },
+                        });
 
-                    self.env.free_temp(src1);
-                    self.env.free_temp(src2);
-
-                    dest
+                        self.env.free_temp(src1);
+                        self.env.free_temp(src2);
+                    }
                 }
+
+                Operand::Register(dest)
             }
             Node::Unary { operator, operand } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
-                let src = self.lower_expression(operand, None)?;
+                let src = self.lower_materializing(operand, None)?;
 
                 self.emit_instruction(match operator {
                     UnaryOp::Negate => Instruction::Negate { dest: dest.into(), src: src.into() },
@@ -434,60 +745,66 @@ impl<'a> Lower<'a> {
 
                 self.env.free_temp(src);
 
-                dest
+                Operand::Register(dest)
             }
             Node::LogicalNot(expression) => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
-                let src = self.lower_expression(expression, None)?;
+                let src = self.lower_materializing(expression, None)?;
 
                 self.emit_instruction(Instruction::Not { dest: dest.into(), src: src.into() });
 
                 self.env.free_temp(src);
 
-                dest
+                Operand::Register(dest)
             }
             Node::LogicalAnd { left, right } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                self.lower_expression(left, Some(dest))?;
+                self.lower_materializing(left, Some(dest))?;
 
                 let jump_if_false = self.lower_jump_if_false(dest);
 
-                self.lower_expression(right, Some(dest))?;
+                self.lower_materializing(right, Some(dest))?;
 
-                self.patch_jump(jump_if_false, self.instructions.len() as i32 - jump_if_false as i32);
+                self.patch_jump(
+                    jump_if_false,
+                    self.instructions.len() as i32 - jump_if_false as i32,
+                );
 
-                dest
+                Operand::Register(dest)
             }
             Node::LogicalOr { left, right } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                self.lower_expression(left, Some(dest))?;
+                self.lower_materializing(left, Some(dest))?;
 
                 let jump_if_true = self.lower_jump_if_true(dest);
 
-                self.lower_expression(right, Some(dest))?;
+                self.lower_materializing(right, Some(dest))?;
 
                 self.patch_jump(jump_if_true, self.instructions.len() as i32 - jump_if_true as i32);
 
-                dest
+                Operand::Register(dest)
             }
             Node::If { condition, then_branch, else_branch } => {
-                let src = self.lower_expression(condition, None)?;
+                let src = self.lower_materializing(condition, None)?;
                 self.env.free_temp(src);
 
                 let jump_if_false = self.lower_jump_if_false(src);
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                self.lower_expression(then_branch, Some(dest))?;
+                self.lower_materializing(then_branch, Some(dest))?;
 
                 let jump_end = self.emit_instruction(Instruction::Jump { offset: 0 });
 
-                self.patch_jump(jump_if_false, self.instructions.len() as i32 - jump_if_false as i32);
+                self.patch_jump(
+                    jump_if_false,
+                    self.instructions.len() as i32 - jump_if_false as i32,
+                );
 
                 if let Some(id) = else_branch {
-                    self.lower_expression(id, Some(dest))?;
+                    self.lower_materializing(id, Some(dest))?;
                 } else {
                     return Err(Error::new(
                         self.ast.span(id),
@@ -498,7 +815,7 @@ impl<'a> Lower<'a> {
 
                 self.patch_jump(jump_end, self.instructions.len() as i32 - jump_end as i32);
 
-                dest
+                Operand::Register(dest)
             }
             Node::Block { ref statements, tail } => {
                 self.env.push_scope();
@@ -511,7 +828,10 @@ impl<'a> Lower<'a> {
 
                         let src = self.store_nil_const();
 
-                        self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
+                        self.emit_instruction(Instruction::LoadConst {
+                            dest: dest.into(),
+                            src: src.into(),
+                        });
                     }
                 }
 
@@ -524,7 +844,10 @@ impl<'a> Lower<'a> {
 
                     let src = self.store_nil_const();
 
-                    self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
+                    self.emit_instruction(Instruction::LoadConst {
+                        dest: dest.into(),
+                        src: src.into(),
+                    });
                 }
 
                 for id in statements.iter().copied() {
@@ -535,24 +858,27 @@ impl<'a> Lower<'a> {
 
                 match tail {
                     Some(id) => {
-                        self.lower_expression(id, Some(dest))?;
+                        self.lower_materializing(id, Some(dest))?;
                     }
                     None => {
                         let src = self.store_nil_const();
 
-                        self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
+                        self.emit_instruction(Instruction::LoadConst {
+                            dest: dest.into(),
+                            src: src.into(),
+                        });
                     }
                 };
 
                 self.env.pop_scope();
 
-                dest
+                Operand::Register(dest)
             }
             Node::FunctionCall { callee, ref arguments } => {
                 for (index, argument) in arguments.iter().enumerate() {
                     let dest = Register::Local(index);
 
-                    self.lower_expression(*argument, Some(dest))?;
+                    self.lower_materializing(*argument, Some(dest))?;
 
                     let index = self.instructions.len() - 1;
 
@@ -560,34 +886,41 @@ impl<'a> Lower<'a> {
                 }
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
-                let src = self.lower_expression(callee, None)?;
+                let src = self.lower_materializing(callee, None)?;
 
                 self.emit_instruction(Instruction::Call { dest: dest.into(), src: src.into() });
 
                 self.env.free_temp(src);
 
-                dest
+                Operand::Register(dest)
             }
             Node::MemberAccess { object, property } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                let object = self.lower_expression(object, None)?;
+                let object = self.lower_materializing(object, None)?;
 
                 let key = {
                     let dest = self.env.allocate_temp();
                     let src = self.store_string_const(property.value);
 
-                    self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
+                    self.emit_instruction(Instruction::LoadConst {
+                        dest: dest.into(),
+                        src: src.into(),
+                    });
 
                     dest
                 };
 
-                self.emit_instruction(Instruction::GetField { dest: dest.into(), object: object.into(), key: key.into() });
+                self.emit_instruction(Instruction::GetField {
+                    dest: dest.into(),
+                    object: object.into(),
+                    key: key.into(),
+                });
 
                 self.env.free_temp(object);
                 self.env.free_temp(key);
 
-                dest
+                Operand::Register(dest)
             }
             Node::Map { ref entries } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
@@ -599,35 +932,54 @@ impl<'a> Lower<'a> {
                         let dest = self.env.allocate_temp();
                         let src = self.store_string_const(symbol.value);
 
-                        self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
+                        self.emit_instruction(Instruction::LoadConst {
+                            dest: dest.into(),
+                            src: src.into(),
+                        });
 
                         dest
                     } else if value_id.is_none() {
                         return Err(Error::new(
                             self.ast.span(key_id),
                             self.compiler.current_file,
-                            "expected a value for that key, only identifier keys can omit value".to_string(),
+                            "expected a value for that key, only identifier keys can omit value"
+                                .to_string(),
                         ));
                     } else {
-                        self.lower_expression(key_id, None)?
+                        self.lower_materializing(key_id, None)?
                     };
 
-                    let value = if let Some(id) = value_id { self.lower_expression(id, None) } else { self.lower_expression(key_id, None) }?;
+                    let value = if let Some(id) = value_id {
+                        self.lower_materializing(id, None)
+                    } else {
+                        self.lower_materializing(key_id, None)
+                    }?;
 
-                    self.emit_instruction(Instruction::SetField { object: dest.into(), key: key.into(), value: value.into() });
+                    self.emit_instruction(Instruction::SetField {
+                        object: dest.into(),
+                        key: key.into(),
+                        value: value.into(),
+                    });
 
                     self.env.free_temp(key);
                     self.env.free_temp(value);
                 }
 
-                dest
+                Operand::Register(dest)
             }
             Node::Lambda { ref parameters, block } => {
                 let mut env = Environment::with_parent(std::mem::take(self.env));
                 let mut constants = Vec::new();
                 let mut instructions = Vec::new();
 
-                let mut inner_self = Lower::new(self.ast, self.compiler, self.free_variables, &mut env, &mut constants, &mut instructions);
+                let mut inner_self = Lower::new(
+                    self.ast,
+                    self.compiler,
+                    self.free_variables,
+                    &mut env,
+                    &mut constants,
+                    &mut instructions,
+                );
 
                 let free_variables = inner_self.analyze_function(id);
 
@@ -643,11 +995,15 @@ impl<'a> Lower<'a> {
 
                         inner_self.env.declare_local(capture.value, dest);
                     } else {
-                        return Err(Error::new(capture.span, self.compiler.current_file, "undeclared variable".to_string()));
+                        return Err(Error::new(
+                            capture.span,
+                            self.compiler.current_file,
+                            "undeclared variable".to_string(),
+                        ));
                     }
                 }
 
-                let src = inner_self.lower_expression(block, None)?;
+                let src = inner_self.lower_materializing(block, None)?;
 
                 if !inner_self.block_returns(block) {
                     inner_self.emit_instruction(Instruction::Return { src: src.into() });
@@ -656,7 +1012,8 @@ impl<'a> Lower<'a> {
                 inner_self.patch_arguments();
 
                 let frame_size = inner_self.env.frame_size;
-                let function = Function { instructions, constants, frame_size, arity: parameters.len() };
+                let function =
+                    Function { instructions, constants, frame_size, arity: parameters.len() };
 
                 *self.env = std::mem::take(&mut env.parent.unwrap_or_default());
 
@@ -665,15 +1022,22 @@ impl<'a> Lower<'a> {
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                self.emit_instruction(Instruction::CreateClosure { dest: dest.into(), src: index as u32, captures: free_variables.len() as u8 });
+                self.emit_instruction(Instruction::CreateClosure {
+                    dest: dest.into(),
+                    src: index as u32,
+                    captures: free_variables.len() as u8,
+                });
 
                 for capture in free_variables.iter().copied() {
-                    let (_, register) = self.env.lookup(capture.value).expect("name must've been declared to reach this point of the code");
+                    let (_, register) = self
+                        .env
+                        .lookup(capture.value)
+                        .expect("name must've been declared to reach this point of the code");
 
                     self.emit_instruction(Instruction::CaptureValue { src: register.into() });
                 }
 
-                dest
+                Operand::Register(dest)
             }
             Node::Import { .. }
             | Node::WhileLoop { .. }
@@ -690,20 +1054,16 @@ impl<'a> Lower<'a> {
                 let src = self.store_nil_const();
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                self.emit_instruction(Instruction::LoadConst { dest: dest.into(), src: src.into() });
+                self.emit_instruction(Instruction::LoadConst {
+                    dest: dest.into(),
+                    src: src.into(),
+                });
 
-                dest
+                Operand::Register(dest)
             }
         };
 
         Ok(register)
-    }
-
-    fn as_number_const(&mut self, id: NodeId) -> Option<usize> {
-        match *self.ast.node(id) {
-            Node::Number(value) => Some(self.store_number_const(value)),
-            _ => None,
-        }
     }
 
     fn lower_jump_if_true(&mut self, register: Register) -> usize {
@@ -769,7 +1129,11 @@ impl<'a> Lower<'a> {
             Some(Instruction::Less { src1, src2, .. }) => {
                 self.instructions.pop();
 
-                self.emit_instruction(Instruction::JumpIfLessEqual { src1: src2, src2: src1, offset: 0 })
+                self.emit_instruction(Instruction::JumpIfLessEqual {
+                    src1: src2,
+                    src2: src1,
+                    offset: 0,
+                })
             }
             Some(Instruction::LessEqual { src1, src2, .. }) => {
                 self.instructions.pop();
@@ -787,24 +1151,42 @@ impl<'a> Lower<'a> {
             Some(Instruction::LessRK { src1, src2, .. }) => {
                 self.instructions.pop();
 
-                self.emit_instruction(Instruction::JumpIfLessEqualKR { src1: src2, src2: src1, offset: 0 })
+                self.emit_instruction(Instruction::JumpIfLessEqualKR {
+                    src1: src2,
+                    src2: src1,
+                    offset: 0,
+                })
             }
             Some(Instruction::LessEqualRK { src1, src2, .. }) => {
                 self.instructions.pop();
 
-                self.emit_instruction(Instruction::JumpIfLessKR { src1: src2, src2: src1, offset: 0 })
+                self.emit_instruction(Instruction::JumpIfLessKR {
+                    src1: src2,
+                    src2: src1,
+                    offset: 0,
+                })
             }
             Some(Instruction::LessKR { src1, src2, .. }) => {
                 self.instructions.pop();
 
-                self.emit_instruction(Instruction::JumpIfLessEqualRK { src1: src2, src2: src1, offset: 0 })
+                self.emit_instruction(Instruction::JumpIfLessEqualRK {
+                    src1: src2,
+                    src2: src1,
+                    offset: 0,
+                })
             }
             Some(Instruction::LessEqualKR { src1, src2, .. }) => {
                 self.instructions.pop();
 
-                self.emit_instruction(Instruction::JumpIfLessRK { src1: src2, src2: src1, offset: 0 })
+                self.emit_instruction(Instruction::JumpIfLessRK {
+                    src1: src2,
+                    src2: src1,
+                    offset: 0,
+                })
             }
-            _ => self.emit_instruction(Instruction::JumpIfFalse { src: register.into(), offset: 0 }),
+            _ => {
+                self.emit_instruction(Instruction::JumpIfFalse { src: register.into(), offset: 0 })
+            }
         }
     }
 
@@ -884,7 +1266,8 @@ impl<'a> Lower<'a> {
             }
             Node::If { then_branch, else_branch, .. } => {
                 let then_returns = self.block_returns(then_branch);
-                let else_returns = if let Some(id) = else_branch { self.block_returns(id) } else { false };
+                let else_returns =
+                    if let Some(id) = else_branch { self.block_returns(id) } else { false };
 
                 then_returns && else_returns
             }
@@ -895,7 +1278,11 @@ impl<'a> Lower<'a> {
     fn prevent_return(&self, id: NodeId) -> Result<(), Error> {
         match *self.ast.node(id) {
             Node::Return(..) => {
-                return Err(Error::new(self.ast.span(id), self.compiler.current_file, "return is not allowed in the global scope".to_string()));
+                return Err(Error::new(
+                    self.ast.span(id),
+                    self.compiler.current_file,
+                    "return is not allowed in the global scope".to_string(),
+                ));
             }
             Node::Block { ref statements, tail } => {
                 for id in statements.iter().copied() {
