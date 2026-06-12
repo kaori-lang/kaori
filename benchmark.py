@@ -9,12 +9,13 @@ scripts = [
     ("LuaJIT",  ["luajit"], "lua", "lua"),
     ("PyPy",    ["pypy"],   "py",  "python"),
     ("Node.js", ["node"],   "js",  "javascript"),
-    ("Python",  ["python"], "py",  "python"),
+    #("Python",  ["python"], "py",  "python"),
 ]
 
 benchmarks = [
     ("Mandelbrot",    "mandelbrot"),
     ("Fibonnaci",    "recursive_fib"),
+    #("Object", "objects")
 ]
 
 for bench_name, bench_slug in benchmarks:

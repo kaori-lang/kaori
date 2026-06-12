@@ -23,13 +23,11 @@ pub enum Instruction {
     NotEqual { dest: Reg, src1: Reg, src2: Reg },
     NotEqualK { dest: Reg, src1: Reg, src2: Const },
     Less { dest: Reg, src1: Reg, src2: Reg },
-    LessK { dest: Reg, src1: Reg, src2: Const },
+    LessRK { dest: Reg, src1: Reg, src2: Const },
+    LessKR { dest: Reg, src1: Const, src2: Reg },
     LessEqual { dest: Reg, src1: Reg, src2: Reg },
-    LessEqualK { dest: Reg, src1: Reg, src2: Const },
-    Greater { dest: Reg, src1: Reg, src2: Reg },
-    GreaterK { dest: Reg, src1: Reg, src2: Const },
-    GreaterEqual { dest: Reg, src1: Reg, src2: Reg },
-    GreaterEqualK { dest: Reg, src1: Reg, src2: Const },
+    LessEqualRK { dest: Reg, src1: Reg, src2: Const },
+    LessEqualKR { dest: Reg, src1: Const, src2: Reg },
     Not { dest: Reg, src: Reg },
     Negate { dest: Reg, src: Reg },
     Move { dest: Reg, src: Reg },
@@ -47,13 +45,11 @@ pub enum Instruction {
     JumpIfFalse { src: Reg, offset: i32 },
     JumpIfTrue { src: Reg, offset: i32 },
     JumpIfLess { src1: Reg, src2: Reg, offset: i32 },
-    JumpIfLessK { src1: Reg, src2: Const, offset: i32 },
+    JumpIfLessRK { src1: Reg, src2: Const, offset: i32 },
+    JumpIfLessKR { src2: Reg, src1: Const, offset: i32 },
     JumpIfLessEqual { src1: Reg, src2: Reg, offset: i32 },
-    JumpIfLessEqualK { src1: Reg, src2: Const, offset: i32 },
-    JumpIfGreater { src1: Reg, src2: Reg, offset: i32 },
-    JumpIfGreaterK { src1: Reg, src2: Const, offset: i32 },
-    JumpIfGreaterEqual { src1: Reg, src2: Reg, offset: i32 },
-    JumpIfGreaterEqualK { src1: Reg, src2: Const, offset: i32 },
+    JumpIfLessEqualRK { src1: Reg, src2: Const, offset: i32 },
+    JumpIfLessEqualKR { src2: Reg, src1: Const, offset: i32 },
     JumpIfEqual { src1: Reg, src2: Reg, offset: i32 },
     JumpIfEqualK { src1: Reg, src2: Const, offset: i32 },
     JumpIfNotEqual { src1: Reg, src2: Reg, offset: i32 },
@@ -91,13 +87,11 @@ impl fmt::Display for Instruction {
             Self::NotEqual { dest, src1, src2 } => write!(f, "NEQ {} {} {}", dest, src1, src2),
             Self::NotEqualK { dest, src1, src2 } => write!(f, "NEQ {} {} {}", dest, src1, src2),
             Self::Less { dest, src1, src2 } => write!(f, "LT {} {} {}", dest, src1, src2),
-            Self::LessK { dest, src1, src2 } => write!(f, "LT {} {} {}", dest, src1, src2),
+            Self::LessRK { dest, src1, src2 } => write!(f, "LT {} {} {}", dest, src1, src2),
+            Self::LessKR { dest, src1, src2 } => write!(f, "LT {} {} {}", dest, src1, src2),
             Self::LessEqual { dest, src1, src2 } => write!(f, "LTE {} {} {}", dest, src1, src2),
-            Self::LessEqualK { dest, src1, src2 } => write!(f, "LTE {} {} {}", dest, src1, src2),
-            Self::Greater { dest, src1, src2 } => write!(f, "GT {} {} {}", dest, src1, src2),
-            Self::GreaterK { dest, src1, src2 } => write!(f, "GT {} {} {}", dest, src1, src2),
-            Self::GreaterEqual { dest, src1, src2 } => write!(f, "GTE {} {} {}", dest, src1, src2),
-            Self::GreaterEqualK { dest, src1, src2 } => write!(f, "GTE {} {} {}", dest, src1, src2),
+            Self::LessEqualRK { dest, src1, src2 } => write!(f, "LTE {} {} {}", dest, src1, src2),
+            Self::LessEqualKR { dest, src1, src2 } => write!(f, "LTE {} {} {}", dest, src1, src2),
             Self::Not { dest, src } => write!(f, "NOT {} {}", dest, src),
             Self::Negate { dest, src } => write!(f, "NEG {} {}", dest, src),
             Self::Move { dest, src } => write!(f, "MOV {} {}", dest, src),
@@ -109,16 +103,8 @@ impl fmt::Display for Instruction {
             Self::GetField { dest, object, key } => {
                 write!(f, "GET_FIELD {} {} {}", dest, object, key)
             }
-            Self::CreateClosure {
-                dest,
-                captures,
-                src,
-            } => {
-                write!(
-                    f,
-                    "CREATE_CLOSURE {} FUNCTION: {} CAPTURES: {}",
-                    dest, src, captures
-                )
+            Self::CreateClosure { dest, captures, src } => {
+                write!(f, "CREATE_CLOSURE {} FUNCTION: {} CAPTURES: {}", dest, src, captures)
             }
             Self::CaptureValue { src } => write!(f, "CAPTURE_VALUE {}", src),
             Self::CreateRef { dest, src } => write!(f, "CREATE_REF {} {}", dest, src),
@@ -132,26 +118,20 @@ impl fmt::Display for Instruction {
             Self::JumpIfLess { src1, src2, offset } => {
                 write!(f, "JMP_IF_LT {} {} {}", src1, src2, offset)
             }
-            Self::JumpIfLessK { src1, src2, offset } => {
+            Self::JumpIfLessRK { src1, src2, offset } => {
+                write!(f, "JMP_IF_LT {} {} {}", src1, src2, offset)
+            }
+            Self::JumpIfLessKR { src1, src2, offset } => {
                 write!(f, "JMP_IF_LT {} {} {}", src1, src2, offset)
             }
             Self::JumpIfLessEqual { src1, src2, offset } => {
                 write!(f, "JMP_IF_LTE {} {} {}", src1, src2, offset)
             }
-            Self::JumpIfLessEqualK { src1, src2, offset } => {
+            Self::JumpIfLessEqualRK { src1, src2, offset } => {
                 write!(f, "JMP_IF_LTE {} {} {}", src1, src2, offset)
             }
-            Self::JumpIfGreater { src1, src2, offset } => {
-                write!(f, "JMP_IF_GT {} {} {}", src1, src2, offset)
-            }
-            Self::JumpIfGreaterK { src1, src2, offset } => {
-                write!(f, "JMP_IF_GT {} {} {}", src1, src2, offset)
-            }
-            Self::JumpIfGreaterEqual { src1, src2, offset } => {
-                write!(f, "JMP_IF_GTE {} {} {}", src1, src2, offset)
-            }
-            Self::JumpIfGreaterEqualK { src1, src2, offset } => {
-                write!(f, "JMP_IF_GTE {} {} {}", src1, src2, offset)
+            Self::JumpIfLessEqualKR { src1, src2, offset } => {
+                write!(f, "JMP_IF_LTE {} {} {}", src1, src2, offset)
             }
             Self::JumpIfEqual { src1, src2, offset } => {
                 write!(f, "JMP_IF_EQ {} {} {}", src1, src2, offset)

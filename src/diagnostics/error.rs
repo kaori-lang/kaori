@@ -16,11 +16,7 @@ pub struct InnerError {
 
 impl Error {
     pub fn new(span: Span, file: Symbol, message: String) -> Self {
-        Self(Box::new(InnerError {
-            span,
-            file,
-            message,
-        }))
+        Self(Box::new(InnerError { span, file, message }))
     }
 
     pub fn report(&self) {
@@ -31,15 +27,8 @@ impl Error {
 
         let report = Report::build(ReportKind::Error, (file.as_str(), span.clone()))
             .with_message(&self.0.message)
-            .with_label(
-                Label::new((file.as_str(), span))
-                    .with_message(&self.0.message)
-                    .with_color(Color::BrightRed),
-            );
+            .with_label(Label::new((file.as_str(), span)).with_message(&self.0.message).with_color(Color::BrightRed));
 
-        report
-            .finish()
-            .print((file.as_str(), Source::from(&source)))
-            .unwrap();
+        report.finish().print((file.as_str(), Source::from(&source))).unwrap();
     }
 }

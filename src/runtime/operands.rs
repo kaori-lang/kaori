@@ -10,12 +10,10 @@ pub struct Reg(pub u8);
 
 impl From<Register> for Reg {
     fn from(register: Register) -> Self {
-        let register = match register {
-            Register::Local(register) => register,
-            Register::Temp(register) => register,
-        };
-
-        Reg(register as u8)
+        Reg(match register {
+            Register::Local(register) => register as u8,
+            Register::Temp(register) => register as u8,
+        })
     }
 }
 

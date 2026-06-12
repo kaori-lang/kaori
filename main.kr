@@ -1,10 +1,10 @@
-import test;
+let data = #{
+    "a": 0,
+    "i": 5000
+};
 
-fun fib(n) {
-    return if n < 2 { 
-        n 
-    } else {
-        fib(n - 1) + fib(n - 2) 
-    };
+
+while data.i > 0 {
+    data.a = data.a + data.i;
+    data.i = data.i - 1;   
 }
-
