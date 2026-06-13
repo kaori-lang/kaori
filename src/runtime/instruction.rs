@@ -33,9 +33,9 @@ pub enum Instruction {
     Move { dest: Reg, src: Reg },
     LoadConst { dest: Reg, src: Const },
     CreateMap { dest: Reg },
-    MapSet { object: Reg, key: Reg, value: Reg },
-    MapGet { dest: Reg, object: Reg, key: Reg },
-    MapGetK { dest: Reg, object: Reg, key: Const },
+    SetProperty { object: Reg, key: Const, value: Reg },
+    GetProperty { dest: Reg, object: Reg, key: Const },
+    SetElement { object: Reg, key: Reg, value: Reg },
     CreateClosure { dest: Reg, captures: u8, src: u32 },
     CreateRef { dest: Reg, src: Reg },
     DerefSet { dest: Reg, src: Reg },
@@ -146,17 +146,21 @@ impl fmt::Display for Instruction {
                 write!(f, "LOAD_CONST {} {}", dest, src)
             }
             Self::CreateMap { dest } => write!(f, "CREATE_MAP {}", dest),
-            Self::MapSet { object, key, value } => {
-                write!(f, "MAP_SET {} {} {}", object, key, value)
+            Self::SetProperty { object, key, value } => {
+                write!(f, "SET_PROPERTY {} {} {}", object, key, value)
             }
-            Self::MapGet { dest, object, key } => {
-                write!(f, "MAP_GET {} {} {}", dest, object, key)
+            Self::GetProperty { dest, object, key } => {
+                write!(f, "GET_PROPERTY {} {} {}", dest, object, key)
             }
-            Self::MapGetK { dest, object, key } => {
-                write!(f, "MAP_GET {} {} {}", dest, object, key)
+            Self::SetElement { object, key, value } => {
+                write!(f, "SET_ELEMENT {} {} {}", object, key, value)
             }
             Self::CreateClosure { dest, captures, src } => {
-                write!(f, "CREATE_CLOSURE {} FUNCTION: {} CAPTURES: {}", dest, src, captures)
+                write!(
+                    f,
+                    "CREATE_CLOSURE {} FUNCTION: {} CAPTURES: {}",
+                    dest, src, captures
+                )
             }
             Self::CaptureValue { src } => write!(f, "CAPTURE_VALUE {}", src),
             Self::CreateRef { dest, src } => {

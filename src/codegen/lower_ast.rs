@@ -153,12 +153,13 @@ impl<'a> Lower<'a> {
 
                     self.env.free_temp(src);
                 }
-                Node::MemberAccess { object, property } => {
+                Node::PropertyAccess { object, property } => {
                     let value = self.lower_materializing(right, None)?;
                     let object = self.lower_materializing(object, None)?;
-                    let key = self.lower_materializing(property, None)?;
+                    let key =
+                        self.store_constant(Constant::String(property.value));
 
-                    self.emit_instruction(Instruction::MapSet {
+                    self.emit_instruction(Instruction::SetProperty {
                         object: object.into(),
                         key: key.into(),
                         value: value.into(),
@@ -394,25 +395,14 @@ impl<'a> Lower<'a> {
 
                         self.env.declare_local(binding.value, dest);
 
-                        let key = {
-                            let src = self.store_string_const(binding.value);
-                            let dest = self.env.allocate_temp();
+                        let key = self
+                            .store_constant(Constant::String(binding.value));
 
-                            self.emit_instruction(Instruction::LoadConst {
-                                dest: dest.into(),
-                                src: src.into(),
-                            });
-
-                            dest
-                        };
-
-                        self.emit_instruction(Instruction::MapGet {
+                        self.emit_instruction(Instruction::GetProperty {
                             dest: dest.into(),
                             object: object.into(),
                             key: key.into(),
                         });
-
-                        self.env.free_temp(key);
                     }
                 }
             }
@@ -925,20 +915,19 @@ impl<'a> Lower<'a> {
 
                 Operand::Register(dest)
             }
-            Node::MemberAccess { object, property } => {
+            Node::PropertyAccess { object, property } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
                 let object = self.lower_materializing(object, None)?;
-                let key = self.lower_materializing(property, None)?;
+                let key = self.store_constant(Constant::String(property.value));
 
-                self.emit_instruction(Instruction::MapGet {
+                self.emit_instruction(Instruction::GetProperty {
                     dest: dest.into(),
                     object: object.into(),
                     key: key.into(),
                 });
 
                 self.env.free_temp(object);
-                self.env.free_temp(key);
 
                 Operand::Register(dest)
             }
@@ -979,7 +968,7 @@ impl<'a> Lower<'a> {
                         self.lower_materializing(key_id, None)
                     }?;
 
-                    self.emit_instruction(Instruction::MapSet {
+                    self.emit_instruction(Instruction::SetElement {
                         object: dest.into(),
                         key: key.into(),
                         value: value.into(),
@@ -1344,7 +1333,7 @@ impl<'a> Lower<'a> {
                 | Instruction::Move { dest, .. }
                 | Instruction::LoadConst { dest, .. }
                 | Instruction::CreateMap { dest }
-                | Instruction::MapGet { dest, .. }
+                | Instruction::GetProperty { dest, .. }
                 | Instruction::CreateClosure { dest, .. }
                 | Instruction::CreateRef { dest, .. }
                 | Instruction::Deref { dest, .. }

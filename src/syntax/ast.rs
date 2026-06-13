@@ -87,9 +87,9 @@ pub enum Node {
         callee: NodeId,
         arguments: Vec<NodeId>,
     },
-    MemberAccess {
+    PropertyAccess {
         object: NodeId,
-        property: NodeId,
+        property: Spanned<Symbol>,
     },
     Map {
         entries: Vec<(NodeId, Option<NodeId>)>,
@@ -256,13 +256,13 @@ impl Ast {
         self.insert(Node::FunctionCall { callee, arguments }, span)
     }
 
-    pub fn member_access(
+    pub fn property_access(
         &mut self,
         object: NodeId,
-        property: NodeId,
+        property: Spanned<Symbol>,
         span: Span,
     ) -> NodeId {
-        self.insert(Node::MemberAccess { object, property }, span)
+        self.insert(Node::PropertyAccess { object, property }, span)
     }
 
     pub fn map(

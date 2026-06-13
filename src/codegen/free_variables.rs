@@ -119,7 +119,7 @@ impl<'a> Lower<'a> {
                     self.collect_free_variables(argument, bound, free);
                 }
             }
-            Node::MemberAccess { object, .. } => {
+            Node::PropertyAccess { object, .. } => {
                 self.collect_free_variables(object, bound, free)
             }
             Node::Map { ref entries } => {

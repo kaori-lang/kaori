@@ -672,7 +672,7 @@ impl<'a> Parser<'a> {
 
         Ok(match token {
             Token::LeftParen => self.parse_function_call(operand)?,
-            Token::Dot => self.parse_member_access(operand)?,
+            Token::Dot => self.parse_property_access(operand)?,
             _ => operand,
         })
     }
@@ -692,16 +692,18 @@ impl<'a> Parser<'a> {
         self.parse_postfix_unary(function_call)
     }
 
-    fn parse_member_access(&mut self, object: NodeId) -> Result<NodeId, Error> {
+    fn parse_property_access(
+        &mut self,
+        object: NodeId,
+    ) -> Result<NodeId, Error> {
         let dot_span = self.consume(Token::Dot)?;
 
         let property = self.parse_name()?;
-        let property = self.ast.string(property.value, property.span);
 
-        let span = dot_span.merge(self.ast.span(property));
+        let span = dot_span.merge(property.span);
 
-        let member_access = self.ast.member_access(object, property, span);
+        let property_access = self.ast.property_access(object, property, span);
 
-        self.parse_postfix_unary(member_access)
+        self.parse_postfix_unary(property_access)
     }
 }

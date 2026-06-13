@@ -7,5 +7,6 @@ let data = #{
 while data.i > 0 {
     data.a = data.a + data.i;
     data.i = data.i - 1;   
+   
 }
 
