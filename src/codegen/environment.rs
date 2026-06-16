@@ -49,9 +49,9 @@ impl Environment {
         while self.locals.len() > index {
             let (_, register) = self.locals.pop().unwrap();
 
-            /*  if let Register::Local(register) = register {
+            if let Register::Local(register) = register {
                 self.registers.push(Reverse(register));
-            } */
+            }
         }
     }
 
@@ -89,8 +89,8 @@ impl Environment {
     }
 
     pub fn free_temp(&mut self, register: Register) {
-        /* if let Register::Temp(register) = register {
+        if let Register::Temp(register) = register {
             self.registers.push(Reverse(register));
-        } */
+        }
     }
 }
