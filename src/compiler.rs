@@ -57,9 +57,9 @@ impl Compiler {
 
         self.files.insert(symbol, Compilation::Function(index));
 
-        for function in self.functions.iter() {
+        /*     for function in self.functions.iter() {
             println!("{}", function);
-        }
+        } */
 
         Ok(index)
     }

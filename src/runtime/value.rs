@@ -156,22 +156,18 @@ impl Value {
     pub fn index(&self) -> u32 {
         unsafe { self.parts.0 }
     }
-
-    pub fn add(self, other: &Value) -> Self {
-        unsafe { Self { float: self.float + other.float } }
-    }
 }
 
 impl std::fmt::Debug for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.is_number() {
-            write!(f, "Number({})", self.as_number())
+            write!(f, "{}", self.as_number())
         } else if self.is_nil() {
             write!(f, "Nil")
         } else if self.is_bool() {
-            write!(f, "Bool({})", self.as_bool())
+            write!(f, "{}", self.as_bool())
         } else if self.is_string() {
-            write!(f, "String({:?})", self.as_string())
+            write!(f, "{:?}", self.as_string())
         } else if self.is_closure() {
             write!(f, "Closure({})", self.index())
         } else if self.is_map() {

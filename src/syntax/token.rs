@@ -116,6 +116,7 @@ pub enum Token {
     StringLiteral,
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
     Identifier,
+
     Eof,
 }
 

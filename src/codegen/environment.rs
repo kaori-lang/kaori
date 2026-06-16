@@ -18,10 +18,22 @@ pub struct Environment {
 
 impl Environment {
     pub fn new() -> Self {
-        Self { parent: None, locals: Vec::new(), scopes: vec![0], registers: (0..=255).map(Reverse).collect(), frame_size: 0 }
+        Self {
+            parent: None,
+            locals: Vec::new(),
+            scopes: vec![0],
+            registers: (0..=255).map(Reverse).collect(),
+            frame_size: 0,
+        }
     }
     pub fn with_parent(parent: Environment) -> Self {
-        Self { parent: Some(Box::new(parent)), locals: Vec::new(), scopes: vec![0], registers: (0..=255).map(Reverse).collect(), frame_size: 0 }
+        Self {
+            parent: Some(Box::new(parent)),
+            locals: Vec::new(),
+            scopes: vec![0],
+            registers: (0..=255).map(Reverse).collect(),
+            frame_size: 0,
+        }
     }
     pub fn push_scope(&mut self) {
         let index = self.locals.len();
@@ -37,9 +49,9 @@ impl Environment {
         while self.locals.len() > index {
             let (_, register) = self.locals.pop().unwrap();
 
-            if let Register::Local(register) = register {
+            /*  if let Register::Local(register) = register {
                 self.registers.push(Reverse(register));
-            }
+            } */
         }
     }
 
@@ -77,8 +89,8 @@ impl Environment {
     }
 
     pub fn free_temp(&mut self, register: Register) {
-        if let Register::Temp(register) = register {
+        /* if let Register::Temp(register) = register {
             self.registers.push(Reverse(register));
-        }
+        } */
     }
 }

@@ -196,19 +196,13 @@ impl<'a> Lower<'a> {
 
                 self.loop_depth += 1;
 
-                let src = self.lower_materializing(condition, None)?;
-
-                let jump_if_false = self.lower_jump_if_false(src);
-                self.env.free_temp(src);
+                let jump_if_false = self.lower_jump_if_false(condition)?;
 
                 let loop_body = self.instructions.len();
 
                 self.lower_statement(block)?;
 
-                let src = self.lower_materializing(condition, None)?;
-
-                let jump_if_true = self.lower_jump_if_true(src);
-                self.env.free_temp(src);
+                let jump_if_true = self.lower_jump_if_true(condition)?;
 
                 self.patch_jump(
                     jump_if_true,
@@ -243,35 +237,26 @@ impl<'a> Lower<'a> {
                 self.loop_depth -= 1;
             }
             Node::If { condition, then_branch, else_branch } => {
-                let src = self.lower_materializing(condition, None)?;
-
-                self.env.free_temp(src);
-
-                let jump_if_false = self.lower_jump_if_false(src);
+                let jump_if_false = self.lower_jump_if_false(condition)?;
 
                 self.lower_statement(then_branch)?;
 
-                if let Some(else_branch) = else_branch {
-                    let jump_end =
-                        self.emit_instruction(Instruction::Jump { offset: 0 });
+                let jump_end =
+                    self.emit_instruction(Instruction::Jump { offset: 0 });
 
-                    self.patch_jump(
-                        jump_if_false,
-                        self.instructions.len() as i32 - jump_if_false as i32,
-                    );
+                self.patch_jump(
+                    jump_if_false,
+                    self.instructions.len() as i32 - jump_if_false as i32,
+                );
 
-                    self.lower_statement(else_branch)?;
-
-                    self.patch_jump(
-                        jump_end,
-                        self.instructions.len() as i32 - jump_end as i32,
-                    );
-                } else {
-                    self.patch_jump(
-                        jump_if_false,
-                        self.instructions.len() as i32 - jump_if_false as i32,
-                    );
+                if let Some(id) = else_branch {
+                    self.lower_statement(id)?;
                 }
+
+                self.patch_jump(
+                    jump_end,
+                    self.instructions.len() as i32 - jump_end as i32,
+                );
             }
             Node::Return(expression) => {
                 let src = self.lower_materializing(expression, None)?;
@@ -840,9 +825,13 @@ impl<'a> Lower<'a> {
             Node::LogicalAnd { left, right } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                self.lower_materializing(left, Some(dest))?;
+                let src = self.lower_materializing(left, Some(dest))?;
 
-                let jump_if_false = self.lower_jump_if_false(dest);
+                let jump_if_false =
+                    self.emit_instruction(Instruction::JumpIfFalse {
+                        src: src.into(),
+                        offset: 0,
+                    });
 
                 self.lower_materializing(right, Some(dest))?;
 
@@ -856,9 +845,13 @@ impl<'a> Lower<'a> {
             Node::LogicalOr { left, right } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                self.lower_materializing(left, Some(dest))?;
+                let src = self.lower_materializing(left, Some(dest))?;
 
-                let jump_if_true = self.lower_jump_if_true(dest);
+                let jump_if_true =
+                    self.emit_instruction(Instruction::JumpIfTrue {
+                        src: src.into(),
+                        offset: 0,
+                    });
 
                 self.lower_materializing(right, Some(dest))?;
 
@@ -870,10 +863,7 @@ impl<'a> Lower<'a> {
                 Operand::Register(dest)
             }
             Node::If { condition, then_branch, else_branch } => {
-                let src = self.lower_materializing(condition, None)?;
-                self.env.free_temp(src);
-
-                let jump_if_false = self.lower_jump_if_false(src);
+                let jump_if_false = self.lower_jump_if_false(condition)?;
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
@@ -1158,191 +1148,313 @@ impl<'a> Lower<'a> {
         Ok(register)
     }
 
-    fn lower_jump_if_true(&mut self, register: Register) -> usize {
-        let last = self.instructions.last().copied();
+    fn lower_jump_if_false(&mut self, id: NodeId) -> Result<usize, Error> {
+        match *self.ast.node(id) {
+            Node::Binary {
+                operator:
+                    operator @ (BinaryOp::Equal
+                    | BinaryOp::NotEqual
+                    | BinaryOp::Less
+                    | BinaryOp::LessEqual
+                    | BinaryOp::Greater
+                    | BinaryOp::GreaterEqual),
+                left,
+                right,
+            } => {
+                let src1 = self.lower_expression(left, None)?;
+                let src2 = self.lower_expression(right, None)?;
 
-        match last {
-            Some(Instruction::Equal { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfEqual {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
+                match (src1, src2) {
+                    (Operand::Register(src1), Operand::Register(src2)) => {
+                        Ok(self.emit_instruction(match operator {
+                            BinaryOp::Equal => Instruction::JumpIfNotEqual {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::NotEqual => Instruction::JumpIfEqual {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::Less => Instruction::JumpIfLessEqual {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::LessEqual => Instruction::JumpIfLess {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::Greater => Instruction::JumpIfLessEqual {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::GreaterEqual => Instruction::JumpIfLess {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            _ => unreachable!(),
+                        }))
+                    }
+                    (Operand::Register(src1), Operand::Constant(src2)) => {
+                        let src2 = self.store_constant(src2);
+                        Ok(self.emit_instruction(match operator {
+                            BinaryOp::Equal => Instruction::JumpIfNotEqualK {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::NotEqual => Instruction::JumpIfEqualK {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::Less => Instruction::JumpIfLessEqualKR {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::LessEqual => Instruction::JumpIfLessKR {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::Greater => {
+                                Instruction::JumpIfLessEqualRK {
+                                    src1: src1.into(),
+                                    src2: src2.into(),
+                                    offset: 0,
+                                }
+                            }
+                            BinaryOp::GreaterEqual => {
+                                Instruction::JumpIfLessRK {
+                                    src1: src1.into(),
+                                    src2: src2.into(),
+                                    offset: 0,
+                                }
+                            }
+                            _ => unreachable!(),
+                        }))
+                    }
+                    (Operand::Constant(src1), Operand::Register(src2)) => {
+                        let src1 = self.store_constant(src1);
+                        Ok(self.emit_instruction(match operator {
+                            BinaryOp::Equal => Instruction::JumpIfNotEqualK {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::NotEqual => Instruction::JumpIfEqualK {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::Less => Instruction::JumpIfLessEqualRK {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::LessEqual => Instruction::JumpIfLessRK {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::Greater => {
+                                Instruction::JumpIfLessEqualKR {
+                                    src1: src1.into(),
+                                    src2: src2.into(),
+                                    offset: 0,
+                                }
+                            }
+                            BinaryOp::GreaterEqual => {
+                                Instruction::JumpIfLessKR {
+                                    src1: src1.into(),
+                                    src2: src2.into(),
+                                    offset: 0,
+                                }
+                            }
+                            _ => unreachable!(),
+                        }))
+                    }
+                    (Operand::Constant(_), Operand::Constant(_)) => {
+                        let src = self.lower_materializing(id, None)?;
+                        Ok(self.emit_instruction(Instruction::JumpIfFalse {
+                            src: src.into(),
+                            offset: 0,
+                        }))
+                    }
+                }
             }
-            Some(Instruction::NotEqual { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfNotEqual {
-                    src1,
-                    src2,
+            _ => {
+                let src = self.lower_materializing(id, None)?;
+                Ok(self.emit_instruction(Instruction::JumpIfFalse {
+                    src: src.into(),
                     offset: 0,
-                })
+                }))
             }
-            Some(Instruction::Less { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfLess {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::LessEqual { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfLessEqual {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::EqualK { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfEqualK {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::NotEqualK { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfNotEqualK {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::LessRK { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfLessRK {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::LessEqualRK { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfLessEqualRK {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::LessKR { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfLessKR {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::LessEqualKR { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfLessEqualKR {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
-            }
-            _ => self.emit_instruction(Instruction::JumpIfTrue {
-                src: register.into(),
-                offset: 0,
-            }),
         }
     }
 
-    fn lower_jump_if_false(&mut self, register: Register) -> usize {
-        let last = self.instructions.last().copied();
+    fn lower_jump_if_true(&mut self, id: NodeId) -> Result<usize, Error> {
+        match *self.ast.node(id) {
+            Node::Binary {
+                operator:
+                    operator @ (BinaryOp::Equal
+                    | BinaryOp::NotEqual
+                    | BinaryOp::Less
+                    | BinaryOp::LessEqual
+                    | BinaryOp::Greater
+                    | BinaryOp::GreaterEqual),
+                left,
+                right,
+            } => {
+                let src1 = self.lower_expression(left, None)?;
+                let src2 = self.lower_expression(right, None)?;
 
-        match last {
-            Some(Instruction::Equal { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfNotEqual {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
+                match (src1, src2) {
+                    (Operand::Register(src1), Operand::Register(src2)) => {
+                        Ok(self.emit_instruction(match operator {
+                            BinaryOp::Equal => Instruction::JumpIfEqual {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::NotEqual => Instruction::JumpIfNotEqual {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::Less => Instruction::JumpIfLess {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::LessEqual => {
+                                Instruction::JumpIfLessEqual {
+                                    src1: src1.into(),
+                                    src2: src2.into(),
+                                    offset: 0,
+                                }
+                            }
+                            BinaryOp::Greater => Instruction::JumpIfLess {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::GreaterEqual => {
+                                Instruction::JumpIfLessEqual {
+                                    src1: src2.into(),
+                                    src2: src1.into(),
+                                    offset: 0,
+                                }
+                            }
+                            _ => unreachable!(),
+                        }))
+                    }
+                    (Operand::Register(src1), Operand::Constant(src2)) => {
+                        let src2 = self.store_constant(src2);
+                        Ok(self.emit_instruction(match operator {
+                            BinaryOp::Equal => Instruction::JumpIfEqualK {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::NotEqual => {
+                                Instruction::JumpIfNotEqualK {
+                                    src1: src1.into(),
+                                    src2: src2.into(),
+                                    offset: 0,
+                                }
+                            }
+                            BinaryOp::Less => Instruction::JumpIfLessRK {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::LessEqual => {
+                                Instruction::JumpIfLessEqualRK {
+                                    src1: src1.into(),
+                                    src2: src2.into(),
+                                    offset: 0,
+                                }
+                            }
+                            BinaryOp::Greater => Instruction::JumpIfLessKR {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::GreaterEqual => {
+                                Instruction::JumpIfLessEqualKR {
+                                    src1: src2.into(),
+                                    src2: src1.into(),
+                                    offset: 0,
+                                }
+                            }
+                            _ => unreachable!(),
+                        }))
+                    }
+                    (Operand::Constant(src1), Operand::Register(src2)) => {
+                        let src1 = self.store_constant(src1);
+                        Ok(self.emit_instruction(match operator {
+                            BinaryOp::Equal => Instruction::JumpIfEqualK {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::NotEqual => {
+                                Instruction::JumpIfNotEqualK {
+                                    src1: src2.into(),
+                                    src2: src1.into(),
+                                    offset: 0,
+                                }
+                            }
+                            BinaryOp::Less => Instruction::JumpIfLessKR {
+                                src1: src1.into(),
+                                src2: src2.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::LessEqual => {
+                                Instruction::JumpIfLessEqualKR {
+                                    src1: src1.into(),
+                                    src2: src2.into(),
+                                    offset: 0,
+                                }
+                            }
+                            BinaryOp::Greater => Instruction::JumpIfLessRK {
+                                src1: src2.into(),
+                                src2: src1.into(),
+                                offset: 0,
+                            },
+                            BinaryOp::GreaterEqual => {
+                                Instruction::JumpIfLessEqualRK {
+                                    src1: src2.into(),
+                                    src2: src1.into(),
+                                    offset: 0,
+                                }
+                            }
+                            _ => unreachable!(),
+                        }))
+                    }
+                    (Operand::Constant(_), Operand::Constant(_)) => {
+                        let src = self.lower_materializing(id, None)?;
+                        Ok(self.emit_instruction(Instruction::JumpIfTrue {
+                            src: src.into(),
+                            offset: 0,
+                        }))
+                    }
+                }
             }
-            Some(Instruction::NotEqual { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfEqual {
-                    src1,
-                    src2,
+            _ => {
+                let src = self.lower_materializing(id, None)?;
+                Ok(self.emit_instruction(Instruction::JumpIfTrue {
+                    src: src.into(),
                     offset: 0,
-                })
+                }))
             }
-            Some(Instruction::Less { src1, src2, .. }) => {
-                self.instructions.pop();
-
-                self.emit_instruction(Instruction::JumpIfLessEqual {
-                    src1: src2,
-                    src2: src1,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::LessEqual { src1, src2, .. }) => {
-                self.instructions.pop();
-
-                self.emit_instruction(Instruction::JumpIfLess {
-                    src1: src2,
-                    src2: src1,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::EqualK { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfNotEqualK {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::NotEqualK { src1, src2, .. }) => {
-                self.instructions.pop();
-                self.emit_instruction(Instruction::JumpIfEqualK {
-                    src1,
-                    src2,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::LessRK { src1, src2, .. }) => {
-                self.instructions.pop();
-
-                self.emit_instruction(Instruction::JumpIfLessEqualKR {
-                    src1: src2,
-                    src2: src1,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::LessEqualRK { src1, src2, .. }) => {
-                self.instructions.pop();
-
-                self.emit_instruction(Instruction::JumpIfLessKR {
-                    src1: src2,
-                    src2: src1,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::LessKR { src1, src2, .. }) => {
-                self.instructions.pop();
-
-                self.emit_instruction(Instruction::JumpIfLessEqualRK {
-                    src1: src2,
-                    src2: src1,
-                    offset: 0,
-                })
-            }
-            Some(Instruction::LessEqualKR { src1, src2, .. }) => {
-                self.instructions.pop();
-
-                self.emit_instruction(Instruction::JumpIfLessRK {
-                    src1: src2,
-                    src2: src1,
-                    offset: 0,
-                })
-            }
-            _ => self.emit_instruction(Instruction::JumpIfFalse {
-                src: register.into(),
-                offset: 0,
-            }),
         }
     }
 
