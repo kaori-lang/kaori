@@ -1,5 +1,3 @@
-use ordered_float::OrderedFloat;
-
 use crate::{
     codegen::{lower_ast::Lower, operand::Constant},
     runtime::value::Value,
@@ -24,9 +22,7 @@ impl<'a> Lower<'a> {
         match constant {
             Constant::Boolean(value) => self.get_or_insert(Value::bool(value)),
             Constant::Nil => self.store_nil_const(),
-            Constant::Number(value) => {
-                self.get_or_insert(Value::number(OrderedFloat(value)))
-            }
+            Constant::Number(value) => self.get_or_insert(Value::number(value)),
             Constant::String(value) => self.get_or_insert(Value::string(value)),
         }
     }
@@ -36,7 +32,7 @@ impl<'a> Lower<'a> {
     }
 
     pub fn store_number_const(&mut self, value: f64) -> usize {
-        self.get_or_insert(Value::number(OrderedFloat(value)))
+        self.get_or_insert(Value::number(value))
     }
 
     pub fn store_nil_const(&mut self) -> usize {

@@ -1,8 +1,8 @@
-def fib(n: int) -> int:
+def fib(n):
     if n < 2:
         return n
     return fib(n - 1) + fib(n - 2)
 
 
-fib(40)
+x = fib(40)
 

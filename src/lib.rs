@@ -1,5 +1,4 @@
 #![feature(explicit_tail_calls)]
-#![feature(f16)]
 #![allow(incomplete_features)]
 #![feature(likely_unlikely)]
 #![feature(rust_preserve_none_cc)]

@@ -1,136 +1,187 @@
-use ordered_float::OrderedFloat;
-
 use crate::util::string_interner::Symbol;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[repr(u8)]
-pub enum Value {
-    Number(OrderedFloat<f64>),
-    Nil,
-    Bool(bool),
-    String(Symbol),
-    Closure(usize),
-    Map(usize),
-    Vec(usize),
-    Cell(usize),
+const TAG_NIL: u32 = 0xFFFF_0001;
+const TAG_BOOL: u32 = 0xFFFF_0002;
+const TAG_STRING: u32 = 0xFFFF_0003;
+const TAG_CLOSURE: u32 = 0xFFFF_0004;
+const TAG_MAP: u32 = 0xFFFF_0005;
+const TAG_VEC: u32 = 0xFFFF_0006;
+const TAG_CELL: u32 = 0xFFFF_0007;
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+pub union Value {
+    float: f64,
+    parts: (u32, u32), // (.0 = payload/low, .1 = tag/high)
+    bits: u64,
 }
 
-#[allow(clippy::derivable_impls)]
 impl Default for Value {
     fn default() -> Self {
-        Self::Nil
+        Self::nil()
+    }
+}
+
+impl PartialEq for Value {
+    #[inline(always)]
+    fn eq(&self, other: &Self) -> bool {
+        unsafe { self.bits == other.bits }
+    }
+}
+
+impl Eq for Value {}
+
+impl Hash for Value {
+    #[inline(always)]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        unsafe { self.bits.hash(state) }
     }
 }
 
 impl Value {
-    pub fn number(value: OrderedFloat<f64>) -> Self {
-        Value::Number(value)
+    #[inline(always)]
+    pub fn number(value: f64) -> Self {
+        Self { float: value }
     }
+
+    #[inline(always)]
     pub fn nil() -> Self {
-        Value::Nil
+        Self { parts: (0, TAG_NIL) }
     }
+
+    #[inline(always)]
     pub fn bool(value: bool) -> Self {
-        Value::Bool(value)
+        Self { parts: (value as u32, TAG_BOOL) }
     }
+
+    #[inline(always)]
     pub fn string(index: Symbol) -> Self {
-        Value::String(index)
-    }
-    pub fn closure(index: usize) -> Self {
-        Value::Closure(index)
+        Self { parts: (index.0, TAG_STRING) }
     }
 
-    pub fn map(index: usize) -> Self {
-        Value::Map(index)
-    }
-    pub fn vec(index: usize) -> Self {
-        Value::Vec(index)
-    }
-    pub fn cell(index: usize) -> Self {
-        Value::Cell(index)
+    #[inline(always)]
+    pub fn closure(index: u32) -> Self {
+        Self { parts: (index, TAG_CLOSURE) }
     }
 
+    #[inline(always)]
+    pub fn map(index: u32) -> Self {
+        Self { parts: (index, TAG_MAP) }
+    }
+
+    #[inline(always)]
+    pub fn vec(index: u32) -> Self {
+        Self { parts: (index, TAG_VEC) }
+    }
+
+    #[inline(always)]
+    pub fn cell(index: u32) -> Self {
+        Self { parts: (index, TAG_CELL) }
+    }
+
+    #[inline(always)]
+    pub fn not(&mut self) {
+        unsafe {
+            self.parts.0 ^= 1;
+        }
+    }
+
+    #[inline(always)]
     pub fn is_number(&self) -> bool {
-        matches!(self, Value::Number(_))
+        unsafe { !self.float.is_nan() }
     }
+
+    #[inline(always)]
     pub fn is_nil(&self) -> bool {
-        matches!(self, Value::Nil)
+        unsafe { self.parts.1 == TAG_NIL }
     }
+
+    #[inline(always)]
     pub fn is_bool(&self) -> bool {
-        matches!(self, Value::Bool(_))
+        unsafe { self.parts.1 == TAG_BOOL }
     }
+
+    #[inline(always)]
     pub fn is_string(&self) -> bool {
-        matches!(self, Value::String(_))
+        unsafe { self.parts.1 == TAG_STRING }
     }
+
+    #[inline(always)]
     pub fn is_closure(&self) -> bool {
-        matches!(self, Value::Closure(_))
+        unsafe { self.parts.1 == TAG_CLOSURE }
     }
 
+    #[inline(always)]
     pub fn is_map(&self) -> bool {
-        matches!(self, Value::Map(_))
+        unsafe { self.parts.1 == TAG_MAP }
     }
+
+    #[inline(always)]
     pub fn is_vec(&self) -> bool {
-        matches!(self, Value::Vec(_))
+        unsafe { self.parts.1 == TAG_VEC }
     }
+
+    #[inline(always)]
     pub fn is_cell(&self) -> bool {
-        matches!(self, Value::Cell(_))
+        unsafe { self.parts.1 == TAG_CELL }
     }
 
-    // ── as ──────────────────────────────────────────────────────────────────
-
-    pub fn as_number(&self) -> OrderedFloat<f64> {
-        match self {
-            Value::Number(v) => *v,
-            // SAFETY: caller guarantees this is Value::Number
-            _ => unsafe { std::hint::unreachable_unchecked() },
-        }
+    #[inline(always)]
+    pub fn is_true(&self) -> bool {
+        unsafe { self.parts.0 == 1 }
     }
 
+    #[inline(always)]
+    pub fn is_false(&self) -> bool {
+        unsafe { self.parts.0 == 0 }
+    }
+
+    #[inline(always)]
+    pub fn as_number(&self) -> f64 {
+        unsafe { self.float }
+    }
+
+    #[inline(always)]
     pub fn as_bool(&self) -> bool {
-        match self {
-            Value::Bool(v) => *v,
-            // SAFETY: caller guarantees this is Value::Bool
-            _ => unsafe { std::hint::unreachable_unchecked() },
-        }
+        unsafe { self.parts.0 != 0 }
     }
 
+    #[inline(always)]
     pub fn as_string(&self) -> Symbol {
-        match self {
-            Value::String(v) => *v,
-            // SAFETY: caller guarantees this is Value::String
-            _ => unsafe { std::hint::unreachable_unchecked() },
-        }
+        unsafe { Symbol(self.parts.0) }
     }
 
-    pub fn as_closure(&self) -> usize {
-        match self {
-            Value::Closure(v) => *v,
-            // SAFETY: caller guarantees this is Value::Closure
-            _ => unsafe { std::hint::unreachable_unchecked() },
-        }
+    #[inline(always)]
+    pub fn index(&self) -> u32 {
+        unsafe { self.parts.0 }
     }
 
-    pub fn as_map(&self) -> usize {
-        match self {
-            Value::Map(v) => *v,
-            // SAFETY: caller guarantees this is Value::Map
-            _ => unsafe { std::hint::unreachable_unchecked() },
-        }
+    pub fn add(self, other: &Value) -> Self {
+        unsafe { Self { float: self.float + other.float } }
     }
+}
 
-    pub fn as_vec(&self) -> usize {
-        match self {
-            Value::Vec(v) => *v,
-            // SAFETY: caller guarantees this is Value::Vec
-            _ => unsafe { std::hint::unreachable_unchecked() },
-        }
-    }
-
-    pub fn as_cell(&self) -> usize {
-        match self {
-            Value::Cell(v) => *v,
-            // SAFETY: caller guarantees this is Value::Cell
-            _ => unsafe { std::hint::unreachable_unchecked() },
+impl std::fmt::Debug for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_number() {
+            write!(f, "Number({})", self.as_number())
+        } else if self.is_nil() {
+            write!(f, "Nil")
+        } else if self.is_bool() {
+            write!(f, "Bool({})", self.as_bool())
+        } else if self.is_string() {
+            write!(f, "String({:?})", self.as_string())
+        } else if self.is_closure() {
+            write!(f, "Closure({})", self.index())
+        } else if self.is_map() {
+            write!(f, "Map({})", self.index())
+        } else if self.is_vec() {
+            write!(f, "Array({})", self.index())
+        } else if self.is_cell() {
+            write!(f, "Cell({})", self.index())
+        } else {
+            write!(f, "Unknown(0x{:016x})", unsafe { self.bits })
         }
     }
 }

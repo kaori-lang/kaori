@@ -139,13 +139,21 @@ impl fmt::Display for Instruction {
             Self::LessEqualKR { dest, src1, src2 } => {
                 write!(f, "LTE {} {} {}", dest, src1, src2)
             }
-            Self::Not { dest, src } => write!(f, "NOT {} {}", dest, src),
-            Self::Negate { dest, src } => write!(f, "NEG {} {}", dest, src),
-            Self::Move { dest, src } => write!(f, "MOV {} {}", dest, src),
+            Self::Not { dest, src } => {
+                write!(f, "NOT {} {}", dest, src)
+            }
+            Self::Negate { dest, src } => {
+                write!(f, "NEG {} {}", dest, src)
+            }
+            Self::Move { dest, src } => {
+                write!(f, "MOV {} {}", dest, src)
+            }
             Self::LoadConst { dest, src } => {
                 write!(f, "LOAD_CONST {} {}", dest, src)
             }
-            Self::CreateMap { dest } => write!(f, "CREATE_MAP {}", dest),
+            Self::CreateMap { dest } => {
+                write!(f, "CREATE_MAP {}", dest)
+            }
             Self::SetProperty { object, key, value } => {
                 write!(f, "SET_PROPERTY {} {} {}", object, key, value)
             }
@@ -162,15 +170,21 @@ impl fmt::Display for Instruction {
                     dest, src, captures
                 )
             }
-            Self::CaptureValue { src } => write!(f, "CAPTURE_VALUE {}", src),
+            Self::CaptureValue { src } => {
+                write!(f, "CAPTURE_VALUE {}", src)
+            }
             Self::CreateRef { dest, src } => {
                 write!(f, "CREATE_REF {} {}", dest, src)
             }
             Self::DerefSet { dest, src } => {
                 write!(f, "DEREF_SET {} {}", dest, src)
             }
-            Self::Deref { dest, src } => write!(f, "DEREF {} {}", dest, src),
-            Self::Call { dest, src } => write!(f, "CALL {} {}", dest, src),
+            Self::Deref { dest, src } => {
+                write!(f, "DEREF {} {}", dest, src)
+            }
+            Self::Call { dest, src } => {
+                write!(f, "CALL {} {}", dest, src)
+            }
             Self::Return { src } => write!(f, "RET {}", src),
             Self::Jump { offset } => write!(f, "JMP {}", offset),
             Self::JumpIfTrue { src, offset } => {

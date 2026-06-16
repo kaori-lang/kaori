@@ -1,3 +1,7 @@
+use std::cell::{RefCell, UnsafeCell};
+use std::collections::HashMap;
+use std::rc::Rc;
+use std::sync::Arc;
 #[allow(unused_imports)]
 use std::{env::args, process::ExitCode};
 #[allow(unused_imports)]
@@ -19,8 +23,8 @@ use std::path::PathBuf;
     if let Err(error) = compile_and_run(file.to_str().unwrap()) {
         error.report()
     }
-}
- */
+} */
+
 fn main() {
     if let Err(error) = compile_and_run("main.kr") {
         error.report()

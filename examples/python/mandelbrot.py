@@ -21,4 +21,4 @@ def mandelbrot():
                 zx = xtemp
                 iteration = iteration + 1
 
-mandelbrot()
+x = mandelbrot()

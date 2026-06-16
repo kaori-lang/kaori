@@ -7,5 +7,5 @@ local function fib(n)
 end
 
 
-fib(40)
+local x = fib(40)
 

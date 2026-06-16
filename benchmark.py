@@ -5,16 +5,15 @@ folder = Path("examples")
 
 scripts = [
     ("Kaori",   ["kaori"],  "kr",  "kaori"),
-    ("Lua",     ["lua"],    "lua", "lua"),
-    ("LuaJIT",  ["luajit"], "lua", "lua"),
+    #("Lua",     ["lua"],    "lua", "lua"),
+    #("LuaJIT",  ["luajit"], "lua", "lua"),
     #("PyPy",    ["pypy"],   "py",  "python"),
-    ("Node.js", ["node"],   "js",  "javascript"),
-    ("Python",  ["python"], "py",  "python"),
+    #("Python",  ["python"], "py",  "python"),
 ]
 
 benchmarks = [
-    #("Mandelbrot",    "mandelbrot"),
-    #("Fibonnaci",    "recursive_fib"),
+    ("Mandelbrot",    "mandelbrot"),
+    ("Fibonnaci",    "recursive_fib"),
     ("Object", "objects")
 ]
 
@@ -30,7 +29,7 @@ for bench_name, bench_slug in benchmarks:
 
     subprocess.run([
         "hyperfine",
-        "--warmup", "5",
-        "--runs", "15",
+        "--warmup", "10",
+        "--runs", "10",
         *commands,
     ])

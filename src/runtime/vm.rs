@@ -110,6 +110,13 @@ fn runtime_error(message: &'static str) -> Error {
     Error::new(Span::default(), Symbol::default(), message.to_string())
 }
 
+#[cold]
+#[inline(never)]
+fn thread_return(registers: &mut Registers, value: Value) -> Result<(), Error> {
+    unsafe { registers.set_value(Reg(0), value) };
+    Ok(())
+}
+
 #[inline(always)]
 fn type_check(condition: bool, message: &'static str) -> Result<(), Error> {
     if condition { Ok(()) } else { Err(runtime_error(message)) }
@@ -123,6 +130,7 @@ pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
     let index = unsafe { (*ip).discriminant() };
 
     let constants: Constants = constants.into();
+
     let mut thread = Thread::new(functions);
     let registers = Registers(thread.registers.as_mut_ptr());
 
@@ -132,7 +140,7 @@ pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
 
     let src = 0.into();
     let value = unsafe { registers.get_value(src) };
-    //println!("{:?}", value);
+    println!("{:?}", value);
     Ok(())
 }
 
@@ -935,11 +943,12 @@ unsafe extern "rust-preserve-none" fn opcode_not(
         }
     };
 
-    let src = unsafe { registers.get_value(src) };
+    let mut src = unsafe { registers.get_value(src) };
 
     type_check(src.is_bool(), "cannot apply not, operand must be a boolean")?;
 
-    unsafe { registers.set_value(dest, Value::bool(!src.as_bool())) };
+    src.not();
+    unsafe { registers.set_value(dest, src) };
 
     dispatch_next!(ip, registers, constants, thread, frame_size)
 }
@@ -1063,7 +1072,7 @@ unsafe extern "rust-preserve-none" fn opcode_set_property(
     let key = unsafe { constants.get_value(key) };
     let value = unsafe { registers.get_value(value) };
 
-    thread.heap.get_map_mut(object.as_map()).insert(key, value);
+    thread.heap.get_map_mut(object.index()).insert(key, value);
 
     dispatch_next!(ip, registers, constants, thread, frame_size)
 }
@@ -1090,7 +1099,7 @@ unsafe extern "rust-preserve-none" fn opcode_get_property(
     type_check(object.is_map(), "cannot get field, value is not a map")?;
 
     let key = unsafe { constants.get_value(key) };
-    let object = thread.heap.get_map(object.as_map());
+    let object = thread.heap.get_map(object.index());
 
     if let Some(value) = object.get(&key) {
         unsafe { registers.set_value(dest, *value) };
@@ -1125,7 +1134,7 @@ unsafe extern "rust-preserve-none" fn opcode_set_element(
     let key = unsafe { registers.get_value(key) };
     let value = unsafe { registers.get_value(value) };
 
-    thread.heap.get_map_mut(object.as_map()).insert(key, value);
+    thread.heap.get_map_mut(object.index()).insert(key, value);
 
     dispatch_next!(ip, registers, constants, thread, frame_size)
 }
@@ -1231,7 +1240,7 @@ unsafe extern "rust-preserve-none" fn opcode_deref_set(
 
     type_check(dest.is_cell(), "cannot dereference a non cell")?;
 
-    let index = dest.as_cell();
+    let index = dest.index();
     let src = unsafe { registers.get_value(src) };
 
     *thread.heap.get_cell_mut(index) = src;
@@ -1259,7 +1268,7 @@ unsafe extern "rust-preserve-none" fn opcode_deref(
 
     type_check(src.is_cell(), "cannot dereference a non cell")?;
 
-    let index = src.as_cell();
+    let index = src.index();
     let value = *thread.heap.get_cell(index);
 
     unsafe { registers.set_value(dest, value) };
@@ -1295,7 +1304,7 @@ unsafe extern "rust-preserve-none" fn opcode_call(
         size: frame_size,
     };
 
-    let index = src.as_closure();
+    let index = src.index();
     let registers = unsafe { registers.0.add(frame_size) };
 
     let Closure { function, captures } = thread.heap.get_closure(index);
@@ -1314,6 +1323,7 @@ unsafe extern "rust-preserve-none" fn opcode_call(
 
     let constants: Constants = constants.into();
     let registers = Registers(registers);
+
     thread.stack.push(frame);
 
     let ip = instructions.as_ptr();
@@ -1351,9 +1361,7 @@ unsafe extern "rust-preserve-none" fn opcode_return(
 
         dispatch_next!(return_address, registers, constants, thread, size)
     } else {
-        unsafe { registers.set_value(Reg(0), value) };
-
-        Ok(())
+        thread_return(&mut registers, value)
     }
 }
 
@@ -1401,7 +1409,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_false(
         "cannot use this as a condition, value must be a boolean",
     )?;
 
-    if !src.as_bool() {
+    if src.is_false() {
         dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
         dispatch_next!(ip, registers, constants, thread, frame_size)
@@ -1433,7 +1441,7 @@ unsafe extern "rust-preserve-none" fn opcode_jump_if_true(
         "cannot use this as a condition, value must be a boolean",
     )?;
 
-    if src.as_bool() {
+    if src.is_true() {
         dispatch_offset!(ip, registers, constants, thread, frame_size, offset)
     } else {
         dispatch_next!(ip, registers, constants, thread, frame_size)

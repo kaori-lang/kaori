@@ -63,6 +63,10 @@ pub struct Lower<'a> {
     pub env: &'a mut Environment,
     pub constants: &'a mut Vec<Value>,
     pub instructions: &'a mut Vec<Instruction>,
+    pub inside_loop: bool,
+    pub unpatched_continue: Vec<usize>,
+    pub unpatched_break: Vec<usize>,
+    pub loop_depth: usize,
     pub unpatched_arguments: Vec<usize>,
 }
 
@@ -82,6 +86,10 @@ impl<'a> Lower<'a> {
             env,
             constants,
             instructions,
+            inside_loop: false,
+            unpatched_continue: Vec::new(),
+            unpatched_break: Vec::new(),
+            loop_depth: 0,
             unpatched_arguments: Vec::new(),
         }
     }
@@ -183,6 +191,11 @@ impl<'a> Lower<'a> {
                 }
             },
             Node::WhileLoop { condition, block } => {
+                let break_until = self.unpatched_break.len();
+                let continue_until = self.unpatched_continue.len();
+
+                self.loop_depth += 1;
+
                 let src = self.lower_materializing(condition, None)?;
 
                 let jump_if_false = self.lower_jump_if_false(src);
@@ -205,6 +218,29 @@ impl<'a> Lower<'a> {
                     jump_if_false,
                     self.instructions.len() as i32 - jump_if_false as i32,
                 );
+
+                while self.unpatched_break.len() > break_until {
+                    let index = self
+                        .unpatched_break
+                        .pop()
+                        .expect("Expected a break instruction index");
+
+                    self.patch_jump(
+                        index,
+                        self.instructions.len() as i32 - index as i32,
+                    );
+                }
+
+                while self.unpatched_continue.len() > continue_until {
+                    let index = self
+                        .unpatched_continue
+                        .pop()
+                        .expect("Expected a continue instruction index");
+
+                    self.patch_jump(index, jump_if_true as i32 - index as i32);
+                }
+
+                self.loop_depth -= 1;
             }
             Node::If { condition, then_branch, else_branch } => {
                 let src = self.lower_materializing(condition, None)?;
@@ -215,22 +251,27 @@ impl<'a> Lower<'a> {
 
                 self.lower_statement(then_branch)?;
 
-                let jump_end =
-                    self.emit_instruction(Instruction::Jump { offset: 0 });
+                if let Some(else_branch) = else_branch {
+                    let jump_end =
+                        self.emit_instruction(Instruction::Jump { offset: 0 });
 
-                self.patch_jump(
-                    jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
-                );
+                    self.patch_jump(
+                        jump_if_false,
+                        self.instructions.len() as i32 - jump_if_false as i32,
+                    );
 
-                if let Some(id) = else_branch {
-                    self.lower_statement(id)?;
+                    self.lower_statement(else_branch)?;
+
+                    self.patch_jump(
+                        jump_end,
+                        self.instructions.len() as i32 - jump_end as i32,
+                    );
+                } else {
+                    self.patch_jump(
+                        jump_if_false,
+                        self.instructions.len() as i32 - jump_if_false as i32,
+                    );
                 }
-
-                self.patch_jump(
-                    jump_end,
-                    self.instructions.len() as i32 - jump_end as i32,
-                );
             }
             Node::Return(expression) => {
                 let src = self.lower_materializing(expression, None)?;
@@ -406,8 +447,36 @@ impl<'a> Lower<'a> {
                     }
                 }
             }
-            Node::Break => todo!(),
-            Node::Continue => todo!(),
+            Node::Break => {
+                if self.loop_depth == 0 {
+                    return Err(Error::new(
+                        self.ast.span(id),
+                        self.compiler.current_file,
+                        "`break` statement found outside a loop".to_string(),
+                    ));
+                }
+
+                let index = self.instructions.len();
+
+                self.unpatched_break.push(index);
+
+                self.emit_instruction(Instruction::Jump { offset: 0 });
+            }
+            Node::Continue => {
+                if self.loop_depth == 0 {
+                    return Err(Error::new(
+                        self.ast.span(id),
+                        self.compiler.current_file,
+                        "`continue` statement found outside a loop".to_string(),
+                    ));
+                }
+
+                let index = self.instructions.len();
+
+                self.unpatched_continue.push(index);
+
+                self.emit_instruction(Instruction::Jump { offset: 0 });
+            }
             _ => {
                 let register = self.lower_materializing(id, None)?;
                 self.env.free_temp(register);
