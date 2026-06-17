@@ -1,0 +1,12 @@
+# Ignore build output
+target/
+
+# IDE settings
+.idea/
+.vscode/
+
+# OS-specific
+*.DS_Store
+
+# Logs
+*.log
