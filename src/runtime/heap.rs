@@ -6,12 +6,12 @@ use rustc_hash::FxBuildHasher;
 use std::collections::HashMap;
 struct Object<T> {
     marked: bool,
-    data: ManuallyDrop<T>,
+    data: T,
 }
 
 impl<T> Object<T> {
     fn new(data: T) -> Self {
-        Self { marked: false, data: ManuallyDrop::new(data) }
+        Self { marked: false, data }
     }
 }
 
@@ -41,9 +41,7 @@ impl<T> Arena<T> {
     }
 
     fn get_mut(&mut self, index: u32) -> &mut T {
-        unsafe {
-            &mut self.objects.get_unchecked_mut(index as usize).data
-        }
+        unsafe { &mut self.objects.get_unchecked_mut(index as usize).data }
     }
 }
 
@@ -54,10 +52,7 @@ pub struct Closure {
 }
 
 impl Closure {
-    pub fn new(
-        function: *const Function,
-        captures: Box<[Value]>,
-    ) -> Self {
+    pub fn new(function: *const Function, captures: Box<[Value]>) -> Self {
         Self { function, captures }
     }
 }
@@ -87,10 +82,7 @@ impl Heap {
         self.cells.alloc(value)
     }
 
-    pub fn get_map(
-        &self,
-        index: u32,
-    ) -> &HashMap<Value, Value, FxBuildHasher> {
+    pub fn get_map(&self, index: u32) -> &HashMap<Value, Value, FxBuildHasher> {
         self.maps.get(index)
     }
 

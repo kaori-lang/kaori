@@ -81,13 +81,6 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn not(&mut self) {
-        unsafe {
-            self.parts.0 ^= 1;
-        }
-    }
-
-    #[inline(always)]
     pub fn is_number(&self) -> bool {
         unsafe { !self.float.is_nan() }
     }

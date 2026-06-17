@@ -1,21 +1,35 @@
-0000  LOAD_CONST R0 C0
-0001  LOAD_CONST R1 C0
-0002  LOAD_CONST R2 C0
-0003  JMP_IF_LTE C1 R1 15
-0004  LOAD_CONST R4 C0
-0005  JMP_IF_LTE C1 R4 11
-0006  EQ R6 R1 C2
-0007  JMP_IF_FALSE R6 2
-0008  EQ R6 R4 C2
-0009  JMP_IF_FALSE R6 3
-0010  ADD R4 R4 C3
-0011  JMP 3
-0012  ADD R0 R0 C3
-0013  ADD R4 R4 C3
-0014  ADD R2 R2 C3
-0015  JMP_IF_LT R4 C1 -9
-0016  ADD R1 R1 C3
-0017  JMP_IF_LT R1 C1 -13
-0018  RET R0
-0019  LOAD_CONST R9 C4
-0020  RET R9
+fun mandelbrot() {
+    let width = 100;
+    let height = 100;
+    let max_iter = 100;
+    let x_min = -2.5;
+    let x_max = 1.0;
+    let y_min = -1.25;
+    let y_max = 1.25;
+    let y = 0;
+
+    while y < height {
+        let x = 0;
+
+        while x < width {
+            let cx = x_min + (x * (x_max - x_min) / width);
+            let cy = y_min + (y * (y_max - y_min) / height);
+            let zx = 0.0;
+            let zy = 0.0;
+            let iter = 0;
+
+            while (zx * zx + zy * zy < 4.0) and (iter < max_iter) {
+                let xtemp = zx * zx - zy * zy + cx;
+                zy = 2.0 * zx * zy + cy;
+                zx = xtemp;
+                iter = iter + 1;
+            }
+
+            x = x + 1;
+        }
+
+        y = y + 1;
+    }
+}
+
+let x = mandelbrot();
