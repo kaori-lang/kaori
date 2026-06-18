@@ -173,7 +173,7 @@ impl Compiler {
                 Const::from(index)
             };
 
-            file.emit_instruction(Instruction::SetProperty {
+            file.emit_instruction(Instruction::SetPropertyKR {
                 object: Reg(0),
                 key,
                 value: Reg(1),
@@ -214,15 +214,10 @@ impl Compiler {
                 Const::from(index)
             };
 
-            file.emit_instruction(Instruction::LoadConst {
-                dest: Reg(2),
-                src: value,
-            });
-
-            file.emit_instruction(Instruction::SetProperty {
+            file.emit_instruction(Instruction::SetPropertyKK {
                 object: Reg(1),
                 key,
-                value: Reg(2),
+                value,
             });
         }
     }

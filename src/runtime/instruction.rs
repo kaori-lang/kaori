@@ -36,7 +36,7 @@ pub enum Instruction {
     SetProperty { object: Reg, key: Reg, value: Reg },
     SetPropertyRK { object: Reg, key: Reg, value: Const },
     SetPropertyKR { object: Reg, key: Const, value: Reg },
-    SetPropertyKK { object: Reg, key: Const, value: Reg },
+    SetPropertyKK { object: Reg, key: Const, value: Const },
     GetProperty { dest: Reg, object: Reg, key: Reg },
     GetPropertyK { dest: Reg, object: Reg, key: Const },
     SetElement { object: Reg, key: Reg, value: Reg },

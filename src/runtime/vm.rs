@@ -993,7 +993,7 @@ unsafe extern "rust-preserve-none" fn opcode_set_property_kk(
     type_check(object.is_map(), "cannot set field, value is not a map")?;
 
     let key = unsafe { constants.get(key) };
-    let value = unsafe { registers.get(value) };
+    let value = unsafe { constants.get(value) };
 
     thread.heap.get_map_mut(object.index()).insert(key, value);
 
