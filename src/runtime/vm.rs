@@ -18,7 +18,7 @@ type Handler = unsafe extern "rust-preserve-none" fn(
     frame_size: usize,
 ) -> Result<(), Error>;
 
-static HANDLERS: [Handler; 51] = [
+static HANDLERS: [Handler; 55] = [
     opcode_add_rr,
     opcode_add_rk,
     opcode_subtract_rr,
@@ -48,7 +48,11 @@ static HANDLERS: [Handler; 51] = [
     opcode_load_const,
     opcode_create_map,
     opcode_set_property,
+    opcode_set_property_rk,
+    opcode_set_property_kr,
+    opcode_set_property_kk,
     opcode_get_property,
+    opcode_get_property_k,
     opcode_set_element,
     opcode_create_closure,
     opcode_create_ref,
@@ -913,6 +917,81 @@ unsafe extern "rust-preserve-none" fn opcode_set_property(
 
     type_check(object.is_map(), "cannot set field, value is not a map")?;
 
+    let key = unsafe { registers.get(key) };
+    let value = unsafe { registers.get(value) };
+
+    thread.heap.get_map_mut(object.index()).insert(key, value);
+
+    dispatch_next!(ip, registers, constants, thread, frame_size)
+}
+
+#[inline(never)]
+unsafe extern "rust-preserve-none" fn opcode_set_property_rk(
+    ip: *const Instruction,
+    registers: Registers,
+    constants: Constants,
+    thread: &mut Thread,
+    frame_size: usize,
+) -> Result<(), Error> {
+    let Instruction::SetPropertyRK { object, key, value } = (unsafe { *ip })
+    else {
+        unsafe { unreachable_unchecked() }
+    };
+
+    let object = unsafe { registers.get(object) };
+
+    type_check(object.is_map(), "cannot set field, value is not a map")?;
+
+    let key = unsafe { registers.get(key) };
+    let value = unsafe { constants.get(value) };
+
+    thread.heap.get_map_mut(object.index()).insert(key, value);
+
+    dispatch_next!(ip, registers, constants, thread, frame_size)
+}
+
+#[inline(never)]
+unsafe extern "rust-preserve-none" fn opcode_set_property_kr(
+    ip: *const Instruction,
+    registers: Registers,
+    constants: Constants,
+    thread: &mut Thread,
+    frame_size: usize,
+) -> Result<(), Error> {
+    let Instruction::SetPropertyKR { object, key, value } = (unsafe { *ip })
+    else {
+        unsafe { unreachable_unchecked() }
+    };
+
+    let object = unsafe { registers.get(object) };
+
+    type_check(object.is_map(), "cannot set field, value is not a map")?;
+
+    let key = unsafe { constants.get(key) };
+    let value = unsafe { registers.get(value) };
+
+    thread.heap.get_map_mut(object.index()).insert(key, value);
+
+    dispatch_next!(ip, registers, constants, thread, frame_size)
+}
+
+#[inline(never)]
+unsafe extern "rust-preserve-none" fn opcode_set_property_kk(
+    ip: *const Instruction,
+    registers: Registers,
+    constants: Constants,
+    thread: &mut Thread,
+    frame_size: usize,
+) -> Result<(), Error> {
+    let Instruction::SetPropertyKK { object, key, value } = (unsafe { *ip })
+    else {
+        unsafe { unreachable_unchecked() }
+    };
+
+    let object = unsafe { registers.get(object) };
+
+    type_check(object.is_map(), "cannot set field, value is not a map")?;
+
     let key = unsafe { constants.get(key) };
     let value = unsafe { registers.get(value) };
 
@@ -930,6 +1009,34 @@ unsafe extern "rust-preserve-none" fn opcode_get_property(
     frame_size: usize,
 ) -> Result<(), Error> {
     let Instruction::GetProperty { dest, object, key } = (unsafe { *ip })
+    else {
+        unsafe { unreachable_unchecked() }
+    };
+
+    let object = unsafe { registers.get(object) };
+
+    type_check(object.is_map(), "cannot get field, value is not a map")?;
+
+    let key = unsafe { registers.get(key) };
+    let map = thread.heap.get_map(object.index());
+
+    if let Some(value) = map.get(&key) {
+        unsafe { registers.set(dest, *value) };
+        dispatch_next!(ip, registers, constants, thread, frame_size)
+    } else {
+        Err(runtime_error("key not present in object"))
+    }
+}
+
+#[inline(never)]
+unsafe extern "rust-preserve-none" fn opcode_get_property_k(
+    ip: *const Instruction,
+    registers: Registers,
+    constants: Constants,
+    thread: &mut Thread,
+    frame_size: usize,
+) -> Result<(), Error> {
+    let Instruction::GetPropertyK { dest, object, key } = (unsafe { *ip })
     else {
         unsafe { unreachable_unchecked() }
     };

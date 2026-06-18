@@ -33,8 +33,12 @@ pub enum Instruction {
     Move { dest: Reg, src: Reg },
     LoadConst { dest: Reg, src: Const },
     CreateMap { dest: Reg },
-    SetProperty { object: Reg, key: Const, value: Reg },
-    GetProperty { dest: Reg, object: Reg, key: Const },
+    SetProperty { object: Reg, key: Reg, value: Reg },
+    SetPropertyRK { object: Reg, key: Reg, value: Const },
+    SetPropertyKR { object: Reg, key: Const, value: Reg },
+    SetPropertyKK { object: Reg, key: Const, value: Reg },
+    GetProperty { dest: Reg, object: Reg, key: Reg },
+    GetPropertyK { dest: Reg, object: Reg, key: Const },
     SetElement { object: Reg, key: Reg, value: Reg },
     CreateClosure { dest: Reg, captures: u8, src: u32 },
     CreateRef { dest: Reg, src: Reg },
@@ -157,7 +161,19 @@ impl fmt::Display for Instruction {
             Self::SetProperty { object, key, value } => {
                 write!(f, "SET_PROPERTY {} {} {}", object, key, value)
             }
+            Self::SetPropertyRK { object, key, value } => {
+                write!(f, "SET_PROPERTY {} {} {}", object, key, value)
+            }
+            Self::SetPropertyKR { object, key, value } => {
+                write!(f, "SET_PROPERTY {} {} {}", object, key, value)
+            }
+            Self::SetPropertyKK { object, key, value } => {
+                write!(f, "SET_PROPERTY {} {} {}", object, key, value)
+            }
             Self::GetProperty { dest, object, key } => {
+                write!(f, "GET_PROPERTY {} {} {}", dest, object, key)
+            }
+            Self::GetPropertyK { dest, object, key } => {
                 write!(f, "GET_PROPERTY {} {} {}", dest, object, key)
             }
             Self::SetElement { object, key, value } => {
