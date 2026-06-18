@@ -174,6 +174,8 @@ impl std::fmt::Debug for Value {
             write!(f, "{:?}", self.as_string())
         } else if self.is_closure() {
             write!(f, "Closure({})", self.index())
+        } else if self.is_native_function() {
+            write!(f, "NativeFunction({})", self.index())
         } else if self.is_map() {
             write!(f, "Map({})", self.index())
         } else if self.is_vec() {

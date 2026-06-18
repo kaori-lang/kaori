@@ -40,7 +40,7 @@ pub enum Instruction {
     CreateRef { dest: Reg, src: Reg },
     DerefSet { dest: Reg, src: Reg },
     Deref { dest: Reg, src: Reg },
-    Call { dest: Reg, src: Reg },
+    Call { dest: Reg, src: Reg, arity: u8 },
     Return { src: Reg },
     Jump { offset: i32 },
     JumpIfFalse { src: Reg, offset: i32 },
@@ -182,8 +182,8 @@ impl fmt::Display for Instruction {
             Self::Deref { dest, src } => {
                 write!(f, "DEREF {} {}", dest, src)
             }
-            Self::Call { dest, src } => {
-                write!(f, "CALL {} {}", dest, src)
+            Self::Call { dest, src, arity } => {
+                write!(f, "CALL {} {} ARITY: {}", dest, src, arity)
             }
             Self::Return { src } => write!(f, "RET {}", src),
             Self::Jump { offset } => write!(f, "JMP {}", offset),

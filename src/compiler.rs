@@ -10,8 +10,14 @@ use logos::Logos;
 use crate::{
     codegen::lower_ast::lower_ast,
     diagnostics::error::Error,
-    runtime::{function::Function, vm::run_vm},
-    std::native_function::NativeFunction,
+    runtime::{
+        function::Function,
+        instruction::Instruction,
+        native_function::NativeFunction,
+        operands::{Const, Reg},
+        vm::run_vm,
+    },
+    std::math::MATH_FUNCTIONS,
     syntax::{
         ast::Spanned,
         parser::Parser,
@@ -38,6 +44,8 @@ pub struct Compiler {
 
 impl Compiler {
     pub fn compile(&mut self, file: &str) -> Result<usize, Error> {
+        self.compile_std();
+
         let symbol = INTERNER.lock().unwrap().get_or_intern(file);
 
         let src = match read_to_string(file) {
@@ -59,9 +67,9 @@ impl Compiler {
 
         self.files.insert(symbol, Compilation::Function(index));
 
-        /*     for function in self.functions.iter() {
+        for function in self.functions.iter() {
             println!("{}", function);
-        } */
+        }
 
         Ok(index)
     }
@@ -148,6 +156,75 @@ impl Compiler {
         let function_index = lower_ast(ast, self)?;
 
         Ok(function_index)
+    }
+
+    pub fn compile_std(&mut self) {
+        let mut file = Function::default();
+        let modules = [("math", MATH_FUNCTIONS)];
+
+        file.emit_instruction(Instruction::CreateMap { dest: Reg(0) });
+
+        for (name, functions) in modules {
+            self.compile_std_module(&mut file, functions);
+
+            let key = {
+                let symbol = INTERNER.lock().unwrap().get_or_intern(name);
+                let index = file.store_string_const(symbol);
+                Const::from(index)
+            };
+
+            file.emit_instruction(Instruction::SetProperty {
+                object: Reg(0),
+                key,
+                value: Reg(1),
+            });
+        }
+
+        file.emit_instruction(Instruction::Return { src: Reg(0) });
+
+        file.frame_size = 3;
+
+        let index = self.functions.len();
+        self.functions.push(file);
+
+        let symbol = INTERNER.lock().unwrap().get_or_intern("std.kr");
+        self.files.insert(symbol, Compilation::Function(index));
+    }
+
+    pub fn compile_std_module(
+        &mut self,
+        file: &mut Function,
+        functions: &[(&'static str, NativeFunction)],
+    ) {
+        file.emit_instruction(Instruction::CreateMap { dest: Reg(1) });
+
+        for (name, function) in functions.iter().copied() {
+            let index = self.native_functions.len();
+
+            self.native_functions.push(function);
+
+            let key = {
+                let symbol = INTERNER.lock().unwrap().get_or_intern(name);
+                let index = file.store_string_const(symbol);
+                Const::from(index)
+            };
+            let value = {
+                let index = file.store_native_function_const(index);
+
+                Const::from(index)
+            };
+
+            file.emit_instruction(Instruction::LoadConst {
+                dest: Reg(2),
+                src: value,
+            });
+
+            file.emit_instruction(Instruction::SetProperty {
+                object: Reg(1),
+                key,
+                value: Reg(2),
+            });
+        }
     }
 }
 

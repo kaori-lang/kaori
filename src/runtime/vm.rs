@@ -1083,43 +1083,51 @@ unsafe extern "rust-preserve-none" fn opcode_call(
     thread: &mut Thread,
     frame_size: usize,
 ) -> Result<(), Error> {
-    let Instruction::Call { dest, src } = (unsafe { *ip }) else {
+    let Instruction::Call { dest, src, arity } = (unsafe { *ip }) else {
         unsafe { unreachable_unchecked() }
     };
 
     let src = unsafe { registers.get(src) };
 
-    type_check(src.is_closure(), "value is not a callable")?;
+    if src.is_closure() {
+        let frame = Frame {
+            dest,
+            return_address: ip,
+            registers,
+            constants,
+            size: frame_size,
+        };
 
-    let frame = Frame {
-        dest,
-        return_address: ip,
-        registers,
-        constants,
-        size: frame_size,
-    };
+        let index = src.index();
+        let registers = unsafe { registers.advance(frame_size) };
 
-    let index = src.index();
-    let registers = unsafe { registers.advance(frame_size) };
+        let Closure { function, captures } = thread.heap.get_closure(index);
+        let Function { instructions, constants, frame_size, arity } =
+            unsafe { &**function };
 
-    let Closure { function, captures } = thread.heap.get_closure(index);
-    let Function { instructions, constants, frame_size, arity } =
-        unsafe { &**function };
+        unsafe {
+            let capture_base = registers.advance(*arity);
+            for i in 0..captures.len() {
+                capture_base.set(Reg(i as u8), *captures.get_unchecked(i));
+            }
+        };
 
-    unsafe {
-        let capture_base = registers.advance(*arity);
-        for i in 0..captures.len() {
-            capture_base.set(Reg(i as u8), *captures.get_unchecked(i));
-        }
-    };
+        let constants = Constants::new(constants);
 
-    let constants = Constants::new(constants);
+        thread.stack.push(frame);
 
-    thread.stack.push(frame);
+        let ip = instructions.as_ptr();
 
-    let ip = instructions.as_ptr();
+        dispatch_to!(ip, registers, constants, thread, *frame_size)
+    } else if src.is_native_function() {
+        // CODE
+        let index = src.index();
+        let inner_registers = unsafe { registers.advance(frame_size) };
 
-    dispatch_to!(ip, registers, constants, thread, *frame_size)
+        dispatch_next!(ip, registers, constants, thread, frame_size)
+    } else {
+        Err(runtime_error("this is not a callable"))
+    }
 }
 
 #[inline(never)]

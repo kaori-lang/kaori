@@ -1,9 +1,3 @@
-let cat = #{
-    name: "whiskers",
-    address: #{
-        city: "Springfield",
-        street: "123 Main St"
-    }
-};
+import std : math;
 
-return cat.address.city;
+return math.pi();

@@ -1,6 +1,4 @@
-use crate::runtime::value::Value;
-
-use crate::std::native_function::NativeFunction;
+use crate::runtime::{native_function::NativeFunction, value::Value};
 
 pub static MATH_FUNCTIONS: &[(&str, NativeFunction)] = &[
     (

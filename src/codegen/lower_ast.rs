@@ -8,11 +8,7 @@ use crate::{
     },
     compiler::Compiler,
     diagnostics::error::Error,
-    runtime::{
-        function::{self, Function},
-        instruction::Instruction,
-        value::Value,
-    },
+    runtime::{function::Function, instruction::Instruction},
     syntax::{
         ast::{Ast, Node, NodeId, Spanned},
         ops::{BinaryOp, UnaryOp},
@@ -390,6 +386,7 @@ impl<'a> Lower<'a> {
                 self.function.emit_instruction(Instruction::Call {
                     dest: object.into(),
                     src: object.into(),
+                    arity: 0,
                 });
 
                 if bindings.is_empty() {
@@ -965,6 +962,7 @@ impl<'a> Lower<'a> {
                 self.function.emit_instruction(Instruction::Call {
                     dest: dest.into(),
                     src: src.into(),
+                    arity: arguments.len() as u8,
                 });
 
                 self.env.free_temp(src);
