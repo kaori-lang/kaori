@@ -8,7 +8,11 @@ use crate::{
     },
     compiler::Compiler,
     diagnostics::error::Error,
-    runtime::{function::Function, instruction::Instruction, value::Value},
+    runtime::{
+        function::{self, Function},
+        instruction::Instruction,
+        value::Value,
+    },
     syntax::{
         ast::{Ast, Node, NodeId, Spanned},
         ops::{BinaryOp, UnaryOp},
@@ -22,34 +26,27 @@ pub fn lower_ast(ast: Ast, compiler: &mut Compiler) -> Result<usize, Error> {
     let mut free_variables = HashMap::new();
     let mut env = Environment::new();
 
-    let mut constants = Vec::new();
-    let mut instructions = Vec::new();
+    let mut function = Function::default();
 
     let mut lowerer = Lower::new(
         &ast,
         compiler,
         &mut free_variables,
         &mut env,
-        &mut constants,
-        &mut instructions,
+        &mut function,
     );
 
     //lowerer.prevent_return(id)?;
 
     let src = lowerer.lower_materializing(id, None)?;
 
-    lowerer.emit_instruction(Instruction::Return { src: src.into() });
-
     lowerer.patch_arguments();
+
+    function.emit_instruction(Instruction::Return { src: src.into() });
 
     let index = compiler.functions.len();
 
-    let function = Function {
-        instructions,
-        constants,
-        frame_size: env.frame_size,
-        arity: 0,
-    };
+    function.frame_size = env.frame_size;
 
     compiler.functions.push(function);
 
@@ -61,8 +58,7 @@ pub struct Lower<'a> {
     pub compiler: &'a mut Compiler,
     pub free_variables: &'a mut HashMap<NodeId, HashSet<Spanned<Symbol>>>,
     pub env: &'a mut Environment,
-    pub constants: &'a mut Vec<Value>,
-    pub instructions: &'a mut Vec<Instruction>,
+    pub function: &'a mut Function,
     pub inside_loop: bool,
     pub unpatched_continue: Vec<usize>,
     pub unpatched_break: Vec<usize>,
@@ -76,30 +72,20 @@ impl<'a> Lower<'a> {
         compiler: &'a mut Compiler,
         free_variables: &'a mut HashMap<NodeId, HashSet<Spanned<Symbol>>>,
         env: &'a mut Environment,
-        constants: &'a mut Vec<Value>,
-        instructions: &'a mut Vec<Instruction>,
+        function: &'a mut Function,
     ) -> Self {
         Self {
             ast,
             compiler,
             free_variables,
             env,
-            constants,
-            instructions,
+            function,
             inside_loop: false,
             unpatched_continue: Vec::new(),
             unpatched_break: Vec::new(),
             loop_depth: 0,
             unpatched_arguments: Vec::new(),
         }
-    }
-
-    pub fn emit_instruction(&mut self, instruction: Instruction) -> usize {
-        let index = self.instructions.len();
-
-        self.instructions.push(instruction);
-
-        index
     }
 
     fn lower_materializing(
@@ -112,9 +98,9 @@ impl<'a> Lower<'a> {
         Ok(match src {
             Operand::Constant(src) => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
-                let src = self.store_constant(src);
+                let src = self.function.store_constant(src);
 
-                self.emit_instruction(Instruction::LoadConst {
+                self.function.emit_instruction(Instruction::LoadConst {
                     dest: dest.into(),
                     src: src.into(),
                 });
@@ -148,7 +134,7 @@ impl<'a> Lower<'a> {
 
                 self.env.declare_local(left.value, dest);
 
-                self.emit_instruction(Instruction::CreateRef {
+                self.function.emit_instruction(Instruction::CreateRef {
                     dest: dest.into(),
                     src: src.into(),
                 });
@@ -164,10 +150,11 @@ impl<'a> Lower<'a> {
                 Node::PropertyAccess { object, property } => {
                     let value = self.lower_materializing(right, None)?;
                     let object = self.lower_materializing(object, None)?;
-                    let key =
-                        self.store_constant(Constant::String(property.value));
+                    let key = self
+                        .function
+                        .store_constant(Constant::String(property.value));
 
-                    self.emit_instruction(Instruction::SetProperty {
+                    self.function.emit_instruction(Instruction::SetProperty {
                         object: object.into(),
                         key: key.into(),
                         value: value.into(),
@@ -177,7 +164,7 @@ impl<'a> Lower<'a> {
                     let dest = self.lower_materializing(operand, None)?;
                     let src = self.lower_materializing(right, None)?;
 
-                    self.emit_instruction(Instruction::DerefSet {
+                    self.function.emit_instruction(Instruction::DerefSet {
                         dest: dest.into(),
                         src: src.into(),
                     });
@@ -198,7 +185,7 @@ impl<'a> Lower<'a> {
 
                 let jump_if_false = self.lower_jump_if_false(condition)?;
 
-                let loop_body = self.instructions.len();
+                let loop_body = self.function.instructions.len();
 
                 self.lower_statement(block)?;
 
@@ -210,7 +197,8 @@ impl<'a> Lower<'a> {
                 );
                 self.patch_jump(
                     jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
+                    self.function.instructions.len() as i32
+                        - jump_if_false as i32,
                 );
 
                 while self.unpatched_break.len() > break_until {
@@ -221,7 +209,7 @@ impl<'a> Lower<'a> {
 
                     self.patch_jump(
                         index,
-                        self.instructions.len() as i32 - index as i32,
+                        self.function.instructions.len() as i32 - index as i32,
                     );
                 }
 
@@ -241,12 +229,14 @@ impl<'a> Lower<'a> {
 
                 self.lower_statement(then_branch)?;
 
-                let jump_end =
-                    self.emit_instruction(Instruction::Jump { offset: 0 });
+                let jump_end = self
+                    .function
+                    .emit_instruction(Instruction::Jump { offset: 0 });
 
                 self.patch_jump(
                     jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
+                    self.function.instructions.len() as i32
+                        - jump_if_false as i32,
                 );
 
                 if let Some(id) = else_branch {
@@ -255,13 +245,14 @@ impl<'a> Lower<'a> {
 
                 self.patch_jump(
                     jump_end,
-                    self.instructions.len() as i32 - jump_end as i32,
+                    self.function.instructions.len() as i32 - jump_end as i32,
                 );
             }
             Node::Return(expression) => {
                 let src = self.lower_materializing(expression, None)?;
 
-                self.emit_instruction(Instruction::Return { src: src.into() });
+                self.function
+                    .emit_instruction(Instruction::Return { src: src.into() });
 
                 self.env.free_temp(src);
             }
@@ -273,12 +264,14 @@ impl<'a> Lower<'a> {
                         let dest = self.env.allocate_local();
                         self.env.declare_local(name.value, dest);
 
-                        let src = self.store_nil_const();
+                        let src = self.function.store_nil_const();
 
-                        self.emit_instruction(Instruction::LoadConst {
-                            dest: dest.into(),
-                            src: src.into(),
-                        });
+                        self.function.emit_instruction(
+                            Instruction::LoadConst {
+                                dest: dest.into(),
+                                src: src.into(),
+                            },
+                        );
                     }
                 }
 
@@ -288,9 +281,9 @@ impl<'a> Lower<'a> {
                     let dest = self.env.allocate_local();
                     self.env.declare_local(name.value, dest);
 
-                    let src = self.store_nil_const();
+                    let src = self.function.store_nil_const();
 
-                    self.emit_instruction(Instruction::LoadConst {
+                    self.function.emit_instruction(Instruction::LoadConst {
                         dest: dest.into(),
                         src: src.into(),
                     });
@@ -310,16 +303,14 @@ impl<'a> Lower<'a> {
                 let mut env =
                     Environment::with_parent(std::mem::take(self.env));
 
-                let mut constants = Vec::new();
-                let mut instructions = Vec::new();
+                let mut function = Function::default();
 
                 let mut inner_self = Lower::new(
                     self.ast,
                     self.compiler,
                     self.free_variables,
                     &mut env,
-                    &mut constants,
-                    &mut instructions,
+                    &mut function,
                 );
 
                 let free_variables = inner_self.analyze_function(id);
@@ -348,20 +339,15 @@ impl<'a> Lower<'a> {
                 let src = inner_self.lower_materializing(block, None)?;
 
                 if !inner_self.block_returns(block) {
-                    inner_self.emit_instruction(Instruction::Return {
+                    inner_self.function.emit_instruction(Instruction::Return {
                         src: src.into(),
                     });
                 }
 
                 inner_self.patch_arguments();
 
-                let frame_size = inner_self.env.frame_size;
-                let function = Function {
-                    instructions,
-                    constants,
-                    frame_size,
-                    arity: parameters.len(),
-                };
+                function.frame_size = inner_self.env.frame_size;
+                function.arity = parameters.len();
 
                 *self.env = std::mem::take(&mut env.parent.unwrap_or_default());
 
@@ -373,7 +359,7 @@ impl<'a> Lower<'a> {
                 let index = self.compiler.functions.len();
                 self.compiler.functions.push(function);
 
-                self.emit_instruction(Instruction::CreateClosure {
+                self.function.emit_instruction(Instruction::CreateClosure {
                     dest: dest.into(),
                     src: index as u32,
                     captures: free_variables.len() as u8,
@@ -385,7 +371,7 @@ impl<'a> Lower<'a> {
                         .lookup(capture.value)
                         .expect("name must've been declared to reach this point of the code");
 
-                    self.emit_instruction(Instruction::CaptureValue {
+                    self.function.emit_instruction(Instruction::CaptureValue {
                         src: register.into(),
                     });
                 }
@@ -395,13 +381,13 @@ impl<'a> Lower<'a> {
 
                 let object = self.env.allocate_temp();
 
-                self.emit_instruction(Instruction::CreateClosure {
+                self.function.emit_instruction(Instruction::CreateClosure {
                     dest: object.into(),
                     src: index as u32,
                     captures: 0,
                 });
 
-                self.emit_instruction(Instruction::Call {
+                self.function.emit_instruction(Instruction::Call {
                     dest: object.into(),
                     src: object.into(),
                 });
@@ -411,7 +397,7 @@ impl<'a> Lower<'a> {
 
                     self.env.declare_local(path.last().unwrap().value, dest);
 
-                    self.emit_instruction(Instruction::Move {
+                    self.function.emit_instruction(Instruction::Move {
                         dest: dest.into(),
                         src: object.into(),
                     });
@@ -422,13 +408,16 @@ impl<'a> Lower<'a> {
                         self.env.declare_local(binding.value, dest);
 
                         let key = self
+                            .function
                             .store_constant(Constant::String(binding.value));
 
-                        self.emit_instruction(Instruction::GetProperty {
-                            dest: dest.into(),
-                            object: object.into(),
-                            key: key.into(),
-                        });
+                        self.function.emit_instruction(
+                            Instruction::GetProperty {
+                                dest: dest.into(),
+                                object: object.into(),
+                                key: key.into(),
+                            },
+                        );
                     }
                 }
             }
@@ -441,11 +430,11 @@ impl<'a> Lower<'a> {
                     ));
                 }
 
-                let index = self.instructions.len();
+                let index = self.function.instructions.len();
 
                 self.unpatched_break.push(index);
 
-                self.emit_instruction(Instruction::Jump { offset: 0 });
+                self.function.emit_instruction(Instruction::Jump { offset: 0 });
             }
             Node::Continue => {
                 if self.loop_depth == 0 {
@@ -456,11 +445,11 @@ impl<'a> Lower<'a> {
                     ));
                 }
 
-                let index = self.instructions.len();
+                let index = self.function.instructions.len();
 
                 self.unpatched_continue.push(index);
 
-                self.emit_instruction(Instruction::Jump { offset: 0 });
+                self.function.emit_instruction(Instruction::Jump { offset: 0 });
             }
             _ => {
                 let register = self.lower_materializing(id, None)?;
@@ -509,7 +498,7 @@ impl<'a> Lower<'a> {
                 let register = match dest {
                     Some(dest) if dest == register => dest,
                     Some(dest) => {
-                        self.emit_instruction(Instruction::Move {
+                        self.function.emit_instruction(Instruction::Move {
                             dest: dest.into(),
                             src: register.into(),
                         });
@@ -533,7 +522,7 @@ impl<'a> Lower<'a> {
                         let src1 = self.lower_materializing(left, None)?;
                         let src2 = self.lower_materializing(right, None)?;
 
-                        self.emit_instruction(match operator {
+                        self.function.emit_instruction(match operator {
                             BinaryOp::Add => Instruction::Add {
                                 dest: dest.into(),
                                 src1: src1.into(),
@@ -595,9 +584,9 @@ impl<'a> Lower<'a> {
                         self.env.free_temp(src2);
                     }
                     (Operand::Register(src1), Operand::Constant(src2)) => {
-                        let src2 = self.store_constant(src2);
+                        let src2 = self.function.store_constant(src2);
 
-                        self.emit_instruction(match operator {
+                        self.function.emit_instruction(match operator {
                             BinaryOp::Add => Instruction::AddK {
                                 dest: dest.into(),
                                 src1: src1.into(),
@@ -660,9 +649,9 @@ impl<'a> Lower<'a> {
                         self.env.free_temp(src1);
                     }
                     (Operand::Constant(src1), Operand::Register(src2)) => {
-                        let src1 = self.store_constant(src1);
+                        let src1 = self.function.store_constant(src1);
 
-                        self.emit_instruction(match operator {
+                        self.function.emit_instruction(match operator {
                             BinaryOp::Add => Instruction::AddK {
                                 dest: dest.into(),
                                 src1: src2.into(),
@@ -725,7 +714,7 @@ impl<'a> Lower<'a> {
                         self.env.free_temp(src2);
                     }
                     (Operand::Register(src1), Operand::Register(src2)) => {
-                        self.emit_instruction(match operator {
+                        self.function.emit_instruction(match operator {
                             BinaryOp::Add => Instruction::Add {
                                 dest: dest.into(),
                                 src1: src1.into(),
@@ -794,7 +783,7 @@ impl<'a> Lower<'a> {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
                 let src = self.lower_materializing(operand, None)?;
 
-                self.emit_instruction(match operator {
+                self.function.emit_instruction(match operator {
                     UnaryOp::Negate => Instruction::Negate {
                         dest: dest.into(),
                         src: src.into(),
@@ -813,7 +802,7 @@ impl<'a> Lower<'a> {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
                 let src = self.lower_materializing(expression, None)?;
 
-                self.emit_instruction(Instruction::Not {
+                self.function.emit_instruction(Instruction::Not {
                     dest: dest.into(),
                     src: src.into(),
                 });
@@ -828,7 +817,7 @@ impl<'a> Lower<'a> {
                 let src = self.lower_materializing(left, Some(dest))?;
 
                 let jump_if_false =
-                    self.emit_instruction(Instruction::JumpIfFalse {
+                    self.function.emit_instruction(Instruction::JumpIfFalse {
                         src: src.into(),
                         offset: 0,
                     });
@@ -837,7 +826,8 @@ impl<'a> Lower<'a> {
 
                 self.patch_jump(
                     jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
+                    self.function.instructions.len() as i32
+                        - jump_if_false as i32,
                 );
 
                 Operand::Register(dest)
@@ -848,7 +838,7 @@ impl<'a> Lower<'a> {
                 let src = self.lower_materializing(left, Some(dest))?;
 
                 let jump_if_true =
-                    self.emit_instruction(Instruction::JumpIfTrue {
+                    self.function.emit_instruction(Instruction::JumpIfTrue {
                         src: src.into(),
                         offset: 0,
                     });
@@ -857,7 +847,8 @@ impl<'a> Lower<'a> {
 
                 self.patch_jump(
                     jump_if_true,
-                    self.instructions.len() as i32 - jump_if_true as i32,
+                    self.function.instructions.len() as i32
+                        - jump_if_true as i32,
                 );
 
                 Operand::Register(dest)
@@ -869,12 +860,14 @@ impl<'a> Lower<'a> {
 
                 self.lower_materializing(then_branch, Some(dest))?;
 
-                let jump_end =
-                    self.emit_instruction(Instruction::Jump { offset: 0 });
+                let jump_end = self
+                    .function
+                    .emit_instruction(Instruction::Jump { offset: 0 });
 
                 self.patch_jump(
                     jump_if_false,
-                    self.instructions.len() as i32 - jump_if_false as i32,
+                    self.function.instructions.len() as i32
+                        - jump_if_false as i32,
                 );
 
                 if let Some(id) = else_branch {
@@ -889,7 +882,7 @@ impl<'a> Lower<'a> {
 
                 self.patch_jump(
                     jump_end,
-                    self.instructions.len() as i32 - jump_end as i32,
+                    self.function.instructions.len() as i32 - jump_end as i32,
                 );
 
                 Operand::Register(dest)
@@ -903,12 +896,14 @@ impl<'a> Lower<'a> {
 
                         self.env.declare_local(name.value, dest);
 
-                        let src = self.store_nil_const();
+                        let src = self.function.store_nil_const();
 
-                        self.emit_instruction(Instruction::LoadConst {
-                            dest: dest.into(),
-                            src: src.into(),
-                        });
+                        self.function.emit_instruction(
+                            Instruction::LoadConst {
+                                dest: dest.into(),
+                                src: src.into(),
+                            },
+                        );
                     }
                 }
 
@@ -919,9 +914,9 @@ impl<'a> Lower<'a> {
 
                     self.env.declare_local(name.value, dest);
 
-                    let src = self.store_nil_const();
+                    let src = self.function.store_nil_const();
 
-                    self.emit_instruction(Instruction::LoadConst {
+                    self.function.emit_instruction(Instruction::LoadConst {
                         dest: dest.into(),
                         src: src.into(),
                     });
@@ -938,12 +933,14 @@ impl<'a> Lower<'a> {
                         self.lower_materializing(id, Some(dest))?;
                     }
                     None => {
-                        let src = self.store_nil_const();
+                        let src = self.function.store_nil_const();
 
-                        self.emit_instruction(Instruction::LoadConst {
-                            dest: dest.into(),
-                            src: src.into(),
-                        });
+                        self.function.emit_instruction(
+                            Instruction::LoadConst {
+                                dest: dest.into(),
+                                src: src.into(),
+                            },
+                        );
                     }
                 };
 
@@ -957,7 +954,7 @@ impl<'a> Lower<'a> {
 
                     self.lower_materializing(*argument, Some(dest))?;
 
-                    let index = self.instructions.len() - 1;
+                    let index = self.function.instructions.len() - 1;
 
                     self.unpatched_arguments.push(index);
                 }
@@ -965,7 +962,7 @@ impl<'a> Lower<'a> {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
                 let src = self.lower_materializing(callee, None)?;
 
-                self.emit_instruction(Instruction::Call {
+                self.function.emit_instruction(Instruction::Call {
                     dest: dest.into(),
                     src: src.into(),
                 });
@@ -978,9 +975,11 @@ impl<'a> Lower<'a> {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
                 let object = self.lower_materializing(object, None)?;
-                let key = self.store_constant(Constant::String(property.value));
+                let key = self
+                    .function
+                    .store_constant(Constant::String(property.value));
 
-                self.emit_instruction(Instruction::GetProperty {
+                self.function.emit_instruction(Instruction::GetProperty {
                     dest: dest.into(),
                     object: object.into(),
                     key: key.into(),
@@ -993,7 +992,7 @@ impl<'a> Lower<'a> {
             Node::Map { ref entries } => {
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                self.emit_instruction(Instruction::CreateMap {
+                self.function.emit_instruction(Instruction::CreateMap {
                     dest: dest.into(),
                 });
 
@@ -1002,12 +1001,15 @@ impl<'a> Lower<'a> {
                         *self.ast.node(key_id)
                     {
                         let dest = self.env.allocate_temp();
-                        let src = self.store_string_const(symbol.value);
+                        let src =
+                            self.function.store_string_const(symbol.value);
 
-                        self.emit_instruction(Instruction::LoadConst {
-                            dest: dest.into(),
-                            src: src.into(),
-                        });
+                        self.function.emit_instruction(
+                            Instruction::LoadConst {
+                                dest: dest.into(),
+                                src: src.into(),
+                            },
+                        );
 
                         dest
                     } else if value_id.is_none() {
@@ -1027,7 +1029,7 @@ impl<'a> Lower<'a> {
                         self.lower_materializing(key_id, None)
                     }?;
 
-                    self.emit_instruction(Instruction::SetElement {
+                    self.function.emit_instruction(Instruction::SetElement {
                         object: dest.into(),
                         key: key.into(),
                         value: value.into(),
@@ -1042,16 +1044,14 @@ impl<'a> Lower<'a> {
             Node::Lambda { ref parameters, block } => {
                 let mut env =
                     Environment::with_parent(std::mem::take(self.env));
-                let mut constants = Vec::new();
-                let mut instructions = Vec::new();
+                let mut function = Function::default();
 
                 let mut inner_self = Lower::new(
                     self.ast,
                     self.compiler,
                     self.free_variables,
                     &mut env,
-                    &mut constants,
-                    &mut instructions,
+                    &mut function,
                 );
 
                 let free_variables = inner_self.analyze_function(id);
@@ -1080,20 +1080,15 @@ impl<'a> Lower<'a> {
                 let src = inner_self.lower_materializing(block, None)?;
 
                 if !inner_self.block_returns(block) {
-                    inner_self.emit_instruction(Instruction::Return {
+                    inner_self.function.emit_instruction(Instruction::Return {
                         src: src.into(),
                     });
                 }
 
                 inner_self.patch_arguments();
 
-                let frame_size = inner_self.env.frame_size;
-                let function = Function {
-                    instructions,
-                    constants,
-                    frame_size,
-                    arity: parameters.len(),
-                };
+                function.frame_size = inner_self.env.frame_size;
+                function.arity = parameters.len();
 
                 *self.env = std::mem::take(&mut env.parent.unwrap_or_default());
 
@@ -1102,7 +1097,7 @@ impl<'a> Lower<'a> {
 
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                self.emit_instruction(Instruction::CreateClosure {
+                self.function.emit_instruction(Instruction::CreateClosure {
                     dest: dest.into(),
                     src: index as u32,
                     captures: free_variables.len() as u8,
@@ -1114,7 +1109,7 @@ impl<'a> Lower<'a> {
                         .lookup(capture.value)
                         .expect("name must've been declared to reach this point of the code");
 
-                    self.emit_instruction(Instruction::CaptureValue {
+                    self.function.emit_instruction(Instruction::CaptureValue {
                         src: register.into(),
                     });
                 }
@@ -1133,10 +1128,10 @@ impl<'a> Lower<'a> {
             | Node::Assign { .. } => {
                 self.lower_statement(id)?;
 
-                let src = self.store_nil_const();
+                let src = self.function.store_nil_const();
                 let dest = dest.unwrap_or_else(|| self.env.allocate_temp());
 
-                self.emit_instruction(Instruction::LoadConst {
+                self.function.emit_instruction(Instruction::LoadConst {
                     dest: dest.into(),
                     src: src.into(),
                 });
@@ -1166,7 +1161,7 @@ impl<'a> Lower<'a> {
 
                 match (src1, src2) {
                     (Operand::Register(src1), Operand::Register(src2)) => {
-                        Ok(self.emit_instruction(match operator {
+                        Ok(self.function.emit_instruction(match operator {
                             BinaryOp::Equal => Instruction::JumpIfNotEqual {
                                 src1: src1.into(),
                                 src2: src2.into(),
@@ -1201,8 +1196,8 @@ impl<'a> Lower<'a> {
                         }))
                     }
                     (Operand::Register(src1), Operand::Constant(src2)) => {
-                        let src2 = self.store_constant(src2);
-                        Ok(self.emit_instruction(match operator {
+                        let src2 = self.function.store_constant(src2);
+                        Ok(self.function.emit_instruction(match operator {
                             BinaryOp::Equal => Instruction::JumpIfNotEqualK {
                                 src1: src1.into(),
                                 src2: src2.into(),
@@ -1241,8 +1236,8 @@ impl<'a> Lower<'a> {
                         }))
                     }
                     (Operand::Constant(src1), Operand::Register(src2)) => {
-                        let src1 = self.store_constant(src1);
-                        Ok(self.emit_instruction(match operator {
+                        let src1 = self.function.store_constant(src1);
+                        Ok(self.function.emit_instruction(match operator {
                             BinaryOp::Equal => Instruction::JumpIfNotEqualK {
                                 src1: src2.into(),
                                 src2: src1.into(),
@@ -1282,16 +1277,18 @@ impl<'a> Lower<'a> {
                     }
                     (Operand::Constant(_), Operand::Constant(_)) => {
                         let src = self.lower_materializing(id, None)?;
-                        Ok(self.emit_instruction(Instruction::JumpIfFalse {
-                            src: src.into(),
-                            offset: 0,
-                        }))
+                        Ok(self.function.emit_instruction(
+                            Instruction::JumpIfFalse {
+                                src: src.into(),
+                                offset: 0,
+                            },
+                        ))
                     }
                 }
             }
             _ => {
                 let src = self.lower_materializing(id, None)?;
-                Ok(self.emit_instruction(Instruction::JumpIfFalse {
+                Ok(self.function.emit_instruction(Instruction::JumpIfFalse {
                     src: src.into(),
                     offset: 0,
                 }))
@@ -1317,7 +1314,7 @@ impl<'a> Lower<'a> {
 
                 match (src1, src2) {
                     (Operand::Register(src1), Operand::Register(src2)) => {
-                        Ok(self.emit_instruction(match operator {
+                        Ok(self.function.emit_instruction(match operator {
                             BinaryOp::Equal => Instruction::JumpIfEqual {
                                 src1: src1.into(),
                                 src2: src2.into(),
@@ -1356,8 +1353,8 @@ impl<'a> Lower<'a> {
                         }))
                     }
                     (Operand::Register(src1), Operand::Constant(src2)) => {
-                        let src2 = self.store_constant(src2);
-                        Ok(self.emit_instruction(match operator {
+                        let src2 = self.function.store_constant(src2);
+                        Ok(self.function.emit_instruction(match operator {
                             BinaryOp::Equal => Instruction::JumpIfEqualK {
                                 src1: src1.into(),
                                 src2: src2.into(),
@@ -1398,8 +1395,8 @@ impl<'a> Lower<'a> {
                         }))
                     }
                     (Operand::Constant(src1), Operand::Register(src2)) => {
-                        let src1 = self.store_constant(src1);
-                        Ok(self.emit_instruction(match operator {
+                        let src1 = self.function.store_constant(src1);
+                        Ok(self.function.emit_instruction(match operator {
                             BinaryOp::Equal => Instruction::JumpIfEqualK {
                                 src1: src2.into(),
                                 src2: src1.into(),
@@ -1441,16 +1438,18 @@ impl<'a> Lower<'a> {
                     }
                     (Operand::Constant(_), Operand::Constant(_)) => {
                         let src = self.lower_materializing(id, None)?;
-                        Ok(self.emit_instruction(Instruction::JumpIfTrue {
-                            src: src.into(),
-                            offset: 0,
-                        }))
+                        Ok(self.function.emit_instruction(
+                            Instruction::JumpIfTrue {
+                                src: src.into(),
+                                offset: 0,
+                            },
+                        ))
                     }
                 }
             }
             _ => {
                 let src = self.lower_materializing(id, None)?;
-                Ok(self.emit_instruction(Instruction::JumpIfTrue {
+                Ok(self.function.emit_instruction(Instruction::JumpIfTrue {
                     src: src.into(),
                     offset: 0,
                 }))
@@ -1459,7 +1458,7 @@ impl<'a> Lower<'a> {
     }
 
     fn patch_jump(&mut self, index: usize, new_offset: i32) {
-        match &mut self.instructions[index] {
+        match &mut self.function.instructions[index] {
             Instruction::Jump { offset }
             | Instruction::JumpIfTrue { offset, .. }
             | Instruction::JumpIfFalse { offset, .. }
@@ -1485,7 +1484,7 @@ impl<'a> Lower<'a> {
         let frame_size = self.env.frame_size;
 
         for index in self.unpatched_arguments.iter().copied() {
-            match &mut self.instructions[index] {
+            match &mut self.function.instructions[index] {
                 Instruction::Add { dest, .. }
                 | Instruction::AddK { dest, .. }
                 | Instruction::Subtract { dest, .. }

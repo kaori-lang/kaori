@@ -1,5 +1,3 @@
-use std::mem::ManuallyDrop;
-
 use super::value::Value;
 use crate::runtime::function::Function;
 use rustc_hash::FxBuildHasher;

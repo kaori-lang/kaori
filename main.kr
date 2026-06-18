@@ -1,15 +1,9 @@
-fun objects() {
-    let data = #{
-        "a": 0,
-        "i": 5000000
-    };
-
-    while data.i > 0 {
-        data.a = data.a + data.i;
-        data.i = data.i - 1;
+let cat = #{
+    name: "whiskers",
+    address: #{
+        city: "Springfield",
+        street: "123 Main St"
     }
+};
 
-    return data;
-}
-
-let x = objects();
+return cat.address.city;

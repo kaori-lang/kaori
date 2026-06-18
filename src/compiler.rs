@@ -11,6 +11,7 @@ use crate::{
     codegen::lower_ast::lower_ast,
     diagnostics::error::Error,
     runtime::{function::Function, vm::run_vm},
+    std::native_function::NativeFunction,
     syntax::{
         ast::Spanned,
         parser::Parser,
@@ -30,6 +31,7 @@ pub enum Compilation {
 #[derive(Default)]
 pub struct Compiler {
     pub functions: Vec<Function>,
+    pub native_functions: Vec<NativeFunction>,
     pub files: HashMap<Symbol, Compilation>,
     pub current_file: Symbol,
 }

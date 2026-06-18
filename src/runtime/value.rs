@@ -8,6 +8,7 @@ const TAG_CLOSURE: u32 = 0xFFFF_0004;
 const TAG_MAP: u32 = 0xFFFF_0005;
 const TAG_VEC: u32 = 0xFFFF_0006;
 const TAG_CELL: u32 = 0xFFFF_0007;
+const TAG_NATIVE_FUNCTION: u32 = 0xFFFF_0008;
 
 #[derive(Clone, Copy)]
 #[repr(C)]
@@ -66,6 +67,11 @@ impl Value {
     }
 
     #[inline(always)]
+    pub fn native_function(index: u32) -> Self {
+        Self { parts: (index, TAG_NATIVE_FUNCTION) }
+    }
+
+    #[inline(always)]
     pub fn map(index: u32) -> Self {
         Self { parts: (index, TAG_MAP) }
     }
@@ -103,6 +109,11 @@ impl Value {
     #[inline(always)]
     pub fn is_closure(&self) -> bool {
         unsafe { self.parts.1 == TAG_CLOSURE }
+    }
+
+    #[inline(always)]
+    pub fn is_native_function(&self) -> bool {
+        unsafe { self.parts.1 == TAG_NATIVE_FUNCTION }
     }
 
     #[inline(always)]
