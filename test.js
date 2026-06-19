@@ -1,7 +1,5 @@
-let d = 5;
-let f = 7;
-let m = { d, f: d };
+let d = {};
 
-m[f] = 11;
+d.a = d;
 
-console.log(m);
+console.log(d.a);

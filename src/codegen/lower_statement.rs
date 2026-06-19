@@ -275,28 +275,31 @@ impl<'a> Lower<'a> {
                     arity: 0,
                 });
 
-                if bindings.is_empty() {
-                    let dest = self.env.allocate_local();
-
-                    self.env.declare_local(path.last().unwrap().value, dest);
-
-                    self.function.emit_instruction(Instruction::Move {
-                        dest: dest.into(),
-                        src: object.into(),
-                    });
-                } else {
-                    for binding in bindings.iter().copied() {
+                match bindings.is_empty() {
+                    true => {
                         let dest = self.env.allocate_local();
 
-                        self.env.declare_local(binding.value, dest);
+                        self.env.declare_local(path.last().unwrap().value, dest);
 
-                        let key = self.function.store_string_const(binding.value);
-
-                        self.function.emit_instruction(Instruction::GetPropertyK {
+                        self.function.emit_instruction(Instruction::Move {
                             dest: dest.into(),
-                            object: object.into(),
-                            key,
+                            src: object.into(),
                         });
+                    }
+                    false => {
+                        for binding in bindings.iter().copied() {
+                            let dest = self.env.allocate_local();
+
+                            self.env.declare_local(binding.value, dest);
+
+                            let key = self.function.store_string_const(binding.value);
+
+                            self.function.emit_instruction(Instruction::GetPropertyK {
+                                dest: dest.into(),
+                                object: object.into(),
+                                key,
+                            });
+                        }
                     }
                 }
             }

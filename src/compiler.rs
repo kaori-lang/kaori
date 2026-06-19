@@ -67,17 +67,14 @@ impl Compiler {
 
         self.files.insert(symbol, Compilation::Function(index));
 
-        for function in self.functions.iter() {
-            println!("{}", function);
-        }
-
+        /*   for function in self.functions.iter() {
+                   println!("{}", function);
+               }
+        */
         Ok(index)
     }
 
-    pub fn compile_file(
-        &mut self,
-        interned_path: &[Spanned<Symbol>],
-    ) -> Result<usize, Error> {
+    pub fn compile_file(&mut self, interned_path: &[Spanned<Symbol>]) -> Result<usize, Error> {
         let mut path = PathBuf::new();
 
         for symbol in interned_path {
@@ -86,16 +83,12 @@ impl Compiler {
 
         path.add_extension("kr");
 
-        let interned_file =
-            INTERNER.lock().unwrap().get_or_intern(path.to_str().unwrap());
+        let interned_file = INTERNER.lock().unwrap().get_or_intern(path.to_str().unwrap());
 
         if let Some(compilation) = self.files.get(&interned_file) {
             match compilation {
                 Compilation::Incomplete => {
-                    let span = interned_path
-                        .last()
-                        .map(|s| s.span)
-                        .unwrap_or_default();
+                    let span = interned_path.last().map(|s| s.span).unwrap_or_default();
                     return Err(Error::new(
                         span,
                         interned_file,
@@ -109,8 +102,7 @@ impl Compiler {
         let src = match read_to_string(&path) {
             Ok(source) => source,
             Err(..) => {
-                let span =
-                    interned_path.last().map(|s| s.span).unwrap_or_default();
+                let span = interned_path.last().map(|s| s.span).unwrap_or_default();
                 return Err(Error::new(
                     span,
                     self.current_file,
@@ -139,11 +131,9 @@ impl Compiler {
             .spanned()
             .map(|(token, span)| match token {
                 Ok(token) => Ok((token, span.into())),
-                Err(()) => Err(Error::new(
-                    span.into(),
-                    self.current_file,
-                    "unexpected token".to_string(),
-                )),
+                Err(()) => {
+                    Err(Error::new(span.into(), self.current_file, "unexpected token".to_string()))
+                }
             })
             .collect::<Result<Vec<(Token, Span)>, Error>>()?;
 
@@ -208,11 +198,7 @@ impl Compiler {
             };
             let value = file.store_native_function_const(index);
 
-            file.emit_instruction(Instruction::SetPropertyKK {
-                object: Reg(1),
-                key,
-                value,
-            });
+            file.emit_instruction(Instruction::SetPropertyKK { object: Reg(1), key, value });
         }
     }
 }

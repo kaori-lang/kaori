@@ -47,7 +47,7 @@ impl Value {
     }
 
     #[inline(always)]
-    pub fn nil() -> Self {
+    pub const fn nil() -> Self {
         Self { parts: (0, TAG_NIL) }
     }
 
