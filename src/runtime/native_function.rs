@@ -1,14 +1,16 @@
-use crate::runtime::value::Value;
+use crate::{diagnostics::error::Error, runtime::value::Value};
+
+type Func = fn(&[Value]) -> Result<Value, Error>;
 
 #[derive(Clone, Copy)]
-pub struct NativeFunction(fn(&[Value]) -> Value);
+pub struct NativeFunction(Func);
 
 impl NativeFunction {
-    pub const fn new(f: fn(&[Value]) -> Value) -> Self {
+    pub const fn new(f: Func) -> Self {
         Self(f)
     }
 
-    pub fn call(&self, args: &[Value]) -> Value {
+    pub fn call(&self, args: &[Value]) -> Result<Value, Error> {
         (self.0)(args)
     }
 }

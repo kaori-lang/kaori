@@ -1,5 +1,4 @@
-import std : math;
-
-return math.pi();
+import std;
 
 
+return std.math.pi();

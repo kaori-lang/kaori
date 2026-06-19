@@ -4,6 +4,7 @@ use crate::diagnostics::error::Error;
 use crate::runtime::function::Function;
 use crate::runtime::heap::Closure;
 use crate::runtime::instruction::Instruction;
+use crate::runtime::native_function::NativeFunction;
 use crate::runtime::operands::{Const, Reg};
 use crate::runtime::value::Value;
 use crate::syntax::token::Span;
@@ -119,7 +120,11 @@ fn type_check(condition: bool, message: &'static str) -> Result<(), Error> {
     if condition { Ok(()) } else { Err(runtime_error(message)) }
 }
 
-pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
+pub fn run_vm(
+    index: usize,
+    functions: Vec<Function>,
+    native_functions: Vec<NativeFunction>,
+) -> Result<(), Error> {
     let Function { ref instructions, ref constants, frame_size, .. } =
         functions[index];
 
@@ -129,7 +134,7 @@ pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
     let constants = Constants::new(constants);
     let mut registers = [Value::nil(); MAX_REGISTERS];
 
-    let mut thread = Thread::new(functions);
+    let mut thread = Thread::new(functions, native_functions);
     let registers = Registers::new(registers.as_mut_ptr());
 
     unsafe {
@@ -138,6 +143,7 @@ pub fn run_vm(index: usize, functions: Vec<Function>) -> Result<(), Error> {
 
     let value = unsafe { registers.get(Reg(0)) };
     println!("{:?}", value);
+
     Ok(())
 }
 
@@ -153,14 +159,19 @@ struct Frame {
 
 struct Thread {
     pub functions: Vec<Function>,
+    pub native_functions: Vec<NativeFunction>,
     pub stack: Vec<Frame>,
     pub heap: Heap,
 }
 
 impl Thread {
-    pub fn new(functions: Vec<Function>) -> Self {
+    pub fn new(
+        functions: Vec<Function>,
+        native_functions: Vec<NativeFunction>,
+    ) -> Self {
         Self {
             functions,
+            native_functions,
             stack: Vec::with_capacity(128),
             heap: Heap::default(),
         }
@@ -1231,6 +1242,9 @@ unsafe extern "rust-preserve-none" fn opcode_call(
         let index = src.index();
         let inner_registers = unsafe { registers.advance(frame_size) };
 
+        let value = thread.native_functions[index as usize].call(&[])?;
+
+        unsafe { registers.set(dest, value) };
         dispatch_next!(ip, registers, constants, thread, frame_size)
     } else {
         Err(runtime_error("this is not a callable"))

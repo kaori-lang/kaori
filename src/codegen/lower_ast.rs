@@ -98,7 +98,7 @@ impl<'a> Lower<'a> {
 
                 self.function.emit_instruction(Instruction::LoadConst {
                     dest: dest.into(),
-                    src: src.into(),
+                    src,
                 });
 
                 dest
@@ -150,11 +150,13 @@ impl<'a> Lower<'a> {
                         .function
                         .store_constant(Constant::String(property.value));
 
-                    self.function.emit_instruction(Instruction::SetProperty {
-                        object: object.into(),
-                        key: key.into(),
-                        value: value.into(),
-                    });
+                    self.function.emit_instruction(
+                        Instruction::SetPropertyKR {
+                            object: object.into(),
+                            key,
+                            value: value.into(),
+                        },
+                    );
                 }
                 Node::Unary { operator: UnaryOp::Deref, operand } => {
                     let dest = self.lower_materializing(operand, None)?;
@@ -263,10 +265,7 @@ impl<'a> Lower<'a> {
                         let src = self.function.store_nil_const();
 
                         self.function.emit_instruction(
-                            Instruction::LoadConst {
-                                dest: dest.into(),
-                                src: src.into(),
-                            },
+                            Instruction::LoadConst { dest: dest.into(), src },
                         );
                     }
                 }
@@ -281,7 +280,7 @@ impl<'a> Lower<'a> {
 
                     self.function.emit_instruction(Instruction::LoadConst {
                         dest: dest.into(),
-                        src: src.into(),
+                        src,
                     });
                 }
 
@@ -404,15 +403,14 @@ impl<'a> Lower<'a> {
 
                         self.env.declare_local(binding.value, dest);
 
-                        let key = self
-                            .function
-                            .store_constant(Constant::String(binding.value));
+                        let key =
+                            self.function.store_string_const(binding.value);
 
                         self.function.emit_instruction(
-                            Instruction::GetProperty {
+                            Instruction::GetPropertyK {
                                 dest: dest.into(),
                                 object: object.into(),
-                                key: key.into(),
+                                key,
                             },
                         );
                     }
@@ -587,57 +585,57 @@ impl<'a> Lower<'a> {
                             BinaryOp::Add => Instruction::AddK {
                                 dest: dest.into(),
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                             },
                             BinaryOp::Subtract => Instruction::SubtractRK {
                                 dest: dest.into(),
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                             },
                             BinaryOp::Multiply => Instruction::MultiplyK {
                                 dest: dest.into(),
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                             },
                             BinaryOp::Divide => Instruction::DivideRK {
                                 dest: dest.into(),
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                             },
                             BinaryOp::Modulo => Instruction::ModuloRK {
                                 dest: dest.into(),
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                             },
                             BinaryOp::Equal => Instruction::EqualK {
                                 dest: dest.into(),
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                             },
                             BinaryOp::NotEqual => Instruction::NotEqualK {
                                 dest: dest.into(),
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                             },
                             BinaryOp::Less => Instruction::LessRK {
                                 dest: dest.into(),
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                             },
                             BinaryOp::LessEqual => Instruction::LessEqualRK {
                                 dest: dest.into(),
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                             },
                             BinaryOp::Greater => Instruction::LessKR {
                                 dest: dest.into(),
-                                src1: src2.into(),
+                                src1: src2,
                                 src2: src1.into(),
                             },
                             BinaryOp::GreaterEqual => {
                                 Instruction::LessEqualKR {
                                     dest: dest.into(),
-                                    src1: src2.into(),
+                                    src1: src2,
                                     src2: src1.into(),
                                 }
                             }
@@ -652,58 +650,58 @@ impl<'a> Lower<'a> {
                             BinaryOp::Add => Instruction::AddK {
                                 dest: dest.into(),
                                 src1: src2.into(),
-                                src2: src1.into(),
+                                src2: src1,
                             },
                             BinaryOp::Multiply => Instruction::MultiplyK {
                                 dest: dest.into(),
                                 src1: src2.into(),
-                                src2: src1.into(),
+                                src2: src1,
                             },
                             BinaryOp::Equal => Instruction::EqualK {
                                 dest: dest.into(),
                                 src1: src2.into(),
-                                src2: src1.into(),
+                                src2: src1,
                             },
                             BinaryOp::NotEqual => Instruction::NotEqualK {
                                 dest: dest.into(),
                                 src1: src2.into(),
-                                src2: src1.into(),
+                                src2: src1,
                             },
                             BinaryOp::Subtract => Instruction::SubtractKR {
                                 dest: dest.into(),
-                                src1: src1.into(),
+                                src1,
                                 src2: src2.into(),
                             },
                             BinaryOp::Divide => Instruction::DivideKR {
                                 dest: dest.into(),
-                                src1: src1.into(),
+                                src1,
                                 src2: src2.into(),
                             },
                             BinaryOp::Modulo => Instruction::ModuloKR {
                                 dest: dest.into(),
-                                src1: src1.into(),
+                                src1,
                                 src2: src2.into(),
                             },
                             BinaryOp::Less => Instruction::LessKR {
                                 dest: dest.into(),
-                                src1: src1.into(),
+                                src1,
                                 src2: src2.into(),
                             },
                             BinaryOp::LessEqual => Instruction::LessEqualKR {
                                 dest: dest.into(),
-                                src1: src1.into(),
+                                src1,
                                 src2: src2.into(),
                             },
                             BinaryOp::Greater => Instruction::LessRK {
                                 dest: dest.into(),
                                 src1: src2.into(),
-                                src2: src1.into(),
+                                src2: src1,
                             },
                             BinaryOp::GreaterEqual => {
                                 Instruction::LessEqualRK {
                                     dest: dest.into(),
                                     src1: src2.into(),
-                                    src2: src1.into(),
+                                    src2: src1,
                                 }
                             }
                         });
@@ -896,10 +894,7 @@ impl<'a> Lower<'a> {
                         let src = self.function.store_nil_const();
 
                         self.function.emit_instruction(
-                            Instruction::LoadConst {
-                                dest: dest.into(),
-                                src: src.into(),
-                            },
+                            Instruction::LoadConst { dest: dest.into(), src },
                         );
                     }
                 }
@@ -915,7 +910,7 @@ impl<'a> Lower<'a> {
 
                     self.function.emit_instruction(Instruction::LoadConst {
                         dest: dest.into(),
-                        src: src.into(),
+                        src,
                     });
                 }
 
@@ -933,10 +928,7 @@ impl<'a> Lower<'a> {
                         let src = self.function.store_nil_const();
 
                         self.function.emit_instruction(
-                            Instruction::LoadConst {
-                                dest: dest.into(),
-                                src: src.into(),
-                            },
+                            Instruction::LoadConst { dest: dest.into(), src },
                         );
                     }
                 };
@@ -977,10 +969,10 @@ impl<'a> Lower<'a> {
                     .function
                     .store_constant(Constant::String(property.value));
 
-                self.function.emit_instruction(Instruction::GetProperty {
+                self.function.emit_instruction(Instruction::GetPropertyK {
                     dest: dest.into(),
                     object: object.into(),
-                    key: key.into(),
+                    key,
                 });
 
                 self.env.free_temp(object);
@@ -994,47 +986,89 @@ impl<'a> Lower<'a> {
                     dest: dest.into(),
                 });
 
-                for (key_id, value_id) in entries.iter().copied() {
-                    let key = if let Node::Identifier(symbol) =
-                        *self.ast.node(key_id)
-                    {
-                        let dest = self.env.allocate_temp();
-                        let src =
-                            self.function.store_string_const(symbol.value);
+                for (key, value) in entries.iter().copied() {
+                    match (self.ast.node(key), value) {
+                        (Node::Identifier(name), None) => {
+                            let value = self.lower_materializing(key, None)?;
+                            let key =
+                                self.function.store_string_const(name.value);
 
-                        self.function.emit_instruction(
-                            Instruction::LoadConst {
-                                dest: dest.into(),
-                                src: src.into(),
-                            },
-                        );
+                            self.function.emit_instruction(
+                                Instruction::SetPropertyKR {
+                                    object: dest.into(),
+                                    key,
+                                    value: value.into(),
+                                },
+                            );
+                        }
+                        (_, None) => {
+                            todo!() // ERROR
+                        }
+                        (_, Some(value)) => {
+                            let key = self.lower_expression(key, None)?;
+                            let value = self.lower_expression(value, None)?;
 
-                        dest
-                    } else if value_id.is_none() {
-                        return Err(Error::new(
-                            self.ast.span(key_id),
-                            self.compiler.current_file,
-                            "expected a value for that key, only identifier keys can omit value"
-                                .to_string(),
-                        ));
-                    } else {
-                        self.lower_materializing(key_id, None)?
+                            match (key, value) {
+                                (
+                                    Operand::Register(key),
+                                    Operand::Register(value),
+                                ) => {
+                                    self.function.emit_instruction(
+                                        Instruction::SetProperty {
+                                            object: dest.into(),
+                                            key: key.into(),
+                                            value: value.into(),
+                                        },
+                                    );
+                                }
+                                (
+                                    Operand::Register(key),
+                                    Operand::Constant(value),
+                                ) => {
+                                    let value =
+                                        self.function.store_constant(value);
+
+                                    self.function.emit_instruction(
+                                        Instruction::SetPropertyRK {
+                                            object: dest.into(),
+                                            key: key.into(),
+                                            value,
+                                        },
+                                    );
+                                }
+                                (
+                                    Operand::Constant(key),
+                                    Operand::Register(value),
+                                ) => {
+                                    let key = self.function.store_constant(key);
+
+                                    self.function.emit_instruction(
+                                        Instruction::SetPropertyKR {
+                                            object: dest.into(),
+                                            key,
+                                            value: value.into(),
+                                        },
+                                    );
+                                }
+                                (
+                                    Operand::Constant(key),
+                                    Operand::Constant(value),
+                                ) => {
+                                    let key = self.function.store_constant(key);
+                                    let value =
+                                        self.function.store_constant(value);
+
+                                    self.function.emit_instruction(
+                                        Instruction::SetPropertyKK {
+                                            object: dest.into(),
+                                            key,
+                                            value: value,
+                                        },
+                                    );
+                                }
+                            }
+                        }
                     };
-
-                    let value = if let Some(id) = value_id {
-                        self.lower_materializing(id, None)
-                    } else {
-                        self.lower_materializing(key_id, None)
-                    }?;
-
-                    self.function.emit_instruction(Instruction::SetElement {
-                        object: dest.into(),
-                        key: key.into(),
-                        value: value.into(),
-                    });
-
-                    self.env.free_temp(key);
-                    self.env.free_temp(value);
                 }
 
                 Operand::Register(dest)
@@ -1131,7 +1165,7 @@ impl<'a> Lower<'a> {
 
                 self.function.emit_instruction(Instruction::LoadConst {
                     dest: dest.into(),
-                    src: src.into(),
+                    src,
                 });
 
                 Operand::Register(dest)
@@ -1198,35 +1232,35 @@ impl<'a> Lower<'a> {
                         Ok(self.function.emit_instruction(match operator {
                             BinaryOp::Equal => Instruction::JumpIfNotEqualK {
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                                 offset: 0,
                             },
                             BinaryOp::NotEqual => Instruction::JumpIfEqualK {
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                                 offset: 0,
                             },
                             BinaryOp::Less => Instruction::JumpIfLessEqualKR {
-                                src1: src2.into(),
+                                src1: src2,
                                 src2: src1.into(),
                                 offset: 0,
                             },
                             BinaryOp::LessEqual => Instruction::JumpIfLessKR {
-                                src1: src2.into(),
+                                src1: src2,
                                 src2: src1.into(),
                                 offset: 0,
                             },
                             BinaryOp::Greater => {
                                 Instruction::JumpIfLessEqualRK {
                                     src1: src1.into(),
-                                    src2: src2.into(),
+                                    src2,
                                     offset: 0,
                                 }
                             }
                             BinaryOp::GreaterEqual => {
                                 Instruction::JumpIfLessRK {
                                     src1: src1.into(),
-                                    src2: src2.into(),
+                                    src2,
                                     offset: 0,
                                 }
                             }
@@ -1238,34 +1272,34 @@ impl<'a> Lower<'a> {
                         Ok(self.function.emit_instruction(match operator {
                             BinaryOp::Equal => Instruction::JumpIfNotEqualK {
                                 src1: src2.into(),
-                                src2: src1.into(),
+                                src2: src1,
                                 offset: 0,
                             },
                             BinaryOp::NotEqual => Instruction::JumpIfEqualK {
                                 src1: src2.into(),
-                                src2: src1.into(),
+                                src2: src1,
                                 offset: 0,
                             },
                             BinaryOp::Less => Instruction::JumpIfLessEqualRK {
                                 src1: src2.into(),
-                                src2: src1.into(),
+                                src2: src1,
                                 offset: 0,
                             },
                             BinaryOp::LessEqual => Instruction::JumpIfLessRK {
                                 src1: src2.into(),
-                                src2: src1.into(),
+                                src2: src1,
                                 offset: 0,
                             },
                             BinaryOp::Greater => {
                                 Instruction::JumpIfLessEqualKR {
-                                    src1: src1.into(),
+                                    src1,
                                     src2: src2.into(),
                                     offset: 0,
                                 }
                             }
                             BinaryOp::GreaterEqual => {
                                 Instruction::JumpIfLessKR {
-                                    src1: src1.into(),
+                                    src1,
                                     src2: src2.into(),
                                     offset: 0,
                                 }
@@ -1352,39 +1386,40 @@ impl<'a> Lower<'a> {
                     }
                     (Operand::Register(src1), Operand::Constant(src2)) => {
                         let src2 = self.function.store_constant(src2);
+
                         Ok(self.function.emit_instruction(match operator {
                             BinaryOp::Equal => Instruction::JumpIfEqualK {
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                                 offset: 0,
                             },
                             BinaryOp::NotEqual => {
                                 Instruction::JumpIfNotEqualK {
                                     src1: src1.into(),
-                                    src2: src2.into(),
+                                    src2,
                                     offset: 0,
                                 }
                             }
                             BinaryOp::Less => Instruction::JumpIfLessRK {
                                 src1: src1.into(),
-                                src2: src2.into(),
+                                src2,
                                 offset: 0,
                             },
                             BinaryOp::LessEqual => {
                                 Instruction::JumpIfLessEqualRK {
                                     src1: src1.into(),
-                                    src2: src2.into(),
+                                    src2,
                                     offset: 0,
                                 }
                             }
                             BinaryOp::Greater => Instruction::JumpIfLessKR {
-                                src1: src2.into(),
+                                src1: src2,
                                 src2: src1.into(),
                                 offset: 0,
                             },
                             BinaryOp::GreaterEqual => {
                                 Instruction::JumpIfLessEqualKR {
-                                    src1: src2.into(),
+                                    src1: src2,
                                     src2: src1.into(),
                                     offset: 0,
                                 }
@@ -1397,37 +1432,37 @@ impl<'a> Lower<'a> {
                         Ok(self.function.emit_instruction(match operator {
                             BinaryOp::Equal => Instruction::JumpIfEqualK {
                                 src1: src2.into(),
-                                src2: src1.into(),
+                                src2: src1,
                                 offset: 0,
                             },
                             BinaryOp::NotEqual => {
                                 Instruction::JumpIfNotEqualK {
                                     src1: src2.into(),
-                                    src2: src1.into(),
+                                    src2: src1,
                                     offset: 0,
                                 }
                             }
                             BinaryOp::Less => Instruction::JumpIfLessKR {
-                                src1: src1.into(),
+                                src1,
                                 src2: src2.into(),
                                 offset: 0,
                             },
                             BinaryOp::LessEqual => {
                                 Instruction::JumpIfLessEqualKR {
-                                    src1: src1.into(),
+                                    src1,
                                     src2: src2.into(),
                                     offset: 0,
                                 }
                             }
                             BinaryOp::Greater => Instruction::JumpIfLessRK {
                                 src1: src2.into(),
-                                src2: src1.into(),
+                                src2: src1,
                                 offset: 0,
                             },
                             BinaryOp::GreaterEqual => {
                                 Instruction::JumpIfLessEqualRK {
                                     src1: src2.into(),
-                                    src2: src1.into(),
+                                    src2: src1,
                                     offset: 0,
                                 }
                             }
